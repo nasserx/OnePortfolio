@@ -2,7 +2,7 @@
 
 from decimal import Decimal
 from sqlalchemy import case, func
-from portfolio_app.models import Fund, Transaction
+from portfolio_app.models import Fund, Transaction, FundEvent
 
 ZERO = Decimal('0')
 
@@ -102,6 +102,33 @@ class PortfolioCalculator:
         return total
 
     @staticmethod
+    def get_total_funds_for_fund(fund_id) -> Decimal:
+        """Total Funds = sum of Initial + Deposit events only.
+
+        Withdrawals are excluded so that Total Funds represents the gross
+        capital ever allocated to this category, not the net balance.
+        Cash is the correct metric for what remains after withdrawals.
+
+        Fallback: legacy funds with no event history return fund.amount
+        directly so that old databases display correctly without migration.
+        """
+        rows = (
+            FundEvent.query
+            .with_entities(FundEvent.amount_delta)
+            .filter(
+                FundEvent.fund_id == fund_id,
+                FundEvent.event_type.in_(['Initial', 'Deposit']),
+            )
+            .all()
+        )
+        if rows:
+            return sum((_to_decimal(r.amount_delta) for r in rows), ZERO)
+
+        # No event history — legacy fund. Use fund.amount as best approximation.
+        fund = Fund.query.get(fund_id)
+        return _to_decimal(fund.amount or 0) if fund else ZERO
+
+    @staticmethod
     def get_cash_balance_for_fund(fund_id, exclude_transaction_id=None) -> Decimal:
         """Compute cash balance: fund_amount - buy_outflows + sell_inflows."""
         fund = Fund.query.get(fund_id)
@@ -146,7 +173,10 @@ class PortfolioCalculator:
         categories = []
         portfolio_value = ZERO
         for fund in funds:
-            fund_amount = _to_decimal(fund.amount or 0)
+            # Total Funds = deposits only (withdrawals excluded), consistent
+            # with the Funds page display. fund.amount (net) is only used
+            # internally by get_cash_balance_for_fund for cash calculation.
+            total_funds = PortfolioCalculator.get_total_funds_for_fund(fund.id)
 
             realized_perf = PortfolioCalculator.get_realized_performance_for_fund(fund.id)
             realized_pnl = realized_perf['realized_pnl']
@@ -155,24 +185,23 @@ class PortfolioCalculator:
             current_invested = _to_decimal(transactions_summary['current_invested'] or 0)
 
             cash = PortfolioCalculator.get_cash_balance_for_fund(fund.id)
+            # category_value is the true current worth: what's invested + liquid cash.
+            # This is used as total_value so both metrics are consistent.
             category_value = current_invested + cash
             portfolio_value += category_value
 
-            total_value = fund_amount + realized_pnl
-
-            # ROI: prefer fund_amount as base; fallback to realized_cost_basis
-            # when fund events are deleted (fund_amount=0 but trades exist)
-            roi_base = fund_amount if fund_amount != 0 else realized_perf['realized_cost_basis']
+            # ROI: prefer total_funds as base; fallback to realized_cost_basis
+            # when fund events are deleted (total_funds=0 but trades exist).
+            roi_base = total_funds if total_funds != 0 else realized_perf['realized_cost_basis']
             realized_roi_percent, realized_roi_display = _roi_display(realized_pnl, roi_base)
 
             categories.append({
                 'fund': fund,
-                'fund_amount': fund_amount,
+                'total_funds': total_funds,
                 'realized_pnl': realized_pnl,
                 'current_invested': current_invested,
                 'cash': cash,
                 'category_value': category_value,
-                'total_value': total_value,
                 'realized_roi_percent': realized_roi_percent,
                 'realized_roi_display': realized_roi_display,
             })
@@ -184,12 +213,12 @@ class PortfolioCalculator:
 
             summary.append({
                 'category': cat['fund'].category,
-                'amount': cat['fund_amount'],
+                'amount': cat['total_funds'],
                 'allocation': Decimal(str(allocation)),
                 'id': cat['fund'].id,
                 'realized_pnl': cat['realized_pnl'],
                 'current_invested': cat['current_invested'],
-                'total_value': cat['total_value'],
+                'total_value': cat['category_value'],
                 'cash': cat['cash'],
                 'realized_roi_percent': cat['realized_roi_percent'],
                 'realized_roi_display': cat['realized_roi_display'],
@@ -267,7 +296,8 @@ class PortfolioCalculator:
         total_realized_cost_basis = ZERO
 
         for fund in funds:
-            total_investment += _to_decimal(fund.amount)
+            # Use deposits-only total, consistent with get_category_summary()
+            total_investment += PortfolioCalculator.get_total_funds_for_fund(fund.id)
 
             total_cash += PortfolioCalculator.get_cash_balance_for_fund(fund.id)
 
@@ -280,7 +310,8 @@ class PortfolioCalculator:
 
         total_value = total_invested + total_cash
 
-        # ROI: prefer total_investment; fallback to cost basis when funds are zeroed
+        # ROI: prefer total_investment (deposits only); fallback to cost basis
+        # when fund events are deleted (total_investment=0 but trades exist).
         roi_base = total_investment if total_investment != 0 else total_realized_cost_basis
         realized_roi_percent, realized_roi_display = _roi_display(total_realized_pnl, roi_base)
 

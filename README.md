@@ -257,7 +257,6 @@ Bug reports and feature requests use structured templates to keep things organiz
 - [ ] Live market price integration
 - [ ] CSV import/export
 - [x] User authentication
-- [ ] Multi-currency support
 - [ ] Advanced charts and analytics
 - [ ] Docker deployment support
 - [ ] REST API documentation (Swagger/OpenAPI)

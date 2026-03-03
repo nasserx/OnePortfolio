@@ -46,7 +46,15 @@
                             <div class="category-summary columns-3">
                                 <div class="summary-item">
                                     <div class="summary-label">Total Funds</div>
-                                    <div class="summary-value">{{ item.fund.amount|fmt_money }}</div>
+                                    <div class="summary-value">{{ item.total_funds|fmt_money }}</div>
+                                </div>
+                                <div class="summary-item">
+                                    <div class="summary-label">Cash</div>
+                                    <div class="summary-value">{{ item.cash|fmt_money }}</div>
+                                </div>
+                                <div class="summary-item">
+                                    <div class="summary-label">Invested</div>
+                                    <div class="summary-value">{{ item.current_invested|fmt_money }}</div>
                                 </div>
                             </div>
                         </div>
@@ -92,6 +100,7 @@
                                 <tr>
                                     <th style="width: 140px;">Date</th>
                                     <th class="text-end" style="width: 160px;">Funds</th>
+                                    <th class="text-end" style="width: 160px;">Cash</th>
                                     <th>Notes</th>
                                     <th class="text-center" style="width: 90px;">Actions</th>
                                 </tr>
@@ -99,12 +108,22 @@
                             <tbody>
                                 {% for e in item.events %}
                                 {% set display_notes = e.notes if e.notes and e.notes != 'Backfilled from existing funds' else None %}
+                                {% set is_withdrawal = e.event_type == 'Withdrawal' %}
                                 <tr>
                                     <td><small class="text-muted">{{ e.date_short }}</small></td>
                                     <td class="text-end">
-                                        <small class="{% if e.event_type == 'Withdrawal' %}text-danger{% endif %}">
-                                            {{ e.amount_delta|fmt_money }}
-                                        </small>
+                                        {% if not is_withdrawal %}
+                                        <small>{{ e.amount_delta|fmt_money }}</small>
+                                        {% else %}
+                                        <small class="text-muted">—</small>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">
+                                        {% if is_withdrawal %}
+                                        <small class="text-danger">{{ e.amount_delta|fmt_money }}</small>
+                                        {% else %}
+                                        <small class="text-muted">—</small>
+                                        {% endif %}
                                     </td>
                                     <td><small class="text-muted">{{ display_notes or 'N/A' }}</small></td>
                                     <td class="text-center">

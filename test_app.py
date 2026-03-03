@@ -1,250 +1,356 @@
 #!/usr/bin/env python3
 """
-Test script to verify the investment performance application
+Comprehensive test suite for the investment performance application.
+
+Tests cover:
+  - Transaction calculations (average cost, realized P&L)
+  - Fund events: Total Funds = deposits only (withdrawals excluded)
+  - Cash balance calculation (deposits - withdrawals - buys + sells)
+  - Category summary (Overview cards): correct amounts and ROI
+  - Portfolio dashboard totals
+  - Application routes (HTTP 200 checks)
 """
 
 from portfolio_app import create_app, db
-from portfolio_app.models import Fund, Transaction
+from portfolio_app.models import Fund, Transaction, FundEvent
 from portfolio_app.calculators import PortfolioCalculator
+from portfolio_app.services.factory import Services
 from datetime import datetime
 from decimal import Decimal
 from config import Config
 from pathlib import Path
 
+ZERO = Decimal('0')
+
 
 class TestConfig(Config):
     TESTING = True
     WTF_CSRF_ENABLED = False
-    # Use a separate DB file to avoid modifying the user's real portfolio.db
-    SQLALCHEMY_DATABASE_URI = f"sqlite:///{(Path(__file__).resolve().parent / 'test_portfolio.db').as_posix()}"
+    SQLALCHEMY_DATABASE_URI = (
+        f"sqlite:///{(Path(__file__).resolve().parent / 'test_portfolio.db').as_posix()}"
+    )
 
 
-def setup_test_data():
-    """Create test data for verification"""
-    test_db_path = Path(__file__).resolve().parent / 'test_portfolio.db'
-    if test_db_path.exists():
-        test_db_path.unlink()
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
 
-    app = create_app(TestConfig)
-    
+def _dec(v) -> Decimal:
+    return Decimal(str(v))
+
+
+def _assert(label: str, expected, actual, tol=_dec('0.01')):
+    ok = abs(_dec(str(expected)) - _dec(str(actual))) < tol
+    status = 'PASS' if ok else 'FAIL'
+    print(f"  {status}  {label}")
+    print(f"         expected={expected}  actual={actual}")
+    if not ok:
+        raise AssertionError(f"{label}: expected {expected}, got {actual}")
+
+
+# ---------------------------------------------------------------------------
+# Test 1 – Transaction calculations (unchanged logic)
+# ---------------------------------------------------------------------------
+
+def test_transaction_calculations(app):
+    """Verify average cost and realized P&L for buy/sell transactions."""
     with app.app_context():
-        # Clear existing data
         db.drop_all()
         db.create_all()
-        
-        # Create test funds
-        commodities = Fund(category='Commodities', amount=25000)  # type: ignore[call-arg]
-        stocks = Fund(category='Stocks', amount=40000)  # type: ignore[call-arg]
-        etfs = Fund(category='ETFs', amount=200)  # type: ignore[call-arg]
 
-        db.session.add(commodities)
-        db.session.add(stocks)
-        db.session.add(etfs)
-        db.session.commit()
+        svc = Services()
 
-        # Create test transactions for Commodities (XAU)
-        t1 = Transaction(  # type: ignore[call-arg]
-            fund_id=commodities.id,
-            transaction_type='Buy',
-            date=datetime(2026, 1, 10),
-            symbol='XAU',
-            price=2000,
-            quantity=1.5,
-            fees=50,
-            notes='XAU purchase'
-        )
+        # --- Commodities: XAU (2 buys, no sell) ---
+        comm = svc.fund_service.create_fund('Commodities', _dec(25000))
+        t1 = Transaction(fund_id=comm.id, transaction_type='Buy',
+                         date=datetime(2026, 1, 10), symbol='XAU',
+                         price=2000, quantity=1.5, fees=50)
         t1.calculate_total_cost()
-
-        t2 = Transaction(  # type: ignore[call-arg]
-            fund_id=commodities.id,
-            transaction_type='Buy',
-            date=datetime(2026, 1, 15),
-            symbol='XAU',
-            price=2050,
-            quantity=1.0,
-            fees=30,
-            notes='XAU purchase 2'
-        )
+        t2 = Transaction(fund_id=comm.id, transaction_type='Buy',
+                         date=datetime(2026, 1, 15), symbol='XAU',
+                         price=2050, quantity=1.0, fees=30)
         t2.calculate_total_cost()
-        
-        # Create test transactions for Stocks
-        t3 = Transaction(  # type: ignore[call-arg]
-            fund_id=stocks.id,
-            transaction_type='Buy',
-            date=datetime(2026, 1, 8),
-            symbol='AAPL',
-            price=100,
-            quantity=50,
-            fees=25,
-            notes='Apple stock'
-        )
-        t3.calculate_total_cost()
-        
-        t4 = Transaction(  # type: ignore[call-arg]
-            fund_id=stocks.id,
-            transaction_type='Buy',
-            date=datetime(2026, 1, 12),
-            symbol='AAPL',
-            price=105,
-            quantity=30,
-            fees=15,
-            notes='Apple stock 2'
-        )
-        t4.calculate_total_cost()
 
-        # Another symbol in the same Stocks category to ensure averages don't mix
-        t5 = Transaction(  # type: ignore[call-arg]
-            fund_id=stocks.id,
-            transaction_type='Buy',
-            date=datetime(2026, 1, 9),
-            symbol='MSFT',
-            price=200,
-            quantity=10,
-            fees=10,
-            notes='Microsoft stock'
-        )
+        # --- Stocks: AAPL (2 buys) + MSFT (1 buy) ---
+        stocks = svc.fund_service.create_fund('Stocks', _dec(40000))
+        t3 = Transaction(fund_id=stocks.id, transaction_type='Buy',
+                         date=datetime(2026, 1, 8), symbol='AAPL',
+                         price=100, quantity=50, fees=25)
+        t3.calculate_total_cost()
+        t4 = Transaction(fund_id=stocks.id, transaction_type='Buy',
+                         date=datetime(2026, 1, 12), symbol='AAPL',
+                         price=105, quantity=30, fees=15)
+        t4.calculate_total_cost()
+        t5 = Transaction(fund_id=stocks.id, transaction_type='Buy',
+                         date=datetime(2026, 1, 9), symbol='MSFT',
+                         price=200, quantity=10, fees=10)
         t5.calculate_total_cost()
 
-        # Create test transactions for ETFs (Sell then Buy to verify running average cost)
-        e1 = Transaction(  # type: ignore[call-arg]
-            fund_id=etfs.id,
-            transaction_type='Buy',
-            date=datetime(2026, 1, 1),
-            symbol='ETHA',
-            price=10,
-            quantity=10,
-            fees=0,
-            notes='ETF buy'
-        )
+        # --- ETFs: ETHA (buy, partial sell, buy again) ---
+        etfs = svc.fund_service.create_fund('ETFs', _dec(200))
+        e1 = Transaction(fund_id=etfs.id, transaction_type='Buy',
+                         date=datetime(2026, 1, 1), symbol='ETHA',
+                         price=10, quantity=10, fees=0)
         e1.calculate_total_cost()
-
-        e2 = Transaction(  # type: ignore[call-arg]
-            fund_id=etfs.id,
-            transaction_type='Sell',
-            date=datetime(2026, 1, 2),
-            symbol='ETHA',
-            price=12,
-            quantity=5,
-            fees=1,
-            notes='ETF partial sell'
-        )
+        e2 = Transaction(fund_id=etfs.id, transaction_type='Sell',
+                         date=datetime(2026, 1, 2), symbol='ETHA',
+                         price=12, quantity=5, fees=1)
         e2.calculate_total_cost()
-
-        e3 = Transaction(  # type: ignore[call-arg]
-            fund_id=etfs.id,
-            transaction_type='Buy',
-            date=datetime(2026, 1, 3),
-            symbol='ETHA',
-            price=10,
-            quantity=5,
-            fees=0,
-            notes='ETF buy after sell'
-        )
+        e3 = Transaction(fund_id=etfs.id, transaction_type='Buy',
+                         date=datetime(2026, 1, 3), symbol='ETHA',
+                         price=10, quantity=5, fees=0)
         e3.calculate_total_cost()
 
         db.session.add_all([t1, t2, t3, t4, t5, e1, e2, e3])
         db.session.commit()
-        
-        # Recalculate average costs after insertions
-        PortfolioCalculator.recalculate_all_averages_for_symbol(commodities.id, 'XAU')
+
+        PortfolioCalculator.recalculate_all_averages_for_symbol(comm.id, 'XAU')
         PortfolioCalculator.recalculate_all_averages_for_symbol(stocks.id, 'AAPL')
         PortfolioCalculator.recalculate_all_averages_for_symbol(stocks.id, 'MSFT')
         PortfolioCalculator.recalculate_all_averages_for_symbol(etfs.id, 'ETHA')
         db.session.commit()
-        
-        print("✓ Test data created successfully")
-        print()
-        
-        # Test calculations
-        print("=" * 60)
-        print("PORTFOLIO CALCULATIONS TEST")
-        print("=" * 60)
-        
-        # Test Commodities summary (XAU symbol)
-        gold_summary = PortfolioCalculator.get_symbol_transactions_summary(commodities.id, 'XAU')
-        print("\nCommodities Summary (XAU):")
-        print(f"  Total Buy Cost: {gold_summary['total_buy_cost']:,.2f}")
-        print(f"  Total Buy Fees: {gold_summary['total_buy_fees']:,.2f}")
-        print(f"  Total Buy Quantity: {gold_summary['total_buy_quantity']:.4f}")
-        print(f"  Average Cost: {gold_summary['average_cost']:,.4f}")
-        print(f"  Total Quantity Held: {gold_summary['total_quantity_held']:.4f}")
-        print(f"  Transaction Count: {gold_summary['transaction_count']}")
-        
-        # Test Stocks summary (AAPL symbol)
-        stocks_summary = PortfolioCalculator.get_symbol_transactions_summary(stocks.id, 'AAPL')
-        print("\nStocks Summary:")
-        print(f"  Total Buy Cost: {stocks_summary['total_buy_cost']:,.2f}")
-        print(f"  Total Buy Fees: {stocks_summary['total_buy_fees']:,.2f}")
-        print(f"  Total Buy Quantity: {stocks_summary['total_buy_quantity']:.4f}")
-        print(f"  Average Cost: {stocks_summary['average_cost']:,.4f}")
-        print(f"  Total Quantity Held: {stocks_summary['total_quantity_held']:.4f}")
-        print(f"  Transaction Count: {stocks_summary['transaction_count']}")
-        
-        # Portfolio-level (manual-entry app): cash + realized profit
+
         print("\n" + "=" * 60)
-        print("PORTFOLIO DASHBOARD TOTALS")
+        print("TEST 1 – TRANSACTION CALCULATIONS")
         print("=" * 60)
+
+        # XAU average cost
+        xau = PortfolioCalculator.get_symbol_transactions_summary(comm.id, 'XAU')
+        expected_xau_avg = (1.5 * 2000 + 50 + 1.0 * 2050 + 30) / (1.5 + 1.0)
+        _assert('XAU average cost', round(expected_xau_avg, 4), xau['average_cost'])
+
+        # AAPL average cost
+        aapl = PortfolioCalculator.get_symbol_transactions_summary(stocks.id, 'AAPL')
+        expected_aapl_avg = (50 * 100 + 25 + 30 * 105 + 15) / (50 + 30)
+        _assert('AAPL average cost', round(expected_aapl_avg, 4), aapl['average_cost'])
+
+        # MSFT must not mix with AAPL
+        msft = PortfolioCalculator.get_symbol_transactions_summary(stocks.id, 'MSFT')
+        _assert('MSFT average cost (isolated)', (10 * 200 + 10) / 10, msft['average_cost'])
+
+        # ETHA: buy 10@10, sell 5@12 (-1 fee), buy 5@10
+        etha = PortfolioCalculator.get_symbol_transactions_summary(etfs.id, 'ETHA')
+        _assert('ETHA realized P&L', 9.0, etha['realized_pnl'])   # (12-10)*5 - 1 fee
+        # Buy 10@10 → sell 5 (remaining cost=50) → buy 5@10 → total=100/10 = 10.0
+        _assert('ETHA average cost', 10.0, etha['average_cost'])
+
+        print("  All transaction calculation checks passed.")
+
+
+# ---------------------------------------------------------------------------
+# Test 2 – Fund events: Total Funds = deposits only
+# ---------------------------------------------------------------------------
+
+def test_fund_events(app):
+    """
+    Verify that get_total_funds_for_fund() returns the sum of Initial +
+    Deposit events only, and that withdrawals do NOT inflate Total Funds.
+    """
+    with app.app_context():
+        db.drop_all()
+        db.create_all()
+
+        svc = Services()
+
+        print("\n" + "=" * 60)
+        print("TEST 2 – FUND EVENTS (Total Funds = deposits only)")
+        print("=" * 60)
+
+        # ── Scenario A: deposits only, no withdrawals ──
+        #   Initial=10,000  Deposit=5,000  → Total Funds=15,000
+        fund_a = svc.fund_service.create_fund('Stocks', _dec(10_000))
+        svc.fund_service.deposit_funds(fund_a.id, _dec(5_000))
+
+        tf_a = PortfolioCalculator.get_total_funds_for_fund(fund_a.id)
+        cash_a = PortfolioCalculator.get_cash_balance_for_fund(fund_a.id)
+
+        print("\n  Scenario A – deposits only")
+        _assert('Total Funds (deposits only)', 15_000, tf_a)
+        _assert('Cash (no transactions)', 15_000, cash_a)
+        _assert('fund.amount equals cash when no transactions',
+                cash_a, _dec(str(fund_a.amount)))
+
+        # ── Scenario B: deposits + withdrawals, no transactions ──
+        #   Initial=10,000  Deposit=1,000  Withdraw=4,999  Withdraw=5,999
+        #   Total Funds = 10,000+1,000 = 11,000
+        #   fund.amount = 10,000+1,000-4,999-5,999 = 2
+        #   Cash = fund.amount = 2 (no buys/sells)
+        fund_b = svc.fund_service.create_fund('ETFs', _dec(10_000))
+        svc.fund_service.deposit_funds(fund_b.id, _dec(1_000))
+        svc.fund_service.withdraw_funds(fund_b.id, _dec(4_999))
+        svc.fund_service.withdraw_funds(fund_b.id, _dec(5_999))
+        db.session.refresh(fund_b)
+
+        tf_b = PortfolioCalculator.get_total_funds_for_fund(fund_b.id)
+        cash_b = PortfolioCalculator.get_cash_balance_for_fund(fund_b.id)
+
+        print("\n  Scenario B – deposits + withdrawals, no transactions")
+        _assert('Total Funds (deposits only, ignores withdrawals)', 11_000, tf_b)
+        _assert('fund.amount (net after withdrawals)', 2, _dec(str(fund_b.amount)))
+        _assert('Cash = fund.amount when no transactions', 2, cash_b)
+
+        # ── Scenario C: deposits + withdrawals + transactions ──
+        #   Initial=10,000  Withdraw=4,999  Deposit=1,000  Withdraw=5,999
+        #   fund.amount = 2
+        #   Buy  5000 AAPL @ $1 fees=1 → outflow=5,001
+        #   Sell 2500 AAPL @ $2 fees=1 → inflow=4,999
+        #   Cash = 2 - 5,001 + 4,999 = 0
+        #   current_invested = cost basis of 2500 remaining = 5,001 * (2500/5000) = 2,500.50
+        #   realized_pnl = (2*2500 - 1) - (5001 * 2500/5000) = 4,999 - 2,500.50 = 2,498.50
+        #   Total Funds = 10,000 + 1,000 = 11,000
+        #   Total Value = cash + invested = 0 + 2,500.50 = 2,500.50
+        #   ROI base = 11,000  →  ROI = 2,498.50 / 11,000 = ~22.71%
+        fund_c = svc.fund_service.create_fund('Crypto', _dec(10_000))
+        svc.fund_service.withdraw_funds(fund_c.id, _dec(4_999))
+        svc.fund_service.deposit_funds(fund_c.id, _dec(1_000))
+        svc.fund_service.withdraw_funds(fund_c.id, _dec(5_999))
+        db.session.refresh(fund_c)
+
+        buy = Transaction(fund_id=fund_c.id, transaction_type='Buy',
+                          date=datetime(2026, 1, 1), symbol='AAPL',
+                          price=1, quantity=5000, fees=1)
+        buy.calculate_total_cost()
+        sell = Transaction(fund_id=fund_c.id, transaction_type='Sell',
+                           date=datetime(2026, 1, 2), symbol='AAPL',
+                           price=2, quantity=2500, fees=1)
+        sell.calculate_total_cost()
+        db.session.add_all([buy, sell])
+        db.session.commit()
+        PortfolioCalculator.recalculate_all_averages_for_symbol(fund_c.id, 'AAPL')
+        db.session.commit()
+
+        tf_c = PortfolioCalculator.get_total_funds_for_fund(fund_c.id)
+        cash_c = PortfolioCalculator.get_cash_balance_for_fund(fund_c.id)
+        tx_c = PortfolioCalculator.get_category_transactions_summary(fund_c.id)
+        realized_c = PortfolioCalculator.get_realized_performance_for_fund(fund_c.id)
+
+        print("\n  Scenario C – deposits + withdrawals + transactions")
+        _assert('Total Funds (deposits only)', 11_000, tf_c)
+        _assert('fund.amount (net)', 2, _dec(str(fund_c.amount)))
+        _assert('Cash (after buys/sells)', 0, cash_c)
+        _assert('Invested (cost basis of 2500 remaining)', _dec('2500.50'), tx_c['current_invested'])
+        _assert('Realized P&L', _dec('2498.50'), realized_c['realized_pnl'])
+
+        # ── Scenario D: legacy fund with no FundEvents (fallback to fund.amount) ──
+        #   Simulates old database where fund.amount=8,000 but no events exist.
+        #   get_total_funds_for_fund() must return 8,000 (not 0).
+        legacy_fund = Fund(category='Commodities', amount=_dec(8_000))
+        db.session.add(legacy_fund)
+        db.session.commit()
+
+        tf_legacy = PortfolioCalculator.get_total_funds_for_fund(legacy_fund.id)
+        cash_legacy = PortfolioCalculator.get_cash_balance_for_fund(legacy_fund.id)
+
+        print("\n  Scenario D – legacy fund (no FundEvents, fallback to fund.amount)")
+        _assert('Total Funds fallback = fund.amount', 8_000, tf_legacy)
+        _assert('Cash fallback = fund.amount (no transactions)', 8_000, cash_legacy)
+
+        print("  All fund event checks passed.")
+
+
+# ---------------------------------------------------------------------------
+# Test 3 – Category summary (Overview cards)
+# ---------------------------------------------------------------------------
+
+def test_category_summary(app):
+    """
+    Verify get_category_summary() uses deposits-only Total Funds
+    and computes correct Total Value and ROI.
+    """
+    with app.app_context():
+        db.drop_all()
+        db.create_all()
+
+        svc = Services()
+
+        # Fund: Initial=10,000  Withdraw=4,999  Deposit=1,000  Withdraw=5,999
+        # Buy 5000 AAPL @ $1 fees=1 | Sell 2500 AAPL @ $2 fees=1
+        fund = svc.fund_service.create_fund('Stocks', _dec(10_000))
+        svc.fund_service.withdraw_funds(fund.id, _dec(4_999))
+        svc.fund_service.deposit_funds(fund.id, _dec(1_000))
+        svc.fund_service.withdraw_funds(fund.id, _dec(5_999))
+
+        buy = Transaction(fund_id=fund.id, transaction_type='Buy',
+                          date=datetime(2026, 1, 1), symbol='AAPL',
+                          price=1, quantity=5000, fees=1)
+        buy.calculate_total_cost()
+        sell = Transaction(fund_id=fund.id, transaction_type='Sell',
+                           date=datetime(2026, 1, 2), symbol='AAPL',
+                           price=2, quantity=2500, fees=1)
+        sell.calculate_total_cost()
+        db.session.add_all([buy, sell])
+        db.session.commit()
+        PortfolioCalculator.recalculate_all_averages_for_symbol(fund.id, 'AAPL')
+        db.session.commit()
+
+        summary, portfolio_value = PortfolioCalculator.get_category_summary()
+        assert len(summary) == 1
+        cat = summary[0]
+
+        print("\n" + "=" * 60)
+        print("TEST 3 – CATEGORY SUMMARY (Overview cards)")
+        print("=" * 60)
+
+        _assert('Allocated Funds (deposits only)', 11_000, cat['amount'])
+        _assert('Cash', 0, cat['cash'])
+        _assert('Invested', _dec('2500.50'), cat['current_invested'])
+        _assert('Total Value = cash + invested', _dec('2500.50'), cat['total_value'])
+        _assert('Realized P&L', _dec('2498.50'), cat['realized_pnl'])
+
+        # ROI = 2498.50 / 11000 * 100
+        expected_roi = _dec('2498.50') / _dec('11000') * 100
+        _assert('Realized ROI % (base=deposits)', round(expected_roi, 2), cat['realized_roi_percent'])
+
+        print("  All category summary checks passed.")
+
+
+# ---------------------------------------------------------------------------
+# Test 4 – Portfolio dashboard totals
+# ---------------------------------------------------------------------------
+
+def test_dashboard_totals(app):
+    """
+    Verify get_portfolio_dashboard_totals() sums Total Funds from deposits
+    only across all categories.
+    """
+    with app.app_context():
+        db.drop_all()
+        db.create_all()
+
+        svc = Services()
+
+        # Fund A: Initial=20,000  Withdraw=5,000 → total_funds=20,000  fund.amount=15,000
+        fa = svc.fund_service.create_fund('Stocks', _dec(20_000))
+        svc.fund_service.withdraw_funds(fa.id, _dec(5_000))
+
+        # Fund B: Initial=10,000  Deposit=2,000 → total_funds=12,000  fund.amount=12,000
+        fb = svc.fund_service.create_fund('ETFs', _dec(10_000))
+        svc.fund_service.deposit_funds(fb.id, _dec(2_000))
 
         totals = PortfolioCalculator.get_portfolio_dashboard_totals()
-        print(f"\nTotal Investment: {totals['total_investment']:,.2f}")
-        print(f"Total Cash: {totals['total_cash']:,.2f}")
-        print(f"Total P&L (Realized): {totals['total_realized_pnl']:,.2f}")
-        print(f"Realized ROI: {totals['realized_roi_display']}")
-        
-        # Verify calculations
+
         print("\n" + "=" * 60)
-        print("VERIFICATION")
+        print("TEST 4 – PORTFOLIO DASHBOARD TOTALS")
         print("=" * 60)
-        
-        # Check XAU average cost
-        expected_gold_avg = (((1.5 * 2000) + 50) + ((1.0 * 2050) + 30)) / (1.5 + 1.0)
-        print(f"\nCommodities (XAU) Average Cost:")
-        print(f"  Expected: {expected_gold_avg:,.4f}")
-        print(f"  Actual: {gold_summary['average_cost']:,.4f}")
-        print(f"  ✓ PASS" if abs(Decimal(str(expected_gold_avg)) - gold_summary['average_cost']) < Decimal('0.01') else "  ✗ FAIL")
-        
-        # Check AAPL average cost
-        expected_stocks_avg = (((50 * 100) + 25) + ((30 * 105) + 15)) / (50 + 30)
-        print(f"\nStocks Average Cost:")
-        print(f"  Expected: {expected_stocks_avg:,.4f}")
-        print(f"  Actual: {stocks_summary['average_cost']:,.4f}")
-        print(f"  ✓ PASS" if abs(Decimal(str(expected_stocks_avg)) - stocks_summary['average_cost']) < Decimal('0.01') else "  ✗ FAIL")
 
-        # Check MSFT average cost doesn't mix with AAPL
-        msft_summary = PortfolioCalculator.get_symbol_transactions_summary(stocks.id, 'MSFT')
-        expected_msft_avg = ((10 * 200) + 10) / 10
-        print(f"\nMSFT Average Cost (same category, separate symbol):")
-        print(f"  Expected: {expected_msft_avg:,.4f}")
-        print(f"  Actual: {msft_summary['average_cost']:,.4f}")
-        print(f"  ✓ PASS" if abs(Decimal(str(expected_msft_avg)) - msft_summary['average_cost']) < Decimal('0.01') else "  ✗ FAIL")
+        # Total Funds = 20,000 + 12,000 = 32,000 (deposits only)
+        _assert('Total Investment (sum of deposits)', 32_000, totals['total_investment'])
 
-        # Check ETFs running average cost after Sell then Buy
-        etfs_summary = PortfolioCalculator.get_symbol_transactions_summary(etfs.id, 'ETHA')
-        expected_etfs_avg = 15.0  # After: Buy 10@10, Sell 5, Buy 5@10 -> avg cost becomes 15
-        expected_etfs_realized = 9.0  # (12-10)*5 - 1
+        # Cash: fund_a.amount=15,000 + fund_b.amount=12,000 = 27,000 (no transactions)
+        _assert('Total Cash (no transactions)', 27_000, totals['total_cash'])
 
-        print(f"\nETFs Average Cost (Sell then Buy case):")
-        print(f"  Expected: {expected_etfs_avg:,.4f}")
-        print(f"  Actual: {etfs_summary['average_cost']:,.4f}")
-        print(f"  ✓ PASS" if abs(Decimal(str(expected_etfs_avg)) - etfs_summary['average_cost']) < Decimal('0.01') else "  ✗ FAIL")
+        # Total Value = cash + invested = 27,000 + 0 = 27,000
+        _assert('Total Value', 27_000, totals['total_value'])
 
-        print(f"\nETFs Realized P&L:")
-        print(f"  Expected: {expected_etfs_realized:,.2f}")
-        print(f"  Actual: {etfs_summary['realized_pnl']:,.2f}")
-        print(f"  ✓ PASS" if abs(Decimal(str(expected_etfs_realized)) - etfs_summary['realized_pnl']) < Decimal('0.01') else "  ✗ FAIL")
-        
-        print("\n" + "=" * 60)
-        print("TEST COMPLETE")
-        print("=" * 60)
-        
-        return app
+        print("  All dashboard totals checks passed.")
 
-def test_routes():
-    """Test application routes"""
-    app = create_app(TestConfig)
-    client = app.test_client()
 
-    # Ensure schema exists and create a test user for authentication.
+# ---------------------------------------------------------------------------
+# Test 5 – Application routes (HTTP)
+# ---------------------------------------------------------------------------
+
+def test_routes(app):
+    """Verify key pages return HTTP 200."""
     with app.app_context():
         db.drop_all()
         db.create_all()
@@ -254,48 +360,61 @@ def test_routes():
         db.session.add(user)
         db.session.commit()
 
+    client = app.test_client()
+    client.post('/auth/login', data={'username': 'testuser', 'password': 'testpassword123'})
+
     print("\n" + "=" * 60)
-    print("ROUTE TESTS")
+    print("TEST 5 – APPLICATION ROUTES")
     print("=" * 60)
 
-    # Log in before testing protected routes.
-    client.post('/auth/login', data={
-        'username': 'testuser',
-        'password': 'testpassword123',
-    })
+    routes = [
+        ('GET', '/',               'Dashboard'),
+        ('GET', '/transactions/',  'Transactions'),
+        ('GET', '/funds/',         'Funds'),
+    ]
+    for method, path, label in routes:
+        r = client.get(path)
+        status = 'PASS' if r.status_code == 200 else 'FAIL'
+        print(f"  {status}  {method} {path} -> {r.status_code}  ({label})")
+        assert r.status_code == 200, f"{label} route returned {r.status_code}"
 
-    # Test index route
-    response = client.get('/')
-    print(f"\nGET / - Status: {response.status_code}")
-    assert response.status_code == 200, "Dashboard route failed"
-    print("✓ Dashboard route works")
+    print("  All route checks passed.")
 
-    # Test transactions route
-    response = client.get('/transactions/')
-    print(f"GET /transactions/ - Status: {response.status_code}")
-    assert response.status_code == 200, "Transactions route failed"
-    print("✓ Transactions route works")
 
-    # Test funds route
-    response = client.get('/funds/')
-    print(f"GET /funds/ - Status: {response.status_code}")
-    assert response.status_code == 200, "Funds route failed"
-    print("✓ Funds route works")
-
-    print("\nAll routes working correctly! ✓")
+# ---------------------------------------------------------------------------
+# Runner
+# ---------------------------------------------------------------------------
 
 if __name__ == '__main__':
-    print("\n" + "🚀 " * 10)
-    print("Investment Performance Application Test Suite")
-    print("🚀 " * 10 + "\n")
-    
-    try:
-        setup_test_data()
-        test_routes()
-        print("\n" + "✓ " * 10)
-        print("ALL TESTS PASSED!")
-        print("✓ " * 10 + "\n")
-    except Exception as e:
-        print(f"\n✗ TEST FAILED: {str(e)}")
-        import traceback
-        traceback.print_exc()
+    print("\n" + "=" * 60)
+    print("  INVESTMENT PERFORMANCE – FULL TEST SUITE")
+    print("=" * 60)
+
+    app = create_app(TestConfig)
+    passed = 0
+    failed = 0
+
+    tests = [
+        ('Transaction Calculations',  test_transaction_calculations),
+        ('Fund Events Logic',          test_fund_events),
+        ('Category Summary',           test_category_summary),
+        ('Dashboard Totals',           test_dashboard_totals),
+        ('Application Routes',         test_routes),
+    ]
+
+    for name, fn in tests:
+        try:
+            fn(app)
+            passed += 1
+        except Exception as exc:
+            failed += 1
+            print(f"\n  FAIL {name}: {exc}")
+            import traceback
+            traceback.print_exc()
+
+    print("\n" + "=" * 60)
+    total = passed + failed
+    print(f"  Results: {passed}/{total} tests passed")
+    if failed:
+        print(f"  ({failed} FAILED)")
+    print("=" * 60 + "\n")

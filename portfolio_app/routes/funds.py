@@ -14,6 +14,7 @@ from portfolio_app.forms import (
     FundEventEditForm,
     FundEventDeleteForm
 )
+from portfolio_app.calculators.portfolio_calculator import PortfolioCalculator
 from portfolio_app.utils import get_error_message, get_first_form_error, SuccessMessages, is_ajax_request, json_response
 from portfolio_app.utils.constants import EventType, safe_html_id
 from config import Config
@@ -53,11 +54,19 @@ def _get_funds_page_context():
                 logger.exception('Failed to backfill events for fund %s', fund.id)
                 db.session.rollback()
 
+        total_funds = PortfolioCalculator.get_total_funds_for_fund(fund.id)
+        cash = PortfolioCalculator.get_cash_balance_for_fund(fund.id)
+        tx_summary = PortfolioCalculator.get_category_transactions_summary(fund.id)
+        current_invested = tx_summary['current_invested']
+
         group_id = safe_html_id(fund.id, fund.category)
         funds_data.append({
             'fund': fund,
             'events': events,
             'group_id': group_id,
+            'total_funds': total_funds,
+            'cash': cash,
+            'current_invested': current_invested,
         })
 
     return {

@@ -84,12 +84,19 @@ def create_app(config_class=Config):
             'category_icon_default': app.config.get('ASSET_CATEGORY_ICON_DEFAULT', ('bi-folder', 'text-secondary')),
         }
 
-    # Create tables and run migrations
-    with app.app_context():
-        # Import all models so SQLAlchemy knows about them before create_all()
-        from portfolio_app.models import User, Fund, Transaction, Asset, FundEvent  # noqa: F401
-        db.create_all()
-        _run_migrations(app)
+    # Health check route
+    @app.route('/health')
+    def health():
+        return {'status': 'healthy'}, 200
+
+    # Error handlers
+    @app.errorhandler(404)
+    def not_found(error):
+        return {'error': 'Not Found', 'message': 'The requested resource was not found'}, 404
+
+    @app.errorhandler(500)
+    def internal_error(error):
+        return {'error': 'Internal Server Error', 'message': 'An unexpected error occurred'}, 500
 
     # Register blueprints
     from portfolio_app.routes import register_blueprints

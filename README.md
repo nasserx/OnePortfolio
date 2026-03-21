@@ -252,6 +252,35 @@ Contributions are welcome! Please:
 
 Bug reports and feature requests use structured templates to keep things organized.
 
+## 🚀 Deployment
+
+### PythonAnywhere
+
+1. **Upload your code** to PythonAnywhere (via Git clone or manual upload)
+
+2. **Set environment variables** in PythonAnywhere:
+   - Go to Web tab → Environment variables
+   - Add `SECRET_KEY`: Generate a secure key using Python's `secrets.token_hex(32)`
+   - Optionally set `DATABASE_URL` if using a different database
+
+3. **Install dependencies**:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Initialize the database** (run once):
+   ```bash
+   python init_db.py
+   ```
+
+5. **Configure WSGI**:
+   - In Web tab, set WSGI configuration file to point to your `wsgi.py`
+   - Example: `/home/yourusername/investment-performance-tracker/wsgi.py`
+
+6. **Reload the web app** in PythonAnywhere
+
+The app will be available at your PythonAnywhere domain. The `/health` endpoint can be used to verify the deployment.
+
 ## 🎯 Roadmap
 
 - [ ] Live market price integration

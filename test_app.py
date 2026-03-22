@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Comprehensive test suite for the investment performance application.
+Comprehensive test suite for the OnePortfolio application.
 
 Tests cover:
   - Transaction calculations (average cost, realized P&L)
@@ -387,7 +387,7 @@ def test_routes(app):
 
 if __name__ == '__main__':
     print("\n" + "=" * 60)
-    print("  INVESTMENT PERFORMANCE – FULL TEST SUITE")
+    print("  OnePortfolio – FULL TEST SUITE")
     print("=" * 60)
 
     app = create_app(TestConfig)

@@ -1,6 +1,6 @@
 # 📊 OnePortfolio
 
-![CI](https://github.com/nasserx/one-portfolio/actions/workflows/ci.yml/badge.svg)
+![CI](https://github.com/nasserx/OnePortfolio/actions/workflows/ci.yml/badge.svg)
 ![Python](https://img.shields.io/badge/python-3.8+-blue.svg)
 ![Flask](https://img.shields.io/badge/flask-3.0.0-green.svg)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
@@ -59,8 +59,8 @@
 
 1. **Clone the repository**
 ```bash
-git clone https://github.com/nasserx/one-portfolio.git
-cd one-portfolio
+git clone https://github.com/nasserx/OnePortfolio.git
+cd OnePortfolio
 ```
 
 2. **Create a virtual environment**
@@ -197,7 +197,7 @@ Asset categories and icons are configured in [config.py](config.py).
 ## 📁 Project Structure
 
 ```
-one-portfolio/
+OnePortfolio/
 ├── app.py                  # Application entry point
 ├── config.py               # Configuration settings
 ├── requirements.txt        # Python dependencies
@@ -244,7 +244,7 @@ pytest -v
 
 Contributions are welcome! Please:
 
-1. [Open an issue](https://github.com/nasserx/one-portfolio/issues/new/choose) first to discuss major changes
+1. [Open an issue](https://github.com/nasserx/OnePortfolio/issues/new/choose) first to discuss major changes
 2. Fork the repository
 3. Create a feature branch (`git checkout -b feature/your-feature`)
 4. Commit your changes (`git commit -m 'Add your feature'`)
@@ -275,7 +275,7 @@ Bug reports and feature requests use structured templates to keep things organiz
 
 5. **Configure WSGI**:
    - In Web tab, set WSGI configuration file to point to your `wsgi.py`
-   - Example: `/home/yourusername/one-portfolio/wsgi.py`
+   - Example: `/home/nasserx/OnePortfolio/wsgi.py`
 
 6. **Reload the web app** in PythonAnywhere
 

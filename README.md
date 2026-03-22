@@ -12,6 +12,7 @@
 
 - [Features](#-features)
 - [Tech Stack](#️-tech-stack)
+- [Live Demo](#-live-demo)
 - [Quick Start](#-quick-start)
 - [Usage](#-usage)
 - [Screenshots](#️-screenshots)
@@ -47,6 +48,18 @@
 | Auth | Flask-Login · Werkzeug password hashing |
 | Forms | Flask-WTF |
 | Testing | pytest |
+
+## 🌐 Live Demo
+
+You can access and try the application here:  
+👉 https://oneportfolio.pythonanywhere.com/
+
+## 🔐 Demo Access
+
+For testing purposes, you can use the following credentials:
+
+- **Username:** demo  
+- **Password:** demo1234
 
 ## 🚀 Quick Start
 

@@ -355,13 +355,13 @@ def test_routes(app):
         db.drop_all()
         db.create_all()
         from portfolio_app.models.user import User
-        user = User(username='testuser')
+        user = User(username='testuser', is_verified=True)
         user.set_password('testpassword123')
         db.session.add(user)
         db.session.commit()
 
     client = app.test_client()
-    client.post('/auth/login', data={'username': 'testuser', 'password': 'testpassword123'})
+    client.post('/login', data={'username': 'testuser', 'password': 'testpassword123'})
 
     print("\n" + "=" * 60)
     print("TEST 5 – APPLICATION ROUTES")

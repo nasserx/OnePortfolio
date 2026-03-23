@@ -143,14 +143,17 @@
                 {% endif %}
             </div>
 
-            <!-- Remember me -->
-            <div class="mb-4 d-flex align-items-center">
+            <!-- Remember me + Forgot password -->
+            <div class="mb-4 d-flex align-items-center justify-content-between">
                 <div class="form-check">
                     <input class="form-check-input" type="checkbox" id="remember" name="remember">
                     <label class="form-check-label" for="remember" style="font-size:0.875rem;">
                         Keep me signed in
                     </label>
                 </div>
+                <a href="{{ url_for('auth.forgot_password') }}" style="font-size:0.875rem;">
+                    Forgot password?
+                </a>
             </div>
 
             <button type="submit" class="btn btn-primary btn-auth w-100">

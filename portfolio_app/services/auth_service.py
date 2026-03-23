@@ -2,11 +2,14 @@
 
 import secrets
 import string
+import logging
 from datetime import datetime
 from typing import Optional, Tuple
 
 from portfolio_app.models.user import User
 from portfolio_app.repositories.user_repository import UserRepository
+
+logger = logging.getLogger(__name__)
 
 
 class AuthService:
@@ -15,36 +18,63 @@ class AuthService:
     def __init__(self, user_repo: UserRepository):
         self.user_repo = user_repo
 
-    def register(self, username: str, password: str) -> Tuple[User, bool]:
-        """Register a new user.
+    def register(self, username: str, email: str, password: str) -> Tuple[User, bool]:
+        """Register a new unverified user.
 
         The first user to register is automatically granted admin status.
+        The account is inactive (is_verified=False) until the user clicks
+        the verification link sent to their email.
 
         Args:
             username: Desired username
+            email: User's email address (stored in lowercase)
             password: Plain-text password (will be hashed)
 
         Returns:
             Tuple of (created User, is_first_user)
 
         Raises:
-            ValueError: If username is already taken
+            ValueError: If username or email is already taken
         """
         if self.user_repo.get_by_username(username):
             raise ValueError('This username is already taken.')
 
+        if self.user_repo.get_by_email(email):
+            raise ValueError('An account with this email already exists.')
+
         is_first = self.user_repo.count() == 0
         user = User(
             username=username,
+            email=email.lower(),
             is_admin=is_first,
+            is_verified=False,
         )
         user.set_password(password)
         self.user_repo.add(user)
         self.user_repo.commit()
         return user, is_first
 
+    def verify_user(self, email: str) -> Optional[User]:
+        """Mark a user's email as verified, activating their account.
+
+        Args:
+            email: The email address decoded from the verification token.
+
+        Returns:
+            The activated User, or None if no matching user was found.
+        """
+        user = self.user_repo.get_by_email(email)
+        if not user:
+            return None
+
+        user.is_verified = True
+        self.user_repo.commit()
+        return user
+
     def authenticate(self, username: str, password: str) -> Optional[User]:
         """Verify credentials and update last_login on success.
+
+        Only verified accounts are allowed to log in.
 
         Args:
             username: Username to authenticate
@@ -52,9 +82,14 @@ class AuthService:
 
         Returns:
             The authenticated User, or None if credentials are invalid
+            or the account is not yet verified.
         """
         user = self.user_repo.get_by_username(username)
         if user and user.check_password(password):
+            if not user.is_verified:
+                # Signal to the route that the account exists but is unverified.
+                # Returning a special sentinel avoids leaking "wrong password".
+                return 'unverified'
             user.last_login = datetime.utcnow()
             self.user_repo.commit()
             return user
@@ -76,6 +111,29 @@ class AuthService:
         user.set_password(new_password)
         self.user_repo.commit()
 
+    def reset_password_with_token(self, email: str, new_password: str) -> Optional[User]:
+        """Set a new password for the user identified by their email.
+
+        Called after the reset token has already been validated by the route.
+
+        Args:
+            email: The email address decoded from the reset token.
+            new_password: New plain-text password to hash and store.
+
+        Returns:
+            The updated User, or None if no matching user was found.
+        """
+        user = self.user_repo.get_by_email(email)
+        if not user:
+            return None
+        user.set_password(new_password)
+        self.user_repo.commit()
+        return user
+
+    # ------------------------------------------------------------------
+    # Admin-only operations (kept for the admin panel)
+    # ------------------------------------------------------------------
+
     def reset_password(self, user_id: int) -> str:
         """Admin action: generate and set a random temporary password.
 
@@ -83,7 +141,7 @@ class AuthService:
             user_id: ID of the user whose password will be reset
 
         Returns:
-            The generated temporary password (show once to admin)
+            The generated temporary password (shown once to admin)
 
         Raises:
             ValueError: If user not found

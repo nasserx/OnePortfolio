@@ -1,19 +1,39 @@
-"""Auth blueprint — login, register, logout, change password."""
+"""Auth blueprint — login, register, logout, change password,
+email verification, forgot password, and reset password.
+"""
 
 import logging
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_user, logout_user, login_required, current_user
+
 from portfolio_app.services import get_services
-from portfolio_app.forms.auth_forms import LoginForm, RegisterForm, ChangePasswordForm
+from portfolio_app.forms.auth_forms import (
+    LoginForm,
+    RegisterForm,
+    ChangePasswordForm,
+    ForgotPasswordForm,
+    ResetPasswordForm,
+)
+from portfolio_app.utils.tokens import (
+    generate_verification_token,
+    verify_verification_token,
+    generate_reset_token,
+    verify_reset_token,
+)
+from portfolio_app.utils.email import send_verification_email, send_reset_email
 
 logger = logging.getLogger(__name__)
 
 auth_bp = Blueprint('auth', __name__)
 
 
+# ---------------------------------------------------------------------------
+# Login / Logout
+# ---------------------------------------------------------------------------
+
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
-    """Login page."""
+    """Login page. Blocks unverified accounts."""
     if current_user.is_authenticated:
         return redirect(url_for('dashboard.index'))
 
@@ -25,10 +45,17 @@ def login():
         if form.validate():
             data = form.get_cleaned_data()
             svc = get_services()
-            user = svc.auth_service.authenticate(data['username'], data['password'])
-            if user:
+            result = svc.auth_service.authenticate(data['username'], data['password'])
+
+            if result == 'unverified':
+                form_errors['__all__'] = (
+                    'Your account has not been verified yet. '
+                    'Please check your email for a verification link.'
+                )
+                form_values = request.form
+            elif result:
                 remember = request.form.get('remember') == 'on'
-                login_user(user, remember=remember)
+                login_user(result, remember=remember)
                 next_page = request.args.get('next')
                 return redirect(next_page or url_for('dashboard.index'))
             else:
@@ -45,9 +72,21 @@ def login():
     )
 
 
+@auth_bp.route('/logout', methods=['POST'])
+@login_required
+def logout():
+    """Logout (CSRF-protected POST)."""
+    logout_user()
+    return redirect(url_for('auth.login'))
+
+
+# ---------------------------------------------------------------------------
+# Register + Email Verification
+# ---------------------------------------------------------------------------
+
 @auth_bp.route('/register', methods=['GET', 'POST'])
 def register():
-    """Register new account page."""
+    """Register new account. Sends a verification email on success."""
     if current_user.is_authenticated:
         return redirect(url_for('dashboard.index'))
 
@@ -57,16 +96,33 @@ def register():
     if request.method == 'POST':
         svc = get_services()
 
-        def username_taken(username: str) -> bool:
-            return svc.user_repo.get_by_username(username) is not None
+        form = RegisterForm(
+            request.form,
+            check_username_taken=lambda u: svc.user_repo.get_by_username(u) is not None,
+            check_email_taken=lambda e: svc.user_repo.get_by_email(e) is not None,
+        )
 
-        form = RegisterForm(request.form, check_username_taken=username_taken)
         if form.validate():
             data = form.get_cleaned_data()
             try:
-                user, _ = svc.auth_service.register(data['username'], data['password'])
-                login_user(user)
-                return redirect(url_for('dashboard.index'))
+                user, _ = svc.auth_service.register(
+                    data['username'],
+                    data['email'],
+                    data['password'],
+                )
+
+                # Generate a signed verification token and email it to the user
+                token = generate_verification_token(user.email)
+                email_sent = send_verification_email(user.email, token)
+
+                if not email_sent:
+                    logger.warning(
+                        'Verification email failed for user %s (%s)',
+                        user.username, user.email,
+                    )
+
+                return redirect(url_for('auth.verify_sent'))
+
             except ValueError as e:
                 form_errors['__all__'] = str(e)
                 form_values = request.form
@@ -85,13 +141,35 @@ def register():
     )
 
 
-@auth_bp.route('/logout', methods=['POST'])
-@login_required
-def logout():
-    """Logout (CSRF-protected POST)."""
-    logout_user()
+@auth_bp.route('/verify-sent')
+def verify_sent():
+    """Confirmation page: tells the user to check their inbox."""
+    return render_template('auth/verify_sent.html')
+
+
+@auth_bp.route('/verify/<token>')
+def verify_email(token):
+    """Verify a user's email address using the signed token from the email link."""
+    email = verify_verification_token(token)
+
+    if not email:
+        flash('The verification link is invalid or has expired.', 'danger')
+        return redirect(url_for('auth.login'))
+
+    svc = get_services()
+    user = svc.auth_service.verify_user(email)
+
+    if not user:
+        flash('No account found for this verification link.', 'danger')
+        return redirect(url_for('auth.login'))
+
+    flash('Your account has been verified. You can now log in.', 'success')
     return redirect(url_for('auth.login'))
 
+
+# ---------------------------------------------------------------------------
+# Change Password (logged-in users)
+# ---------------------------------------------------------------------------
 
 @auth_bp.route('/change-password', methods=['GET', 'POST'])
 @login_required
@@ -126,6 +204,90 @@ def change_password():
 
     return render_template(
         'auth/change_password.html',
+        form_errors=form_errors,
+        form_values=form_values,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Forgot Password / Reset Password
+# ---------------------------------------------------------------------------
+
+@auth_bp.route('/forgot-password', methods=['GET', 'POST'])
+def forgot_password():
+    """Forgot password page. Sends a reset link to the user's email."""
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard.index'))
+
+    form_errors = {}
+    form_values = {}
+
+    if request.method == 'POST':
+        form = ForgotPasswordForm(request.form)
+        if form.validate():
+            data = form.get_cleaned_data()
+            svc = get_services()
+            user = svc.user_repo.get_by_email(data['email'])
+
+            # Always redirect to the confirmation page regardless of whether
+            # the email is registered, to avoid leaking account existence.
+            if user:
+                token = generate_reset_token(user.email)
+                send_reset_email(user.email, token)
+
+            return redirect(url_for('auth.reset_sent'))
+        else:
+            form_errors = form.errors
+            form_values = request.form
+
+    return render_template(
+        'auth/forgot_password.html',
+        form_errors=form_errors,
+        form_values=form_values,
+    )
+
+
+@auth_bp.route('/reset-sent')
+def reset_sent():
+    """Confirmation page shown after a password reset email has been sent."""
+    return render_template('auth/reset_sent.html')
+
+
+@auth_bp.route('/reset-password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    """Reset password page. Validates the token then allows setting a new password."""
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard.index'))
+
+    # Validate the token up front so expired links show an error immediately
+    email = verify_reset_token(token)
+    if not email:
+        flash('The password reset link is invalid or has expired.', 'danger')
+        return redirect(url_for('auth.forgot_password'))
+
+    form_errors = {}
+    form_values = {}
+
+    if request.method == 'POST':
+        form = ResetPasswordForm(request.form)
+        if form.validate():
+            data = form.get_cleaned_data()
+            svc = get_services()
+            user = svc.auth_service.reset_password_with_token(email, data['password'])
+
+            if not user:
+                flash('No account found for this reset link.', 'danger')
+                return redirect(url_for('auth.forgot_password'))
+
+            flash('Your password has been reset. You can now log in.', 'success')
+            return redirect(url_for('auth.login'))
+        else:
+            form_errors = form.errors
+            form_values = request.form
+
+    return render_template(
+        'auth/reset_password.html',
+        token=token,
         form_errors=form_errors,
         form_values=form_values,
     )

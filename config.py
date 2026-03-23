@@ -49,3 +49,19 @@ class Config:
 
     # Transaction types
     TRANSACTION_TYPES = ['Buy', 'Sell']
+
+    # Flask-Mail — Outlook SMTP configuration
+    MAIL_SERVER = 'smtp.office365.com'
+    MAIL_PORT = 587
+    MAIL_USE_TLS = True
+    MAIL_USE_SSL = False
+    MAIL_USERNAME = os.environ.get('EMAIL_USER', 'oneportfolio.no.reply@outlook.com')
+    MAIL_PASSWORD = os.environ.get('EMAIL_PASSWORD')
+    MAIL_DEFAULT_SENDER = ('OnePortfolio', os.environ.get('EMAIL_USER', 'oneportfolio.no.reply@outlook.com'))
+
+    # Public base URL used in email links (no trailing slash)
+    APP_BASE_URL = os.environ.get('APP_BASE_URL', 'https://oneportfolio.pythonanywhere.com')
+
+    # Token expiry (seconds)
+    EMAIL_VERIFICATION_EXPIRY = 60 * 60 * 24   # 24 hours
+    PASSWORD_RESET_EXPIRY     = 60 * 60         # 1 hour

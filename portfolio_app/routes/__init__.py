@@ -17,7 +17,8 @@ def register_blueprints(app: Flask) -> None:
     from portfolio_app.routes.admin import admin_bp
 
     # Register blueprints
-    app.register_blueprint(auth_bp, url_prefix='/auth')
+    # Auth routes are at root level: /login, /register, /verify/<token>, etc.
+    app.register_blueprint(auth_bp)
     app.register_blueprint(admin_bp, url_prefix='/admin')
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(funds_bp, url_prefix='/funds')

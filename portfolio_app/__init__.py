@@ -2,12 +2,14 @@ from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf.csrf import CSRFProtect, CSRFError
 from flask_login import LoginManager
+from flask_mail import Mail
 from config import Config
 from portfolio_app.utils import fmt_decimal, fmt_money
 
 db = SQLAlchemy()
 csrf = CSRFProtect()
 login_manager = LoginManager()
+mail = Mail()
 
 
 def _run_migrations(app):
@@ -34,6 +36,26 @@ def _run_migrations(app):
                 ))
                 conn.commit()
 
+            # 3. Add email column to user table if missing
+            user_cols = {c['name'] for c in inspector.get_columns('user')}
+
+            if 'email' not in user_cols:
+                conn.execute(sa.text(
+                    'ALTER TABLE "user" ADD COLUMN email VARCHAR(120)'
+                ))
+                conn.commit()
+
+            # 4. Add is_verified column to user table if missing.
+            #    Existing users are marked as verified so their accounts remain accessible.
+            if 'is_verified' not in user_cols:
+                conn.execute(sa.text(
+                    'ALTER TABLE "user" ADD COLUMN is_verified BOOLEAN NOT NULL DEFAULT 0'
+                ))
+                conn.execute(sa.text(
+                    'UPDATE "user" SET is_verified = 1'
+                ))
+                conn.commit()
+
 
 def create_app(config_class=Config):
     """Application factory pattern."""
@@ -44,6 +66,7 @@ def create_app(config_class=Config):
     db.init_app(app)
     csrf.init_app(app)
     login_manager.init_app(app)
+    mail.init_app(app)
 
     # Flask-Login configuration
     login_manager.login_view = 'auth.login'
@@ -101,5 +124,10 @@ def create_app(config_class=Config):
     # Register blueprints
     from portfolio_app.routes import register_blueprints
     register_blueprints(app)
+
+    # Create tables and apply incremental schema migrations
+    with app.app_context():
+        db.create_all()
+    _run_migrations(app)
 
     return app

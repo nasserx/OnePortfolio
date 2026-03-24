@@ -1,4 +1,4 @@
-# 📊 OnePortfolio
+# OnePortfolio
 
 ![CI](https://github.com/nasserx/OnePortfolio/actions/workflows/ci.yml/badge.svg)
 ![Python](https://img.shields.io/badge/python-3.8+-blue.svg)
@@ -14,29 +14,28 @@
 - [Tech Stack](#️-tech-stack)
 - [Live Demo](#-live-demo)
 - [Quick Start](#-quick-start)
-- [Usage](#-usage)
-- [Screenshots](#️-screenshots)
-- [API Reference](#-api-reference)
 - [Configuration](#-configuration)
 - [Project Structure](#-project-structure)
 - [Testing](#-testing)
-- [Contributing](#-contributing)
+- [Deployment](#-deployment)
 - [Roadmap](#-roadmap)
 - [License](#-license)
-- [Author](#-author)
 
 ## ✨ Features
 
-- 💰 **Multi-Asset Support** — Track Stocks, ETFs, Commodities, Crypto, and more
-- 📈 **Portfolio Overview** — Calculate total portfolio value and realized ROI per category
-- 💵 **Fund Management** — Deposit/withdraw funds with a complete audit trail
-- 🔄 **Transaction Tracking** — Record buy/sell operations with automatic average cost computation
-- 📊 **Realized P&L** — Automatic profit/loss calculations on every sale
-- 🔒 **Flexible Tracking** — No restrictions on buy/sell; negative balances reflected accurately
-- 👥 **Multi-User Auth** — Separate accounts with full data isolation; first user becomes admin
-- 🛡️ **Admin Panel** — Manage users, reset passwords, and toggle admin privileges
-- 🚀 **REST API** — JSON endpoints for portfolio data integration
-- 📝 **Manual Entry** — Full control over your data, no third-party price feeds
+| Feature | Description |
+|---------|-------------|
+| **Multi-Asset Support** | Track Stocks, ETFs, Commodities, and Crypto |
+| **Portfolio Overview** | Total portfolio value and realized ROI per category |
+| **Fund Management** | Deposit/withdraw funds with a full audit trail |
+| **Transaction Tracking** | Buy/sell operations with automatic average cost computation |
+| **Realized P&L** | Automatic profit/loss calculations on every sale |
+| **Email Verification** | 6-digit OTP sent to email on registration |
+| **Password Reset** | Secure reset link sent via email (expires in 1 hour) |
+| **Multi-User Auth** | Separate accounts with full data isolation; first user becomes admin |
+| **Admin Panel** | Manage users, send password reset emails, toggle admin privileges |
+| **REST API** | JSON endpoints for portfolio data integration |
+| **Manual Entry** | Full control over your data, no third-party price feeds |
 
 ## 🛠️ Tech Stack
 
@@ -46,205 +45,79 @@
 | Database | SQLite · Flask-SQLAlchemy |
 | Frontend | HTML5 · Bootstrap 5 · JavaScript |
 | Auth | Flask-Login · Werkzeug password hashing |
+| Email | Flask-Mail · Gmail SMTP |
 | Forms | Flask-WTF |
 | Testing | pytest |
 
 ## 🌐 Live Demo
 
-You can access and try the application here:  
 👉 https://oneportfolio.pythonanywhere.com/
 
-## 🔐 Demo Access
+**Demo credentials:**
 
-For testing purposes, you can use the following credentials:
-
-- **Username:** demo  
-- **Password:** demo1234
+| Field | Value |
+|-------|-------|
+| Username | `demo` |
+| Password | `demo1234` |
 
 ## 🚀 Quick Start
 
-### Prerequisites
+**Prerequisites:** Python 3.8+
 
-- Python 3.8 or higher
-- pip
-
-### Installation
-
-1. **Clone the repository**
 ```bash
+# 1. Clone
 git clone https://github.com/nasserx/OnePortfolio.git
 cd OnePortfolio
-```
 
-2. **Create a virtual environment**
-```bash
+# 2. Virtual environment
 python -m venv venv
+source venv/bin/activate        # Linux/Mac
+.\venv\Scripts\activate         # Windows
 
-# Windows
-.\venv\Scripts\activate
-
-# Linux/Mac
-source venv/bin/activate
-```
-
-3. **Install dependencies**
-```bash
+# 3. Install dependencies
 pip install -r requirements.txt
-```
 
-4. **Configure environment** (optional)
-```bash
-cp .env.example .env   # then edit .env with your values
-```
-
-5. **Run the application**
-```bash
+# 4. Run
 python app.py
 ```
 
-6. **Open your browser**
-```
-http://localhost:5000
-```
-
-## 📚 Usage
-
-### First Run
-1. Open `http://localhost:5000` — you will be redirected to the login page
-2. Click **Create one** to register; the first registered account automatically becomes admin
-3. Log in and start tracking your investments
-
-### Admin Panel
-- Access via the person icon → **Admin Panel** (admin accounts only)
-- Reset forgotten passwords and generate temporary passwords for users
-- Grant or revoke admin privileges for other accounts
-
-### Managing Funds
-1. Navigate to the **Funds** page
-2. Create a fund for each asset category (e.g., select "Stocks" or "Crypto")
-3. Record deposits and withdrawals to track capital allocation
-
-### Recording Transactions
-1. Go to the **Transactions** page
-2. Add a symbol (e.g., `AAPL`, `BTC`)
-3. Record buy/sell operations with quantity and price
-4. The app automatically computes average cost and realized P&L on sales
-
-### Viewing Charts
-- Navigate to **Charts** for a visual breakdown of your portfolio allocation and performance
-
-## 🖼️ Screenshots
-
-### Portfolio Overview
-![Portfolio Overview](screenshots/overview.png)
-
-### Funds Overview
-![Funds Overview](screenshots/funds.png)
-
-### Transactions List
-![Transactions List](screenshots/transactions.png)
-
-### Charts
-![Charts](screenshots/charts.png)
-
-## 🚀 API Reference
-
-### Get Portfolio Summary
-
-```
-GET /api/portfolio-summary
-```
-
-**Response:**
-```json
-{
-  "summary": {
-    "Stocks": {
-      "total_cost": 5000.0,
-      "total_value": 6200.0,
-      "realized_pnl": 350.0
-    },
-    "Crypto": {
-      "total_cost": 2000.0,
-      "total_value": 2800.0,
-      "realized_pnl": 120.0
-    }
-  },
-  "total_value": 9000.0
-}
-```
-
-### Get Held Quantity
-
-```
-GET /api/holdings?fund_id=1&symbol=AAPL
-```
-
-**Response:**
-```json
-{
-  "fund_id": 1,
-  "symbol": "AAPL",
-  "held_quantity": "10.5"
-}
-```
+Open `http://localhost:5000` — the first registered account automatically becomes admin.
 
 ## 🔧 Configuration
 
-Copy `.env.example` to `.env` and adjust as needed:
+Set the following environment variables (in `.env` or your hosting platform's WSGI file):
 
-```bash
-SECRET_KEY=your-secret-key-here
-DATABASE_URL=sqlite:///portfolio.db
-SESSION_COOKIE_SECURE=0   # set to 1 when serving over HTTPS
-```
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `SECRET_KEY` | ✅ | Flask session signing key — generate with `secrets.token_hex(32)` |
+| `EMAIL_USER` | ✅ | Gmail address used to send verification and reset emails |
+| `EMAIL_PASSWORD` | ✅ | Gmail App Password (requires 2FA enabled on the account) |
+| `APP_BASE_URL` | ✅ | Public URL of your app (e.g. `https://yourapp.pythonanywhere.com`) |
+| `DATABASE_URL` | — | SQLAlchemy URI — defaults to `sqlite:///portfolio.db` |
+| `SESSION_COOKIE_SECURE` | — | Set to `1` when serving over HTTPS |
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `SECRET_KEY` | `dev-secret-key` | Flask session signing key — **change in production** |
-| `DATABASE_URL` | `sqlite:///portfolio.db` | SQLAlchemy database URI |
-| `SESSION_COOKIE_SECURE` | `0` | Set to `1` when serving over HTTPS |
-
-Asset categories and icons are configured in [config.py](config.py).
+> **Note:** Gmail requires an [App Password](https://myaccount.google.com/apppasswords) — your regular password will not work.
 
 ## 📁 Project Structure
 
 ```
 OnePortfolio/
-├── app.py                  # Application entry point
+├── app.py                  # Development entry point
+├── wsgi.py                 # Production WSGI entry point
 ├── config.py               # Configuration settings
 ├── requirements.txt        # Python dependencies
 ├── test_app.py             # Test suite
 └── portfolio_app/
     ├── __init__.py         # App factory & DB migrations
-    ├── models/
-    │   ├── user.py         # User model (Flask-Login)
-    │   ├── fund.py         # Fund model
-    │   └── ...
+    ├── models/             # SQLAlchemy models (User, Fund, Transaction, ...)
     ├── repositories/       # Data access layer
-    ├── services/
-    │   ├── auth_service.py # Register, login, password management
-    │   └── ...
-    ├── calculators/        # P&L and portfolio calculators
-    ├── forms/
-    │   ├── auth_forms.py   # Login, register, change password forms
-    │   └── ...
-    ├── routes/
-    │   ├── auth.py         # Login, register, logout, change password
-    │   ├── admin.py        # User management (admin only)
-    │   ├── dashboard.py    # Overview & API endpoints
-    │   ├── funds.py        # Funds management
-    │   ├── transactions.py # Transactions management
-    │   └── charts.py       # Charts & visualizations
-    ├── utils/              # Formatting and helper utilities
-    ├── static/
-    │   ├── css/style.css
-    │   └── js/main.js
-    └── templates/
-        ├── base.html
-        ├── auth/           # Login, register, change password
-        ├── admin/          # User management panel
-        └── ...
+    ├── services/           # Business logic (auth, funds, portfolio, ...)
+    ├── calculators/        # P&L and average cost calculators
+    ├── forms/              # WTForms form validation
+    ├── routes/             # Flask blueprints (auth, admin, dashboard, ...)
+    ├── utils/              # Email, token, and formatting helpers
+    ├── static/             # CSS and JS assets
+    └── templates/          # Jinja2 HTML templates
 ```
 
 ## 🧪 Testing
@@ -253,64 +126,58 @@ OnePortfolio/
 pytest -v
 ```
 
-## 🤝 Contributing
-
-Contributions are welcome! Please:
-
-1. [Open an issue](https://github.com/nasserx/OnePortfolio/issues/new/choose) first to discuss major changes
-2. Fork the repository
-3. Create a feature branch (`git checkout -b feature/your-feature`)
-4. Commit your changes (`git commit -m 'Add your feature'`)
-5. Push and open a Pull Request
-
-Bug reports and feature requests use structured templates to keep things organized.
+CI runs automatically on every push via GitHub Actions across Python 3.8, 3.10, and 3.12.
 
 ## 🚀 Deployment
 
 ### PythonAnywhere
 
-1. **Upload your code** to PythonAnywhere (via Git clone or manual upload)
+```bash
+# 1. Clone your repo
+git clone https://github.com/nasserx/OnePortfolio.git
 
-2. **Set environment variables** in PythonAnywhere:
-   - Go to Web tab → Environment variables
-   - Add `SECRET_KEY`: Generate a secure key using Python's `secrets.token_hex(32)`
-   - Optionally set `DATABASE_URL` if using a different database
+# 2. Create and activate virtualenv
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
 
-3. **Install dependencies**:
-   ```bash
-   pip install -r requirements.txt
-   ```
+In the **WSGI file** on PythonAnywhere, set environment variables and activate the virtualenv:
 
-4. **Initialize the database** (run once):
-   ```bash
-   python init_db.py
-   ```
+```python
+activate_this = '/home/YOUR_USERNAME/.virtualenvs/myenv/bin/activate_this.py'
+with open(activate_this) as f:
+    exec(f.read(), {'__file__': activate_this})
 
-5. **Configure WSGI**:
-   - In Web tab, set WSGI configuration file to point to your `wsgi.py`
-   - Example: `/home/nasserx/OnePortfolio/wsgi.py`
+import os
+os.environ['SECRET_KEY']            = 'your-secret-key'
+os.environ['EMAIL_USER']            = 'your-gmail@gmail.com'
+os.environ['EMAIL_PASSWORD']        = 'your-app-password'
+os.environ['APP_BASE_URL']          = 'https://yourapp.pythonanywhere.com'
+os.environ['SESSION_COOKIE_SECURE'] = '1'
 
-6. **Reload the web app** in PythonAnywhere
+from portfolio_app import create_app
+application = create_app()
+```
 
-The app will be available at your PythonAnywhere domain. The `/health` endpoint can be used to verify the deployment.
+Then click **Reload** in the Web tab.
+
+> **Note:** PythonAnywhere free accounts only allow outbound connections to whitelisted hosts. Use Gmail SMTP (`smtp.gmail.com:587`) which is supported.
 
 ## 🎯 Roadmap
 
 - [ ] Live market price integration
-- [ ] CSV import/export
-- [x] User authentication
+- [x] Multi-user authentication with email verification
+- [x] Password reset via email
 - [ ] Advanced charts and analytics
 - [ ] Docker deployment support
-- [ ] REST API documentation (Swagger/OpenAPI)
 
 ## 📝 License
 
-This project is licensed under the MIT License — see [LICENSE](LICENSE) for details.
+MIT — see [LICENSE](LICENSE) for details.
 
-## 👤 Author
-
-**nasserx** — [@nasserx](https://github.com/nasserx)
+**nasserx** · [@nasserx](https://github.com/nasserx)
 
 ---
 
-> ⚠️ **Disclaimer**: This project is for educational and organizational purposes only. It does not provide financial advice. Always consult a qualified financial professional before making investment decisions.
+> ⚠️ **Disclaimer:** This project is for educational and organizational purposes only. It does not provide financial advice.

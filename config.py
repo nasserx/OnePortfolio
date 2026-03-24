@@ -50,14 +50,14 @@ class Config:
     # Transaction types
     TRANSACTION_TYPES = ['Buy', 'Sell']
 
-    # Flask-Mail — Outlook SMTP configuration
-    MAIL_SERVER = 'smtp.office365.com'
+    # Flask-Mail — Gmail SMTP configuration
+    MAIL_SERVER = 'smtp.gmail.com'
     MAIL_PORT = 587
     MAIL_USE_TLS = True
     MAIL_USE_SSL = False
-    MAIL_USERNAME = os.environ.get('EMAIL_USER', 'oneportfolio.no.reply@outlook.com')
+    MAIL_USERNAME = os.environ.get('EMAIL_USER')
     MAIL_PASSWORD = os.environ.get('EMAIL_PASSWORD')
-    MAIL_DEFAULT_SENDER = ('OnePortfolio', os.environ.get('EMAIL_USER', 'oneportfolio.no.reply@outlook.com'))
+    MAIL_DEFAULT_SENDER = ('OnePortfolio', os.environ.get('EMAIL_USER', ''))
 
     # Public base URL used in email links (no trailing slash)
     APP_BASE_URL = os.environ.get('APP_BASE_URL', 'https://oneportfolio.pythonanywhere.com')

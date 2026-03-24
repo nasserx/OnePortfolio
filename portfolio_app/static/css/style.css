@@ -1263,10 +1263,7 @@ select:-webkit-autofill:focus {
 /* Category summary (grid) */
 .category-summary {
     display: grid;
-    gap: 1rem;
-    background: var(--surface-variant);
-    border-radius: var(--border-radius);
-    padding: 0.875rem 1rem;
+    gap: 0.5rem;
 }
 
 .category-summary.columns-3 {
@@ -1290,7 +1287,7 @@ select:-webkit-autofill:focus {
 }
 
 .summary-label {
-    font-size: 0.6875rem;
+    font-size: 0.625rem;
     color: var(--text-tertiary);
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -1298,21 +1295,21 @@ select:-webkit-autofill:focus {
 }
 
 .summary-value {
-    font-size: 1rem;
-    font-weight: 500;
+    font-size: 0.9rem;
+    font-weight: 600;
     color: var(--text-primary);
-    margin-top: 0.1rem;
+    margin-top: 0;
 }
 
 .summary-subvalue {
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     font-weight: 500;
     margin-top: 0;
     color: var(--text-secondary);
 }
 
 .summary-row {
-    min-height: 34px;
+    min-height: 28px;
 }
 
 .category-summary .summary-value {
@@ -1421,6 +1418,8 @@ select:-webkit-autofill:focus {
     cursor: pointer;
     transition: all var(--transition-slow);
     background: var(--surface);
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
 }
 
 .transaction-summary:hover {

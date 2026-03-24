@@ -120,6 +120,11 @@ OnePortfolio/
     └── templates/          # Jinja2 HTML templates
 ```
 
+## 🖼️ Screenshots
+
+### Landing Page
+![Landing Page](screenshots/landing.png)
+
 ## 🧪 Testing
 
 ```bash

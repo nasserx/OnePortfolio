@@ -19,7 +19,9 @@
             <tr>
                 <th style="width:40px;">#</th>
                 <th>Username</th>
+                <th>Email</th>
                 <th>Role</th>
+                <th>Status</th>
                 <th>Registered</th>
                 <th>Last Login</th>
                 <th class="text-end">Actions</th>
@@ -35,6 +37,9 @@
                         <span class="badge bg-primary ms-1" style="font-size:0.7rem;">You</span>
                     {% endif %}
                 </td>
+                <td class="text-muted" style="font-size:0.875rem;">
+                    {{ user.email or '—' }}
+                </td>
                 <td>
                     {% if user.is_admin %}
                         <span class="badge" style="background:var(--primary-lighter); color:var(--primary-color); font-size:0.75rem;">
@@ -43,6 +48,17 @@
                     {% else %}
                         <span class="badge" style="background:var(--surface-variant); color:var(--text-secondary); font-size:0.75rem;">
                             User
+                        </span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if user.is_verified %}
+                        <span class="badge" style="background:var(--bs-success-bg-subtle); color:var(--bs-success); font-size:0.75rem;">
+                            <i class="bi bi-check-circle me-1"></i>Verified
+                        </span>
+                    {% else %}
+                        <span class="badge" style="background:var(--bs-warning-bg-subtle); color:var(--bs-warning); font-size:0.75rem;">
+                            <i class="bi bi-hourglass-split me-1"></i>Unverified
                         </span>
                     {% endif %}
                 </td>

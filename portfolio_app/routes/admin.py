@@ -5,6 +5,8 @@ from functools import wraps
 from flask import Blueprint, render_template, request, redirect, url_for, flash, abort
 from flask_login import login_required, current_user
 from portfolio_app.services import get_services
+from portfolio_app.utils.tokens import generate_reset_token
+from portfolio_app.utils.email import send_reset_email
 
 logger = logging.getLogger(__name__)
 
@@ -31,22 +33,32 @@ def users():
     return render_template('admin/users.html', users=all_users)
 
 
-@admin_bp.route('/users/<int:user_id>/reset-password', methods=['POST'])
+@admin_bp.route('/users/<int:user_id>/send-reset-email', methods=['POST'])
 @login_required
 @admin_required
-def reset_password(user_id):
-    """Reset a user's password and display the temporary password."""
+def send_reset(user_id):
+    """Send a password reset email to the user on behalf of the admin."""
     svc = get_services()
     try:
-        temp_password = svc.auth_service.reset_password(user_id)
-        flash(
-            f'Password reset successfully. Temporary password: {temp_password}',
-            'warning'
-        )
-    except ValueError as e:
-        flash(str(e), 'error')
+        user = svc.user_repo.get_by_id(user_id)
+        if not user:
+            flash('User not found.', 'error')
+            return redirect(url_for('admin.users'))
+
+        if not user.email:
+            flash(f'{user.username} has no email address on file.', 'warning')
+            return redirect(url_for('admin.users'))
+
+        token = generate_reset_token(user.email)
+        email_sent = send_reset_email(user.email, token)
+
+        if email_sent:
+            flash(f'Password reset email sent to {user.username} ({user.email}).', 'success')
+        else:
+            flash('Failed to send the email. Please try again.', 'danger')
+
     except Exception:
-        logger.exception('Admin reset password failed for user %s', user_id)
+        logger.exception('Admin send reset email failed for user %s', user_id)
         flash('Operation failed. Please try again.', 'error')
 
     return redirect(url_for('admin.users'))

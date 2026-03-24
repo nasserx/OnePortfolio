@@ -71,13 +71,15 @@
                 <td class="text-end">
                     <div class="d-flex gap-2 justify-content-end">
 
-                        <!-- Reset Password -->
+                        <!-- Send Password Reset Email -->
                         <form method="post"
-                              action="{{ url_for('admin.reset_password', user_id=user.id) }}"
-                              onsubmit="return confirm('Reset password for {{ user.username }}? A temporary password will be shown.')">
+                              action="{{ url_for('admin.send_reset', user_id=user.id) }}"
+                              onsubmit="return confirm('Send a password reset email to {{ user.username }}?')">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <button type="submit" class="btn btn-sm btn-outline-secondary" title="Reset Password">
-                                <i class="bi bi-key"></i>
+                            <button type="submit" class="btn btn-sm btn-outline-secondary"
+                                    title="Send Password Reset Email"
+                                    {% if not user.email %}disabled{% endif %}>
+                                <i class="bi bi-envelope-arrow-up"></i>
                             </button>
                         </form>
 
@@ -120,8 +122,8 @@
 <div class="mt-3">
     <p class="text-muted" style="font-size:0.8125rem;">
         <i class="bi bi-info-circle me-1"></i>
-        When you reset a password, a temporary 12-character password will be shown in a success message.
-        Share it with the user — they should change it immediately.
+        The reset email button sends a secure password reset link directly to the user's email.
+        The link expires in 1 hour. The button is disabled if the user has no email on file.
     </p>
 </div>
 {% endblock %}

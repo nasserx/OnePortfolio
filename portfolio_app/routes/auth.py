@@ -1,5 +1,5 @@
 """Auth blueprint — login, register, logout, change password,
-email verification, forgot password, and reset password.
+email verification (6-digit OTP), forgot password, and reset password.
 """
 
 import logging
@@ -13,13 +13,9 @@ from portfolio_app.forms.auth_forms import (
     ChangePasswordForm,
     ForgotPasswordForm,
     ResetPasswordForm,
+    VerifyCodeForm,
 )
-from portfolio_app.utils.tokens import (
-    generate_verification_token,
-    verify_verification_token,
-    generate_reset_token,
-    verify_reset_token,
-)
+from portfolio_app.utils.tokens import generate_reset_token, verify_reset_token
 from portfolio_app.utils.email import send_verification_email, send_reset_email
 
 logger = logging.getLogger(__name__)
@@ -48,9 +44,13 @@ def login():
             result = svc.auth_service.authenticate(data['username'], data['password'])
 
             if result == 'unverified':
+                # Redirect to the code entry page so the user can verify immediately
+                user = svc.user_repo.get_by_username(data['username'])
+                if user and user.email:
+                    return redirect(url_for('auth.verify_code', email=user.email))
                 form_errors['__all__'] = (
                     'Your account has not been verified yet. '
-                    'Please check your email for a verification link.'
+                    'Please check your email for the verification code.'
                 )
                 form_values = request.form
             elif result:
@@ -81,12 +81,12 @@ def logout():
 
 
 # ---------------------------------------------------------------------------
-# Register + Email Verification
+# Register + Email Verification (6-digit OTP)
 # ---------------------------------------------------------------------------
 
 @auth_bp.route('/register', methods=['GET', 'POST'])
 def register():
-    """Register new account. Sends a verification email on success."""
+    """Register new account. Sends a 6-digit verification code on success."""
     if current_user.is_authenticated:
         return redirect(url_for('dashboard.index'))
 
@@ -105,23 +105,16 @@ def register():
         if form.validate():
             data = form.get_cleaned_data()
             try:
-                user, _ = svc.auth_service.register(
+                user, code = svc.auth_service.register(
                     data['username'],
                     data['email'],
                     data['password'],
                 )
 
-                # Generate a signed verification token and email it to the user
-                token = generate_verification_token(user.email)
-                email_sent = send_verification_email(user.email, token)
+                # Dispatch the 6-digit code asynchronously (returns immediately)
+                send_verification_email(user.email, code)
 
-                if not email_sent:
-                    logger.warning(
-                        'Verification email failed for user %s (%s)',
-                        user.username, user.email,
-                    )
-
-                return redirect(url_for('auth.verify_sent'))
+                return redirect(url_for('auth.verify_code', email=user.email))
 
             except ValueError as e:
                 form_errors['__all__'] = str(e)
@@ -141,30 +134,56 @@ def register():
     )
 
 
-@auth_bp.route('/verify-sent')
-def verify_sent():
-    """Confirmation page: tells the user to check their inbox."""
-    return render_template('auth/verify_sent.html')
-
-
-@auth_bp.route('/verify/<token>')
-def verify_email(token):
-    """Verify a user's email address using the signed token from the email link."""
-    email = verify_verification_token(token)
+@auth_bp.route('/verify-code', methods=['GET', 'POST'])
+def verify_code():
+    """Page where the user enters the 6-digit verification code."""
+    email = request.args.get('email', '')
 
     if not email:
-        flash('The verification link is invalid or has expired.', 'danger')
-        return redirect(url_for('auth.login'))
+        return redirect(url_for('auth.register'))
+
+    form_errors = {}
+
+    if request.method == 'POST':
+        form = VerifyCodeForm(request.form)
+        if form.validate():
+            data = form.get_cleaned_data()
+            svc = get_services()
+            success, error_msg = svc.auth_service.verify_user(email, data['code'])
+
+            if success:
+                flash('Your account has been verified. You can now log in.', 'success')
+                return redirect(url_for('auth.login'))
+            else:
+                form_errors['code'] = error_msg
+        else:
+            form_errors = form.errors
+
+    return render_template(
+        'auth/verify_code.html',
+        email=email,
+        form_errors=form_errors,
+    )
+
+
+@auth_bp.route('/resend-code')
+def resend_code():
+    """Resend a fresh 6-digit verification code to the user's email."""
+    email = request.args.get('email', '')
+
+    if not email:
+        return redirect(url_for('auth.register'))
 
     svc = get_services()
-    user = svc.auth_service.verify_user(email)
+    new_code = svc.auth_service.resend_verification_code(email)
 
-    if not user:
-        flash('No account found for this verification link.', 'danger')
-        return redirect(url_for('auth.login'))
+    if new_code:
+        send_verification_email(email, new_code)
+        flash('A new verification code has been sent to your email.', 'success')
+    else:
+        flash('Unable to resend code. Your account may already be verified.', 'warning')
 
-    flash('Your account has been verified. You can now log in.', 'success')
-    return redirect(url_for('auth.login'))
+    return redirect(url_for('auth.verify_code', email=email))
 
 
 # ---------------------------------------------------------------------------

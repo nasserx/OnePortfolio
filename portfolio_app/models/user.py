@@ -16,10 +16,14 @@ class User(UserMixin, db.Model):
     email = db.Column(db.String(120), unique=True, nullable=True, index=True)
     password_hash = db.Column(db.String(255), nullable=False)
     is_admin = db.Column(db.Boolean, default=False, nullable=False)
-    # False until the user clicks the verification link sent to their email
+    # False until the user enters the 6-digit verification code sent to their email
     is_verified = db.Column(db.Boolean, default=False, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_login = db.Column(db.DateTime, nullable=True)
+
+    # One-time 6-digit verification code (cleared after use or expiry)
+    verification_code = db.Column(db.String(6), nullable=True)
+    verification_code_expires_at = db.Column(db.DateTime, nullable=True)
 
     # Relationship: one user owns many funds
     funds = db.relationship('Fund', backref='owner', lazy='dynamic')

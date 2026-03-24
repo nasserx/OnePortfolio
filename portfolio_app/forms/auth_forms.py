@@ -144,3 +144,18 @@ class ResetPasswordForm(BaseForm):
                 self.cleaned_data['confirm_password'] = confirm
 
         return not self.has_errors()
+
+
+class VerifyCodeForm(BaseForm):
+    """Form for entering the 6-digit email verification code."""
+
+    def validate(self) -> bool:
+        code = self._validate_required_string('code', 'Verification code is required.')
+        if code:
+            code = code.strip()
+            if not code.isdigit() or len(code) != 6:
+                self.errors['code'] = 'Please enter the 6-digit code sent to your email.'
+            else:
+                self.cleaned_data['code'] = code
+
+        return not self.has_errors()

@@ -56,6 +56,22 @@ def _run_migrations(app):
                 ))
                 conn.commit()
 
+            # 5. Add verification_code columns for the 6-digit OTP flow.
+            #    Re-fetch user_cols in case they were just added above.
+            user_cols = {c['name'] for c in inspector.get_columns('user')}
+
+            if 'verification_code' not in user_cols:
+                conn.execute(sa.text(
+                    'ALTER TABLE "user" ADD COLUMN verification_code VARCHAR(6)'
+                ))
+                conn.commit()
+
+            if 'verification_code_expires_at' not in user_cols:
+                conn.execute(sa.text(
+                    'ALTER TABLE "user" ADD COLUMN verification_code_expires_at DATETIME'
+                ))
+                conn.commit()
+
 
 def create_app(config_class=Config):
     """Application factory pattern."""

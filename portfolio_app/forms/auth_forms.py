@@ -159,3 +159,36 @@ class VerifyCodeForm(BaseForm):
                 self.cleaned_data['code'] = code
 
         return not self.has_errors()
+
+
+class UpdateEmailForm(BaseForm):
+    """Form for updating the logged-in user's email address."""
+
+    def __init__(
+        self,
+        data: dict,
+        check_email_taken: Optional[Callable[[str], bool]] = None,
+    ):
+        super().__init__(data)
+        self.check_email_taken = check_email_taken
+
+    def validate(self) -> bool:
+        # --- New email ---
+        email = self._validate_required_string('email', 'Email address is required.')
+        if email:
+            email = email.lower()
+            if not _EMAIL_RE.match(email):
+                self.errors['email'] = 'Please enter a valid email address.'
+            elif len(email) > 120:
+                self.errors['email'] = 'Email address is too long.'
+            elif self.check_email_taken and self.check_email_taken(email):
+                self.errors['email'] = 'This email address is already in use.'
+            else:
+                self.cleaned_data['email'] = email
+
+        # --- Password confirmation ---
+        password = self._validate_required_string('password', 'Please enter your current password to confirm.')
+        if password:
+            self.cleaned_data['password'] = password
+
+        return not self.has_errors()

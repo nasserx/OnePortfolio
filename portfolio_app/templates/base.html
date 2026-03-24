@@ -116,6 +116,13 @@
 
                             <li>
                                 <a class="dropdown-item settings-item d-flex align-items-center gap-2"
+                                   href="{{ url_for('auth.update_email') }}">
+                                    <i class="bi bi-envelope"></i> Update Email
+                                </a>
+                            </li>
+
+                            <li>
+                                <a class="dropdown-item settings-item d-flex align-items-center gap-2"
                                    href="{{ url_for('auth.change_password') }}">
                                     <i class="bi bi-key"></i> Change Password
                                 </a>

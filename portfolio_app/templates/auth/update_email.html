@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+
+{% block title %}Update Email — OnePortfolio{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-12 col-sm-10 col-md-6 col-lg-5">
+        <div class="card p-4 p-md-5">
+
+            <div class="mb-4">
+                <h1 class="h5 fw-500 mb-1">Update Email Address</h1>
+                <p class="text-secondary mb-0" style="font-size:0.875rem;">
+                    Current email:
+                    <strong>{{ current_email or 'Not set' }}</strong>
+                </p>
+            </div>
+
+            {% if form_errors.get('__all__') %}
+                <div class="alert alert-danger py-2 mb-3">
+                    <i class="bi bi-exclamation-circle me-2"></i>{{ form_errors['__all__'] }}
+                </div>
+            {% endif %}
+
+            <form method="POST" action="{{ url_for('auth.update_email') }}" novalidate>
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <!-- New email -->
+                <div class="mb-3">
+                    <label for="email" class="form-label">New Email Address</label>
+                    <input type="email" id="email" name="email"
+                           class="form-control {% if form_errors.get('email') %}is-invalid{% endif %}"
+                           value="{{ form_values.get('email', '') }}"
+                           placeholder="Enter your new email" autofocus>
+                    {% if form_errors.get('email') %}
+                        <div class="invalid-feedback">{{ form_errors['email'] }}</div>
+                    {% endif %}
+                </div>
+
+                <!-- Password confirmation -->
+                <div class="mb-4">
+                    <label for="password" class="form-label">Current Password</label>
+                    <input type="password" id="password" name="password"
+                           class="form-control {% if form_errors.get('password') %}is-invalid{% endif %}"
+                           placeholder="Confirm with your current password">
+                    {% if form_errors.get('password') %}
+                        <div class="invalid-feedback">{{ form_errors['password'] }}</div>
+                    {% endif %}
+                    <div class="form-text">
+                        After updating, you will be signed out and asked to verify your new email.
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">
+                        Update Email
+                    </button>
+                    <a href="{{ url_for('dashboard.index') }}" class="btn btn-outline-secondary">
+                        Cancel
+                    </a>
+                </div>
+            </form>
+
+        </div>
+    </div>
+</div>
+{% endblock %}

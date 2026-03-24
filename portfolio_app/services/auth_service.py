@@ -160,6 +160,33 @@ class AuthService:
     # Password management
     # ------------------------------------------------------------------
 
+    def update_email(self, user: User, new_email: str, password: str) -> str:
+        """Update a user's email and generate a fresh verification code.
+
+        The account is marked unverified until the user confirms the new email.
+
+        Args:
+            user: The logged-in user requesting the change.
+            new_email: The new email address (will be stored lowercase).
+            password: Current password for identity confirmation.
+
+        Returns:
+            The new 6-digit verification code.
+
+        Raises:
+            ValueError: If the password is incorrect.
+        """
+        if not user.check_password(password):
+            raise ValueError('Current password is incorrect.')
+
+        code = self._make_verification_code()
+        user.email = new_email.lower()
+        user.is_verified = False
+        user.verification_code = code
+        user.verification_code_expires_at = datetime.utcnow() + timedelta(minutes=VERIFICATION_CODE_EXPIRY_MINUTES)
+        self.user_repo.commit()
+        return code
+
     def change_password(self, user: User, current_password: str, new_password: str) -> None:
         """Change user password after verifying the current one.
 

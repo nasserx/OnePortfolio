@@ -14,6 +14,7 @@ from portfolio_app.forms.auth_forms import (
     ForgotPasswordForm,
     ResetPasswordForm,
     VerifyCodeForm,
+    UpdateEmailForm,
 )
 from portfolio_app.utils.tokens import generate_reset_token, verify_reset_token
 from portfolio_app.utils.email import send_verification_email, send_reset_email
@@ -244,6 +245,58 @@ def change_password():
         'auth/change_password.html',
         form_errors=form_errors,
         form_values=form_values,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Update Email
+# ---------------------------------------------------------------------------
+
+@auth_bp.route('/update-email', methods=['GET', 'POST'])
+@login_required
+def update_email():
+    """Update email page. Requires password confirmation, then sends a new OTP."""
+    form_errors = {}
+    form_values = {}
+
+    if request.method == 'POST':
+        svc = get_services()
+
+        form = UpdateEmailForm(
+            request.form,
+            check_email_taken=lambda e: svc.user_repo.get_by_email(e) is not None,
+        )
+
+        if form.validate():
+            data = form.get_cleaned_data()
+            try:
+                code = svc.auth_service.update_email(
+                    current_user,
+                    data['email'],
+                    data['password'],
+                )
+                send_verification_email(data['email'], code)
+
+                # Log the user out so they must verify the new email before re-entering
+                logout_user()
+                return redirect(url_for('auth.verify_code', email=data['email']))
+
+            except ValueError as e:
+                form_errors['password'] = str(e)
+                form_values = request.form
+            except Exception:
+                logger.exception('Email update failed')
+                form_errors['__all__'] = 'An error occurred. Please try again.'
+                form_values = request.form
+        else:
+            form_errors = form.errors
+            form_values = request.form
+
+    return render_template(
+        'auth/update_email.html',
+        form_errors=form_errors,
+        form_values=form_values,
+        current_email=current_user.email,
     )
 
 

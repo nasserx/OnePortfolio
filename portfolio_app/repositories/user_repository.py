@@ -32,6 +32,20 @@ class UserRepository(BaseRepository[User]):
             self.model.email == email.lower()
         ).first()
 
+    def get_by_username_or_email(self, identifier: str) -> Optional[User]:
+        """Get user by username or email address.
+
+        Args:
+            identifier: A username or email address.
+
+        Returns:
+            The user if found, None otherwise.
+        """
+        return self.model.query.filter(
+            (self.model.username == identifier) |
+            (self.model.email == identifier.lower())
+        ).first()
+
     def count(self) -> int:
         """Return total number of registered users."""
         return self.model.query.count()

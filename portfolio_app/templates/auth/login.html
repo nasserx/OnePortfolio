@@ -111,15 +111,15 @@
         <form method="post" action="{{ url_for('auth.login') }}{% if request.args.get('next') %}?next={{ request.args.get('next') }}{% endif %}" novalidate>
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-            <!-- Username -->
+            <!-- Username or Email -->
             <div class="mb-3">
-                <label for="username" class="form-label">Username</label>
+                <label for="username" class="form-label">Username or Email</label>
                 <div class="field-wrap">
                     <i class="bi bi-person fi"></i>
                     <input type="text" id="username" name="username" autocomplete="username"
                            class="form-control form-control-auth {% if form_errors.get('username') %}is-invalid{% endif %}"
                            value="{{ form_values.get('username', '') }}"
-                           placeholder="Enter your username" autofocus required>
+                           placeholder="Enter your username or email" autofocus required>
                 </div>
                 {% if form_errors.get('username') %}
                     <div class="invalid-feedback d-block mt-1">{{ form_errors['username'] }}</div>

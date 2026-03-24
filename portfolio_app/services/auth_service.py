@@ -126,13 +126,14 @@ class AuthService:
     # Login
     # ------------------------------------------------------------------
 
-    def authenticate(self, username: str, password: str) -> Optional[User]:
+    def authenticate(self, identifier: str, password: str) -> Optional[User]:
         """Verify credentials and update last_login on success.
 
+        Accepts either a username or an email address as the identifier.
         Only verified accounts are allowed to log in.
 
         Args:
-            username: Username to authenticate.
+            identifier: Username or email address.
             password: Plain-text password to verify.
 
         Returns:
@@ -140,7 +141,7 @@ class AuthService:
             the string 'unverified' if credentials are correct but account is not verified,
             or None if credentials are invalid.
         """
-        user = self.user_repo.get_by_username(username)
+        user = self.user_repo.get_by_username_or_email(identifier)
         if user and user.check_password(password):
             if not user.is_verified:
                 # Signal to the route that the account exists but is unverified.

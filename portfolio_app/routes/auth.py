@@ -45,7 +45,7 @@ def login():
 
             if result == 'unverified':
                 # Redirect to the code entry page so the user can verify immediately
-                user = svc.user_repo.get_by_username(data['username'])
+                user = svc.user_repo.get_by_username_or_email(data['username'])
                 if user and user.email:
                     return redirect(url_for('auth.verify_code', email=user.email))
                 form_errors['__all__'] = (
@@ -152,8 +152,12 @@ def verify_code():
             success, error_msg = svc.auth_service.verify_user(email, data['code'])
 
             if success:
-                flash('Your account has been verified. You can now log in.', 'success')
-                return redirect(url_for('auth.login'))
+                # Auto-login after successful verification
+                svc2 = get_services()
+                verified_user = svc2.user_repo.get_by_email(email)
+                if verified_user:
+                    login_user(verified_user)
+                    return redirect(url_for('dashboard.index'))
             else:
                 form_errors['code'] = error_msg
         else:

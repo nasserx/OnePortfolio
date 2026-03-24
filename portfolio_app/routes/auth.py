@@ -111,8 +111,9 @@ def register():
                     data['password'],
                 )
 
-                # Dispatch the 6-digit code asynchronously (returns immediately)
-                send_verification_email(user.email, code)
+                email_sent = send_verification_email(user.email, code)
+                if not email_sent:
+                    logger.error('Verification email failed for %s', user.email)
 
                 return redirect(url_for('auth.verify_code', email=user.email))
 
@@ -182,8 +183,11 @@ def resend_code():
     new_code = svc.auth_service.resend_verification_code(email)
 
     if new_code:
-        send_verification_email(email, new_code)
-        flash('A new verification code has been sent to your email.', 'success')
+        email_sent = send_verification_email(email, new_code)
+        if email_sent:
+            flash('A new verification code has been sent to your email.', 'success')
+        else:
+            flash('Failed to send the code. Please try again in a moment.', 'danger')
     else:
         flash('Unable to resend code. Your account may already be verified.', 'warning')
 

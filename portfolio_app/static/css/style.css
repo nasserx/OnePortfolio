@@ -142,6 +142,11 @@
     --shadow-xl: 0 16px 40px 0 rgba(0, 0, 0, 0.45), 0 8px 16px 0 rgba(0, 0, 0, 0.3);
 }
 
+/* Smooth theme transitions */
+html {
+    transition: background-color 0.25s ease, color 0.25s ease;
+}
+
 /* Box sizing for all elements */
 *,
 *::before,
@@ -398,7 +403,7 @@ label,
 }
 
 .card:hover {
-    transform: translateY(-2px);
+    transform: translateY(-1px);
     box-shadow: var(--shadow-md) !important;
 }
 
@@ -657,7 +662,7 @@ input[type="number"] {
 /* Text fields and select dropdowns */
 .form-control,
 .form-select {
-    border-radius: var(--border-radius-sm);
+    border-radius: var(--border-radius);
     border: 1px solid var(--border-color) !important;
     transition: border-color var(--transition-normal), box-shadow var(--transition-normal);
     padding: 0.625rem 0.875rem;
@@ -680,7 +685,12 @@ input[type="number"] {
     border-color: var(--input-border-focus) !important;
     color: var(--text-primary);
     outline: none;
-    box-shadow: 0 0 2px 0 var(--input-border-focus);
+    box-shadow: 0 0 0 3px rgba(79, 110, 247, 0.12);
+}
+
+[data-bs-theme="dark"] .form-control:focus,
+[data-bs-theme="dark"] .form-select:focus {
+    box-shadow: 0 0 0 3px rgba(107, 133, 248, 0.18);
 }
 
 /* Prevent Browser Autofill Style */
@@ -1128,9 +1138,9 @@ select:-webkit-autofill:focus {
 /* Badge styles */
 .badge {
     font-weight: 500;
-    padding: 0.3rem 0.6rem;
+    padding: 0.3rem 0.65rem;
     font-size: 0.75rem;
-    border-radius: var(--border-radius-sm);
+    border-radius: 999px;
 }
 
 .badge.bg-light,
@@ -1578,7 +1588,15 @@ select:-webkit-autofill:focus {
     font-weight: 600;
     letter-spacing: 0.5rem;
     text-align: center;
-    border-radius: var(--border-radius-sm);
+    border-radius: var(--border-radius);
+}
+
+/* Subtle horizontal rule */
+hr {
+    border: none;
+    border-top: 1px solid var(--divider-color);
+    opacity: 1;
+    margin: 1.5rem 0;
 }
 
 

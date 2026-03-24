@@ -2,7 +2,7 @@
 
 import logging
 from flask import Blueprint, render_template, jsonify, request, Response
-from flask_login import login_required
+from flask_login import login_required, current_user
 from decimal import Decimal
 from portfolio_app.services import get_services
 from portfolio_app.calculators import PortfolioCalculator
@@ -25,13 +25,11 @@ def _jsonify_decimals(value):
 
 
 @dashboard_bp.route('/')
-@login_required
 def index() -> str:
-    """Dashboard - Portfolio summary page.
+    """Landing page for guests, dashboard for authenticated users."""
+    if not current_user.is_authenticated:
+        return render_template('landing.html')
 
-    Returns:
-        Rendered dashboard template with portfolio summary
-    """
     svc = get_services()
     summary, total_value = svc.portfolio_service.get_portfolio_summary()
     totals = svc.portfolio_service.get_portfolio_dashboard_totals()

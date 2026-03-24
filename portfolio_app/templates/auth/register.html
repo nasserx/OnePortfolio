@@ -9,63 +9,14 @@
     <link rel="icon" href="{{ url_for('static', filename='icons/icon.svg') }}" type="image/svg+xml">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v='20260215-1') }}">
-    <style>
-        .auth-page {
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 2rem 1rem;
-        }
-        .auth-card {
-            width: 100%;
-            max-width: 440px;
-            border-radius: var(--border-radius-lg) !important;
-            box-shadow: var(--shadow-xl) !important;
-        }
-        .auth-logo { width: 48px; height: 48px; border-radius: 10px; }
-        .auth-title { font-size: 1.5rem; font-weight: 500; color: var(--text-primary); }
-        .auth-subtitle { color: var(--text-tertiary); font-size: 0.9rem; }
-        .form-control-auth { padding: 0.75rem 1rem; font-size: 0.9375rem; }
-        .btn-auth { padding: 0.75rem 1rem; font-size: 0.9375rem; font-weight: 500; }
-        .input-group-text {
-            background: var(--surface-variant);
-            border: 1px solid var(--border-color) !important;
-            color: var(--text-tertiary);
-        }
-        .password-hint {
-            font-size: 0.8rem;
-            color: var(--text-tertiary);
-            margin-top: 0.25rem;
-        }
-        .strength-bar {
-            height: 4px;
-            border-radius: 2px;
-            transition: all 0.3s ease;
-            background: var(--border-color);
-            margin-top: 0.5rem;
-        }
-        .strength-bar .bar-fill {
-            height: 100%;
-            border-radius: 2px;
-            transition: all 0.3s ease;
-            width: 0%;
-        }
-        .field-wrap { position: relative; }
-        .field-wrap .fi { position: absolute; left: 0.8rem; top: 50%; transform: translateY(-50%); color: var(--text-tertiary); pointer-events: none; }
-        .field-wrap input { padding-left: 2.25rem; }
-        .field-wrap input.has-toggle { padding-right: 2.75rem; }
-        .field-wrap .toggle-pw { position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-tertiary); cursor: pointer; padding: 0; }
-        .field-wrap .toggle-pw:hover { color: var(--text-secondary); }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
 <div class="auth-page">
-    <div class="auth-card card p-4 p-md-5">
+    <div class="auth-card card p-4">
 
         <!-- Header -->
-        <div class="text-center mb-4">
+        <div class="text-center mb-3">
             <img src="{{ url_for('static', filename='icons/icon.svg') }}" alt="Logo" class="auth-logo mb-3">
             <h1 class="auth-title">Create account</h1>
             <p class="auth-subtitle mb-0">Start tracking your portfolio</p>
@@ -95,8 +46,7 @@
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
             <!-- Username -->
-            <div class="mb-3">
-                <label for="username" class="form-label">Username</label>
+            <div class="mb-2">
                 <div class="field-wrap">
                     <i class="bi bi-person fi"></i>
                     <input type="text" id="username" name="username" autocomplete="username"
@@ -112,8 +62,7 @@
             </div>
 
             <!-- Email -->
-            <div class="mb-3">
-                <label for="email" class="form-label">Email Address</label>
+            <div class="mb-2">
                 <div class="field-wrap">
                     <i class="bi bi-envelope fi"></i>
                     <input type="email" id="email" name="email" autocomplete="email"
@@ -129,8 +78,7 @@
             </div>
 
             <!-- Password -->
-            <div class="mb-3">
-                <label for="password" class="form-label">Password</label>
+            <div class="mb-2">
                 <div class="field-wrap">
                     <i class="bi bi-lock fi"></i>
                     <input type="password" id="password" name="password" autocomplete="new-password"
@@ -147,8 +95,7 @@
             </div>
 
             <!-- Confirm password -->
-            <div class="mb-4">
-                <label for="confirm_password" class="form-label">Confirm Password</label>
+            <div class="mb-3">
                 <div class="field-wrap">
                     <i class="bi bi-shield-check fi"></i>
                     <input type="password" id="confirm_password" name="confirm_password" autocomplete="new-password"

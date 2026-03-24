@@ -1096,6 +1096,14 @@ class InvestmentPortfolioApp {
 
         // Initialize AJAX handler for modals
         new ModalAjaxHandler();
+
+        // Navbar scroll shadow
+        const navbar = document.querySelector('.app-navbar');
+        if (navbar) {
+            const onScroll = () => navbar.classList.toggle('scrolled', window.scrollY > 8);
+            window.addEventListener('scroll', onScroll, { passive: true });
+            onScroll();
+        }
     }
 }
 

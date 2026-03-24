@@ -62,6 +62,16 @@
                             Charts
                         </a>
                     </li>
+                    <!-- Auth buttons for guests -->
+                    {% if not current_user.is_authenticated %}
+                    <li class="nav-item">
+                        <a href="{{ url_for('auth.login') }}" class="btn-nav-login">Log In</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{{ url_for('auth.register') }}" class="btn-nav-signup">Sign Up</a>
+                    </li>
+                    {% endif %}
+
                     <!-- App Settings (gear) -->
                     <li class="nav-item dropdown settings-dropdown">
                         <button class="nav-link settings-btn" type="button"

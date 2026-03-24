@@ -43,6 +43,10 @@ class AuthService:
         Raises:
             ValueError: If username or email is already taken.
         """
+        # Remove stale unverified accounts before checking availability.
+        # This lets users re-register freely if their previous attempt expired.
+        self._purge_expired_unverified()
+
         if self.user_repo.get_by_username(username):
             raise ValueError('This username is already taken.')
 
@@ -257,6 +261,19 @@ class AuthService:
     # ------------------------------------------------------------------
     # Private helpers
     # ------------------------------------------------------------------
+
+    def _purge_expired_unverified(self) -> None:
+        """Delete unverified accounts whose verification code has expired.
+
+        Called at the start of every registration to keep the database clean
+        and allow users to re-register freely after an expired attempt.
+        """
+        expired = self.user_repo.get_expired_unverified(datetime.utcnow())
+        for user in expired:
+            logger.info("Purging expired unverified account: %s", user.email)
+            self.user_repo.delete(user)
+        if expired:
+            self.user_repo.commit()
 
     @staticmethod
     def _make_verification_code() -> str:

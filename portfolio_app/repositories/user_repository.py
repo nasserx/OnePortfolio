@@ -1,6 +1,7 @@
 """User repository for database operations on User model."""
 
-from typing import Optional
+from datetime import datetime
+from typing import List, Optional
 from portfolio_app.repositories.base import BaseRepository
 from portfolio_app.models.user import User
 
@@ -45,6 +46,21 @@ class UserRepository(BaseRepository[User]):
             (self.model.username == identifier) |
             (self.model.email == identifier.lower())
         ).first()
+
+    def get_expired_unverified(self, now: datetime) -> List[User]:
+        """Return unverified accounts whose verification code has expired.
+
+        Args:
+            now: Current UTC datetime to compare against expiry.
+
+        Returns:
+            List of expired unverified User objects.
+        """
+        return self.model.query.filter(
+            self.model.is_verified == False,
+            self.model.verification_code_expires_at != None,
+            self.model.verification_code_expires_at < now,
+        ).all()
 
     def count(self) -> int:
         """Return total number of registered users."""

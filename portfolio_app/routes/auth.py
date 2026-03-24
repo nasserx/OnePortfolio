@@ -118,6 +118,17 @@ def register():
                 return redirect(url_for('auth.verify_code', email=user.email))
 
             except ValueError as e:
+                # If the email belongs to an unverified account, resend a fresh code
+                # instead of blocking the user with an "already taken" error.
+                email = data.get('email', '')
+                if email:
+                    existing = svc.user_repo.get_by_email(email)
+                    if existing and not existing.is_verified:
+                        new_code = svc.auth_service.resend_verification_code(existing.email)
+                        if new_code:
+                            send_verification_email(existing.email, new_code)
+                        return redirect(url_for('auth.verify_code', email=existing.email))
+
                 form_errors['__all__'] = str(e)
                 form_values = request.form
             except Exception:

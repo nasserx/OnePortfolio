@@ -18,6 +18,7 @@ from portfolio_app.forms.auth_forms import (
 )
 from portfolio_app.utils.tokens import generate_reset_token, verify_reset_token
 from portfolio_app.utils.email import send_verification_email, send_reset_email
+from portfolio_app.utils.messages import AuthMessages
 
 logger = logging.getLogger(__name__)
 
@@ -49,10 +50,7 @@ def login():
                 user = svc.user_repo.get_by_username_or_email(data['username'])
                 if user and user.email:
                     return redirect(url_for('auth.verify_code', email=user.email))
-                form_errors['__all__'] = (
-                    'Your account has not been verified yet. '
-                    'Please check your email for the verification code.'
-                )
+                form_errors['__all__'] = AuthMessages.ACCOUNT_UNVERIFIED
                 form_values = request.form
             elif result:
                 remember = request.form.get('remember') == 'on'
@@ -60,7 +58,7 @@ def login():
                 next_page = request.args.get('next')
                 return redirect(next_page or url_for('dashboard.index'))
             else:
-                form_errors['__all__'] = 'Invalid username or password.'
+                form_errors['__all__'] = AuthMessages.INVALID_CREDENTIALS
                 form_values = request.form
         else:
             form_errors = form.errors
@@ -134,7 +132,7 @@ def register():
                 form_values = request.form
             except Exception:
                 logger.exception('Registration failed')
-                form_errors['__all__'] = 'Registration failed. Please try again.'
+                form_errors['__all__'] = AuthMessages.REGISTRATION_FAILED
                 form_values = request.form
         else:
             form_errors = form.errors
@@ -197,11 +195,11 @@ def resend_code():
     if new_code:
         email_sent = send_verification_email(email, new_code)
         if email_sent:
-            flash('A new verification code has been sent to your email.', 'success')
+            flash(AuthMessages.VERIFICATION_CODE_SENT, 'success')
         else:
-            flash('Failed to send the code. Please try again in a moment.', 'danger')
+            flash(AuthMessages.CODE_SEND_FAILED, 'danger')
     else:
-        flash('Unable to resend code. Your account may already be verified.', 'warning')
+        flash(AuthMessages.RESEND_UNAVAILABLE, 'warning')
 
     return redirect(url_for('auth.verify_code', email=email))
 
@@ -228,14 +226,14 @@ def change_password():
                     data['current_password'],
                     data['new_password'],
                 )
-                flash('Password changed successfully.', 'success')
+                flash(AuthMessages.PASSWORD_CHANGED, 'success')
                 return redirect(url_for('dashboard.index'))
             except ValueError as e:
                 form_errors['current_password'] = str(e)
                 form_values = request.form
             except Exception:
                 logger.exception('Password change failed')
-                form_errors['__all__'] = 'An error occurred. Please try again.'
+                form_errors['__all__'] = AuthMessages.ERROR_OCCURRED
                 form_values = request.form
         else:
             form_errors = form.errors
@@ -286,7 +284,7 @@ def update_email():
                 form_values = request.form
             except Exception:
                 logger.exception('Email update failed')
-                form_errors['__all__'] = 'An error occurred. Please try again.'
+                form_errors['__all__'] = AuthMessages.ERROR_OCCURRED
                 form_values = request.form
         else:
             form_errors = form.errors
@@ -353,7 +351,7 @@ def reset_password(token):
     # Validate the token up front so expired links show an error immediately
     email = verify_reset_token(token)
     if not email:
-        flash('The password reset link is invalid or has expired.', 'danger')
+        flash(AuthMessages.RESET_LINK_INVALID, 'danger')
         return redirect(url_for('auth.forgot_password'))
 
     form_errors = {}
@@ -367,10 +365,10 @@ def reset_password(token):
             user = svc.auth_service.reset_password_with_token(email, data['password'])
 
             if not user:
-                flash('No account found for this reset link.', 'danger')
+                flash(AuthMessages.RESET_ACCOUNT_NOT_FOUND, 'danger')
                 return redirect(url_for('auth.forgot_password'))
 
-            flash('Your password has been reset. You can now log in.', 'success')
+            flash(AuthMessages.PASSWORD_RESET_SUCCESS, 'success')
             return redirect(url_for('auth.login'))
         else:
             form_errors = form.errors

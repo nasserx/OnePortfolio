@@ -411,7 +411,7 @@
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <p>Delete this event?</p>
+                    <p>{{ Msg.confirm.DELETE_TRANSACTION }}</p>
                     {% set _del_evt_err = (form_errors.get('funds_event_delete') or {}).get('__all__') if form_errors else None %}
                     {% if _del_evt_err %}
                         <div class="invalid-feedback d-block">{{ _del_evt_err }}</div>

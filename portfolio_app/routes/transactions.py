@@ -12,7 +12,7 @@ from portfolio_app.forms import (
     TransactionAddForm, TransactionEditForm, AssetAddForm, AssetDeleteForm,
     DividendAddForm, DividendEditForm,
 )
-from portfolio_app.utils import get_error_message, get_first_form_error, SuccessMessages, is_ajax_request, json_response
+from portfolio_app.utils import get_error_message, get_first_form_error, SuccessMessages, ErrorMessages, is_ajax_request, json_response
 from portfolio_app.utils.constants import safe_html_id
 from config import Config
 
@@ -194,8 +194,8 @@ def transaction_add():
         logger.exception('Failed to add transaction')
         db.session.rollback()
         if is_ajax_request():
-            return json_response(False, error='Operation failed')
-        flash('Operation failed', 'error')
+            return json_response(False, error=ErrorMessages.OPERATION_FAILED)
+        flash(ErrorMessages.OPERATION_FAILED, 'error')
         return redirect(url_for('transactions.transaction_list'))
 
 
@@ -209,8 +209,8 @@ def transaction_edit(id):
         transaction = svc.transaction_repo.get_by_id(id)
         if not transaction:
             if is_ajax_request():
-                return json_response(False, error='Transaction not found')
-            flash('Transaction not found', 'error')
+                return json_response(False, error=ErrorMessages.TRANSACTION_NOT_FOUND)
+            flash(ErrorMessages.TRANSACTION_NOT_FOUND, 'error')
             return redirect(url_for('transactions.transaction_list'))
 
         form = TransactionEditForm(request.form, id, transaction.transaction_type)
@@ -254,8 +254,8 @@ def transaction_edit(id):
         logger.exception('Failed to edit transaction %s', id)
         db.session.rollback()
         if is_ajax_request():
-            return json_response(False, error='Operation failed')
-        flash('Operation failed', 'error')
+            return json_response(False, error=ErrorMessages.OPERATION_FAILED)
+        flash(ErrorMessages.OPERATION_FAILED, 'error')
         return redirect(url_for('transactions.transaction_list'))
 
 
@@ -280,8 +280,8 @@ def transaction_delete(id):
         logger.exception('Failed to delete transaction %s', id)
         db.session.rollback()
         if is_ajax_request():
-            return json_response(False, error='Operation failed')
-        flash('Operation failed', 'error')
+            return json_response(False, error=ErrorMessages.OPERATION_FAILED)
+        flash(ErrorMessages.OPERATION_FAILED, 'error')
 
     return redirect(url_for('transactions.transaction_list'))
 
@@ -317,9 +317,9 @@ def dividend_add():
         )
 
         if is_ajax_request():
-            return json_response(True, message='Dividend added successfully')
+            return json_response(True, message=SuccessMessages.TRANSACTION_ADDED)
 
-        flash('Dividend added successfully', 'success')
+        flash(SuccessMessages.TRANSACTION_ADDED, 'success')
         return redirect(url_for('transactions.transaction_list'))
 
     except (ValueError, ValidationError) as e:
@@ -332,8 +332,8 @@ def dividend_add():
         logger.exception('Failed to add dividend')
         db.session.rollback()
         if is_ajax_request():
-            return json_response(False, error='Operation failed')
-        flash('Operation failed', 'error')
+            return json_response(False, error=ErrorMessages.OPERATION_FAILED)
+        flash(ErrorMessages.OPERATION_FAILED, 'error')
         return redirect(url_for('transactions.transaction_list'))
 
 
@@ -347,8 +347,8 @@ def dividend_edit(id):
         dividend = svc.dividend_repo.get_by_id(id)
         if not dividend:
             if is_ajax_request():
-                return json_response(False, error='Dividend not found')
-            flash('Dividend not found', 'error')
+                return json_response(False, error=ErrorMessages.TRANSACTION_NOT_FOUND)
+            flash(ErrorMessages.TRANSACTION_NOT_FOUND, 'error')
             return redirect(url_for('transactions.transaction_list'))
 
         form = DividendEditForm(request.form, id)
@@ -367,9 +367,9 @@ def dividend_edit(id):
         )
 
         if is_ajax_request():
-            return json_response(True, message='Dividend updated successfully')
+            return json_response(True, message=SuccessMessages.TRANSACTION_UPDATED)
 
-        flash('Dividend updated successfully', 'success')
+        flash(SuccessMessages.TRANSACTION_UPDATED, 'success')
         return redirect(url_for('transactions.transaction_list'))
 
     except (ValueError, ValidationError) as e:
@@ -382,8 +382,8 @@ def dividend_edit(id):
         logger.exception('Failed to edit dividend %s', id)
         db.session.rollback()
         if is_ajax_request():
-            return json_response(False, error='Operation failed')
-        flash('Operation failed', 'error')
+            return json_response(False, error=ErrorMessages.OPERATION_FAILED)
+        flash(ErrorMessages.OPERATION_FAILED, 'error')
         return redirect(url_for('transactions.transaction_list'))
 
 
@@ -396,8 +396,8 @@ def dividend_delete(id):
         svc.transaction_service.delete_dividend(id)
 
         if is_ajax_request():
-            return json_response(True, message='Dividend deleted successfully')
-        flash('Dividend deleted successfully', 'success')
+            return json_response(True, message=SuccessMessages.TRANSACTION_DELETED)
+        flash(SuccessMessages.TRANSACTION_DELETED, 'success')
 
     except ValueError as e:
         if is_ajax_request():
@@ -408,8 +408,8 @@ def dividend_delete(id):
         logger.exception('Failed to delete dividend %s', id)
         db.session.rollback()
         if is_ajax_request():
-            return json_response(False, error='Operation failed')
-        flash('Operation failed', 'error')
+            return json_response(False, error=ErrorMessages.OPERATION_FAILED)
+        flash(ErrorMessages.OPERATION_FAILED, 'error')
 
     return redirect(url_for('transactions.transaction_list'))
 
@@ -447,7 +447,7 @@ def asset_add():
     except Exception:
         logger.exception('Failed to add asset')
         db.session.rollback()
-        flash('Operation failed', 'error')
+        flash(ErrorMessages.OPERATION_FAILED, 'error')
 
     return redirect(url_for('transactions.transaction_list'))
 
@@ -462,8 +462,8 @@ def asset_delete():
         form = AssetDeleteForm(request.form)
         if not form.validate():
             if is_ajax_request():
-                return json_response(False, error='Invalid request')
-            flash('Invalid request', 'error')
+                return json_response(False, error=ErrorMessages.INVALID_REQUEST)
+            flash(ErrorMessages.INVALID_REQUEST, 'error')
             return redirect(url_for('transactions.transaction_list'))
 
         data = form.get_cleaned_data()
@@ -485,7 +485,7 @@ def asset_delete():
         logger.exception('Failed to delete asset')
         db.session.rollback()
         if is_ajax_request():
-            return json_response(False, error='Operation failed')
-        flash('Operation failed', 'error')
+            return json_response(False, error=ErrorMessages.OPERATION_FAILED)
+        flash(ErrorMessages.OPERATION_FAILED, 'error')
 
     return redirect(url_for('transactions.transaction_list'))

@@ -2,6 +2,7 @@
 
 from decimal import Decimal, InvalidOperation
 from typing import Optional, Tuple
+from portfolio_app.utils.messages import ValidationMessages
 
 
 def parse_decimal_field(
@@ -11,10 +12,6 @@ def parse_decimal_field(
 ) -> Tuple[Optional[Decimal], Optional[str]]:
     """Parse a decimal field from form input.
 
-    Args:
-        value: The string value to parse
-        allow_blank: Whether to allow blank values
-
     Returns:
         Tuple of (decimal_value, error_message)
         If successful: (Decimal, None)
@@ -22,11 +19,11 @@ def parse_decimal_field(
     """
     v = (value or '').strip()
     if v == '':
-        return (None, None) if allow_blank else (None, 'Required.')
+        return (None, None) if allow_blank else (None, ValidationMessages.REQUIRED)
     try:
         return Decimal(v), None
     except (InvalidOperation, ValueError, TypeError):
-        return None, 'Invalid number.'
+        return None, ValidationMessages.INVALID_NUMBER
 
 
 def validate_positive_decimal(
@@ -36,11 +33,6 @@ def validate_positive_decimal(
     allow_blank: bool = False
 ) -> Tuple[Optional[Decimal], Optional[str]]:
     """Validate that a decimal field is positive.
-
-    Args:
-        value: The string value to validate
-        allow_zero: Whether to allow zero values
-        allow_blank: Whether to allow blank values
 
     Returns:
         Tuple of (decimal_value, error_message)
@@ -52,28 +44,26 @@ def validate_positive_decimal(
         return None, None
     if allow_zero:
         if dec < 0:
-            return None, 'Non-negative number required.'
+            return None, ValidationMessages.VALUE_NON_NEGATIVE
         return dec, None
     if dec <= 0:
-        return None, 'Value must be greater than 0.'
+        return None, ValidationMessages.VALUE_POSITIVE
     return dec, None
 
 
-
-def get_field_error_message(field_name: str, base_msg: str = 'Value must be greater than 0.') -> str:
-    """Get field-specific error message.
+def get_field_error_message(field_name: str) -> str:
+    """Get field-specific positive-value error message.
 
     Args:
         field_name: Name of the field
-        base_msg: Base error message
 
     Returns:
         Field-specific error message
     """
     if field_name in ('price', 'edit_price'):
-        return 'Price must be greater than 0.'
+        return ValidationMessages.PRICE_POSITIVE
     if field_name in ('quantity', 'edit_quantity'):
-        return 'Quantity must be greater than 0.'
-    if field_name in ('amount', 'amount_delta', 'edit_event_amount'):
-        return 'Amount must be greater than 0.'
-    return base_msg
+        return ValidationMessages.QUANTITY_POSITIVE
+    if field_name in ('amount', 'amount_delta', 'edit_amount', 'edit_event_amount'):
+        return ValidationMessages.AMOUNT_POSITIVE
+    return ValidationMessages.VALUE_POSITIVE

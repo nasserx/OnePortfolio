@@ -29,12 +29,6 @@ def _run_migrations(app):
                 conn.commit()
                 capital_cols.add('user_id')
 
-            # 2. Rename amount_usd → amount if still using the old name
-            if 'amount_usd' in capital_cols and 'amount' not in capital_cols:
-                conn.execute(sa.text(
-                    'ALTER TABLE capital RENAME COLUMN amount_usd TO amount'
-                ))
-                conn.commit()
 
             # 3. Add email column to user table if missing
             user_cols = {c['name'] for c in inspector.get_columns('user')}
@@ -133,12 +127,25 @@ def create_app(config_class=Config):
     app.jinja_env.filters['fmt_decimal'] = fmt_decimal
     app.jinja_env.filters['fmt_money'] = fmt_money
 
-    # Inject category icons into all templates
+    # Inject category icons and message classes into all templates
+    from portfolio_app.utils.messages import (
+        ErrorMessages, SuccessMessages, ConfirmMessages,
+        ValidationMessages, AuthMessages, AdminMessages,
+    )
+
     @app.context_processor
-    def inject_category_icons():
+    def inject_template_globals():
         return {
             'category_icons': app.config.get('ASSET_CATEGORY_ICONS', {}),
             'category_icon_default': app.config.get('ASSET_CATEGORY_ICON_DEFAULT', ('bi-folder', 'text-secondary')),
+            'Msg': {
+                'error': ErrorMessages,
+                'success': SuccessMessages,
+                'confirm': ConfirmMessages,
+                'validation': ValidationMessages,
+                'auth': AuthMessages,
+                'admin': AdminMessages,
+            },
         }
 
     # Health check route

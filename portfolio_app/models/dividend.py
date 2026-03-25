@@ -18,7 +18,7 @@ class Dividend(db.Model):
     notes      = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
-    fund = db.relationship('Fund', backref=db.backref('dividends', lazy='dynamic'))
+    fund = db.relationship('Fund', backref=db.backref('dividends', lazy='dynamic', cascade='all, delete-orphan'))
 
     __table_args__ = (
         CheckConstraint('amount > 0', name='check_dividend_amount_positive'),

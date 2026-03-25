@@ -38,13 +38,6 @@ def _run_migrations(app):
                 conn.commit()
                 capital_cols.add('user_id')
 
-            # 2. Rename amount_usd → amount if still using the old name
-            if 'amount_usd' in capital_cols and 'amount' not in capital_cols:
-                print("Renaming amount_usd to amount in capital table...")
-                conn.execute(sa.text(
-                    'ALTER TABLE capital RENAME COLUMN amount_usd TO amount'
-                ))
-                conn.commit()
 
 
 if __name__ == '__main__':

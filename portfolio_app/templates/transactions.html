@@ -609,7 +609,7 @@
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <p>Delete this transaction?</p>
+                    <p>{{ Msg.confirm.DELETE_TRANSACTION }}</p>
                     <div class="alert alert-warning">
                         <i class="bi bi-exclamation-triangle"></i>
                         This will recalculate average costs for this symbol.
@@ -705,7 +705,7 @@
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <p>Delete this dividend record?</p>
+                    <p>{{ Msg.confirm.DELETE_TRANSACTION }}</p>
                     <div id="delete_dividend_error" class="alert alert-danger d-none"></div>
                 </div>
                 <div class="modal-footer">
@@ -1474,7 +1474,7 @@ function openEditDividendModal(id, amount, dateShort, notes) {
         var n   = parseFloat(val);
         if (!val || !isFinite(n) || n <= 0) {
             if (amountEl)  amountEl.classList.add('is-invalid');
-            if (amountErr) { amountErr.textContent = 'Amount must be greater than zero'; amountErr.style.display = 'block'; }
+            if (amountErr) { amountErr.textContent = 'Amount must be greater than 0.'; amountErr.style.display = 'block'; }
             return false;
         }
         if (amountEl)  amountEl.classList.remove('is-invalid');

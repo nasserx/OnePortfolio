@@ -880,9 +880,9 @@ class FormValidatorsInitializer {
                 validate: (raw) => {
                     if (!window.isDividendMode) return { ok: true };
                     const str = String(raw || '').trim();
-                    if (!str) return { ok: false, message: 'Amount must be greater than zero' };
+                    if (!str) return { ok: false, message: 'Amount must be greater than 0.' };
                     const n = parseFloat(str);
-                    if (!isFinite(n) || n <= 0) return { ok: false, message: 'Amount must be greater than zero' };
+                    if (!isFinite(n) || n <= 0) return { ok: false, message: 'Amount must be greater than 0.' };
                     return { ok: true };
                 }
             },

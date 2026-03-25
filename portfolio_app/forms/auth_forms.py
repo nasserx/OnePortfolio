@@ -5,6 +5,7 @@ forgot password, and reset password.
 import re
 from typing import Callable, Optional
 from portfolio_app.forms.base_form import BaseForm
+from portfolio_app.utils.messages import ValidationMessages
 
 # Simple email pattern — rejects obvious non-emails without being overly strict.
 _EMAIL_RE = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
@@ -14,11 +15,11 @@ class LoginForm(BaseForm):
     """Form for user login."""
 
     def validate(self) -> bool:
-        username = self._validate_required_string('username', 'Username is required.')
+        username = self._validate_required_string('username', ValidationMessages.USERNAME_REQUIRED)
         if username:
             self.cleaned_data['username'] = username
 
-        password = self._validate_required_string('password', 'Password is required.')
+        password = self._validate_required_string('password', ValidationMessages.PASSWORD_REQUIRED)
         if password:
             self.cleaned_data['password'] = password
 
@@ -40,45 +41,45 @@ class RegisterForm(BaseForm):
 
     def validate(self) -> bool:
         # --- Username ---
-        username = self._validate_required_string('username', 'Username is required.')
+        username = self._validate_required_string('username', ValidationMessages.USERNAME_REQUIRED)
         if username:
             if len(username) < 3:
-                self.errors['username'] = 'Username must be at least 3 characters.'
+                self.errors['username'] = ValidationMessages.USERNAME_TOO_SHORT
             elif len(username) > 80:
-                self.errors['username'] = 'Username cannot exceed 80 characters.'
+                self.errors['username'] = ValidationMessages.USERNAME_TOO_LONG
             elif not all(c.isalpha() or c == '_' for c in username):
-                self.errors['username'] = 'Only letters and underscores are allowed.'
+                self.errors['username'] = ValidationMessages.USERNAME_INVALID_CHARS
             elif self.check_username_taken and self.check_username_taken(username):
-                self.errors['username'] = 'This username is already taken.'
+                self.errors['username'] = ValidationMessages.USERNAME_TAKEN
             else:
                 self.cleaned_data['username'] = username
 
         # --- Email ---
-        email = self._validate_required_string('email', 'Email address is required.')
+        email = self._validate_required_string('email', ValidationMessages.EMAIL_REQUIRED)
         if email:
             email = email.lower()
             if not _EMAIL_RE.match(email):
-                self.errors['email'] = 'Please enter a valid email address.'
+                self.errors['email'] = ValidationMessages.EMAIL_INVALID
             elif len(email) > 120:
-                self.errors['email'] = 'Email address is too long.'
+                self.errors['email'] = ValidationMessages.EMAIL_TOO_LONG
             elif self.check_email_taken and self.check_email_taken(email):
-                self.errors['email'] = 'An account with this email already exists.'
+                self.errors['email'] = ValidationMessages.EMAIL_TAKEN
             else:
                 self.cleaned_data['email'] = email
 
         # --- Password ---
-        password = self._validate_required_string('password', 'Password is required.')
+        password = self._validate_required_string('password', ValidationMessages.PASSWORD_REQUIRED)
         if password:
             if len(password) < 8:
-                self.errors['password'] = 'Password must be at least 8 characters.'
+                self.errors['password'] = ValidationMessages.PASSWORD_TOO_SHORT
             else:
                 self.cleaned_data['password'] = password
 
         # --- Confirm password ---
-        confirm = self._validate_required_string('confirm_password', 'Please confirm your password.')
+        confirm = self._validate_required_string('confirm_password', ValidationMessages.PASSWORD_CONFIRM_REQUIRED)
         if confirm and password and not self.errors.get('password'):
             if confirm != password:
-                self.errors['confirm_password'] = 'Passwords do not match.'
+                self.errors['confirm_password'] = ValidationMessages.PASSWORDS_NO_MATCH
             else:
                 self.cleaned_data['confirm_password'] = confirm
 
@@ -89,21 +90,21 @@ class ChangePasswordForm(BaseForm):
     """Form for changing a logged-in user's password."""
 
     def validate(self) -> bool:
-        current = self._validate_required_string('current_password', 'Current password is required.')
+        current = self._validate_required_string('current_password', ValidationMessages.CURRENT_PASSWORD_REQUIRED)
         if current:
             self.cleaned_data['current_password'] = current
 
-        new_password = self._validate_required_string('new_password', 'New password is required.')
+        new_password = self._validate_required_string('new_password', ValidationMessages.NEW_PASSWORD_REQUIRED)
         if new_password:
             if len(new_password) < 8:
-                self.errors['new_password'] = 'New password must be at least 8 characters.'
+                self.errors['new_password'] = ValidationMessages.NEW_PASSWORD_TOO_SHORT
             else:
                 self.cleaned_data['new_password'] = new_password
 
-        confirm = self._validate_required_string('confirm_new_password', 'Please confirm your new password.')
+        confirm = self._validate_required_string('confirm_new_password', ValidationMessages.NEW_PASSWORD_CONFIRM_REQUIRED)
         if confirm and new_password and not self.errors.get('new_password'):
             if confirm != new_password:
-                self.errors['confirm_new_password'] = 'Passwords do not match.'
+                self.errors['confirm_new_password'] = ValidationMessages.PASSWORDS_NO_MATCH
             else:
                 self.cleaned_data['confirm_new_password'] = confirm
 
@@ -114,11 +115,11 @@ class ForgotPasswordForm(BaseForm):
     """Form for requesting a password reset email."""
 
     def validate(self) -> bool:
-        email = self._validate_required_string('email', 'Email address is required.')
+        email = self._validate_required_string('email', ValidationMessages.EMAIL_REQUIRED)
         if email:
             email = email.lower()
             if not _EMAIL_RE.match(email):
-                self.errors['email'] = 'Please enter a valid email address.'
+                self.errors['email'] = ValidationMessages.EMAIL_INVALID
             else:
                 self.cleaned_data['email'] = email
 
@@ -129,17 +130,17 @@ class ResetPasswordForm(BaseForm):
     """Form for setting a new password via a reset token."""
 
     def validate(self) -> bool:
-        password = self._validate_required_string('password', 'Password is required.')
+        password = self._validate_required_string('password', ValidationMessages.PASSWORD_REQUIRED)
         if password:
             if len(password) < 8:
-                self.errors['password'] = 'Password must be at least 8 characters.'
+                self.errors['password'] = ValidationMessages.PASSWORD_TOO_SHORT
             else:
                 self.cleaned_data['password'] = password
 
-        confirm = self._validate_required_string('confirm_password', 'Please confirm your password.')
+        confirm = self._validate_required_string('confirm_password', ValidationMessages.PASSWORD_CONFIRM_REQUIRED)
         if confirm and password and not self.errors.get('password'):
             if confirm != password:
-                self.errors['confirm_password'] = 'Passwords do not match.'
+                self.errors['confirm_password'] = ValidationMessages.PASSWORDS_NO_MATCH
             else:
                 self.cleaned_data['confirm_password'] = confirm
 
@@ -150,11 +151,11 @@ class VerifyCodeForm(BaseForm):
     """Form for entering the 6-digit email verification code."""
 
     def validate(self) -> bool:
-        code = self._validate_required_string('code', 'Verification code is required.')
+        code = self._validate_required_string('code', ValidationMessages.VERIFICATION_CODE_REQUIRED)
         if code:
             code = code.strip()
             if not code.isdigit() or len(code) != 6:
-                self.errors['code'] = 'Please enter the 6-digit code sent to your email.'
+                self.errors['code'] = ValidationMessages.VERIFICATION_CODE_INVALID
             else:
                 self.cleaned_data['code'] = code
 
@@ -174,20 +175,20 @@ class UpdateEmailForm(BaseForm):
 
     def validate(self) -> bool:
         # --- New email ---
-        email = self._validate_required_string('email', 'Email address is required.')
+        email = self._validate_required_string('email', ValidationMessages.EMAIL_REQUIRED)
         if email:
             email = email.lower()
             if not _EMAIL_RE.match(email):
-                self.errors['email'] = 'Please enter a valid email address.'
+                self.errors['email'] = ValidationMessages.EMAIL_INVALID
             elif len(email) > 120:
-                self.errors['email'] = 'Email address is too long.'
+                self.errors['email'] = ValidationMessages.EMAIL_TOO_LONG
             elif self.check_email_taken and self.check_email_taken(email):
-                self.errors['email'] = 'This email address is already in use.'
+                self.errors['email'] = ValidationMessages.EMAIL_IN_USE
             else:
                 self.cleaned_data['email'] = email
 
         # --- Password confirmation ---
-        password = self._validate_required_string('password', 'Please enter your current password to confirm.')
+        password = self._validate_required_string('password', ValidationMessages.EMAIL_PASSWORD_CONFIRM)
         if password:
             self.cleaned_data['password'] = password
 

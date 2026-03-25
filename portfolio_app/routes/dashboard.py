@@ -6,6 +6,7 @@ from flask_login import login_required, current_user
 from decimal import Decimal
 from portfolio_app.services import get_services
 from portfolio_app.calculators import PortfolioCalculator
+from portfolio_app.utils.messages import ErrorMessages
 
 logger = logging.getLogger(__name__)
 
@@ -77,21 +78,21 @@ def api_holdings() -> Response:
         try:
             fund_id = int(request.args.get('fund_id') or 0)
         except (ValueError, TypeError):
-            return jsonify({'error': 'Invalid fund_id'}), 400
+            return jsonify({'error': ErrorMessages.INVALID_FUND_ID}), 400
 
         if fund_id <= 0:
-            return jsonify({'error': 'Invalid fund_id'}), 400
+            return jsonify({'error': ErrorMessages.INVALID_FUND_ID}), 400
 
         # Validate symbol
         symbol = PortfolioCalculator.normalize_symbol(request.args.get('symbol', ''))
         if not symbol:
-            return jsonify({'error': 'Invalid symbol'}), 400
+            return jsonify({'error': ErrorMessages.INVALID_SYMBOL}), 400
 
         # Check fund exists
         svc = get_services()
         fund = svc.fund_repo.get_by_id(fund_id)
         if not fund:
-            return jsonify({'error': 'Fund not found'}), 404
+            return jsonify({'error': ErrorMessages.FUND_NOT_FOUND}), 404
 
         # Get held quantity
         held_qty = PortfolioCalculator.get_quantity_held_for_symbol(fund_id, symbol)

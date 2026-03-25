@@ -6,6 +6,7 @@ from portfolio_app.forms.validators import (
     validate_positive_decimal,
     get_field_error_message,
 )
+from portfolio_app.utils.messages import ValidationMessages
 
 
 class BaseForm:
@@ -66,7 +67,7 @@ class BaseForm:
         dec, err = validate_positive_decimal(value_str, allow_zero=allow_zero, allow_blank=allow_blank)
 
         if err:
-            if err == 'Value must be greater than 0.':
+            if err == ValidationMessages.VALUE_POSITIVE:
                 self.errors[field_name] = get_field_error_message(field_name)
             else:
                 self.errors[field_name] = err

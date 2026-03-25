@@ -21,6 +21,7 @@ class Fund(db.Model):
     # Relationships
     transactions = db.relationship('Transaction', backref='fund', lazy='dynamic', cascade='all, delete-orphan')
     events = db.relationship('FundEvent', backref='fund', lazy='dynamic', cascade='all, delete-orphan')
+    assets = db.relationship('Asset', backref='fund', lazy='dynamic', cascade='all, delete-orphan')
 
     def to_dict(self):
         """Convert model to dictionary"""

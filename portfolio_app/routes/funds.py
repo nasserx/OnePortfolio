@@ -15,7 +15,7 @@ from portfolio_app.forms import (
     FundEventDeleteForm
 )
 from portfolio_app.calculators.portfolio_calculator import PortfolioCalculator
-from portfolio_app.utils import get_error_message, get_first_form_error, SuccessMessages, is_ajax_request, json_response
+from portfolio_app.utils import get_error_message, get_first_form_error, SuccessMessages, ErrorMessages, is_ajax_request, json_response
 from portfolio_app.utils.constants import EventType, safe_html_id
 from config import Config
 
@@ -146,13 +146,13 @@ def funds_add():
         db.session.rollback()
 
         if is_ajax_request():
-            return json_response(False, error='Operation failed')
+            return json_response(False, error=ErrorMessages.OPERATION_FAILED)
 
         ctx = _get_funds_page_context()
         return render_template(
             'funds.html',
             **ctx,
-            form_errors={'funds_add': {'__all__': 'Operation failed'}},
+            form_errors={'funds_add': {'__all__': ErrorMessages.OPERATION_FAILED}},
             form_values={'funds_add': request.form},
             open_modal='addFundEntryModal',
         ), 400
@@ -173,7 +173,7 @@ def funds_delete(id):
     except Exception:
         logger.exception('Failed to delete fund %s', id)
         db.session.rollback()
-        flash('Operation failed', 'error')
+        flash(ErrorMessages.OPERATION_FAILED, 'error')
 
     return redirect(url_for('funds.funds_list'))
 
@@ -226,9 +226,9 @@ def funds_deposit(id):
         db.session.rollback()
 
         if is_ajax_request():
-            return json_response(False, error='Operation failed')
+            return json_response(False, error=ErrorMessages.OPERATION_FAILED)
 
-        flash('Operation failed', 'error')
+        flash(ErrorMessages.OPERATION_FAILED, 'error')
         return redirect(url_for('funds.funds_list'))
 
 
@@ -280,9 +280,9 @@ def funds_withdraw(id):
         db.session.rollback()
 
         if is_ajax_request():
-            return json_response(False, error='Operation failed')
+            return json_response(False, error=ErrorMessages.OPERATION_FAILED)
 
-        flash('Operation failed', 'error')
+        flash(ErrorMessages.OPERATION_FAILED, 'error')
         return redirect(url_for('funds.funds_list'))
 
 
@@ -295,7 +295,7 @@ def funds_event_edit(event_id):
 
         event = svc.event_repo.get_by_id(event_id)
         if not event:
-            flash('Event not found', 'error')
+            flash(ErrorMessages.EVENT_NOT_FOUND, 'error')
             return redirect(url_for('funds.funds_list'))
 
         form = FundEventEditForm(request.form, event_id, event.event_type)
@@ -318,7 +318,7 @@ def funds_event_edit(event_id):
             date=data.get('date')
         )
 
-        flash(SuccessMessages.EVENT_UPDATED, 'success')
+        flash(SuccessMessages.TRANSACTION_UPDATED, 'success')
 
     except ValueError as e:
         flash(get_error_message(e), 'error')
@@ -326,7 +326,7 @@ def funds_event_edit(event_id):
     except Exception:
         logger.exception('Failed to edit event %s', event_id)
         db.session.rollback()
-        flash('Operation failed', 'error')
+        flash(ErrorMessages.OPERATION_FAILED, 'error')
 
     return redirect(url_for('funds.funds_list'))
 
@@ -340,7 +340,7 @@ def funds_event_delete(event_id):
 
         event = svc.event_repo.get_by_id(event_id)
         if not event:
-            flash('Event not found', 'error')
+            flash(ErrorMessages.EVENT_NOT_FOUND, 'error')
             return redirect(url_for('funds.funds_list'))
 
         form = FundEventDeleteForm(request.form, event_id, event.event_type)
@@ -350,7 +350,7 @@ def funds_event_delete(event_id):
 
         svc.fund_service.delete_fund_event(event_id)
 
-        flash(SuccessMessages.EVENT_DELETED, 'success')
+        flash(SuccessMessages.TRANSACTION_DELETED, 'success')
 
     except ValueError as e:
         flash(get_error_message(e), 'error')
@@ -358,6 +358,6 @@ def funds_event_delete(event_id):
     except Exception:
         logger.exception('Failed to delete event %s', event_id)
         db.session.rollback()
-        flash('Operation failed', 'error')
+        flash(ErrorMessages.OPERATION_FAILED, 'error')
 
     return redirect(url_for('funds.funds_list'))

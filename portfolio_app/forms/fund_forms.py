@@ -2,6 +2,7 @@
 
 from typing import List
 from portfolio_app.forms.base_form import BaseForm
+from portfolio_app.utils.messages import ValidationMessages
 
 
 class FundAddForm(BaseForm):
@@ -24,7 +25,7 @@ class FundAddForm(BaseForm):
             True if validation passes, False otherwise
         """
         # Validate category
-        category = self._validate_required_string('category', 'Select a category.')
+        category = self._validate_required_string('category', ValidationMessages.SELECT_CATEGORY)
         if category and category not in self.available_categories:
             self.errors['category'] = f'{category} already exists.'
         elif category:
@@ -38,13 +39,13 @@ class FundAddForm(BaseForm):
         # Validate date (required)
         date_str = self._get_string('add_fund_date', default='')
         if not date_str:
-            self.errors['add_fund_date'] = 'Required.'
+            self.errors['add_fund_date'] = ValidationMessages.REQUIRED
         else:
             from datetime import datetime
             try:
                 self.cleaned_data['date'] = datetime.strptime(date_str, '%Y-%m-%d')
             except ValueError:
-                self.errors['add_fund_date'] = 'Invalid date format. Use YYYY-MM-DD.'
+                self.errors['add_fund_date'] = ValidationMessages.INVALID_DATE_FORMAT
 
         return not self.has_errors()
 
@@ -80,13 +81,13 @@ class FundDepositForm(BaseForm):
         # Validate date (required)
         date_str = self._get_string('deposit_date', default='')
         if not date_str:
-            self.errors['deposit_date'] = 'Required.'
+            self.errors['deposit_date'] = ValidationMessages.REQUIRED
         else:
             from datetime import datetime
             try:
                 self.cleaned_data['date'] = datetime.strptime(date_str, '%Y-%m-%d')
             except ValueError:
-                self.errors['deposit_date'] = 'Invalid date format. Use YYYY-MM-DD.'
+                self.errors['deposit_date'] = ValidationMessages.INVALID_DATE_FORMAT
 
         return not self.has_errors()
 
@@ -122,13 +123,13 @@ class FundWithdrawForm(BaseForm):
         # Validate date (required)
         date_str = self._get_string('withdraw_date', default='')
         if not date_str:
-            self.errors['withdraw_date'] = 'Required.'
+            self.errors['withdraw_date'] = ValidationMessages.REQUIRED
         else:
             from datetime import datetime
             try:
                 self.cleaned_data['date'] = datetime.strptime(date_str, '%Y-%m-%d')
             except ValueError:
-                self.errors['withdraw_date'] = 'Invalid date format. Use YYYY-MM-DD.'
+                self.errors['withdraw_date'] = ValidationMessages.INVALID_DATE_FORMAT
 
         return not self.has_errors()
 
@@ -163,7 +164,7 @@ class FundEventEditForm(BaseForm):
                 date_obj = datetime.strptime(date_str, '%Y-%m-%d')
                 self.cleaned_data['date'] = date_obj
             except ValueError:
-                self.errors['date'] = 'Invalid date format. Use YYYY-MM-DD.'
+                self.errors['date'] = ValidationMessages.INVALID_DATE_FORMAT
 
         return not self.has_errors()
 

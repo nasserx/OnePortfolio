@@ -78,6 +78,24 @@ def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
 
+    # ------------------------------------------------------------------
+    # Development-only: bypass authentication for local testing.
+    # Activate by setting the environment variable: BYPASS_AUTH=1
+    # NEVER enable this in production.
+    # ------------------------------------------------------------------
+    if app.config.get('BYPASS_AUTH'):
+        from flask_login import login_user
+        from flask import request as _request
+
+        @app.before_request
+        def _auto_login():
+            from flask_login import current_user
+            if not current_user.is_authenticated and not _request.path.startswith('/static'):
+                from portfolio_app.models.user import User
+                user = User.query.first()
+                if user:
+                    login_user(user, remember=False)
+
     # Initialize extensions
     db.init_app(app)
     csrf.init_app(app)

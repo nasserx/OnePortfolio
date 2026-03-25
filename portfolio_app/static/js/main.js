@@ -532,34 +532,9 @@ class TransactionFormHandler {
     }
 
     enforceTypeSelection() {
-        if (!this.typeInput || !this.priceInput || 
-            !this.quantityInput || !this.feesInput) {
-            return;
-        }
+        if (!this.typeInput) return;
 
-        const warnIfMissingType = (event) => {
-            if (!String(this.typeInput.value || '').trim()) {
-                const validator = new FormValidator(this.form, []);
-                validator.setFieldError(this.typeInput, 'Select a transaction type.');
-                validator.clearFieldError(this.priceInput);
-                validator.clearFieldError(this.quantityInput);
-                validator.clearFieldError(this.feesInput);
-                
-                if (event) {
-                    event.preventDefault?.();
-                    event.stopPropagation?.();
-                    event.target?.blur?.();
-                }
-                return true;
-            }
-            return false;
-        };
-
-        [this.priceInput, this.quantityInput, this.feesInput].forEach(element => {
-            element.addEventListener('focus', warnIfMissingType);
-            element.addEventListener('beforeinput', warnIfMissingType);
-        });
-
+        // Clear the type error once a valid type is selected
         this.typeInput.addEventListener('change', () => {
             if (String(this.typeInput.value || '').trim()) {
                 const validator = new FormValidator(this.form, []);
@@ -879,18 +854,44 @@ class FormValidatorsInitializer {
             { ...ValidationRules.symbol, selector: '#asset_symbol' }
         ]);
 
-        // Add transaction
+        // Add transaction — rules are mode-aware (Buy/Sell vs Dividend)
+        const skipInDividendMode = (baseRule) => (raw, el, form) => {
+            if (window.isDividendMode) return { ok: true };
+            if (typeof baseRule === 'function') return baseRule(raw, el, form);
+            return baseRule.validate(raw, el, form);
+        };
+
         this.initValidator('form[action$="/transactions/add"]', [
             { ...ValidationRules.category, selector: '#fund_id', name: 'fund_id' },
-            { ...ValidationRules.symbol, selector: '#symbol' },
-            { ...ValidationRules.transactionType, selector: '#transaction_type' },
+            { ...ValidationRules.symbol, selector: '#symbol',
+                validate: skipInDividendMode(ValidationRules.symbol) },
+            { ...ValidationRules.transactionType, selector: '#transaction_type',
+                validate: skipInDividendMode(ValidationRules.transactionType) },
             { ...ValidationRules.price, selector: '#price',
-                validate: ValidationRules.requiresTransactionType(ValidationRules.price) },
+                validate: skipInDividendMode(ValidationRules.requiresTransactionType(ValidationRules.price)) },
             { ...ValidationRules.quantity, selector: '#quantity',
-                validate: ValidationRules.requiresTransactionType(ValidationRules.quantity) },
+                validate: skipInDividendMode(ValidationRules.requiresTransactionType(ValidationRules.quantity)) },
             { ...ValidationRules.fees, selector: '#fees',
-                validate: ValidationRules.requiresTransactionType(ValidationRules.fees) },
-            { ...ValidationRules.date, selector: '#add_tx_date' }
+                validate: skipInDividendMode(ValidationRules.requiresTransactionType(ValidationRules.fees)) },
+            { ...ValidationRules.date, selector: '#add_tx_date',
+                validate: skipInDividendMode(ValidationRules.date) },
+            // Dividend-only fields
+            { name: 'amount', selector: '#amount',
+                validate: (raw) => {
+                    if (!window.isDividendMode) return { ok: true };
+                    const str = String(raw || '').trim();
+                    if (!str) return { ok: false, message: 'Amount must be greater than zero' };
+                    const n = parseFloat(str);
+                    if (!isFinite(n) || n <= 0) return { ok: false, message: 'Amount must be greater than zero' };
+                    return { ok: true };
+                }
+            },
+            { name: 'add_dividend_date', selector: '#add_dividend_date',
+                validate: (raw) => {
+                    if (!window.isDividendMode) return { ok: true };
+                    return ValidationRules.date.validate(raw);
+                }
+            },
         ]);
 
         // Edit transaction
@@ -944,7 +945,8 @@ class ModalAjaxHandler {
         // Forms to handle with AJAX (in modals)
         // Map modal IDs to their forms
         const modalForms = [
-            { modalId: 'addTransactionModal', formSelector: 'form[action$="/transactions/add"]' },
+            // Add Transaction handles both buy/sell AND dividend (action changes dynamically)
+            { modalId: 'addTransactionModal', formSelector: '#addTransactionModal form' },
             { modalId: 'editTransactionModal', formSelector: '#editTransactionForm' },
             { modalId: 'addFundModal', formSelector: 'form[action$="/funds/add"]' },
             { modalId: 'addFundsModal', formSelector: '#addFundsForm' },
@@ -1022,7 +1024,9 @@ class ModalAjaxHandler {
         const msg = (message || '').toLowerCase();
         let targetField = null;
 
-        if (msg.includes('quantity')) {
+        if (msg.includes('amount')) {
+            targetField = modal.querySelector('#amount');
+        } else if (msg.includes('quantity')) {
             targetField = modal.querySelector('#edit_quantity, #quantity');
         } else if (msg.includes('fund') || msg.includes('cash')) {
             const preview = modal.querySelector('#total_cost_preview, #edit_total_cost_preview');
@@ -1034,7 +1038,7 @@ class ModalAjaxHandler {
         } else if (msg.includes('price')) {
             targetField = modal.querySelector('#edit_price, #price');
         } else if (msg.includes('date')) {
-            targetField = modal.querySelector('#edit_date, #add_tx_date, #edit_event_date, #deposit_date, #withdraw_date, #add_fund_date');
+            targetField = modal.querySelector('#edit_date, #add_tx_date, #add_dividend_date, #edit_event_date, #deposit_date, #withdraw_date, #add_fund_date');
         }
 
         // Fallback: first visible input (not hidden/disabled/readonly)

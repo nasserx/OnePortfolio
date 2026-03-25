@@ -17,6 +17,10 @@ class Config:
     # Debug mode - disabled by default for production
     DEBUG = False
 
+    # Development-only: bypass email/password authentication for local testing.
+    # Set BYPASS_AUTH=1 in environment to enable. NEVER use in production.
+    BYPASS_AUTH = os.environ.get('BYPASS_AUTH', '0') in ('1', 'true', 'True')
+
     # Security hardening
     WTF_CSRF_ENABLED = True
     SESSION_COOKIE_HTTPONLY = True
@@ -47,8 +51,9 @@ class Config:
     }
     ASSET_CATEGORY_ICON_DEFAULT = ('bi-folder',  'text-secondary')
 
-    # Transaction types
+    # Transaction types (Buy/Sell only — Dividend uses a separate model)
     TRANSACTION_TYPES = ['Buy', 'Sell']
+    DIVIDEND_TYPE = 'Dividend'
 
     # Flask-Mail — Gmail SMTP configuration
     MAIL_SERVER = 'smtp.gmail.com'

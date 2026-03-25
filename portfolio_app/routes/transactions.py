@@ -8,7 +8,10 @@ from sqlalchemy.exc import OperationalError
 from portfolio_app import db
 from portfolio_app.services import get_services, ValidationError
 from portfolio_app.calculators import PortfolioCalculator
-from portfolio_app.forms import TransactionAddForm, TransactionEditForm, AssetAddForm, AssetDeleteForm
+from portfolio_app.forms import (
+    TransactionAddForm, TransactionEditForm, AssetAddForm, AssetDeleteForm,
+    DividendAddForm, DividendEditForm,
+)
 from portfolio_app.utils import get_error_message, get_first_form_error, SuccessMessages, is_ajax_request, json_response
 from portfolio_app.utils.constants import safe_html_id
 from config import Config
@@ -103,11 +106,26 @@ def _get_transactions_page_context(category_filter=''):
                 'asset_id': asset.id if asset else None,
             })
 
+    # Load dividends grouped by fund_id
+    dividends_by_fund: dict = {}
+    dividends_total_by_fund: dict = {}
+    for fund in funds:
+        if category_filter and fund.category != category_filter:
+            continue
+        fund_dividends = svc.dividend_repo.get_by_fund_id(fund.id)
+        if fund_dividends:
+            dividends_by_fund[fund.id] = fund_dividends
+            dividends_total_by_fund[fund.id] = sum(
+                Decimal(str(d.amount)) for d in fund_dividends
+            )
+
     return {
         'symbol_data': symbol_data,
         'funds': funds,
         'transaction_types': Config.TRANSACTION_TYPES,
         'selected_category': category_filter,
+        'dividends_by_fund': dividends_by_fund,
+        'dividends_total_by_fund': dividends_total_by_fund,
     }
 
 
@@ -260,6 +278,134 @@ def transaction_delete(id):
 
     except Exception:
         logger.exception('Failed to delete transaction %s', id)
+        db.session.rollback()
+        if is_ajax_request():
+            return json_response(False, error='Operation failed')
+        flash('Operation failed', 'error')
+
+    return redirect(url_for('transactions.transaction_list'))
+
+
+@transactions_bp.route('/dividends/add', methods=['POST'])
+@login_required
+def dividend_add():
+    """Add a new dividend income record."""
+    try:
+        svc = get_services()
+        funds = svc.fund_repo.get_all()
+
+        form = DividendAddForm(request.form, funds)
+        if not form.validate():
+            if is_ajax_request():
+                return json_response(False, error=get_first_form_error(form.errors))
+
+            ctx = _get_transactions_page_context()
+            return render_template(
+                'transactions.html',
+                **ctx,
+                form_errors={'dividend_add': form.errors},
+                form_values={'dividend_add': request.form},
+                open_modal='addTransactionModal',
+            ), 400
+
+        data = form.get_cleaned_data()
+        svc.transaction_service.add_dividend(
+            fund_id=data['fund_id'],
+            amount=data['amount'],
+            date=data['date'],
+            notes=data.get('notes', ''),
+        )
+
+        if is_ajax_request():
+            return json_response(True, message='Dividend added successfully')
+
+        flash('Dividend added successfully', 'success')
+        return redirect(url_for('transactions.transaction_list'))
+
+    except (ValueError, ValidationError) as e:
+        if is_ajax_request():
+            return json_response(False, error=get_error_message(e))
+        flash(get_error_message(e), 'error')
+        return redirect(url_for('transactions.transaction_list'))
+
+    except Exception:
+        logger.exception('Failed to add dividend')
+        db.session.rollback()
+        if is_ajax_request():
+            return json_response(False, error='Operation failed')
+        flash('Operation failed', 'error')
+        return redirect(url_for('transactions.transaction_list'))
+
+
+@transactions_bp.route('/dividends/edit/<int:id>', methods=['POST'])
+@login_required
+def dividend_edit(id):
+    """Edit an existing dividend."""
+    try:
+        svc = get_services()
+
+        dividend = svc.dividend_repo.get_by_id(id)
+        if not dividend:
+            if is_ajax_request():
+                return json_response(False, error='Dividend not found')
+            flash('Dividend not found', 'error')
+            return redirect(url_for('transactions.transaction_list'))
+
+        form = DividendEditForm(request.form, id)
+        if not form.validate():
+            if is_ajax_request():
+                return json_response(False, error=get_first_form_error(form.errors))
+            flash(get_first_form_error(form.errors), 'error')
+            return redirect(url_for('transactions.transaction_list'))
+
+        data = form.get_cleaned_data()
+        svc.transaction_service.update_dividend(
+            dividend_id=data['dividend_id'],
+            amount=data.get('amount'),
+            date=data.get('date'),
+            notes=data.get('notes'),
+        )
+
+        if is_ajax_request():
+            return json_response(True, message='Dividend updated successfully')
+
+        flash('Dividend updated successfully', 'success')
+        return redirect(url_for('transactions.transaction_list'))
+
+    except (ValueError, ValidationError) as e:
+        if is_ajax_request():
+            return json_response(False, error=get_error_message(e))
+        flash(get_error_message(e), 'error')
+        return redirect(url_for('transactions.transaction_list'))
+
+    except Exception:
+        logger.exception('Failed to edit dividend %s', id)
+        db.session.rollback()
+        if is_ajax_request():
+            return json_response(False, error='Operation failed')
+        flash('Operation failed', 'error')
+        return redirect(url_for('transactions.transaction_list'))
+
+
+@transactions_bp.route('/dividends/delete/<int:id>', methods=['POST'])
+@login_required
+def dividend_delete(id):
+    """Delete a dividend."""
+    try:
+        svc = get_services()
+        svc.transaction_service.delete_dividend(id)
+
+        if is_ajax_request():
+            return json_response(True, message='Dividend deleted successfully')
+        flash('Dividend deleted successfully', 'success')
+
+    except ValueError as e:
+        if is_ajax_request():
+            return json_response(False, error=get_error_message(e))
+        flash(get_error_message(e), 'error')
+
+    except Exception:
+        logger.exception('Failed to delete dividend %s', id)
         db.session.rollback()
         if is_ajax_request():
             return json_response(False, error='Operation failed')

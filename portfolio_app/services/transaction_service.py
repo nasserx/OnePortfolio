@@ -1,12 +1,15 @@
 """Transaction service for transaction-related business logic."""
 
+from datetime import datetime
 from decimal import Decimal
 from typing import Optional, Any
 from portfolio_app.models.transaction import Transaction
 from portfolio_app.models.asset import Asset
+from portfolio_app.models.dividend import Dividend
 from portfolio_app.repositories.transaction_repository import TransactionRepository
 from portfolio_app.repositories.asset_repository import AssetRepository
 from portfolio_app.repositories.fund_repository import FundRepository
+from portfolio_app.repositories.dividend_repository import DividendRepository
 from portfolio_app.calculators.portfolio_calculator import PortfolioCalculator
 from portfolio_app.calculators.transaction_manager import TransactionManager
 
@@ -23,7 +26,8 @@ class TransactionService:
         self,
         transaction_repo: TransactionRepository,
         asset_repo: AssetRepository,
-        fund_repo: FundRepository
+        fund_repo: FundRepository,
+        dividend_repo: Optional[DividendRepository] = None,
     ):
         """Initialize service with repositories.
 
@@ -31,10 +35,12 @@ class TransactionService:
             transaction_repo: Transaction repository
             asset_repo: Asset repository
             fund_repo: Fund repository
+            dividend_repo: Dividend repository
         """
         self.transaction_repo = transaction_repo
         self.asset_repo = asset_repo
         self.fund_repo = fund_repo
+        self.dividend_repo = dividend_repo
 
     def add_transaction(
         self,
@@ -243,4 +249,94 @@ class TransactionService:
         if date is not None and date != transaction.date:
             return False
         return True
+
+    # ------------------------------------------------------------------
+    # Dividend operations
+    # ------------------------------------------------------------------
+
+    def add_dividend(
+        self,
+        fund_id: int,
+        amount: Decimal,
+        date: datetime,
+        notes: str = '',
+    ) -> Dividend:
+        """Add a new dividend income record.
+
+        Args:
+            fund_id: Fund ID
+            amount: Dividend amount (must be > 0)
+            date: Dividend date
+            notes: Optional notes
+
+        Returns:
+            Created Dividend
+
+        Raises:
+            ValidationError: If fund not found
+        """
+        fund = self.fund_repo.get_by_id(fund_id)
+        if not fund:
+            raise ValidationError('Category not found.')
+
+        dividend = Dividend(
+            fund_id=fund_id,
+            amount=amount,
+            date=date,
+            notes=notes or None,
+        )
+        self.dividend_repo.add(dividend)
+        self.dividend_repo.commit()
+        return dividend
+
+    def update_dividend(
+        self,
+        dividend_id: int,
+        amount: Optional[Decimal] = None,
+        date: Optional[datetime] = None,
+        notes: Optional[str] = None,
+    ) -> Dividend:
+        """Update an existing dividend.
+
+        Args:
+            dividend_id: Dividend ID
+            amount: New amount (optional)
+            date: New date (optional)
+            notes: New notes (optional)
+
+        Returns:
+            Updated Dividend
+
+        Raises:
+            ValueError: If dividend not found
+        """
+        dividend = self.dividend_repo.get_by_id(dividend_id)
+        if not dividend or not self.fund_repo.get_by_id(dividend.fund_id):
+            raise ValueError('Dividend not found')
+
+        if amount is not None:
+            dividend.amount = amount
+        if date is not None:
+            dividend.date = date
+        if notes is not None:
+            dividend.notes = notes or None
+
+        self.dividend_repo.commit()
+        return dividend
+
+    def delete_dividend(self, dividend_id: int) -> None:
+        """Delete a dividend record.
+
+        Args:
+            dividend_id: Dividend ID
+
+        Raises:
+            ValueError: If dividend not found
+        """
+        dividend = self.dividend_repo.get_by_id(dividend_id)
+        if not dividend or not self.fund_repo.get_by_id(dividend.fund_id):
+            raise ValueError('Dividend not found')
+
+        self.dividend_repo.delete(dividend)
+        self.dividend_repo.commit()
 

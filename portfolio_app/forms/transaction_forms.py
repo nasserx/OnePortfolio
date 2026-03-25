@@ -158,6 +158,103 @@ class TransactionEditForm(BaseForm):
         return not self.has_errors()
 
 
+class DividendAddForm(BaseForm):
+    """Form for adding a new dividend income record."""
+
+    def __init__(self, data: dict, funds: List[Fund]):
+        super().__init__(data)
+        self.funds = funds
+
+    def validate(self) -> bool:
+        # Validate fund_id
+        fund_id_str = (self.data.get('fund_id') or '').strip()
+        try:
+            fund_id = int(fund_id_str) if fund_id_str else 0
+            if fund_id <= 0:
+                self.errors['fund_id'] = 'Select a category.'
+            else:
+                fund = next((f for f in self.funds if f.id == fund_id), None)
+                if not fund:
+                    self.errors['fund_id'] = 'Category not found.'
+                else:
+                    self.cleaned_data['fund_id'] = fund_id
+        except (ValueError, TypeError):
+            self.errors['fund_id'] = 'Invalid category.'
+
+        # Validate amount (must be > 0)
+        amount_str = (self.data.get('amount') or '').strip()
+        if not amount_str:
+            self.errors['amount'] = 'Amount must be greater than zero'
+        else:
+            try:
+                amount = Decimal(amount_str.replace(',', '.'))
+                if amount <= 0:
+                    self.errors['amount'] = 'Amount must be greater than zero'
+                else:
+                    self.cleaned_data['amount'] = amount
+            except Exception:
+                self.errors['amount'] = 'Amount must be greater than zero'
+
+        # Get notes (optional)
+        self.cleaned_data['notes'] = self._get_string('notes', default='')
+
+        # Validate date (required)
+        date_str = self._get_string('date', default='')
+        if not date_str:
+            self.errors['date'] = 'Required.'
+        else:
+            from datetime import datetime
+            try:
+                self.cleaned_data['date'] = datetime.strptime(date_str, '%Y-%m-%d')
+            except ValueError:
+                self.errors['date'] = 'Invalid date format. Use YYYY-MM-DD.'
+
+        return not self.has_errors()
+
+
+class DividendEditForm(BaseForm):
+    """Form for editing an existing dividend income record."""
+
+    def __init__(self, data: dict, dividend_id: int):
+        super().__init__(data)
+        self.dividend_id = dividend_id
+
+    def validate(self) -> bool:
+        self.cleaned_data['dividend_id'] = self.dividend_id
+
+        # Validate amount (must be > 0)
+        amount_str = (self.data.get('edit_amount') or '').strip()
+        if not amount_str:
+            self.errors['edit_amount'] = 'Amount must be greater than zero'
+        else:
+            try:
+                amount = Decimal(amount_str.replace(',', '.'))
+                if amount <= 0:
+                    self.errors['edit_amount'] = 'Amount must be greater than zero'
+                else:
+                    self.cleaned_data['amount'] = amount
+            except Exception:
+                self.errors['edit_amount'] = 'Amount must be greater than zero'
+
+        # Get notes (optional)
+        notes = self._get_string('edit_notes', default=None)
+        if notes is not None:
+            self.cleaned_data['notes'] = notes
+
+        # Validate date (required)
+        date_str = self._get_string('edit_date', default='')
+        if not date_str:
+            self.errors['edit_date'] = 'Required.'
+        else:
+            from datetime import datetime
+            try:
+                self.cleaned_data['date'] = datetime.strptime(date_str, '%Y-%m-%d')
+            except ValueError:
+                self.errors['edit_date'] = 'Invalid date format. Use YYYY-MM-DD.'
+
+        return not self.has_errors()
+
+
 class AssetAddForm(BaseForm):
     """Form for adding a tracked asset."""
 

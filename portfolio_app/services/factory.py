@@ -4,13 +4,14 @@ import logging
 from typing import Optional
 from flask import g
 from portfolio_app import db
-from portfolio_app.models import Fund, FundEvent, Transaction, Asset
+from portfolio_app.models import Fund, FundEvent, Transaction, Asset, Dividend
 from portfolio_app.models.user import User
 from portfolio_app.repositories import (
     FundRepository,
     FundEventRepository,
     TransactionRepository,
     AssetRepository,
+    DividendRepository,
 )
 from portfolio_app.repositories.user_repository import UserRepository
 from portfolio_app.services.fund_service import FundService
@@ -26,7 +27,7 @@ class Services:
 
     __slots__ = (
         'fund_repo', 'event_repo', 'transaction_repo', 'asset_repo',
-        'user_repo',
+        'dividend_repo', 'user_repo',
         'fund_service', 'transaction_service', 'portfolio_service',
         'auth_service',
     )
@@ -36,11 +37,13 @@ class Services:
         self.event_repo = FundEventRepository(FundEvent, db)
         self.transaction_repo = TransactionRepository(Transaction, db)
         self.asset_repo = AssetRepository(Asset, db)
+        self.dividend_repo = DividendRepository(Dividend, db)
         self.user_repo = UserRepository(User, db)
 
         self.fund_service = FundService(self.fund_repo, self.event_repo)
         self.transaction_service = TransactionService(
             self.transaction_repo, self.asset_repo, self.fund_repo,
+            dividend_repo=self.dividend_repo,
         )
         self.portfolio_service = PortfolioService(self.fund_repo, user_id=user_id)
         self.auth_service = AuthService(self.user_repo)

@@ -2,7 +2,7 @@
 
 from decimal import Decimal
 from sqlalchemy import case, func
-from portfolio_app.models import Fund, Transaction, FundEvent
+from portfolio_app.models import Fund, Transaction, FundEvent, Dividend
 
 ZERO = Decimal('0')
 
@@ -152,6 +152,7 @@ class PortfolioCalculator:
             elif t.transaction_type == 'Sell':
                 cash += gross - fees
 
+        cash += PortfolioCalculator.get_dividend_total_for_fund(fund_id)
         return cash
 
     # ------------------------------------------------------------------
@@ -227,6 +228,21 @@ class PortfolioCalculator:
         return summary, portfolio_value
 
     # ------------------------------------------------------------------
+    # Dividend helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def get_dividend_total_for_fund(fund_id) -> Decimal:
+        """Return the sum of all dividend income recorded for a fund."""
+        result = (
+            Dividend.query
+            .with_entities(func.sum(Dividend.amount))
+            .filter_by(fund_id=fund_id)
+            .scalar()
+        )
+        return _to_decimal(result) if result else ZERO
+
+    # ------------------------------------------------------------------
     # Realized P&L helpers
     # ------------------------------------------------------------------
 
@@ -250,7 +266,7 @@ class PortfolioCalculator:
 
     @staticmethod
     def get_realized_performance_for_fund(fund_id):
-        """Return realized P&L, cost basis, and proceeds for a fund."""
+        """Return realized P&L (including dividends), cost basis, and proceeds for a fund."""
         symbols = (
             Transaction.query.with_entities(Transaction.symbol)
             .filter_by(fund_id=fund_id)
@@ -270,6 +286,9 @@ class PortfolioCalculator:
             realized_pnl += _to_decimal(s['realized_pnl'])
             realized_cost_basis += _to_decimal(s['realized_cost_basis'])
             realized_proceeds += _to_decimal(s['realized_proceeds'])
+
+        # Dividend income always counts as positive realized gain
+        realized_pnl += PortfolioCalculator.get_dividend_total_for_fund(fund_id)
 
         return {
             'realized_pnl': realized_pnl,

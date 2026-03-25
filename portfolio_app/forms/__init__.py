@@ -17,7 +17,9 @@ from portfolio_app.forms.transaction_forms import (
     TransactionAddForm,
     TransactionEditForm,
     AssetAddForm,
-    AssetDeleteForm
+    AssetDeleteForm,
+    DividendAddForm,
+    DividendEditForm,
 )
 
 __all__ = [
@@ -33,5 +35,7 @@ __all__ = [
     'TransactionAddForm',
     'TransactionEditForm',
     'AssetAddForm',
-    'AssetDeleteForm'
+    'AssetDeleteForm',
+    'DividendAddForm',
+    'DividendEditForm',
 ]

@@ -382,6 +382,94 @@ def test_routes(app):
 
 
 # ---------------------------------------------------------------------------
+# Test 6 – Dividend feature
+# ---------------------------------------------------------------------------
+
+def test_dividends(app):
+    """
+    Verify dividend income is correctly:
+      - Stored and retrieved per fund
+      - Added to realized P&L
+      - Added to cash balance
+      - Protected by ownership checks (update/delete reject wrong fund)
+    """
+    with app.app_context():
+        db.drop_all()
+        db.create_all()
+
+        from portfolio_app.models import Dividend
+        from portfolio_app.models.user import User
+        from portfolio_app.services.factory import Services
+
+        # Create two users with separate funds
+        u1 = User(username='alice', is_verified=True); u1.set_password('pw')
+        u2 = User(username='bob',   is_verified=True); u2.set_password('pw')
+        db.session.add_all([u1, u2]); db.session.commit()
+
+        svc1 = Services(user_id=u1.id)
+        svc2 = Services(user_id=u2.id)
+
+        fund1 = svc1.fund_service.create_fund('Stocks', _dec(10_000), user_id=u1.id)
+        fund2 = svc2.fund_service.create_fund('ETFs',   _dec(5_000),  user_id=u2.id)
+
+        print("\n" + "=" * 60)
+        print("TEST 6 – DIVIDEND FEATURE")
+        print("=" * 60)
+
+        # ── 6a: add dividends and verify total ──
+        print("\n  6a – dividend total calculation")
+        svc1.transaction_service.add_dividend(fund1.id, _dec('100'), datetime(2026, 1, 10))
+        svc1.transaction_service.add_dividend(fund1.id, _dec('50'),  datetime(2026, 1, 20))
+
+        total = PortfolioCalculator.get_dividend_total_for_fund(fund1.id)
+        _assert('Dividend total for fund1', _dec('150'), total)
+
+        # ── 6b: dividends added to cash balance ──
+        print("\n  6b – dividends reflected in cash")
+        cash = PortfolioCalculator.get_cash_balance_for_fund(fund1.id)
+        # fund.amount = 10,000; no buy/sell; dividends = 150 → cash = 10,150
+        _assert('Cash includes dividend income', _dec('10150'), cash)
+
+        # ── 6c: dividends added to realized P&L ──
+        print("\n  6c – dividends reflected in realized P&L")
+        perf = PortfolioCalculator.get_realized_performance_for_fund(fund1.id)
+        _assert('Realized P&L includes dividends', _dec('150'), perf['realized_pnl'])
+
+        # ── 6d: fund2 has zero dividends (no cross-contamination) ──
+        print("\n  6d – no cross-fund contamination")
+        total2 = PortfolioCalculator.get_dividend_total_for_fund(fund2.id)
+        _assert('Dividend total for fund2 (none added)', _dec('0'), total2)
+
+        # ── 6e: update dividend ──
+        print("\n  6e – update dividend")
+        divs = svc1.dividend_repo.get_by_fund_id(fund1.id)
+        d = divs[0]
+        svc1.transaction_service.update_dividend(d.id, amount=_dec('200'))
+        new_total = PortfolioCalculator.get_dividend_total_for_fund(fund1.id)
+        # get_by_fund_id returns newest first → divs[0] is the 50 dividend → updated to 200
+        # other (100) stays → total = 100 + 200 = 300
+        _assert('Total after update', _dec('300'), new_total)
+
+        # ── 6f: ownership check – user2 cannot delete user1's dividend ──
+        print("\n  6f – ownership check (cross-user delete rejected)")
+        import pytest
+        try:
+            svc2.transaction_service.delete_dividend(d.id)
+            raise AssertionError('Should have raised ValueError for wrong owner')
+        except ValueError:
+            print("  PASS  cross-user delete correctly rejected")
+
+        # ── 6g: delete dividend ──
+        print("\n  6g – delete dividend")
+        svc1.transaction_service.delete_dividend(d.id)
+        final_total = PortfolioCalculator.get_dividend_total_for_fund(fund1.id)
+        # divs[0] (the 200 one) deleted → only the original 100 remains
+        _assert('Total after delete (one removed)', _dec('100'), final_total)
+
+        print("\n  All dividend checks passed.")
+
+
+# ---------------------------------------------------------------------------
 # Runner
 # ---------------------------------------------------------------------------
 
@@ -400,6 +488,7 @@ if __name__ == '__main__':
         ('Category Summary',           test_category_summary),
         ('Dashboard Totals',           test_dashboard_totals),
         ('Application Routes',         test_routes),
+        ('Dividend Feature',           test_dividends),
     ]
 
     for name, fn in tests:

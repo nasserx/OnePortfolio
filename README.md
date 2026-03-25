@@ -29,7 +29,8 @@
 | **Portfolio Overview** | Total portfolio value and realized ROI per category |
 | **Fund Management** | Deposit/withdraw funds with a full audit trail |
 | **Transaction Tracking** | Buy/sell operations with automatic average cost computation |
-| **Realized P&L** | Automatic profit/loss calculations on every sale |
+| **Dividend Income** | Record dividend payments per category; income is added to realized P&L automatically |
+| **Realized P&L** | Automatic profit/loss calculations on every sale and dividend received |
 | **Email Verification** | 6-digit OTP sent to email on registration |
 | **Password Reset** | Secure reset link sent via email (expires in 1 hour) |
 | **Multi-User Auth** | Separate accounts with full data isolation; first user becomes admin |
@@ -174,6 +175,7 @@ Then click **Reload** in the Web tab.
 - [ ] Live market price integration
 - [x] Multi-user authentication with email verification
 - [x] Password reset via email
+- [x] Dividend income tracking
 - [ ] Advanced charts and analytics
 - [ ] Docker deployment support
 

@@ -4,10 +4,10 @@
 
 {% block content %}
 <div class="mb-4">
-    <h2 class="mb-1" style="font-size:1.4rem; font-weight:500;">
-        <i class="bi bi-shield-check me-2 text-primary"></i>User Management
+    <h2 class="admin-page-title mb-1">
+        <i class="bi bi-shield-check me-2 text-primary" aria-hidden="true"></i>User Management
     </h2>
-    <p class="text-muted mb-0" style="font-size:0.875rem;">
+    <p class="text-muted admin-page-subtitle mb-0">
         {{ users|length }} registered user{{ 's' if users|length != 1 else '' }}
     </p>
 </div>
@@ -30,42 +30,42 @@
         <tbody>
             {% for user in users %}
             <tr>
-                <td class="text-muted" style="font-size:0.8125rem;">{{ user.id }}</td>
+                <td class="text-muted admin-table-id">{{ user.id }}</td>
                 <td>
                     <span class="fw-500">{{ user.username }}</span>
                     {% if user.id == current_user.id %}
-                        <span class="badge bg-primary ms-1" style="font-size:0.7rem;">You</span>
+                        <span class="badge bg-primary admin-badge-you ms-1">You</span>
                     {% endif %}
                 </td>
-                <td class="text-muted" style="font-size:0.875rem;">
+                <td class="text-muted admin-table-cell">
                     {{ user.email or '—' }}
                 </td>
                 <td>
                     {% if user.is_admin %}
-                        <span class="badge" style="background:var(--primary-lighter); color:var(--primary-color); font-size:0.75rem;">
-                            <i class="bi bi-shield-fill me-1"></i>Admin
+                        <span class="badge admin-badge--admin">
+                            <i class="bi bi-shield-fill me-1" aria-hidden="true"></i>Admin
                         </span>
                     {% else %}
-                        <span class="badge" style="background:var(--surface-variant); color:var(--text-secondary); font-size:0.75rem;">
+                        <span class="badge admin-badge--user">
                             User
                         </span>
                     {% endif %}
                 </td>
                 <td>
                     {% if user.is_verified %}
-                        <span class="badge" style="background:var(--bs-success-bg-subtle); color:var(--bs-success); font-size:0.75rem;">
-                            <i class="bi bi-check-circle me-1"></i>Verified
+                        <span class="badge admin-badge--verified">
+                            <i class="bi bi-check-circle me-1" aria-hidden="true"></i>Verified
                         </span>
                     {% else %}
-                        <span class="badge" style="background:var(--bs-warning-bg-subtle); color:var(--bs-warning); font-size:0.75rem;">
-                            <i class="bi bi-hourglass-split me-1"></i>Unverified
+                        <span class="badge admin-badge--unverified">
+                            <i class="bi bi-hourglass-split me-1" aria-hidden="true"></i>Unverified
                         </span>
                     {% endif %}
                 </td>
-                <td class="text-muted" style="font-size:0.875rem;">
+                <td class="text-muted admin-table-cell">
                     {{ user.created_at.strftime('%Y-%m-%d') if user.created_at else '—' }}
                 </td>
-                <td class="text-muted" style="font-size:0.875rem;">
+                <td class="text-muted admin-table-cell">
                     {{ user.last_login.strftime('%Y-%m-%d %H:%M') if user.last_login else 'Never' }}
                 </td>
                 <td class="text-end">
@@ -79,7 +79,7 @@
                             <button type="submit" class="btn btn-sm btn-outline-secondary"
                                     title="Send Password Reset Email"
                                     {% if not user.email %}disabled{% endif %}>
-                                <i class="bi bi-envelope-arrow-up"></i>
+                                <i class="bi bi-envelope-arrow-up" aria-hidden="true"></i>
                             </button>
                         </form>
 
@@ -92,7 +92,7 @@
                             <button type="submit"
                                     class="btn btn-sm {{ 'btn-outline-danger' if user.is_admin else 'btn-outline-primary' }}"
                                     title="{{ 'Revoke Admin' if user.is_admin else 'Grant Admin' }}">
-                                <i class="bi {{ 'bi-shield-x' if user.is_admin else 'bi-shield-plus' }}"></i>
+                                <i class="bi {{ 'bi-shield-x' if user.is_admin else 'bi-shield-plus' }}" aria-hidden="true"></i>
                             </button>
                         </form>
 
@@ -102,7 +102,7 @@
                               onsubmit="return confirm('Delete user {{ user.username }}? This cannot be undone.')">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete User">
-                                <i class="bi bi-trash"></i>
+                                <i class="bi bi-trash" aria-hidden="true"></i>
                             </button>
                         </form>
                         {% endif %}
@@ -120,8 +120,8 @@
 
 <!-- Help note -->
 <div class="mt-3">
-    <p class="text-muted" style="font-size:0.8125rem;">
-        <i class="bi bi-info-circle me-1"></i>
+    <p class="text-muted admin-note">
+        <i class="bi bi-info-circle me-1" aria-hidden="true"></i>
         The reset email button sends a secure password reset link directly to the user's email.
         The link expires in 1 hour. The button is disabled if the user has no email on file.
     </p>

@@ -391,6 +391,39 @@ label,
     background-color: var(--surface-hover);
 }
 
+/* Navbar user info (replaces inline styles in base.html) */
+.nav-user-info {
+    font-size: 0.8125rem;
+    color: var(--text-tertiary);
+    cursor: default;
+    user-select: none;
+}
+
+.nav-user-name {
+    color: var(--text-secondary);
+}
+
+.nav-admin-badge {
+    background: var(--primary-lighter);
+    color: var(--primary-color);
+    font-size: 0.65rem;
+    padding: 2px 6px;
+}
+
+/* Logout button (replaces inline styles in base.html) */
+.btn-logout {
+    color: var(--danger-color);
+    background: none;
+    border: none;
+    width: 100%;
+    text-align: left;
+}
+
+.btn-logout:hover {
+    color: var(--danger-color) !important;
+    background-color: var(--surface-hover);
+}
+
 
 /* Card display styles */
 .card {
@@ -604,7 +637,6 @@ label,
     background-color: var(--table-header-bg) !important;
     color: var(--text-secondary) !important;
     font-weight: 500;
-    text-transform: none;
     font-size: 0.75rem;
     letter-spacing: 0.3px;
     text-transform: uppercase;
@@ -721,7 +753,6 @@ select:-webkit-autofill:focus {
 }
 
 .form-text {
-    display: none !important;
     font-size: 0.8125rem;
     color: var(--text-tertiary);
     margin-top: 0.25rem;
@@ -848,7 +879,7 @@ select:-webkit-autofill:focus {
 }
 
 .overview-btn:hover {
-    background-color: #d2e3fc !important;
+    background-color: var(--primary-lighter) !important;
 }
 
 .btn-outline-success:hover,
@@ -1281,6 +1312,12 @@ select:-webkit-autofill:focus {
 }
 
 
+/* Font weight utility (used as fw-500 — not in Bootstrap by default) */
+.fw-500 {
+    font-weight: 500;
+}
+
+
 /* Profit, loss, and neutral highlights */
 .profit {
     color: var(--success-color) !important;
@@ -1522,6 +1559,21 @@ select:-webkit-autofill:focus {
 /* Auth Pages (Standalone)       */
 /* ============================= */
 
+/* Inner auth card used in pages that extend base.html (change_password, update_email) */
+.auth-inner-card {
+    border-radius: var(--border-radius-lg) !important;
+    box-shadow: var(--shadow-xl) !important;
+}
+
+.auth-inner-title {
+    font-size: 1.4rem;
+    font-weight: 500;
+}
+
+.auth-inner-subtitle {
+    font-size: 0.875rem;
+}
+
 .auth-page {
     min-height: 100vh;
     display: flex;
@@ -1682,6 +1734,60 @@ hr {
 /* Bootstrap icon alignment */
 i.bi {
     vertical-align: middle;
+}
+
+
+/* ============================= */
+/* Admin Pages                   */
+/* ============================= */
+
+.admin-page-title {
+    font-size: 1.4rem;
+    font-weight: 500;
+}
+
+.admin-page-subtitle {
+    font-size: 0.875rem;
+}
+
+.admin-table-id {
+    font-size: 0.8125rem;
+}
+
+.admin-table-cell {
+    font-size: 0.875rem;
+}
+
+.admin-badge-you {
+    font-size: 0.7rem;
+}
+
+.admin-badge--admin {
+    background: var(--primary-lighter);
+    color: var(--primary-color);
+    font-size: 0.75rem;
+}
+
+.admin-badge--user {
+    background: var(--surface-variant);
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+}
+
+.admin-badge--verified {
+    background: var(--bs-success-bg-subtle);
+    color: var(--bs-success);
+    font-size: 0.75rem;
+}
+
+.admin-badge--unverified {
+    background: var(--bs-warning-bg-subtle);
+    color: var(--bs-warning);
+    font-size: 0.75rem;
+}
+
+.admin-note {
+    font-size: 0.8125rem;
 }
 
 

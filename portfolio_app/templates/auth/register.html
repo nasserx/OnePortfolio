@@ -1,164 +1,147 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <script>document.documentElement.setAttribute('data-bs-theme', localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));</script>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Create Account — OnePortfolio</title>
-    <link rel="icon" href="{{ url_for('static', filename='icons/icon.svg') }}" type="image/svg+xml">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-</head>
-<body>
-<div class="auth-page">
-    <div class="auth-card card p-4">
+{% extends 'auth_base.html' %}
 
-        <!-- Header -->
-        <div class="text-center mb-3">
-            <img src="{{ url_for('static', filename='icons/icon.svg') }}" alt="Logo" class="auth-logo mb-3">
-            <h1 class="auth-title">Create account</h1>
-            <p class="auth-subtitle mb-0">Start tracking your portfolio</p>
-        </div>
+{% block title %}Create Account — OnePortfolio{% endblock %}
 
-        <!-- Flash messages -->
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show flash-alert mb-3" role="alert">
-                        {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
+{% block auth_content %}
 
-        <!-- General error -->
-        {% if form_errors.get('__all__') %}
-            <div class="alert alert-danger flash-alert mb-3">
-                <i class="bi bi-exclamation-circle me-2"></i>{{ form_errors['__all__'] }}
-            </div>
-        {% endif %}
-
-        <!-- Register form -->
-        <form method="post" action="{{ url_for('auth.register') }}" novalidate>
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-
-            <!-- Username -->
-            <div class="mb-2">
-                <div class="field-wrap">
-                    <i class="bi bi-person fi"></i>
-                    <input type="text" id="username" name="username" autocomplete="username"
-                           class="form-control form-control-auth {% if form_errors.get('username') %}is-invalid{% endif %}"
-                           value="{{ form_values.get('username', '') }}"
-                           placeholder="Choose a username" autofocus required>
-                </div>
-                {% if form_errors.get('username') %}
-                    <div class="invalid-feedback d-block mt-1">{{ form_errors['username'] }}</div>
-                {% else %}
-                    <div class="password-hint">Letters and underscores only.</div>
-                {% endif %}
-            </div>
-
-            <!-- Email -->
-            <div class="mb-2">
-                <div class="field-wrap">
-                    <i class="bi bi-envelope fi"></i>
-                    <input type="email" id="email" name="email" autocomplete="email"
-                           class="form-control form-control-auth {% if form_errors.get('email') %}is-invalid{% endif %}"
-                           value="{{ form_values.get('email', '') }}"
-                           placeholder="you@example.com" required>
-                </div>
-                {% if form_errors.get('email') %}
-                    <div class="invalid-feedback d-block mt-1">{{ form_errors['email'] }}</div>
-                {% else %}
-                    <div class="password-hint">A verification code will be sent to this address.</div>
-                {% endif %}
-            </div>
-
-            <!-- Password -->
-            <div class="mb-2">
-                <div class="field-wrap">
-                    <i class="bi bi-lock fi"></i>
-                    <input type="password" id="password" name="password" autocomplete="new-password"
-                           class="form-control form-control-auth has-toggle {% if form_errors.get('password') %}is-invalid{% endif %}"
-                           placeholder="Min. 8 characters" required>
-                    <button class="toggle-pw" type="button" id="togglePassword">
-                        <i class="bi bi-eye" id="toggleIcon"></i>
-                    </button>
-                </div>
-                <div class="strength-bar"><div class="bar-fill" id="strengthBar"></div></div>
-                {% if form_errors.get('password') %}
-                    <div class="invalid-feedback d-block mt-1">{{ form_errors['password'] }}</div>
-                {% endif %}
-            </div>
-
-            <!-- Confirm password -->
-            <div class="mb-3">
-                <div class="field-wrap">
-                    <i class="bi bi-shield-check fi"></i>
-                    <input type="password" id="confirm_password" name="confirm_password" autocomplete="new-password"
-                           class="form-control form-control-auth {% if form_errors.get('confirm_password') %}is-invalid{% endif %}"
-                           placeholder="Re-enter password" required>
-                </div>
-                {% if form_errors.get('confirm_password') %}
-                    <div class="invalid-feedback d-block mt-1">{{ form_errors['confirm_password'] }}</div>
-                {% endif %}
-            </div>
-
-            <button type="submit" class="btn btn-primary btn-auth w-100">
-                Create Account
-            </button>
-        </form>
-
-        <!-- Login link -->
-        <div class="text-center mt-4">
-            <span class="auth-subtitle">Already have an account? </span>
-            <a href="{{ url_for('auth.login') }}" class="fw-500">Sign in</a>
-        </div>
+    <!-- Header -->
+    <div class="text-center mb-3">
+        <img src="{{ url_for('static', filename='icons/icon.svg') }}"
+             alt="OnePortfolio logo" class="auth-logo mb-3">
+        <h1 class="auth-title">Create account</h1>
+        <p class="auth-subtitle mb-0">Start tracking your portfolio</p>
     </div>
-</div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show flash-alert mb-3" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- General error -->
+    {% if form_errors.get('__all__') %}
+        <div class="alert alert-danger flash-alert mb-3">
+            <i class="bi bi-exclamation-circle me-2"></i>{{ form_errors['__all__'] }}
+        </div>
+    {% endif %}
+
+    <!-- Register form -->
+    <form method="post" action="{{ url_for('auth.register') }}" novalidate>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <!-- Username -->
+        <div class="mb-2">
+            <div class="field-wrap">
+                <i class="bi bi-person fi" aria-hidden="true"></i>
+                <input type="text" id="username" name="username" autocomplete="username"
+                       class="form-control form-control-auth {% if form_errors.get('username') %}is-invalid{% endif %}"
+                       value="{{ form_values.get('username', '') }}"
+                       placeholder="Choose a username" autofocus required>
+            </div>
+            {% if form_errors.get('username') %}
+                <div class="invalid-feedback d-block mt-1">{{ form_errors['username'] }}</div>
+            {% else %}
+                <div class="password-hint">Letters and underscores only.</div>
+            {% endif %}
+        </div>
+
+        <!-- Email -->
+        <div class="mb-2">
+            <div class="field-wrap">
+                <i class="bi bi-envelope fi" aria-hidden="true"></i>
+                <input type="email" id="email" name="email" autocomplete="email"
+                       class="form-control form-control-auth {% if form_errors.get('email') %}is-invalid{% endif %}"
+                       value="{{ form_values.get('email', '') }}"
+                       placeholder="you@example.com" required>
+            </div>
+            {% if form_errors.get('email') %}
+                <div class="invalid-feedback d-block mt-1">{{ form_errors['email'] }}</div>
+            {% else %}
+                <div class="password-hint">A verification code will be sent to this address.</div>
+            {% endif %}
+        </div>
+
+        <!-- Password -->
+        <div class="mb-2">
+            <div class="field-wrap">
+                <i class="bi bi-lock fi" aria-hidden="true"></i>
+                <input type="password" id="password" name="password" autocomplete="new-password"
+                       class="form-control form-control-auth has-toggle {% if form_errors.get('password') %}is-invalid{% endif %}"
+                       placeholder="Min. 8 characters" required>
+                <button class="toggle-pw" type="button" id="togglePassword"
+                        aria-label="Show or hide password">
+                    <i class="bi bi-eye" id="toggleIcon" aria-hidden="true"></i>
+                </button>
+            </div>
+            <div class="strength-bar">
+                <div class="bar-fill" id="strengthBar"></div>
+            </div>
+            {% if form_errors.get('password') %}
+                <div class="invalid-feedback d-block mt-1">{{ form_errors['password'] }}</div>
+            {% endif %}
+        </div>
+
+        <!-- Confirm password -->
+        <div class="mb-3">
+            <div class="field-wrap">
+                <i class="bi bi-shield-check fi" aria-hidden="true"></i>
+                <input type="password" id="confirm_password" name="confirm_password" autocomplete="new-password"
+                       class="form-control form-control-auth {% if form_errors.get('confirm_password') %}is-invalid{% endif %}"
+                       placeholder="Re-enter password" required>
+            </div>
+            {% if form_errors.get('confirm_password') %}
+                <div class="invalid-feedback d-block mt-1">{{ form_errors['confirm_password'] }}</div>
+            {% endif %}
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-auth w-100">
+            Create Account
+        </button>
+    </form>
+
+    <!-- Login link -->
+    <div class="text-center mt-4">
+        <span class="auth-subtitle">Already have an account? </span>
+        <a href="{{ url_for('auth.login') }}" class="fw-500">Sign in</a>
+    </div>
+
+{% endblock %}
+
+{% block extra_js %}
 <script>
-    // Password toggle
     const toggleBtn = document.getElementById('togglePassword');
     const passInput = document.getElementById('password');
     const toggleIcon = document.getElementById('toggleIcon');
     if (toggleBtn) {
-        toggleBtn.addEventListener('click', function() {
+        toggleBtn.addEventListener('click', function () {
             const isText = passInput.type === 'text';
             passInput.type = isText ? 'password' : 'text';
             toggleIcon.className = isText ? 'bi bi-eye' : 'bi bi-eye-slash';
         });
     }
 
-    // Password strength indicator
     const strengthBar = document.getElementById('strengthBar');
     if (passInput && strengthBar) {
-        passInput.addEventListener('input', function() {
+        passInput.addEventListener('input', function () {
             const val = this.value;
             let score = 0;
-            if (val.length >= 8) score++;
-            if (val.length >= 12) score++;
-            if (/[A-Z]/.test(val)) score++;
-            if (/[0-9]/.test(val)) score++;
+            if (val.length >= 8)          score++;
+            if (val.length >= 12)         score++;
+            if (/[A-Z]/.test(val))        score++;
+            if (/[0-9]/.test(val))        score++;
             if (/[^A-Za-z0-9]/.test(val)) score++;
 
             const colors = ['', '#d93025', '#f9ab00', '#1a73e8', '#0f9d58', '#0f9d58'];
             const widths = ['0%', '20%', '40%', '65%', '85%', '100%'];
-            strengthBar.style.width = widths[score] || '0%';
-            strengthBar.style.background = colors[score] || 'transparent';
+            strengthBar.style.width      = widths[score]  || '0%';
+            strengthBar.style.background = colors[score]  || 'transparent';
         });
     }
-
-    // Apply saved theme
-    (function() {
-        const saved = localStorage.getItem('theme');
-        const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        document.documentElement.setAttribute('data-bs-theme', saved || (systemDark ? 'dark' : 'light'));
-    })();
 </script>
-</body>
-</html>
+{% endblock %}

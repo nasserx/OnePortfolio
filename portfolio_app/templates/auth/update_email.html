@@ -5,11 +5,11 @@
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-12 col-sm-10 col-md-6 col-lg-5">
-        <div class="card p-4 p-md-5">
+        <div class="card auth-inner-card p-4 p-md-5">
 
             <div class="mb-4">
                 <h1 class="h5 fw-500 mb-1">Update Email Address</h1>
-                <p class="text-secondary mb-0" style="font-size:0.875rem;">
+                <p class="text-secondary auth-inner-subtitle mb-0">
                     Current email:
                     <strong>{{ current_email or 'Not set' }}</strong>
                 </p>
@@ -17,7 +17,7 @@
 
             {% if form_errors.get('__all__') %}
                 <div class="alert alert-danger py-2 mb-3">
-                    <i class="bi bi-exclamation-circle me-2"></i>{{ form_errors['__all__'] }}
+                    <i class="bi bi-exclamation-circle me-2" aria-hidden="true"></i>{{ form_errors['__all__'] }}
                 </div>
             {% endif %}
 

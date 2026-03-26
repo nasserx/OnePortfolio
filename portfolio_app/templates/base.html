@@ -19,17 +19,18 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v='20260215-1') }}">
-    
+
     {% block extra_css %}{% endblock %}
 </head>
 <body>
+
     <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-dark shadow-sm app-navbar">
+    <nav class="navbar navbar-expand-lg navbar-dark shadow-sm app-navbar" aria-label="Main navigation">
         <div class="container-fluid">
             <a class="navbar-brand" href="{{ url_for('dashboard.index') }}">
                 <img src="{{ url_for('static', filename='icons/icon.svg') }}"
                      width="36" height="36"
-                     alt="Portfolio logo"
+                     alt="OnePortfolio logo"
                      class="app-logo">
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
@@ -62,6 +63,7 @@
                             Charts
                         </a>
                     </li>
+
                     <!-- Auth buttons for guests -->
                     {% if not current_user.is_authenticated %}
                     <li class="nav-item">
@@ -77,16 +79,17 @@
                         <button class="nav-link settings-btn" type="button"
                                 data-bs-toggle="dropdown" data-bs-auto-close="outside"
                                 aria-expanded="false" aria-label="App Settings">
-                            <i class="bi bi-gear fs-5"></i>
+                            <i class="bi bi-gear fs-5" aria-hidden="true"></i>
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end settings-menu">
                             <li>
                                 <label class="dropdown-item d-flex align-items-center justify-content-between settings-item">
                                     <span class="d-flex align-items-center gap-2">
-                                        <i class="bi bi-moon-stars"></i> Dark Mode
+                                        <i class="bi bi-moon-stars" aria-hidden="true"></i> Dark Mode
                                     </span>
                                     <div class="form-check form-switch mb-0 ms-3">
-                                        <input class="form-check-input" type="checkbox" id="darkModeSwitch" role="switch">
+                                        <input class="form-check-input" type="checkbox" id="darkModeSwitch" role="switch"
+                                               aria-label="Toggle dark mode">
                                     </div>
                                 </label>
                             </li>
@@ -99,17 +102,16 @@
                         <button class="nav-link settings-btn" type="button"
                                 data-bs-toggle="dropdown" data-bs-auto-close="true"
                                 aria-expanded="false" aria-label="User Menu">
-                            <i class="bi bi-person fs-5"></i>
+                            <i class="bi bi-person fs-5" aria-hidden="true"></i>
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end settings-menu">
                             <!-- User info -->
                             <li>
-                                <span class="dropdown-item-text d-flex align-items-center gap-2 px-3 py-2"
-                                      style="font-size:0.8125rem; color:var(--text-tertiary); cursor:default; user-select:none;">
-                                    <i class="bi bi-person-circle"></i>
-                                    <span class="fw-500" style="color:var(--text-secondary);">{{ current_user.username }}</span>
+                                <span class="dropdown-item-text d-flex align-items-center gap-2 px-3 py-2 nav-user-info">
+                                    <i class="bi bi-person-circle" aria-hidden="true"></i>
+                                    <span class="fw-500 nav-user-name">{{ current_user.username }}</span>
                                     {% if current_user.is_admin %}
-                                        <span class="badge ms-1" style="background:var(--primary-lighter); color:var(--primary-color); font-size:0.65rem; padding:2px 6px;">Admin</span>
+                                        <span class="badge nav-admin-badge ms-1">Admin</span>
                                     {% endif %}
                                 </span>
                             </li>
@@ -119,7 +121,7 @@
                             <li>
                                 <a class="dropdown-item settings-item d-flex align-items-center gap-2"
                                    href="{{ url_for('admin.users') }}">
-                                    <i class="bi bi-shield-check"></i> Admin Panel
+                                    <i class="bi bi-shield-check" aria-hidden="true"></i> Admin Panel
                                 </a>
                             </li>
                             {% endif %}
@@ -127,14 +129,14 @@
                             <li>
                                 <a class="dropdown-item settings-item d-flex align-items-center gap-2"
                                    href="{{ url_for('auth.update_email') }}">
-                                    <i class="bi bi-envelope"></i> Update Email
+                                    <i class="bi bi-envelope" aria-hidden="true"></i> Update Email
                                 </a>
                             </li>
 
                             <li>
                                 <a class="dropdown-item settings-item d-flex align-items-center gap-2"
                                    href="{{ url_for('auth.change_password') }}">
-                                    <i class="bi bi-key"></i> Change Password
+                                    <i class="bi bi-key" aria-hidden="true"></i> Change Password
                                 </a>
                             </li>
 
@@ -143,10 +145,8 @@
                             <li>
                                 <form method="post" action="{{ url_for('auth.logout') }}" class="m-0">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <button type="submit"
-                                            class="dropdown-item settings-item d-flex align-items-center gap-2"
-                                            style="color:var(--danger-color); background:none; border:none; width:100%; text-align:left;">
-                                        <i class="bi bi-box-arrow-right"></i> Logout
+                                    <button type="submit" class="dropdown-item settings-item btn-logout d-flex align-items-center gap-2">
+                                        <i class="bi bi-box-arrow-right" aria-hidden="true"></i> Logout
                                     </button>
                                 </form>
                             </li>
@@ -165,7 +165,7 @@
                 {% for category, message in messages %}
                     <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show flash-alert" role="alert">
                         {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                     </div>
                 {% endfor %}
             {% endif %}

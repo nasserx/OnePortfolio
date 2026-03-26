@@ -1,17 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <!--
-        Theme is set before the page renders to prevent flash of wrong theme.
-        Priority: localStorage → system preference → light
-    -->
-    <script>
-        document.documentElement.setAttribute(
-            'data-bs-theme',
-            localStorage.getItem('theme') ||
-            (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
-        );
-    </script>
+    {# Theme must be set before render to prevent flash of wrong theme.
+       Priority: localStorage → system preference → light #}
+    <script>document.documentElement.setAttribute(
+        'data-bs-theme',
+        localStorage.getItem('theme') ||
+        (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+    );</script>
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -29,177 +25,11 @@
     <!-- Project CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css') }}">
-
-    <style>
-        /* Layout overrides for the landing page.
-           Color / typography tokens live in style.css & landing.css. */
-
-        /* ── Tokens ── */
-        :root {
-            --lp-section-py:   88px;
-            --lp-container-px: clamp(12px, 2.5vw, 40px);
-        }
-
-        /* ── Container ── */
-        .landing-nav .landing-container,
-        .landing-hero .landing-container {
-            max-width: 1280px;
-            margin-inline: auto;
-            padding-inline: var(--lp-container-px);
-            width: 100%;
-            box-sizing: border-box;
-        }
-        .landing-container {
-            max-width: 1280px;
-            padding-inline: var(--lp-container-px);
-        }
-
-        /* ── Navbar ── */
-        .landing-nav {
-            background-color: transparent;
-            border-bottom: none;
-            transition:
-                background-color        0.25s ease,
-                backdrop-filter         0.25s ease,
-                -webkit-backdrop-filter 0.25s ease,
-                box-shadow              0.25s ease;
-        }
-        .landing-nav.scrolled {
-            background-color: var(--header-bg);
-            backdrop-filter: blur(18px);
-            -webkit-backdrop-filter: blur(18px);
-            border-bottom-color: rgba(28, 28, 46, 0.06);
-            box-shadow: var(--shadow-sm);
-        }
-        [data-bs-theme="dark"] .landing-nav.scrolled {
-            border-bottom-color: rgba(255, 255, 255, 0.05);
-        }
-        .landing-theme-toggle { font-size: 1.125rem; }
-
-        [data-bs-theme="light"] .landing-badge { background: color-mix(in srgb, var(--primary-lighter) 80%, var(--primary-color) 20%); }
-
-        /* ── Hero ── */
-        .landing-hero {
-            padding-top:    var(--lp-section-py);
-            padding-bottom: var(--lp-section-py);
-            overflow: visible;
-        }
-        .landing-hero .landing-container {
-            grid-template-columns: 1fr 1fr;
-            gap: 48px;
-            align-items: center;
-        }
-
-        /* ── Dashboard preview card ── */
-        @keyframes op-float {
-            0%, 100% { transform: translateY(0px);   }
-            50%       { transform: translateY(-12px); }
-        }
-
-        .landing-preview-wrap {
-            min-width: 0;
-            width: 100%;
-        }
-        .landing-preview {
-            width: 100%;
-            max-width: 100%;
-            box-sizing: border-box;
-            box-shadow:
-                0 8px 32px rgba(0, 0, 0, 0.25),
-                0 0 0 1px rgba(255, 255, 255, 0.04);
-            animation: op-float 6s ease-in-out infinite;
-        }
-
-        /* ── Stat row ── */
-        .preview-stats {
-            gap: 0;
-            border-radius: var(--border-radius-sm);
-            overflow: hidden;
-        }
-        .preview-stat {
-            border-radius: 0;
-            border-right: 1px solid var(--border-color);
-            padding-inline: 1rem;
-            background: var(--app-bg);
-        }
-        .preview-stat:last-child { border-right: none; }
-        .preview-stat-label      { font-size: 0.72rem; }
-        .preview-stat-value      { font-size: 1.35rem; }
-
-        /* ── Bar chart ── */
-        @keyframes op-growBar {
-            from { transform: scaleY(0); transform-origin: bottom; }
-            to   { transform: scaleY(1); transform-origin: bottom; }
-        }
-
-        .preview-chart {
-            border-radius:  var(--border-radius-sm);
-            gap:            0.75rem;
-            padding-inline: 0.25rem;
-        }
-        .preview-bars {
-            display:     flex;
-            align-items: flex-end;
-            gap:         12px;
-            height:      185px;
-            padding-top: 0.25rem;
-            background:  var(--app-bg);
-        }
-        .preview-bar-group {
-            flex: 1;
-            display: flex;
-            align-items: flex-end;
-            gap: 4px;
-            height: 100%;
-        }
-        .preview-bar-group .preview-bar {
-            flex: 1;
-            border-radius: var(--border-radius-sm) var(--border-radius-sm) 0 0;
-            transform-origin: bottom;
-        }
-        .preview-bar.active    { background: color-mix(in srgb, #6b85f8 85%, white 15%); }
-        .preview-bar.secondary { background: color-mix(in srgb, #6b85f8 25%, transparent); }
-
-        [data-bs-theme="light"] .preview-bar.active    { background: color-mix(in srgb, #4f6ef7 85%, white 15%); }
-        [data-bs-theme="light"] .preview-bar.secondary { background: color-mix(in srgb, #4f6ef7 25%, transparent); }
-
-        .preview-bar:nth-child(1) { animation: op-growBar 0.6s ease-out 0.05s backwards; }
-        .preview-bar:nth-child(2) { animation: op-growBar 0.6s ease-out 0.15s backwards; }
-        .preview-bar:nth-child(3) { animation: op-growBar 0.6s ease-out 0.25s backwards; }
-        .preview-bar:nth-child(4) { animation: op-growBar 0.6s ease-out 0.35s backwards; }
-        .preview-bar:nth-child(5) { animation: op-growBar 0.6s ease-out 0.45s backwards; }
-        .preview-bar:nth-child(6) { animation: op-growBar 0.6s ease-out 0.55s backwards; }
-        .preview-bar:nth-child(7) { animation: op-growBar 0.6s ease-out 0.65s backwards; }
-        .preview-bar:nth-child(8) { animation: op-growBar 0.6s ease-out 0.75s backwards; }
-
-        .preview-labels { display: flex; gap: 12px; }
-        .preview-labels span { flex: 1; text-align: center; font-size: 0.78rem; background: var(--app-bg); }
-
-        [data-bs-theme="dark"] .preview-stat         { background: var(--surface-variant); }
-        [data-bs-theme="dark"] .preview-bars        { background: var(--surface-variant); border-radius: var(--border-radius-sm); }
-        [data-bs-theme="dark"] .preview-labels span { background: var(--surface-hover); }
-
-        /* ── Features ── */
-        .landing-features      { padding-top: 48px; padding-bottom: 64px; }
-        .landing-section-title { margin-bottom: 32px; }
-        .feature-card          { padding: 26px 22px; transition: transform 0.25s ease, box-shadow 0.25s ease; }
-        .feature-card:hover    { transform: translateY(-4px); box-shadow: var(--shadow-lg); }
-
-        /* ── Responsive ── */
-        @media (max-width: 900px) {
-            .landing-hero { padding-top: 72px; padding-bottom: 72px; }
-        }
-        @media (max-width: 576px) {
-            .landing-container  { padding-inline: 1.25rem; }
-            .landing-hero       { padding-top: 48px; padding-bottom: 56px; }
-            .landing-features   { padding-top: 48px; padding-bottom: 48px; }
-        }
-    </style>
 </head>
 <body>
 
     <!-- ══════════════════ NAVBAR ══════════════════ -->
-    <nav class="landing-nav" id="landingNav">
+    <nav class="landing-nav" id="landingNav" aria-label="Landing page navigation">
         <div class="landing-container">
             <a href="/" class="landing-brand">
                 <img src="{{ url_for('static', filename='icons/icon.svg') }}"
@@ -208,7 +38,7 @@
             </a>
             <div class="landing-nav-end">
                 <button class="landing-theme-toggle" id="landingThemeToggle" aria-label="Toggle theme">
-                    <i class="bi bi-moon-stars" id="landingThemeIcon"></i>
+                    <i class="bi bi-moon-stars" id="landingThemeIcon" aria-hidden="true"></i>
                 </button>
                 <a href="{{ url_for('auth.login') }}"    class="btn-nav-login">Log In</a>
                 <a href="{{ url_for('auth.register') }}" class="btn-nav-signup">Sign Up</a>
@@ -223,7 +53,7 @@
             <!-- Left: copy -->
             <div class="landing-hero-content">
                 <span class="landing-badge">
-                    <i class="bi bi-graph-up-arrow"></i>
+                    <i class="bi bi-graph-up-arrow" aria-hidden="true"></i>
                     Investment Tracker
                 </span>
                 <h1 class="landing-headline">
@@ -237,7 +67,7 @@
                 <div class="landing-cta-group">
                     <a href="{{ url_for('auth.register') }}" class="btn-cta-primary">Get started free</a>
                     <a href="{{ url_for('auth.login') }}"    class="btn-cta-secondary">
-                        Sign in <i class="bi bi-arrow-right ms-1"></i>
+                        Sign in <i class="bi bi-arrow-right ms-1" aria-hidden="true"></i>
                     </a>
                 </div>
             </div>
@@ -303,25 +133,25 @@
             <div class="landing-features-grid">
 
                 <div class="feature-card">
-                    <div class="feature-icon"><i class="bi bi-layers"></i></div>
+                    <div class="feature-icon"><i class="bi bi-layers" aria-hidden="true"></i></div>
                     <h3>Multi-Fund</h3>
                     <p>Organize holdings across multiple funds and asset categories with full flexibility.</p>
                 </div>
 
                 <div class="feature-card">
-                    <div class="feature-icon"><i class="bi bi-arrow-left-right"></i></div>
+                    <div class="feature-icon"><i class="bi bi-arrow-left-right" aria-hidden="true"></i></div>
                     <h3>Full History</h3>
                     <p>Track every buy and sell with price, quantity, fees, and date — nothing gets lost.</p>
                 </div>
 
                 <div class="feature-card">
-                    <div class="feature-icon"><i class="bi bi-pie-chart"></i></div>
+                    <div class="feature-icon"><i class="bi bi-pie-chart" aria-hidden="true"></i></div>
                     <h3>Visual Charts</h3>
                     <p>Beautiful allocation and P&amp;L charts to understand your portfolio at a glance.</p>
                 </div>
 
                 <div class="feature-card">
-                    <div class="feature-icon"><i class="bi bi-shield-check"></i></div>
+                    <div class="feature-icon"><i class="bi bi-shield-check" aria-hidden="true"></i></div>
                     <h3>Secure &amp; Private</h3>
                     <p>Your data stays yours. Email-verified accounts with full authentication protection.</p>
                 </div>
@@ -371,7 +201,7 @@
             if (navbar) {
                 const onScroll = () => navbar.classList.toggle('scrolled', window.scrollY > 8);
                 window.addEventListener('scroll', onScroll, { passive: true });
-                onScroll(); // run once on load in case page starts scrolled
+                onScroll();
             }
         })();
     </script>

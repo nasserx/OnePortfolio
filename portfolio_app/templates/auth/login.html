@@ -1,127 +1,108 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <script>document.documentElement.setAttribute('data-bs-theme', localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));</script>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Login — OnePortfolio</title>
-    <link rel="icon" href="{{ url_for('static', filename='icons/icon.svg') }}" type="image/svg+xml">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-</head>
-<body>
-<div class="auth-page">
-    <div class="auth-card card p-4">
+{% extends 'auth_base.html' %}
 
-        <!-- Header -->
-        <div class="text-center mb-3">
-            <img src="{{ url_for('static', filename='icons/icon.svg') }}"
-                 alt="Logo" class="auth-logo mb-3">
-            <h1 class="auth-title">Welcome back</h1>
-            <p class="auth-subtitle mb-0">Sign in to your portfolio</p>
-        </div>
+{% block title %}Log In — OnePortfolio{% endblock %}
 
-        <!-- Flash messages -->
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show flash-alert mb-3" role="alert">
-                        {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
+{% block auth_content %}
 
-        <!-- General error -->
-        {% if form_errors.get('__all__') %}
-            <div class="alert alert-danger flash-alert mb-3">
-                <i class="bi bi-exclamation-circle me-2"></i>{{ form_errors['__all__'] }}
-            </div>
-        {% endif %}
-
-        <!-- Login form -->
-        <form method="post" action="{{ url_for('auth.login') }}{% if request.args.get('next') %}?next={{ request.args.get('next') }}{% endif %}" novalidate>
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-
-            <!-- Username or Email -->
-            <div class="mb-2">
-                <div class="field-wrap">
-                    <i class="bi bi-person fi"></i>
-                    <input type="text" id="username" name="username" autocomplete="username"
-                           class="form-control form-control-auth {% if form_errors.get('username') %}is-invalid{% endif %}"
-                           value="{{ form_values.get('username', '') }}"
-                           placeholder="Enter your username or email" autofocus required>
-                </div>
-                {% if form_errors.get('username') %}
-                    <div class="invalid-feedback d-block mt-1">{{ form_errors['username'] }}</div>
-                {% endif %}
-            </div>
-
-            <!-- Password -->
-            <div class="mb-2">
-                <div class="field-wrap">
-                    <i class="bi bi-lock fi"></i>
-                    <input type="password" id="password" name="password" autocomplete="current-password"
-                           class="form-control form-control-auth has-toggle {% if form_errors.get('password') %}is-invalid{% endif %}"
-                           placeholder="Enter your password" required>
-                    <button class="toggle-pw" type="button" id="togglePassword" title="Show/hide password">
-                        <i class="bi bi-eye" id="toggleIcon"></i>
-                    </button>
-                </div>
-                {% if form_errors.get('password') %}
-                    <div class="invalid-feedback d-block mt-1">{{ form_errors['password'] }}</div>
-                {% endif %}
-            </div>
-
-            <!-- Remember me + Forgot password -->
-            <div class="mb-4 d-flex align-items-center justify-content-between">
-                <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="remember" name="remember">
-                    <label class="form-check-label" for="remember" style="font-size:0.875rem;">
-                        Keep me signed in
-                    </label>
-                </div>
-                <a href="{{ url_for('auth.forgot_password') }}" style="font-size:0.875rem;">
-                    Forgot password?
-                </a>
-            </div>
-
-            <button type="submit" class="btn btn-primary btn-auth w-100">
-                Sign In
-            </button>
-        </form>
-
-        <!-- Register link -->
-        <div class="text-center mt-4">
-            <span class="auth-subtitle">Don't have an account? </span>
-            <a href="{{ url_for('auth.register') }}" class="fw-500">Create one</a>
-        </div>
-
+    <!-- Header -->
+    <div class="text-center mb-3">
+        <img src="{{ url_for('static', filename='icons/icon.svg') }}"
+             alt="OnePortfolio logo" class="auth-logo mb-3">
+        <h1 class="auth-title">Welcome back</h1>
+        <p class="auth-subtitle mb-0">Sign in to your portfolio</p>
     </div>
-</div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show flash-alert mb-3" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- General error -->
+    {% if form_errors.get('__all__') %}
+        <div class="alert alert-danger flash-alert mb-3">
+            <i class="bi bi-exclamation-circle me-2"></i>{{ form_errors['__all__'] }}
+        </div>
+    {% endif %}
+
+    <!-- Login form -->
+    <form method="post" action="{{ url_for('auth.login') }}{% if request.args.get('next') %}?next={{ request.args.get('next') }}{% endif %}" novalidate>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <!-- Username or Email -->
+        <div class="mb-2">
+            <div class="field-wrap">
+                <i class="bi bi-person fi" aria-hidden="true"></i>
+                <input type="text" id="username" name="username" autocomplete="username"
+                       class="form-control form-control-auth {% if form_errors.get('username') %}is-invalid{% endif %}"
+                       value="{{ form_values.get('username', '') }}"
+                       placeholder="Enter your username or email" autofocus required>
+            </div>
+            {% if form_errors.get('username') %}
+                <div class="invalid-feedback d-block mt-1">{{ form_errors['username'] }}</div>
+            {% endif %}
+        </div>
+
+        <!-- Password -->
+        <div class="mb-2">
+            <div class="field-wrap">
+                <i class="bi bi-lock fi" aria-hidden="true"></i>
+                <input type="password" id="password" name="password" autocomplete="current-password"
+                       class="form-control form-control-auth has-toggle {% if form_errors.get('password') %}is-invalid{% endif %}"
+                       placeholder="Enter your password" required>
+                <button class="toggle-pw" type="button" id="togglePassword" title="Show/hide password"
+                        aria-label="Show or hide password">
+                    <i class="bi bi-eye" id="toggleIcon" aria-hidden="true"></i>
+                </button>
+            </div>
+            {% if form_errors.get('password') %}
+                <div class="invalid-feedback d-block mt-1">{{ form_errors['password'] }}</div>
+            {% endif %}
+        </div>
+
+        <!-- Remember me + Forgot password -->
+        <div class="mb-4 d-flex align-items-center justify-content-between">
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="remember" name="remember">
+                <label class="form-check-label auth-subtitle" for="remember">
+                    Keep me signed in
+                </label>
+            </div>
+            <a href="{{ url_for('auth.forgot_password') }}" class="auth-subtitle">
+                Forgot password?
+            </a>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-auth w-100">
+            Sign In
+        </button>
+    </form>
+
+    <!-- Register link -->
+    <div class="text-center mt-4">
+        <span class="auth-subtitle">Don't have an account? </span>
+        <a href="{{ url_for('auth.register') }}" class="fw-500">Create one</a>
+    </div>
+
+{% endblock %}
+
+{% block extra_js %}
 <script>
-    // Password visibility toggle
     const toggleBtn = document.getElementById('togglePassword');
     const passInput = document.getElementById('password');
     const toggleIcon = document.getElementById('toggleIcon');
     if (toggleBtn) {
-        toggleBtn.addEventListener('click', function() {
+        toggleBtn.addEventListener('click', function () {
             const isText = passInput.type === 'text';
             passInput.type = isText ? 'password' : 'text';
             toggleIcon.className = isText ? 'bi bi-eye' : 'bi bi-eye-slash';
         });
     }
-    // Apply saved theme
-    (function() {
-        const saved = localStorage.getItem('theme');
-        const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        document.documentElement.setAttribute('data-bs-theme', saved || (systemDark ? 'dark' : 'light'));
-    })();
 </script>
-</body>
-</html>
+{% endblock %}

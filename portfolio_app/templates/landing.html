@@ -31,21 +31,16 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css') }}">
 
     <style>
-        /* ════════════════════════════════════════════════════════════
-           LANDING PAGE — LAYOUT OVERRIDES
-           All color / typography tokens live in style.css & landing.css.
-           This block handles layout, spacing, animation, and the few
-           component tweaks that landing.css doesn't cover.
-           ════════════════════════════════════════════════════════════ */
+        /* Layout overrides for the landing page.
+           Color / typography tokens live in style.css & landing.css. */
 
-        /* ── Tokens ─────────────────────────────────────────────────── */
+        /* ── Tokens ── */
         :root {
             --lp-section-py:   88px;
             --lp-container-px: clamp(12px, 2.5vw, 40px);
         }
 
-        /* ── Container ──────────────────────────────────────────────── */
-        /* Navbar and hero share identical constraints so their edges align */
+        /* ── Container ── */
         .landing-nav .landing-container,
         .landing-hero .landing-container {
             max-width: 1280px;
@@ -54,21 +49,19 @@
             width: 100%;
             box-sizing: border-box;
         }
-        /* All other sections inherit the same max-width */
         .landing-container {
             max-width: 1280px;
             padding-inline: var(--lp-container-px);
         }
 
-        /* ── Navbar ─────────────────────────────────────────────────── */
+        /* ── Navbar ── */
         .landing-nav {
             background-color: transparent;
-            border-bottom-color: transparent;
+            border-bottom: none;
             transition:
                 background-color        0.25s ease,
                 backdrop-filter         0.25s ease,
                 -webkit-backdrop-filter 0.25s ease,
-                border-bottom-color     0.25s ease,
                 box-shadow              0.25s ease;
         }
         .landing-nav.scrolled {
@@ -81,12 +74,15 @@
         [data-bs-theme="dark"] .landing-nav.scrolled {
             border-bottom-color: rgba(255, 255, 255, 0.05);
         }
+        .landing-theme-toggle { font-size: 1.125rem; }
 
-        /* ── Hero ───────────────────────────────────────────────────── */
+        [data-bs-theme="light"] .landing-badge { background: color-mix(in srgb, var(--primary-lighter) 80%, var(--primary-color) 20%); }
+
+        /* ── Hero ── */
         .landing-hero {
             padding-top:    var(--lp-section-py);
             padding-bottom: var(--lp-section-py);
-            overflow: visible; /* float animation must not be clipped */
+            overflow: visible;
         }
         .landing-hero .landing-container {
             grid-template-columns: 1fr 1fr;
@@ -94,19 +90,19 @@
             align-items: center;
         }
 
-        /* ── Dashboard preview card ─────────────────────────────────── */
+        /* ── Dashboard preview card ── */
         @keyframes op-float {
             0%, 100% { transform: translateY(0px);   }
             50%       { transform: translateY(-12px); }
         }
 
         .landing-preview-wrap {
-            min-width: 0; /* prevent grid blowout */
+            min-width: 0;
             width: 100%;
         }
         .landing-preview {
             width: 100%;
-            max-width: 100%; /* override landing.css max-width: 520px */
+            max-width: 100%;
             box-sizing: border-box;
             box-shadow:
                 0 8px 32px rgba(0, 0, 0, 0.25),
@@ -114,7 +110,7 @@
             animation: op-float 6s ease-in-out infinite;
         }
 
-        /* ── Stat row ───────────────────────────────────────────────── */
+        /* ── Stat row ── */
         .preview-stats {
             gap: 0;
             border-radius: var(--border-radius-sm);
@@ -124,23 +120,30 @@
             border-radius: 0;
             border-right: 1px solid var(--border-color);
             padding-inline: 1rem;
+            background: var(--app-bg);
         }
         .preview-stat:last-child { border-right: none; }
-        .preview-stat-label { font-size: 0.72rem; }
-        .preview-stat-value { font-size: 1.35rem; }
+        .preview-stat-label      { font-size: 0.72rem; }
+        .preview-stat-value      { font-size: 1.35rem; }
 
-        /* ── Bar chart ──────────────────────────────────────────────── */
+        /* ── Bar chart ── */
         @keyframes op-growBar {
             from { transform: scaleY(0); transform-origin: bottom; }
             to   { transform: scaleY(1); transform-origin: bottom; }
         }
 
-        .preview-chart { background: rgba(255, 255, 255, 0.04); }
-
+        .preview-chart {
+            border-radius:  var(--border-radius-sm);
+            gap:            0.75rem;
+            padding-inline: 0.25rem;
+        }
         .preview-bars {
-            display: flex;
+            display:     flex;
             align-items: flex-end;
-            gap: 12px;
+            gap:         12px;
+            height:      185px;
+            padding-top: 0.25rem;
+            background:  var(--app-bg);
         }
         .preview-bar-group {
             flex: 1;
@@ -151,18 +154,15 @@
         }
         .preview-bar-group .preview-bar {
             flex: 1;
-            border-radius: 5px 5px 0 0;
+            border-radius: var(--border-radius-sm) var(--border-radius-sm) 0 0;
             transform-origin: bottom;
         }
-
-        /* Bar colors match the "Get started free" button, lightened one shade */
         .preview-bar.active    { background: color-mix(in srgb, #6b85f8 85%, white 15%); }
         .preview-bar.secondary { background: color-mix(in srgb, #6b85f8 25%, transparent); }
 
         [data-bs-theme="light"] .preview-bar.active    { background: color-mix(in srgb, #4f6ef7 85%, white 15%); }
         [data-bs-theme="light"] .preview-bar.secondary { background: color-mix(in srgb, #4f6ef7 25%, transparent); }
 
-        /* Staggered grow-in (supports up to 8 bars) */
         .preview-bar:nth-child(1) { animation: op-growBar 0.6s ease-out 0.05s backwards; }
         .preview-bar:nth-child(2) { animation: op-growBar 0.6s ease-out 0.15s backwards; }
         .preview-bar:nth-child(3) { animation: op-growBar 0.6s ease-out 0.25s backwards; }
@@ -172,43 +172,27 @@
         .preview-bar:nth-child(7) { animation: op-growBar 0.6s ease-out 0.65s backwards; }
         .preview-bar:nth-child(8) { animation: op-growBar 0.6s ease-out 0.75s backwards; }
 
-        .preview-labels span { font-size: 0.78rem; }
+        .preview-labels { display: flex; gap: 12px; }
+        .preview-labels span { flex: 1; text-align: center; font-size: 0.78rem; background: var(--app-bg); }
 
-        /* ── Features section ───────────────────────────────────────── */
-        .landing-features {
-            padding-top:    48px;
-            padding-bottom: 64px;
-        }
+        [data-bs-theme="dark"] .preview-stat         { background: var(--surface-variant); }
+        [data-bs-theme="dark"] .preview-bars        { background: var(--surface-variant); border-radius: var(--border-radius-sm); }
+        [data-bs-theme="dark"] .preview-labels span { background: var(--surface-hover); }
+
+        /* ── Features ── */
+        .landing-features      { padding-top: 48px; padding-bottom: 64px; }
         .landing-section-title { margin-bottom: 32px; }
+        .feature-card          { padding: 26px 22px; transition: transform 0.25s ease, box-shadow 0.25s ease; }
+        .feature-card:hover    { transform: translateY(-4px); box-shadow: var(--shadow-lg); }
 
-        .feature-card {
-            padding: 26px 22px;
-            transition: transform 0.25s ease, box-shadow 0.25s ease;
-        }
-        .feature-card:hover {
-            transform: translateY(-4px);
-            box-shadow: var(--shadow-lg);
-        }
-
-        /* ── Responsive ─────────────────────────────────────────────── */
+        /* ── Responsive ── */
         @media (max-width: 900px) {
-            .landing-hero {
-                padding-top:    72px;
-                padding-bottom: 72px;
-            }
+            .landing-hero { padding-top: 72px; padding-bottom: 72px; }
         }
         @media (max-width: 576px) {
-            .landing-container {
-                padding-inline: 1.25rem;
-            }
-            .landing-hero {
-                padding-top:    48px;
-                padding-bottom: 56px;
-            }
-            .landing-features {
-                padding-top:    48px;
-                padding-bottom: 48px;
-            }
+            .landing-container  { padding-inline: 1.25rem; }
+            .landing-hero       { padding-top: 48px; padding-bottom: 56px; }
+            .landing-features   { padding-top: 48px; padding-bottom: 48px; }
         }
     </style>
 </head>

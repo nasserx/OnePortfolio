@@ -234,7 +234,7 @@ def test_fund_events(app):
         # ── Scenario D: legacy fund with no FundEvents (fallback to fund.cash_balance) ──
         #   Simulates old database where fund.cash_balance=8,000 but no events exist.
         #   get_total_funds_for_fund() must return 8,000 (not 0).
-        legacy_fund = Fund(category='Commodities', amount=_dec(8_000))
+        legacy_fund = Fund(asset_class='Commodities', cash_balance=_dec(8_000))
         db.session.add(legacy_fund)
         db.session.commit()
 

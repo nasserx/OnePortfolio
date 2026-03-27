@@ -8,44 +8,6 @@
     <div class="col">
         <h1 class="mb-0">Overview</h1>
     </div>
-    {% if summary %}
-    {# summary arrives pre-sorted by allocation desc from the route #}
-    {% set dom_colors = ['var(--primary-color)', '#198754', '#dc3545'] %}
-    {% set top2 = summary[:2] %}
-    {% set others_pct = 100 - (top2 | sum(attribute='allocation') | float) %}
-    {% set others_color = dom_colors[2] %}
-    <div class="col-auto">
-        <div class="dominance-widget">
-            <div class="d-flex gap-4 mb-2 flex-wrap">
-                {% for item in top2 %}
-                {% set color = dom_colors[loop.index0] %}
-                <span class="dominance-label">
-                    <span class="dominance-dot" style="background:{{ color }};"></span>
-                    <span style="color:{{ color }};">{{ '%.1f'|format(item.allocation|float) }}%</span>
-                    <span class="text-muted">{{ item.category }}</span>
-                </span>
-                {% endfor %}
-                {% if others_pct > 0.005 %}
-                <span class="dominance-label">
-                    <span class="dominance-dot" style="background:{{ others_color }};"></span>
-                    <span style="color:{{ others_color }};">{{ '%.1f'|format(others_pct) }}%</span>
-                    <span class="text-muted">Others</span>
-                </span>
-                {% endif %}
-            </div>
-            <div class="dominance-bar">
-                {% for item in top2 %}
-                {% set color = dom_colors[loop.index0] %}
-                <div class="dominance-segment" style="width:{{ '%.2f'|format(item.allocation|float) }}%; background:{{ color }};"></div>
-                {% endfor %}
-                {% if others_pct > 0.005 %}
-                <div class="dominance-segment" style="width:{{ '%.2f'|format(others_pct) }}%; background:{{ others_color }};"></div>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-    <div class="col"></div>
-    {% endif %}
 </div>
 
 <div class="row g-3 mb-4">

@@ -34,11 +34,10 @@ def index() -> str:
     svc = get_services()
     summary, total_value = svc.portfolio_service.get_portfolio_summary()
     totals = svc.portfolio_service.get_portfolio_dashboard_totals()
-    summary_sorted = sorted(summary, key=lambda x: float(x['allocation']), reverse=True)
 
     return render_template(
         'index.html',
-        summary=summary_sorted,
+        summary=summary,
         total_value=total_value,
         totals=totals
     )

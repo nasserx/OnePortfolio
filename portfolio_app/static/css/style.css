@@ -176,7 +176,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 h1 {
-    font-size: 2rem;
+    font-size: 1.35rem;
     font-weight: 700;
     letter-spacing: -0.5px;
 }
@@ -269,7 +269,8 @@ label,
     color: var(--text-primary) !important;
     letter-spacing: -0.2px;
     font-weight: 600;
-    font-size: 1.25rem;
+    font-size: 1.35rem;
+    text-decoration: none !important;
 }
 
 .app-logo {
@@ -1416,38 +1417,6 @@ select:-webkit-autofill:focus {
     color: var(--primary-color);
 }
 
-/* Portfolio Dominance widget */
-.dominance-widget {
-    width: 650px;
-    max-width: 100%;
-}
-
-.dominance-label {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    font-size: 0.875rem;
-}
-
-.dominance-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    display: inline-block;
-    flex-shrink: 0;
-}
-
-.dominance-bar {
-    display: flex;
-    height: 7px;
-    border-radius: 20px;
-    overflow: hidden;
-    gap: 2px;
-}
-
-.dominance-segment {
-    height: 100%;
-}
 
 .tx-preview {
     color: var(--text-secondary);
@@ -1459,13 +1428,6 @@ select:-webkit-autofill:focus {
 .tx-preview-amount {
     font-weight: 600;
     color: var(--text-primary);
-}
-
-.allocation-corner {
-    color: var(--text-tertiary);
-    font-size: 0.875rem;
-    font-weight: 400;
-    white-space: nowrap;
 }
 
 

@@ -1,4 +1,4 @@
-"""Fund model for different asset categories."""
+"""Fund model for different asset classes."""
 
 from datetime import datetime
 from decimal import Decimal
@@ -7,7 +7,7 @@ from portfolio_app import db
 
 
 class Fund(db.Model):
-    """Funds model for different asset categories."""
+    """Funds model for different asset classes."""
 
     __tablename__ = 'capital'
 

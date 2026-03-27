@@ -41,7 +41,7 @@
         <form method="GET" action="{{ url_for('transactions.transaction_list') }}">
             <div class="input-group input-group-sm">
                 <select class="form-select form-select-sm" name="category" onchange="this.form.submit()">
-                    <option value="">All asset categories</option>
+                    <option value="">All asset classes</option>
                     {% for fund in funds %}
                     <option value="{{ fund.category }}" {% if selected_category == fund.category %}selected{% endif %}>
                         {{ fund.category }}
@@ -286,11 +286,11 @@
                     <div class="row g-2">
                         <div class="col-6">
                             <div class="mb-3">
-                                <label for="asset_fund_id" class="form-label">Asset Category</label>
+                                <label for="asset_fund_id" class="form-label">Asset Class</label>
                                 {% set _asset_errs = (form_errors.get('asset_add', {}) if form_errors else {}) %}
                                 {% set _asset_vals = (form_values.get('asset_add', {}) if form_values else {}) %}
                                 <select class="form-select {% if _asset_errs.get('asset_fund_id') %}is-invalid{% endif %}" id="asset_fund_id" name="asset_fund_id">
-                                    <option value="">Select asset category...</option>
+                                    <option value="">Select asset class...</option>
                                     {% for fund in funds %}
                                     <option value="{{ fund.id }}" {% if (_asset_vals.get('asset_fund_id') and _asset_vals.get('asset_fund_id')|int == fund.id) or (not _asset_vals.get('asset_fund_id') and selected_category == fund.category) %}selected{% endif %}>
                                         {{ fund.category }}
@@ -341,10 +341,10 @@
                     <div class="row g-2">
                         <div class="col-6">
                             <div class="mb-3" id="add_tx_category_group">
-                                <label for="fund_id" class="form-label">Asset Category</label>
+                                <label for="fund_id" class="form-label">Asset Class</label>
                                 {% set _tx_add_vals = (form_values.get('transaction_add', {}) if form_values else {}) %}
                                 <select class="form-select {% if _tx_add_errs.get('fund_id') %}is-invalid{% endif %}" id="fund_id" name="fund_id">
-                                    <option value="">Select asset category...</option>
+                                    <option value="">Select asset class...</option>
                                     {% for fund in funds %}
                                     <option value="{{ fund.id }}">{{ fund.category }}</option>
                                     {% endfor %}
@@ -509,9 +509,9 @@
                     <div class="row g-2">
                         <div class="col-6">
                             <div class="mb-3">
-                                <label for="edit_fund_id_display" class="form-label">Asset Category</label>
+                                <label for="edit_fund_id_display" class="form-label">Asset Class</label>
                                 <select class="form-select" id="edit_fund_id_display" disabled>
-                                    <option value="">Select asset category...</option>
+                                    <option value="">Select asset class...</option>
                                     {% for fund in funds %}
                                     <option value="{{ fund.id }}">{{ fund.category }}</option>
                                     {% endfor %}
@@ -810,7 +810,7 @@ function openAddAssetModal() {
                 if (context) context.classList.toggle('d-none', !locked);
                 if (contextValue) {
                     if (locked && fundEl && fundEl.selectedOptions && fundEl.selectedOptions[0]) {
-                        const catText = fundEl.selectedOptions[0].text || 'Asset Category';
+                        const catText = fundEl.selectedOptions[0].text || 'Asset Class';
                         const symText = String(vals.symbol || '').toUpperCase();
                         contextValue.textContent = symText ? `${catText}/${symText}` : catText;
                     } else {

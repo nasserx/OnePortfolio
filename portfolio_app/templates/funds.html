@@ -29,7 +29,7 @@
     </div>
 </div>
 
-<!-- Funds by Asset Category (expandable history) -->
+<!-- Funds by Asset Class (expandable history) -->
 <div class="row">
     <div class="col-12">
         {% if funds_data|length > 0 %}
@@ -194,7 +194,7 @@
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label class="form-label">Asset Category</label>
+                        <label class="form-label">Asset Class</label>
                         <input type="text" class="form-control" id="add_funds_category" readonly>
                     </div>
                     {% set _dep_errs = (form_errors.get('funds_deposit', {}) if form_errors else {}) %}
@@ -248,7 +248,7 @@
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label class="form-label">Asset Category</label>
+                        <label class="form-label">Asset Class</label>
                         <input type="text" class="form-control" id="withdraw_funds_category" readonly>
                     </div>
                     {% set _with_errs = (form_errors.get('funds_withdraw', {}) if form_errors else {}) %}
@@ -290,7 +290,7 @@
     </div>
 </div>
 
-<!-- Add Funds Entry Modal (new asset category) -->
+<!-- Add Funds Entry Modal (new asset class) -->
 <div class="modal fade" id="addFundEntryModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -302,11 +302,11 @@
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label for="category" class="form-label">Asset Category</label>
+                        <label for="category" class="form-label">Asset Class</label>
                         {% set _add_errs = (form_errors.get('funds_add', {}) if form_errors else {}) %}
                         {% set _add_vals = (form_values.get('funds_add', {}) if form_values else {}) %}
                         <select class="form-select {% if _add_errs.get('category') %}is-invalid{% endif %}" id="category" name="category">
-                            <option value="">Select asset category...</option>
+                            <option value="">Select asset class...</option>
                             {% for cat in available_categories %}
                             <option value="{{ cat }}" {% if _add_vals.get('category') == cat %}selected{% endif %}>{{ cat }}</option>
                             {% endfor %}

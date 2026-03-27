@@ -204,7 +204,7 @@ class TransactionService:
         # Check if already exists
         existing = self.asset_repo.get_by_fund_and_symbol(fund_id, symbol)
         if existing:
-            raise ValueError(f'Asset {symbol} already exists for this fund')
+            raise ValueError(f"Symbol '{symbol}' already exists in this class.")
 
         asset = Asset(fund_id=fund_id, symbol=symbol)
         self.asset_repo.add(asset)

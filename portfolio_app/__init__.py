@@ -117,35 +117,36 @@ def _run_migrations(app):
                     conn.commit()
 
             # ── Step 7: user table — add columns introduced in earlier releases ─
-            user_cols = {c['name'] for c in inspector.get_columns('user')}
+            if 'user' in tables:
+                user_cols = {c['name'] for c in inspector.get_columns('user')}
 
-            if 'email' not in user_cols:
-                conn.execute(sa.text(
-                    'ALTER TABLE "user" ADD COLUMN email VARCHAR(120)'
-                ))
-                conn.commit()
+                if 'email' not in user_cols:
+                    conn.execute(sa.text(
+                        'ALTER TABLE "user" ADD COLUMN email VARCHAR(120)'
+                    ))
+                    conn.commit()
 
-            if 'is_verified' not in user_cols:
-                conn.execute(sa.text(
-                    'ALTER TABLE "user" ADD COLUMN is_verified BOOLEAN NOT NULL DEFAULT 0'
-                ))
-                # Mark existing users as verified so their accounts stay accessible
-                conn.execute(sa.text('UPDATE "user" SET is_verified = 1'))
-                conn.commit()
+                if 'is_verified' not in user_cols:
+                    conn.execute(sa.text(
+                        'ALTER TABLE "user" ADD COLUMN is_verified BOOLEAN NOT NULL DEFAULT 0'
+                    ))
+                    # Mark existing users as verified so their accounts stay accessible
+                    conn.execute(sa.text('UPDATE "user" SET is_verified = 1'))
+                    conn.commit()
 
-            user_cols = {c['name'] for c in inspector.get_columns('user')}
+                user_cols = {c['name'] for c in inspector.get_columns('user')}
 
-            if 'verification_code' not in user_cols:
-                conn.execute(sa.text(
-                    'ALTER TABLE "user" ADD COLUMN verification_code VARCHAR(6)'
-                ))
-                conn.commit()
+                if 'verification_code' not in user_cols:
+                    conn.execute(sa.text(
+                        'ALTER TABLE "user" ADD COLUMN verification_code VARCHAR(6)'
+                    ))
+                    conn.commit()
 
-            if 'verification_code_expires_at' not in user_cols:
-                conn.execute(sa.text(
-                    'ALTER TABLE "user" ADD COLUMN verification_code_expires_at DATETIME'
-                ))
-                conn.commit()
+                if 'verification_code_expires_at' not in user_cols:
+                    conn.execute(sa.text(
+                        'ALTER TABLE "user" ADD COLUMN verification_code_expires_at DATETIME'
+                    ))
+                    conn.commit()
 
 
 def create_app(config_class=Config):

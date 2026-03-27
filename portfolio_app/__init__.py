@@ -76,6 +76,12 @@ def _run_migrations(app):
                     ))
                     conn.commit()
 
+                # Drop indexes so db.create_all() can recreate them cleanly
+                existing_indexes = {ix['name'] for ix in inspector.get_indexes('fund_event')}
+                for ix_name in existing_indexes:
+                    conn.execute(sa.text(f'DROP INDEX IF EXISTS "{ix_name}"'))
+                conn.commit()
+
             # ── Step 4: transaction table — rename legacy columns ─────────────
             if 'transaction' in tables:
                 tx_cols = {c['name'] for c in inspector.get_columns('transaction')}
@@ -241,9 +247,10 @@ def create_app(config_class=Config):
     from portfolio_app.routes import register_blueprints
     register_blueprints(app)
 
-    # Create tables and apply incremental schema migrations
+    # Apply incremental schema migrations first (renames, column drops/adds),
+    # then create_all() for any new tables/columns introduced in this release.
+    _run_migrations(app)
     with app.app_context():
         db.create_all()
-    _run_migrations(app)
 
     return app

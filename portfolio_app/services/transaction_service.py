@@ -187,24 +187,24 @@ class TransactionService:
         return fund_id
 
     def add_asset(self, fund_id: int, symbol: str) -> Asset:
-        """Add a tracked asset (symbol) to a fund.
+        """Add a tracked symbol to an asset class.
 
         Args:
-            fund_id: Fund ID
-            symbol: Asset symbol
+            fund_id: Asset class ID
+            symbol: Symbol to track
 
         Returns:
-            Created asset
+            Created symbol record
 
         Raises:
-            ValueError: If asset already exists for this fund/symbol
+            ValueError: If symbol is already added to this asset class
         """
         symbol = PortfolioCalculator.normalize_symbol(symbol)
 
         # Check if already exists
         existing = self.asset_repo.get_by_fund_and_symbol(fund_id, symbol)
         if existing:
-            raise ValueError(f"Symbol '{symbol}' already exists in this class.")
+            raise ValueError(f"'{symbol}' is already added to this asset class.")
 
         asset = Asset(fund_id=fund_id, symbol=symbol)
         self.asset_repo.add(asset)

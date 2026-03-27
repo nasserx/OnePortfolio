@@ -267,15 +267,16 @@ label,
 
 .app-navbar .navbar-brand {
     color: var(--text-primary) !important;
-    letter-spacing: -0.2px;
-    font-weight: 600;
-    font-size: 1.35rem;
+    letter-spacing: -0.3px;
+    font-weight: 700;
+    font-size: 1.125rem;
     text-decoration: none !important;
 }
 
 .app-logo {
     border-radius: 8px;
     flex-shrink: 0;
+    margin-right: 0.625rem;
 }
 
 .app-navbar .nav-link {

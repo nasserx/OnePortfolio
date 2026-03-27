@@ -266,17 +266,19 @@ label,
 }
 
 .app-navbar .navbar-brand {
+    display: flex;
+    align-items: center;
     color: var(--text-primary) !important;
-    letter-spacing: -0.3px;
+    font-size: 1.25rem;
     font-weight: 700;
-    font-size: 1.125rem;
+    letter-spacing: -0.3px;
+    gap: 0.625rem;
     text-decoration: none !important;
 }
 
 .app-logo {
-    border-radius: 8px;
+    border-radius: 7px;
     flex-shrink: 0;
-    margin-right: 0.625rem;
 }
 
 .app-navbar .nav-link {

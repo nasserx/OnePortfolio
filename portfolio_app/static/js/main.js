@@ -1067,6 +1067,29 @@ class ModalAjaxHandler {
 }
 
 
+class DropdownHoverManager {
+    constructor() {
+        document.querySelectorAll('.settings-dropdown').forEach(el => {
+            const toggle = el.querySelector('[data-bs-toggle="dropdown"]');
+            const menu   = el.querySelector('.dropdown-menu');
+            const dropdown = bootstrap.Dropdown.getOrCreateInstance(toggle, {
+                offset: [0, 0],
+                popperConfig: { modifiers: [{ name: 'preventOverflow', enabled: false }] }
+            });
+            let hideTimer;
+
+            const scheduleHide = () => { hideTimer = setTimeout(() => dropdown.hide(), 80); };
+            const cancelHide   = () => clearTimeout(hideTimer);
+
+            el.addEventListener('mouseenter', () => { cancelHide(); dropdown.show(); });
+            el.addEventListener('mouseleave', scheduleHide);
+            menu?.addEventListener('mouseenter', cancelHide);
+            menu?.addEventListener('mouseleave', scheduleHide);
+        });
+    }
+}
+
+
 class InvestmentPortfolioApp {
     constructor() {
         this.initialize();
@@ -1101,7 +1124,10 @@ class InvestmentPortfolioApp {
         // Initialize AJAX handler for modals
         new ModalAjaxHandler();
 
-        // Navbar scroll shadow
+        // Settings dropdown hover behavior
+        new DropdownHoverManager();
+
+        // Navbar scroll glass effect
         const navbar = document.querySelector('.app-navbar');
         if (navbar) {
             const onScroll = () => navbar.classList.toggle('scrolled', window.scrollY > 8);

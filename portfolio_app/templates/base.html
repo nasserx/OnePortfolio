@@ -25,7 +25,7 @@
 <body>
 
     <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-dark shadow-sm app-navbar" aria-label="Main navigation">
+    <nav class="navbar navbar-expand-lg navbar-dark app-navbar" aria-label="Main navigation">
         <div class="container-fluid">
             <a class="navbar-brand" href="{{ url_for('dashboard.index') }}">
                 <img src="{{ url_for('static', filename='icons/icon.svg') }}"
@@ -209,29 +209,6 @@
                 if (!localStorage.getItem('theme')) applyTheme(e.matches);
             });
         })();
-    </script>
-
-    <!-- Settings dropdown: show/hide on hover using Bootstrap API -->
-    <script>
-        document.querySelectorAll('.settings-dropdown').forEach(function(el) {
-            const toggle = el.querySelector('[data-bs-toggle="dropdown"]');
-            const menu = el.querySelector('.dropdown-menu');
-            const dropdown = bootstrap.Dropdown.getOrCreateInstance(toggle, {
-                offset: [0, 0],
-                popperConfig: { modifiers: [{ name: 'preventOverflow', enabled: false }] }
-            });
-            let hideTimer;
-
-            function scheduleHide() { hideTimer = setTimeout(function() { dropdown.hide(); }, 80); }
-            function cancelHide() { clearTimeout(hideTimer); }
-
-            el.addEventListener('mouseenter', function() { cancelHide(); dropdown.show(); });
-            el.addEventListener('mouseleave', scheduleHide);
-            if (menu) {
-                menu.addEventListener('mouseenter', cancelHide);
-                menu.addEventListener('mouseleave', scheduleHide);
-            }
-        });
     </script>
 
     <!-- Custom JS -->

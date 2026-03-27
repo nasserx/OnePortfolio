@@ -33,17 +33,15 @@
 }
 
 .landing-nav.scrolled {
-    /* White tint = true glass shimmer on any background */
-    background-color: rgba(255, 255, 255, 0.08);
-    backdrop-filter: blur(12px) saturate(120%);
-    -webkit-backdrop-filter: blur(12px) saturate(120%);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: var(--shadow-sm);
+    background-color: rgba(15, 22, 41, 0.25);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: none;
+    box-shadow: none;
 }
 
 [data-bs-theme="light"] .landing-nav.scrolled {
-    background-color: rgba(255, 255, 255, 0.55);
-    border-bottom-color: rgba(0, 0, 0, 0.06);
+    background-color: rgba(248, 248, 246, 0.25);
 }
 
 .landing-nav .landing-container {
@@ -100,47 +98,14 @@
     background-color: var(--surface-hover);
 }
 
-/* Log In button */
-.btn-nav-login {
-    color: var(--text-secondary);
-    text-decoration: none;
-    font-weight: 500;
+/* Landing nav buttons — smaller sizing than app navbar variant in style.css */
+.landing-nav .btn-nav-login,
+.landing-nav .btn-nav-signup {
     font-size: 0.8125rem;
-    padding: 0.35rem 0.75rem;
-    border-radius: var(--border-radius-sm);
-    border: 1px solid var(--border-color);
-    background: transparent;
-    transition: all var(--transition-fast);
-    white-space: nowrap;
 }
 
-.btn-nav-login:hover {
-    color: var(--text-primary);
-    border-color: var(--text-tertiary);
-    background: var(--surface-hover);
-    text-decoration: none;
-}
-
-/* Sign Up button */
-.btn-nav-signup {
-    color: var(--text-white);
-    text-decoration: none;
-    font-weight: 600;
-    font-size: 0.8125rem;
-    padding: 0.35rem 0.875rem;
-    border-radius: var(--border-radius-sm);
-    background: var(--primary-color);
-    border: 1px solid transparent;
-    transition: all var(--transition-fast);
-    white-space: nowrap;
-}
-
-.btn-nav-signup:hover {
-    background: var(--primary-dark);
-    color: var(--text-white);
-    text-decoration: none;
-    box-shadow: var(--shadow-md);
-}
+.landing-nav .btn-nav-login  { padding: 0.35rem 0.75rem; }
+.landing-nav .btn-nav-signup { padding: 0.35rem 0.875rem; }
 
 
 /* ========================= */

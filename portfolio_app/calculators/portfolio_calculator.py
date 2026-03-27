@@ -88,7 +88,7 @@ class PortfolioCalculator:
 
     @staticmethod
     def get_total_portfolio_value(user_id=None):
-        """Total portfolio value (invested + cash across all categories)."""
+        """Total portfolio value (invested + cash across all asset classes)."""
         q = Fund.query
         if user_id is not None:
             q = q.filter_by(user_id=user_id)
@@ -109,7 +109,7 @@ class PortfolioCalculator:
         capital ever allocated to this category, not the net balance.
         Cash is the correct metric for what remains after withdrawals.
 
-        Fallback: legacy funds with no event history return fund.amount
+        Fallback: legacy funds with no event history return fund.cash_balance
         directly so that old databases display correctly without migration.
         """
         rows = (
@@ -124,18 +124,18 @@ class PortfolioCalculator:
         if rows:
             return sum((_to_decimal(r.amount_delta) for r in rows), ZERO)
 
-        # No event history — legacy fund. Use fund.amount as best approximation.
+        # No event history — legacy fund. Use fund.cash_balance as best approximation.
         fund = Fund.query.get(fund_id)
-        return _to_decimal(fund.amount or 0) if fund else ZERO
+        return _to_decimal(fund.cash_balance or 0) if fund else ZERO
 
     @staticmethod
     def get_cash_balance_for_fund(fund_id, exclude_transaction_id=None) -> Decimal:
-        """Compute cash balance: fund_amount - buy_outflows + sell_inflows."""
+        """Compute cash balance: cash_balance - buy_outflows + sell_inflows + dividends."""
         fund = Fund.query.get(fund_id)
         if not fund:
             return ZERO
 
-        cash = _to_decimal(fund.amount or 0)
+        cash = _to_decimal(fund.cash_balance or 0)
         query = Transaction.query.filter_by(fund_id=fund_id)
         if exclude_transaction_id is not None:
             query = query.filter(Transaction.id != exclude_transaction_id)
@@ -156,12 +156,12 @@ class PortfolioCalculator:
         return cash
 
     # ------------------------------------------------------------------
-    # Category summary (dashboard cards)
+    # Asset class summary (dashboard cards)
     # ------------------------------------------------------------------
 
     @staticmethod
     def get_category_summary(user_id=None):
-        """Get summary for each category.
+        """Get summary for each asset class.
 
         Manual-entry based: funds = cash balance, only REALIZED profit shown.
         """
@@ -175,7 +175,7 @@ class PortfolioCalculator:
         portfolio_value = ZERO
         for fund in funds:
             # Total Funds = deposits only (withdrawals excluded), consistent
-            # with the Funds page display. fund.amount (net) is only used
+            # with the Funds page display. fund.cash_balance (net) is only used
             # internally by get_cash_balance_for_fund for cash calculation.
             total_funds = PortfolioCalculator.get_total_funds_for_fund(fund.id)
 
@@ -213,7 +213,7 @@ class PortfolioCalculator:
             allocation = (cat['category_value'] / abs(portfolio_value) * 100) if portfolio_value != 0 else ZERO
 
             summary.append({
-                'category': cat['fund'].category,
+                'asset_class': cat['fund'].asset_class,
                 'amount': cat['total_funds'],
                 'allocation': Decimal(str(allocation)),
                 'id': cat['fund'].id,
@@ -349,7 +349,7 @@ class PortfolioCalculator:
 
     @staticmethod
     def get_category_transactions_summary(fund_id):
-        """Get aggregated transaction summary for a category."""
+        """Get aggregated transaction summary for an asset class (all symbols combined)."""
         symbols = (
             Transaction.query.with_entities(Transaction.symbol)
             .filter_by(fund_id=fund_id)
@@ -510,7 +510,7 @@ class PortfolioCalculator:
         running_cost = ZERO
 
         for transaction in transactions:
-            transaction.calculate_total_cost()
+            transaction.calculate_net_amount()
 
             if transaction.transaction_type == 'Buy':
                 cost = (_to_decimal(transaction.price) * _to_decimal(transaction.quantity)) + _to_decimal(transaction.fees)

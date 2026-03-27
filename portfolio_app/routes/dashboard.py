@@ -32,12 +32,12 @@ def index() -> str:
         return render_template('landing.html')
 
     svc = get_services()
-    summary, total_value = svc.portfolio_service.get_portfolio_summary()
+    portfolio_summary, total_value = svc.portfolio_service.get_portfolio_summary()
     totals = svc.portfolio_service.get_portfolio_dashboard_totals()
 
     return render_template(
         'index.html',
-        summary=summary,
+        portfolio_summary=portfolio_summary,
         total_value=total_value,
         totals=totals
     )
@@ -52,10 +52,10 @@ def api_portfolio_summary() -> Response:
         JSON response with portfolio summary and total value
     """
     svc = get_services()
-    summary, total_value = svc.portfolio_service.get_portfolio_summary()
+    portfolio_summary, total_value = svc.portfolio_service.get_portfolio_summary()
 
     return jsonify(_jsonify_decimals({
-        'summary': summary,
+        'portfolio_summary': portfolio_summary,
         'total_value': total_value
     }))
 

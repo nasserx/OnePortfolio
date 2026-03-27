@@ -12,12 +12,12 @@ charts_bp = Blueprint('charts', __name__)
 def charts() -> str:
     """Charts page - Portfolio visualizations."""
     svc = get_services()
-    summary, _ = svc.portfolio_service.get_portfolio_summary()
+    portfolio_summary, _ = svc.portfolio_service.get_portfolio_summary()
 
     chart_data = {
-        'categories': [item['category'] for item in summary],
-        'allocations': [float(item['allocation']) for item in summary],
-        'realized_pnl': [float(item['realized_pnl']) for item in summary],
+        'categories': [item['asset_class'] for item in portfolio_summary],
+        'allocations': [float(item['allocation']) for item in portfolio_summary],
+        'realized_pnl': [float(item['realized_pnl']) for item in portfolio_summary],
     }
 
     return render_template('charts.html', chart_data=chart_data)

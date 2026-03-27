@@ -23,12 +23,16 @@ transactions_bp = Blueprint('transactions', __name__)
 
 
 def _get_transactions_page_context(category_filter=''):
-    """Get context data for transactions page."""
+    """Build context data for the transactions page.
+
+    Args:
+        category_filter: Optional asset class name to filter the view.
+    """
     svc = get_services()
     fund_repo, transaction_repo, asset_repo = svc.fund_repo, svc.transaction_repo, svc.asset_repo
     category_filter = (category_filter or '').strip()
     funds = fund_repo.get_all()
-    symbol_data = []
+    holdings = []
 
     def _decimal_places(value) -> int:
         if value is None:
@@ -41,7 +45,7 @@ def _get_transactions_page_context(category_filter=''):
         return len(fractional)
 
     for fund in funds:
-        if category_filter and fund.category != category_filter:
+        if category_filter and fund.asset_class != category_filter:
             continue
 
         tracked_symbols = set()
@@ -71,10 +75,10 @@ def _get_transactions_page_context(category_filter=''):
             transactions = transactions_by_symbol.get(sym_norm, [])
             transactions_desc = list(reversed(transactions))
 
-            price_decimals = max((_decimal_places(t.price) for t in transactions), default=0)
-            price_decimals = max(0, min(int(price_decimals), 10))
+            price_decimal_places = max((_decimal_places(t.price) for t in transactions), default=0)
+            price_decimal_places = max(0, min(int(price_decimal_places), 10))
 
-            avg_cost_decimals = max(2, price_decimals)
+            avg_cost_decimal_places = max(2, price_decimal_places)
             summary = PortfolioCalculator.get_symbol_transactions_summary_from_list(transactions)
 
             # Per-symbol ROI: realized P&L vs cost basis of sold shares
@@ -93,39 +97,39 @@ def _get_transactions_page_context(category_filter=''):
                 summary['roi_percent'] = None
                 summary['roi_percent_display'] = '—'
 
-            group_id = safe_html_id(fund.id, sym_norm)
+            html_group_id = safe_html_id(fund.id, sym_norm)
             asset = asset_by_symbol.get(sym_norm)
-            symbol_data.append({
+            holdings.append({
                 'fund': fund,
                 'symbol': sym_norm,
-                'group_id': group_id,
+                'html_group_id': html_group_id,
                 'transactions': transactions_desc,
                 'summary': summary,
-                'price_decimals': price_decimals,
-                'avg_cost_decimals': avg_cost_decimals,
+                'price_decimal_places': price_decimal_places,
+                'avg_cost_decimal_places': avg_cost_decimal_places,
                 'asset_id': asset.id if asset else None,
             })
 
     # Load dividends grouped by fund_id
     dividends_by_fund: dict = {}
-    dividends_total_by_fund: dict = {}
+    dividend_totals: dict = {}
     for fund in funds:
-        if category_filter and fund.category != category_filter:
+        if category_filter and fund.asset_class != category_filter:
             continue
         fund_dividends = svc.dividend_repo.get_by_fund_id(fund.id)
         if fund_dividends:
             dividends_by_fund[fund.id] = fund_dividends
-            dividends_total_by_fund[fund.id] = sum(
+            dividend_totals[fund.id] = sum(
                 Decimal(str(d.amount)) for d in fund_dividends
             )
 
     return {
-        'symbol_data': symbol_data,
+        'holdings': holdings,
         'funds': funds,
         'transaction_types': Config.TRANSACTION_TYPES,
         'selected_category': category_filter,
         'dividends_by_fund': dividends_by_fund,
-        'dividends_total_by_fund': dividends_total_by_fund,
+        'dividend_totals': dividend_totals,
     }
 
 
@@ -140,7 +144,7 @@ def transaction_list():
         **ctx,
         form_errors={},
         form_values={},
-        open_modal=None,
+        active_modal=None,
     )
 
 
@@ -163,7 +167,7 @@ def transaction_add():
                 **ctx,
                 form_errors={'transaction_add': form.errors},
                 form_values={'transaction_add': request.form},
-                open_modal='addTransactionModal',
+                active_modal='addTransactionModal',
             ), 400
 
         data = form.get_cleaned_data()
@@ -224,7 +228,7 @@ def transaction_edit(id):
                 **ctx,
                 form_errors={'transaction_edit': form.errors},
                 form_values={'transaction_edit': request.form},
-                open_modal='editTransactionModal',
+                active_modal='editTransactionModal',
             ), 400
 
         data = form.get_cleaned_data()
@@ -305,7 +309,7 @@ def dividend_add():
                 **ctx,
                 form_errors={'dividend_add': form.errors},
                 form_values={'dividend_add': request.form},
-                open_modal='addTransactionModal',
+                active_modal='addTransactionModal',
             ), 400
 
         data = form.get_cleaned_data()
@@ -430,7 +434,7 @@ def asset_add():
                 **ctx,
                 form_errors={'asset_add': form.errors},
                 form_values={'asset_add': request.form},
-                open_modal='addAssetModal',
+                active_modal='addAssetModal',
             ), 400
 
         data = form.get_cleaned_data()

@@ -23,7 +23,7 @@ class TransactionManager:
         if date is not None:
             transaction.date = date
 
-        transaction.calculate_total_cost()
+        transaction.calculate_net_amount()
         return transaction
 
     @staticmethod
@@ -42,5 +42,5 @@ class TransactionManager:
         if date is not None:
             transaction.date = date
 
-        transaction.calculate_total_cost()
+        transaction.calculate_net_amount()
         return transaction

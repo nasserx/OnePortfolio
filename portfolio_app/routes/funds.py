@@ -26,24 +26,24 @@ funds_bp = Blueprint('funds', __name__)
 
 
 def _get_funds_page_context():
-    """Get context data for funds page."""
+    """Build context data for the funds management page."""
     svc = get_services()
     funds = svc.fund_repo.get_all()
-    available_categories = svc.fund_repo.get_available_categories(Config.ASSET_CATEGORIES)
+    available_asset_classes = svc.fund_repo.get_available_asset_classes(Config.ASSET_CLASSES)
 
-    funds_data = []
+    fund_details = []
     for fund in funds:
         events = svc.event_repo.get_by_fund_id(fund.id)
 
         # Legacy backfill: create an Initial event for old funds that have
         # a balance but no event history.  Skipped when amount=0 (user may
         # have intentionally deleted all events — show Deposit button instead).
-        if not events and fund.amount and Decimal(str(fund.amount)) != 0:
+        if not events and fund.cash_balance and Decimal(str(fund.cash_balance)) != 0:
             try:
                 backfill = FundEvent(
                     fund_id=fund.id,
                     event_type=EventType.INITIAL,
-                    amount_delta=Decimal(str(fund.amount)),
+                    amount_delta=Decimal(str(fund.cash_balance)),
                     date=fund.created_at,
                     notes=None,
                 )
@@ -59,11 +59,11 @@ def _get_funds_page_context():
         tx_summary = PortfolioCalculator.get_category_transactions_summary(fund.id)
         current_invested = tx_summary['current_invested']
 
-        group_id = safe_html_id(fund.id, fund.category)
-        funds_data.append({
+        html_group_id = safe_html_id(fund.id, fund.asset_class)
+        fund_details.append({
             'fund': fund,
             'events': events,
-            'group_id': group_id,
+            'html_group_id': html_group_id,
             'total_funds': total_funds,
             'cash': cash,
             'current_invested': current_invested,
@@ -71,8 +71,8 @@ def _get_funds_page_context():
 
     return {
         'funds': funds,
-        'funds_data': funds_data,
-        'available_categories': available_categories,
+        'fund_details': fund_details,
+        'available_asset_classes': available_asset_classes,
     }
 
 
@@ -86,8 +86,8 @@ def funds_list():
         **ctx,
         form_errors={},
         form_values={},
-        open_modal=None,
-        open_modal_payload=None,
+        active_modal=None,
+        modal_data=None,
     )
 
 
@@ -97,9 +97,9 @@ def funds_add():
     """Add new fund."""
     try:
         svc = get_services()
-        available_categories = svc.fund_repo.get_available_categories(Config.ASSET_CATEGORIES)
+        available_asset_classes = svc.fund_repo.get_available_asset_classes(Config.ASSET_CLASSES)
 
-        form = FundAddForm(request.form, available_categories)
+        form = FundAddForm(request.form, available_asset_classes)
         if not form.validate():
             if is_ajax_request():
                 return json_response(False, error=get_first_form_error(form.errors))
@@ -110,12 +110,12 @@ def funds_add():
                 **ctx,
                 form_errors={'funds_add': form.errors},
                 form_values={'funds_add': request.form},
-                open_modal='addFundEntryModal',
+                active_modal='addFundEntryModal',
             ), 400
 
         data = form.get_cleaned_data()
         fund = svc.fund_service.create_fund(
-            category=data['category'],
+            asset_class=data['category'],
             amount=data['amount'],
             user_id=current_user.id,
             notes='Initial funding',
@@ -138,7 +138,7 @@ def funds_add():
             **ctx,
             form_errors={'funds_add': {'__all__': str(e)}},
             form_values={'funds_add': request.form},
-            open_modal='addFundEntryModal',
+            active_modal='addFundEntryModal',
         ), 400
 
     except Exception:
@@ -154,7 +154,7 @@ def funds_add():
             **ctx,
             form_errors={'funds_add': {'__all__': ErrorMessages.OPERATION_FAILED}},
             form_values={'funds_add': request.form},
-            open_modal='addFundEntryModal',
+            active_modal='addFundEntryModal',
         ), 400
 
 
@@ -181,7 +181,7 @@ def funds_delete(id):
 @funds_bp.route('/deposit/<int:id>', methods=['POST'])
 @login_required
 def funds_deposit(id):
-    """Deposit funds to category."""
+    """Deposit funds to an asset class."""
     try:
         svc = get_services()
 
@@ -196,8 +196,8 @@ def funds_deposit(id):
                 **ctx,
                 form_errors={'funds_deposit': form.errors},
                 form_values={'funds_deposit': request.form},
-                open_modal='depositFundModal',
-                open_modal_payload={'fund_id': id},
+                active_modal='depositFundModal',
+                modal_data={'fund_id': id},
             ), 400
 
         data = form.get_cleaned_data()
@@ -235,7 +235,7 @@ def funds_deposit(id):
 @funds_bp.route('/withdraw/<int:id>', methods=['POST'])
 @login_required
 def funds_withdraw(id):
-    """Withdraw funds from category."""
+    """Withdraw funds from an asset class."""
     try:
         svc = get_services()
 
@@ -250,8 +250,8 @@ def funds_withdraw(id):
                 **ctx,
                 form_errors={'funds_withdraw': form.errors},
                 form_values={'funds_withdraw': request.form},
-                open_modal='withdrawFundModal',
-                open_modal_payload={'fund_id': id},
+                active_modal='withdrawFundModal',
+                modal_data={'fund_id': id},
             ), 400
 
         data = form.get_cleaned_data()
@@ -306,8 +306,8 @@ def funds_event_edit(event_id):
                 **ctx,
                 form_errors={'fund_event_edit': form.errors},
                 form_values={'fund_event_edit': request.form},
-                open_modal='editFundEventModal',
-                open_modal_payload={'event_id': event_id},
+                active_modal='editFundEventModal',
+                modal_data={'event_id': event_id},
             ), 400
 
         data = form.get_cleaned_data()

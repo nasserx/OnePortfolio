@@ -27,12 +27,20 @@ class FundService:
     # Fund CRUD
     # ------------------------------------------------------------------
 
-    def create_fund(self, category: str, amount: Decimal, user_id: Optional[int] = None, notes: str = 'Initial funding', date: Optional[Any] = None) -> Fund:
-        """Create new fund with initial deposit event."""
-        if self.fund_repo.get_by_category(category):
+    def create_fund(self, asset_class: str, amount: Decimal, user_id: Optional[int] = None, notes: str = 'Initial funding', date: Optional[Any] = None) -> Fund:
+        """Create new fund with initial deposit event.
+
+        Args:
+            asset_class: Asset class name (e.g. 'Stocks', 'Crypto')
+            amount: Initial deposit amount
+            user_id: Owner user ID
+            notes: Label for the initial deposit event
+            date: Date of the initial deposit event
+        """
+        if self.fund_repo.get_by_asset_class(asset_class):
             raise ValueError('Fund already exists')
 
-        fund = Fund(category=category, amount=amount, user_id=user_id)
+        fund = Fund(asset_class=asset_class, cash_balance=amount, user_id=user_id)
         self.fund_repo.add(fund)
         self.fund_repo.flush()  # Obtain fund.id before creating event
 
@@ -50,29 +58,33 @@ class FundService:
         return fund
 
     def delete_fund(self, fund_id: int) -> str:
-        """Delete fund and cascade-delete its events and transactions."""
+        """Delete fund and cascade-delete its events and transactions.
+
+        Returns:
+            The asset class name of the deleted fund.
+        """
         fund = self._require_fund(fund_id)
-        category = fund.category
+        asset_class = fund.asset_class
         self.fund_repo.delete(fund)
         self.fund_repo.commit()
-        return category
+        return asset_class
 
     # ------------------------------------------------------------------
     # Deposit / Withdraw
     # ------------------------------------------------------------------
 
     def deposit_funds(self, fund_id: int, amount_delta: Decimal, notes: Optional[str] = None, date: Optional[Any] = None) -> Fund:
-        """Deposit funds into a category."""
+        """Deposit funds into an asset class."""
         fund = self._require_fund(fund_id)
-        fund.amount = _to_decimal(fund.amount) + amount_delta
+        fund.cash_balance = _to_decimal(fund.cash_balance) + amount_delta
         self._create_event(fund_id, EventType.DEPOSIT, amount_delta, notes, date)
         self.fund_repo.commit()
         return fund
 
     def withdraw_funds(self, fund_id: int, amount_delta: Decimal, notes: Optional[str] = None, date: Optional[Any] = None) -> Fund:
-        """Withdraw funds from a category (amount_delta is positive)."""
+        """Withdraw funds from an asset class (amount_delta is positive)."""
         fund = self._require_fund(fund_id)
-        fund.amount = _to_decimal(fund.amount) - amount_delta
+        fund.cash_balance = _to_decimal(fund.cash_balance) - amount_delta
         # Store withdrawal as negative delta for accurate fund history
         self._create_event(fund_id, EventType.WITHDRAWAL, -amount_delta, notes, date)
         self.fund_repo.commit()
@@ -92,7 +104,7 @@ class FundService:
 
         fund = self.fund_repo.get_by_id(event.fund_id)
         if fund:
-            fund.amount = _to_decimal(fund.amount) + delta_change
+            fund.cash_balance = _to_decimal(fund.cash_balance) + delta_change
 
         event.amount_delta = amount_delta
         if notes is not None:
@@ -115,7 +127,7 @@ class FundService:
         # Reverse the event's effect on the fund balance
         fund = self.fund_repo.get_by_id(fund_id)
         if fund:
-            fund.amount = _to_decimal(fund.amount) - _to_decimal(event.amount_delta)
+            fund.cash_balance = _to_decimal(fund.cash_balance) - _to_decimal(event.amount_delta)
 
         self.event_repo.delete(event)
         self.event_repo.flush()

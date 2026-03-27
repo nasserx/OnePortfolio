@@ -65,41 +65,41 @@ def test_transaction_calculations(app):
         t1 = Transaction(fund_id=comm.id, transaction_type='Buy',
                          date=datetime(2026, 1, 10), symbol='XAU',
                          price=2000, quantity=1.5, fees=50)
-        t1.calculate_total_cost()
+        t1.calculate_net_amount()
         t2 = Transaction(fund_id=comm.id, transaction_type='Buy',
                          date=datetime(2026, 1, 15), symbol='XAU',
                          price=2050, quantity=1.0, fees=30)
-        t2.calculate_total_cost()
+        t2.calculate_net_amount()
 
         # --- Stocks: AAPL (2 buys) + MSFT (1 buy) ---
         stocks = svc.fund_service.create_fund('Stocks', _dec(40000))
         t3 = Transaction(fund_id=stocks.id, transaction_type='Buy',
                          date=datetime(2026, 1, 8), symbol='AAPL',
                          price=100, quantity=50, fees=25)
-        t3.calculate_total_cost()
+        t3.calculate_net_amount()
         t4 = Transaction(fund_id=stocks.id, transaction_type='Buy',
                          date=datetime(2026, 1, 12), symbol='AAPL',
                          price=105, quantity=30, fees=15)
-        t4.calculate_total_cost()
+        t4.calculate_net_amount()
         t5 = Transaction(fund_id=stocks.id, transaction_type='Buy',
                          date=datetime(2026, 1, 9), symbol='MSFT',
                          price=200, quantity=10, fees=10)
-        t5.calculate_total_cost()
+        t5.calculate_net_amount()
 
         # --- ETFs: ETHA (buy, partial sell, buy again) ---
         etfs = svc.fund_service.create_fund('ETFs', _dec(200))
         e1 = Transaction(fund_id=etfs.id, transaction_type='Buy',
                          date=datetime(2026, 1, 1), symbol='ETHA',
                          price=10, quantity=10, fees=0)
-        e1.calculate_total_cost()
+        e1.calculate_net_amount()
         e2 = Transaction(fund_id=etfs.id, transaction_type='Sell',
                          date=datetime(2026, 1, 2), symbol='ETHA',
                          price=12, quantity=5, fees=1)
-        e2.calculate_total_cost()
+        e2.calculate_net_amount()
         e3 = Transaction(fund_id=etfs.id, transaction_type='Buy',
                          date=datetime(2026, 1, 3), symbol='ETHA',
                          price=10, quantity=5, fees=0)
-        e3.calculate_total_cost()
+        e3.calculate_net_amount()
 
         db.session.add_all([t1, t2, t3, t4, t5, e1, e2, e3])
         db.session.commit()
@@ -167,14 +167,14 @@ def test_fund_events(app):
         print("\n  Scenario A – deposits only")
         _assert('Total Funds (deposits only)', 15_000, tf_a)
         _assert('Cash (no transactions)', 15_000, cash_a)
-        _assert('fund.amount equals cash when no transactions',
-                cash_a, _dec(str(fund_a.amount)))
+        _assert('fund.cash_balance equals cash when no transactions',
+                cash_a, _dec(str(fund_a.cash_balance)))
 
         # ── Scenario B: deposits + withdrawals, no transactions ──
         #   Initial=10,000  Deposit=1,000  Withdraw=4,999  Withdraw=5,999
         #   Total Funds = 10,000+1,000 = 11,000
-        #   fund.amount = 10,000+1,000-4,999-5,999 = 2
-        #   Cash = fund.amount = 2 (no buys/sells)
+        #   fund.cash_balance = 10,000+1,000-4,999-5,999 = 2
+        #   Cash = fund.cash_balance = 2 (no buys/sells)
         fund_b = svc.fund_service.create_fund('ETFs', _dec(10_000))
         svc.fund_service.deposit_funds(fund_b.id, _dec(1_000))
         svc.fund_service.withdraw_funds(fund_b.id, _dec(4_999))
@@ -186,12 +186,12 @@ def test_fund_events(app):
 
         print("\n  Scenario B – deposits + withdrawals, no transactions")
         _assert('Total Funds (deposits only, ignores withdrawals)', 11_000, tf_b)
-        _assert('fund.amount (net after withdrawals)', 2, _dec(str(fund_b.amount)))
-        _assert('Cash = fund.amount when no transactions', 2, cash_b)
+        _assert('fund.cash_balance (net after withdrawals)', 2, _dec(str(fund_b.cash_balance)))
+        _assert('Cash = fund.cash_balance when no transactions', 2, cash_b)
 
         # ── Scenario C: deposits + withdrawals + transactions ──
         #   Initial=10,000  Withdraw=4,999  Deposit=1,000  Withdraw=5,999
-        #   fund.amount = 2
+        #   fund.cash_balance = 2
         #   Buy  5000 AAPL @ $1 fees=1 → outflow=5,001
         #   Sell 2500 AAPL @ $2 fees=1 → inflow=4,999
         #   Cash = 2 - 5,001 + 4,999 = 0
@@ -209,11 +209,11 @@ def test_fund_events(app):
         buy = Transaction(fund_id=fund_c.id, transaction_type='Buy',
                           date=datetime(2026, 1, 1), symbol='AAPL',
                           price=1, quantity=5000, fees=1)
-        buy.calculate_total_cost()
+        buy.calculate_net_amount()
         sell = Transaction(fund_id=fund_c.id, transaction_type='Sell',
                            date=datetime(2026, 1, 2), symbol='AAPL',
                            price=2, quantity=2500, fees=1)
-        sell.calculate_total_cost()
+        sell.calculate_net_amount()
         db.session.add_all([buy, sell])
         db.session.commit()
         PortfolioCalculator.recalculate_all_averages_for_symbol(fund_c.id, 'AAPL')
@@ -226,13 +226,13 @@ def test_fund_events(app):
 
         print("\n  Scenario C – deposits + withdrawals + transactions")
         _assert('Total Funds (deposits only)', 11_000, tf_c)
-        _assert('fund.amount (net)', 2, _dec(str(fund_c.amount)))
+        _assert('fund.cash_balance (net)', 2, _dec(str(fund_c.cash_balance)))
         _assert('Cash (after buys/sells)', 0, cash_c)
         _assert('Invested (cost basis of 2500 remaining)', _dec('2500.50'), tx_c['current_invested'])
         _assert('Realized P&L', _dec('2498.50'), realized_c['realized_pnl'])
 
-        # ── Scenario D: legacy fund with no FundEvents (fallback to fund.amount) ──
-        #   Simulates old database where fund.amount=8,000 but no events exist.
+        # ── Scenario D: legacy fund with no FundEvents (fallback to fund.cash_balance) ──
+        #   Simulates old database where fund.cash_balance=8,000 but no events exist.
         #   get_total_funds_for_fund() must return 8,000 (not 0).
         legacy_fund = Fund(category='Commodities', amount=_dec(8_000))
         db.session.add(legacy_fund)
@@ -241,9 +241,9 @@ def test_fund_events(app):
         tf_legacy = PortfolioCalculator.get_total_funds_for_fund(legacy_fund.id)
         cash_legacy = PortfolioCalculator.get_cash_balance_for_fund(legacy_fund.id)
 
-        print("\n  Scenario D – legacy fund (no FundEvents, fallback to fund.amount)")
-        _assert('Total Funds fallback = fund.amount', 8_000, tf_legacy)
-        _assert('Cash fallback = fund.amount (no transactions)', 8_000, cash_legacy)
+        print("\n  Scenario D – legacy fund (no FundEvents, fallback to fund.cash_balance)")
+        _assert('Total Funds fallback = fund.cash_balance', 8_000, tf_legacy)
+        _assert('Cash fallback = fund.cash_balance (no transactions)', 8_000, cash_legacy)
 
         print("  All fund event checks passed.")
 
@@ -273,11 +273,11 @@ def test_category_summary(app):
         buy = Transaction(fund_id=fund.id, transaction_type='Buy',
                           date=datetime(2026, 1, 1), symbol='AAPL',
                           price=1, quantity=5000, fees=1)
-        buy.calculate_total_cost()
+        buy.calculate_net_amount()
         sell = Transaction(fund_id=fund.id, transaction_type='Sell',
                            date=datetime(2026, 1, 2), symbol='AAPL',
                            price=2, quantity=2500, fees=1)
-        sell.calculate_total_cost()
+        sell.calculate_net_amount()
         db.session.add_all([buy, sell])
         db.session.commit()
         PortfolioCalculator.recalculate_all_averages_for_symbol(fund.id, 'AAPL')
@@ -319,11 +319,11 @@ def test_dashboard_totals(app):
 
         svc = Services()
 
-        # Fund A: Initial=20,000  Withdraw=5,000 → total_funds=20,000  fund.amount=15,000
+        # Fund A: Initial=20,000  Withdraw=5,000 → total_funds=20,000  fund.cash_balance=15,000
         fa = svc.fund_service.create_fund('Stocks', _dec(20_000))
         svc.fund_service.withdraw_funds(fa.id, _dec(5_000))
 
-        # Fund B: Initial=10,000  Deposit=2,000 → total_funds=12,000  fund.amount=12,000
+        # Fund B: Initial=10,000  Deposit=2,000 → total_funds=12,000  fund.cash_balance=12,000
         fb = svc.fund_service.create_fund('ETFs', _dec(10_000))
         svc.fund_service.deposit_funds(fb.id, _dec(2_000))
 
@@ -336,7 +336,7 @@ def test_dashboard_totals(app):
         # Total Funds = 20,000 + 12,000 = 32,000 (deposits only)
         _assert('Total Investment (sum of deposits)', 32_000, totals['total_investment'])
 
-        # Cash: fund_a.amount=15,000 + fund_b.amount=12,000 = 27,000 (no transactions)
+        # Cash: fund_a.cash_balance=15,000 + fund_b.cash_balance=12,000 = 27,000 (no transactions)
         _assert('Total Cash (no transactions)', 27_000, totals['total_cash'])
 
         # Total Value = cash + invested = 27,000 + 0 = 27,000
@@ -427,7 +427,7 @@ def test_dividends(app):
         # ── 6b: dividends added to cash balance ──
         print("\n  6b – dividends reflected in cash")
         cash = PortfolioCalculator.get_cash_balance_for_fund(fund1.id)
-        # fund.amount = 10,000; no buy/sell; dividends = 150 → cash = 10,150
+        # fund.cash_balance = 10,000; no buy/sell; dividends = 150 → cash = 10,150
         _assert('Cash includes dividend income', _dec('10150'), cash)
 
         # ── 6c: dividends added to realized P&L ──

@@ -13,24 +13,104 @@ mail = Mail()
 
 
 def _run_migrations(app):
-    """Apply incremental schema changes that SQLAlchemy create_all() cannot handle."""
+    """Apply incremental schema changes that SQLAlchemy create_all() cannot handle.
+
+    All steps are idempotent — safe to run on both fresh installs and existing
+    databases. Each step checks the current state before acting, so re-running
+    after a partial migration is safe.
+
+    Requires SQLite 3.25+ for RENAME COLUMN support (released 2018).
+    """
     import sqlalchemy as sa
     with app.app_context():
         with db.engine.connect() as conn:
             inspector = sa.inspect(db.engine)
+            tables = set(inspector.get_table_names())
 
-            capital_cols = {c['name'] for c in inspector.get_columns('capital')}
-
-            # 1. Add user_id column if missing
-            if 'user_id' not in capital_cols:
-                conn.execute(sa.text(
-                    'ALTER TABLE capital ADD COLUMN user_id INTEGER REFERENCES "user"(id)'
-                ))
+            # ── Step 1: Rename legacy tables ─────────────────────────────────
+            if 'capital' in tables and 'fund' not in tables:
+                conn.execute(sa.text('ALTER TABLE capital RENAME TO fund'))
                 conn.commit()
-                capital_cols.add('user_id')
+                tables = set(inspector.get_table_names())
 
+            if 'capital_event' in tables and 'fund_event' not in tables:
+                conn.execute(sa.text('ALTER TABLE capital_event RENAME TO fund_event'))
+                conn.commit()
 
-            # 3. Add email column to user table if missing
+            # ── Step 2: fund table — add missing column, then rename legacy ones ──
+            if 'fund' in tables:
+                fund_cols = {c['name'] for c in inspector.get_columns('fund')}
+
+                if 'user_id' not in fund_cols:
+                    conn.execute(sa.text(
+                        'ALTER TABLE fund ADD COLUMN user_id INTEGER REFERENCES "user"(id)'
+                    ))
+                    conn.commit()
+                    fund_cols.add('user_id')
+
+                if 'category' in fund_cols:
+                    conn.execute(sa.text(
+                        'ALTER TABLE fund RENAME COLUMN category TO asset_class'
+                    ))
+                    conn.commit()
+
+                if 'amount' in fund_cols:
+                    conn.execute(sa.text(
+                        'ALTER TABLE fund RENAME COLUMN amount TO cash_balance'
+                    ))
+                    conn.commit()
+
+            # ── Step 3: fund_event table — rename legacy columns ─────────────
+            if 'fund_event' in tables:
+                fe_cols = {c['name'] for c in inspector.get_columns('fund_event')}
+
+                if 'capital_id' in fe_cols:
+                    conn.execute(sa.text(
+                        'ALTER TABLE fund_event RENAME COLUMN capital_id TO fund_id'
+                    ))
+                    conn.commit()
+
+                if 'amount_usd_delta' in fe_cols:
+                    conn.execute(sa.text(
+                        'ALTER TABLE fund_event RENAME COLUMN amount_usd_delta TO amount_delta'
+                    ))
+                    conn.commit()
+
+            # ── Step 4: transaction table — rename legacy columns ─────────────
+            if 'transaction' in tables:
+                tx_cols = {c['name'] for c in inspector.get_columns('transaction')}
+
+                if 'capital_id' in tx_cols:
+                    conn.execute(sa.text(
+                        'ALTER TABLE "transaction" RENAME COLUMN capital_id TO fund_id'
+                    ))
+                    conn.commit()
+
+                if 'total_cost' in tx_cols:
+                    conn.execute(sa.text(
+                        'ALTER TABLE "transaction" RENAME COLUMN total_cost TO net_amount'
+                    ))
+                    conn.commit()
+
+            # ── Step 5: asset table — rename legacy FK column ─────────────────
+            if 'asset' in tables:
+                asset_cols = {c['name'] for c in inspector.get_columns('asset')}
+                if 'capital_id' in asset_cols:
+                    conn.execute(sa.text(
+                        'ALTER TABLE asset RENAME COLUMN capital_id TO fund_id'
+                    ))
+                    conn.commit()
+
+            # ── Step 6: dividend table — rename legacy FK column ──────────────
+            if 'dividend' in tables:
+                div_cols = {c['name'] for c in inspector.get_columns('dividend')}
+                if 'capital_id' in div_cols:
+                    conn.execute(sa.text(
+                        'ALTER TABLE dividend RENAME COLUMN capital_id TO fund_id'
+                    ))
+                    conn.commit()
+
+            # ── Step 7: user table — add columns introduced in earlier releases ─
             user_cols = {c['name'] for c in inspector.get_columns('user')}
 
             if 'email' not in user_cols:
@@ -39,19 +119,14 @@ def _run_migrations(app):
                 ))
                 conn.commit()
 
-            # 4. Add is_verified column to user table if missing.
-            #    Existing users are marked as verified so their accounts remain accessible.
             if 'is_verified' not in user_cols:
                 conn.execute(sa.text(
                     'ALTER TABLE "user" ADD COLUMN is_verified BOOLEAN NOT NULL DEFAULT 0'
                 ))
-                conn.execute(sa.text(
-                    'UPDATE "user" SET is_verified = 1'
-                ))
+                # Mark existing users as verified so their accounts stay accessible
+                conn.execute(sa.text('UPDATE "user" SET is_verified = 1'))
                 conn.commit()
 
-            # 5. Add verification_code columns for the 6-digit OTP flow.
-            #    Re-fetch user_cols in case they were just added above.
             user_cols = {c['name'] for c in inspector.get_columns('user')}
 
             if 'verification_code' not in user_cols:
@@ -73,11 +148,11 @@ def create_app(config_class=Config):
     app.config.from_object(config_class)
 
     # ------------------------------------------------------------------
-    # Development-only: bypass authentication for local testing.
-    # Activate by setting the environment variable: BYPASS_AUTH=1
+    # Development-only: auto-login as first user, bypasses authentication.
+    # Activate by setting the environment variable: DEV_AUTO_LOGIN=1
     # NEVER enable this in production.
     # ------------------------------------------------------------------
-    if app.config.get('BYPASS_AUTH'):
+    if app.config.get('DEV_AUTO_LOGIN'):
         from flask_login import login_user
         from flask import request as _request
 
@@ -127,7 +202,7 @@ def create_app(config_class=Config):
     app.jinja_env.filters['fmt_decimal'] = fmt_decimal
     app.jinja_env.filters['fmt_money'] = fmt_money
 
-    # Inject category icons and message classes into all templates
+    # Inject asset class icons and message classes into all templates
     from portfolio_app.utils.messages import (
         ErrorMessages, SuccessMessages, ConfirmMessages,
         ValidationMessages, AuthMessages, AdminMessages,
@@ -136,8 +211,8 @@ def create_app(config_class=Config):
     @app.context_processor
     def inject_template_globals():
         return {
-            'category_icons': app.config.get('ASSET_CATEGORY_ICONS', {}),
-            'category_icon_default': app.config.get('ASSET_CATEGORY_ICON_DEFAULT', ('bi-folder', 'text-secondary')),
+            'asset_class_icons': app.config.get('ASSET_CLASS_ICONS', {}),
+            'asset_class_icon_default': app.config.get('ASSET_CLASS_ICON_DEFAULT', ('bi-folder', 'text-secondary')),
             'Msg': {
                 'error': ErrorMessages,
                 'success': SuccessMessages,

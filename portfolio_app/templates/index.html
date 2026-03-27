@@ -46,15 +46,15 @@
 
 <!-- Asset Allocation Cards -->
 <div class="row g-4 mb-4">
-    {% for item in summary %}
+    {% for item in portfolio_summary %}
     <div class="col-md-6 col-lg-4">
         <div class="card border-0 shadow-sm h-100 category-card page-accent-surface">
             <div class="card-body">
                 <div class="mb-3">
                     <h5 class="card-title mb-0">
-                        {% set icon, color = category_icons.get(item.category, category_icon_default) %}
+                        {% set icon, color = asset_class_icons.get(item.asset_class, asset_class_icon_default) %}
                         <i class="bi {{ icon }} {{ color }}"></i>
-                        {{ item.category }}
+                        {{ item.asset_class }}
                     </h5>
                 </div>
                 
@@ -88,7 +88,7 @@
 
             </div>
             <div class="card-footer bg-transparent border-0">
-                     <a href="{{ url_for('transactions.transaction_list', category=item.category) }}" 
+                     <a href="{{ url_for('transactions.transaction_list', category=item.asset_class) }}"
                          class="btn btn-sm btn-outline-primary w-100 overview-btn">
                     View Transactions
                 </a>
@@ -97,7 +97,7 @@
     </div>
     {% endfor %}
     
-    {% if summary|length == 0 %}
+    {% if portfolio_summary|length == 0 %}
     <div class="col-12">
         <div class="alert alert-info text-center">
             <i class="bi bi-info-circle"></i>

@@ -43,8 +43,8 @@
                 <select class="form-select form-select-sm" name="category" onchange="this.form.submit()">
                     <option value="">All asset classes</option>
                     {% for fund in funds %}
-                    <option value="{{ fund.category }}" {% if selected_category == fund.category %}selected{% endif %}>
-                        {{ fund.category }}
+                    <option value="{{ fund.asset_class }}" {% if selected_category == fund.asset_class %}selected{% endif %}>
+                        {{ fund.asset_class }}
                     </option>
                     {% endfor %}
                 </select>
@@ -62,8 +62,8 @@
 <div class="row">
     <div class="col-12">
         {% set ns = namespace(shown_fund_ids=[]) %}
-        {% if symbol_data|length > 0 %}
-            {% for item in symbol_data %}
+        {% if holdings|length > 0 %}
+            {% for item in holdings %}
             {% set fund_divs = dividends_by_fund.get(item.fund.id, []) %}
             {% set is_first_for_fund = item.fund.id not in ns.shown_fund_ids %}
             {% set show_div_col  = is_first_for_fund %}
@@ -71,12 +71,12 @@
             {% if is_first_for_fund %}{% set ns.shown_fund_ids = ns.shown_fund_ids + [item.fund.id] %}{% endif %}
             <div class="card border-0 shadow-sm mb-3 symbol-card" data-symbol="{{ item.symbol }}">
                  <div class="card-header bg-white border-bottom py-2 px-3 category-header page-accent-surface"
-                     onclick="toggleSymbolTransactions('{{ item.group_id }}')">
+                     onclick="toggleSymbolTransactions('{{ item.html_group_id }}')">
                     <div class="row align-items-center g-1 summary-row">
                         <div class="col-lg-2 col-md-3 d-flex align-items-center gap-2">
-                            <i class="bi bi-chevron-right category-chevron" id="chevron-{{ item.group_id }}"></i>
+                            <i class="bi bi-chevron-right category-chevron" id="chevron-{{ item.html_group_id }}"></i>
                             <span class="fw-bold text-dark">{{ item.symbol }}</span>
-                            <span class="badge bg-light text-dark border">{{ item.fund.category }}</span>
+                            <span class="badge bg-light text-dark border">{{ item.fund.asset_class }}</span>
                         </div>
                         <div class="col-lg-8 col-md-7">
                             <div class="category-summary {% if show_div_col %}columns-6{% else %}columns-5{% endif %}">
@@ -94,7 +94,7 @@
                                 </div>
                                 <div class="summary-item">
                                     <div class="summary-label">Avg Cost</div>
-                                    <div class="summary-value text-info-emphasis">{{ item.summary.average_cost|fmt_money(item.avg_cost_decimals) }}</div>
+                                    <div class="summary-value text-info-emphasis">{{ item.summary.average_cost|fmt_money(item.avg_cost_decimal_places) }}</div>
                                 </div>
                                 <div class="summary-item">
                                     <div class="summary-label">Realized P&amp;L</div>
@@ -108,8 +108,8 @@
                                 {% if show_div_col %}
                                 <div class="summary-item">
                                     <div class="summary-label">Total Dividends</div>
-                                    <div class="summary-value {% if dividends_total_by_fund.get(item.fund.id, 0) > 0 %}profit{% endif %}">
-                                        {% if dividends_total_by_fund.get(item.fund.id, 0) > 0 %}+{% endif %}{{ dividends_total_by_fund.get(item.fund.id, 0)|fmt_money }}
+                                    <div class="summary-value {% if dividend_totals.get(item.fund.id, 0) > 0 %}profit{% endif %}">
+                                        {% if dividend_totals.get(item.fund.id, 0) > 0 %}+{% endif %}{{ dividend_totals.get(item.fund.id, 0)|fmt_money }}
                                     </div>
                                 </div>
                                 {% endif %}
@@ -120,7 +120,7 @@
                                 <button type="button"
                                         class="btn btn-outline-primary add-transaction-icon-btn js-add-transaction-btn"
                                         data-fund-id="{{ item.fund.id }}"
-                                        data-category="{{ item.fund.category|e }}"
+                                        data-category="{{ item.fund.asset_class|e }}"
                                         data-symbol="{{ item.symbol|e }}"
                                         title="Add Transaction"
                                         aria-label="Add Transaction"
@@ -131,7 +131,7 @@
                                 <button type="button"
                                         class="btn btn-outline-danger js-delete-symbol-btn"
                                         data-fund-id="{{ item.fund.id }}"
-                                        data-category="{{ item.fund.category|e }}"
+                                        data-category="{{ item.fund.asset_class|e }}"
                                         data-symbol="{{ item.symbol|e }}"
                                         data-tx-count="{{ item.summary.transaction_count or 0 }}"
                                         title="Delete Symbol"
@@ -145,7 +145,7 @@
                     </div>
                 </div>
 
-                <div class="category-transactions" id="transactions-{{ item.group_id }}" style="display: none;">
+                <div class="category-transactions" id="transactions-{{ item.html_group_id }}" style="display: none;">
                     {% if item.transactions|length > 0 or show_div_rows %}
                     <div class="table-responsive">
                         <table class="table table-sm table-hover align-middle mb-0 transactions-table">
@@ -173,10 +173,10 @@
                                         {% endif %}
                                     </td>
                                     <td><small class="text-uppercase">{{ transaction.symbol or '-' }}</small></td>
-                                    <td class="text-end"><small>{{ transaction.price|fmt_money(item.price_decimals) }}</small></td>
+                                    <td class="text-end"><small>{{ transaction.price|fmt_money(item.price_decimal_places) }}</small></td>
                                     <td class="text-end"><small>{{ transaction.quantity|fmt_decimal }}</small></td>
                                     <td class="text-end"><small class="text-danger">{{ transaction.fees|fmt_decimal }}</small></td>
-                                    <td class="text-end"><small class="text-primary">{{ transaction.total_cost|fmt_money }}</small></td>
+                                    <td class="text-end"><small class="text-primary">{{ transaction.net_amount|fmt_money }}</small></td>
                                     <td class="text-center">
                                         <div class="btn-group btn-group-sm" role="group">
                                             <button type="button" class="btn btn-outline-primary btn-sm js-edit-transaction-btn"
@@ -249,7 +249,7 @@
                     <div class="p-3 text-center help-message page-accent-surface">
                         <button type="button" class="btn btn-outline-primary btn-sm js-add-transaction-btn"
                                 data-fund-id="{{ item.fund.id }}"
-                                data-category="{{ item.fund.category|e }}"
+                                data-category="{{ item.fund.asset_class|e }}"
                                 data-symbol="{{ item.symbol|e }}">
                             <i class="bi bi-plus-lg"></i> Add Transaction
                         </button>
@@ -292,8 +292,8 @@
                                 <select class="form-select {% if _asset_errs.get('asset_fund_id') %}is-invalid{% endif %}" id="asset_fund_id" name="asset_fund_id">
                                     <option value="">Select asset class...</option>
                                     {% for fund in funds %}
-                                    <option value="{{ fund.id }}" {% if (_asset_vals.get('asset_fund_id') and _asset_vals.get('asset_fund_id')|int == fund.id) or (not _asset_vals.get('asset_fund_id') and selected_category == fund.category) %}selected{% endif %}>
-                                        {{ fund.category }}
+                                    <option value="{{ fund.id }}" {% if (_asset_vals.get('asset_fund_id') and _asset_vals.get('asset_fund_id')|int == fund.id) or (not _asset_vals.get('asset_fund_id') and selected_category == fund.asset_class) %}selected{% endif %}>
+                                        {{ fund.asset_class }}
                                     </option>
                                     {% endfor %}
                                 </select>
@@ -346,7 +346,7 @@
                                 <select class="form-select {% if _tx_add_errs.get('fund_id') %}is-invalid{% endif %}" id="fund_id" name="fund_id">
                                     <option value="">Select asset class...</option>
                                     {% for fund in funds %}
-                                    <option value="{{ fund.id }}">{{ fund.category }}</option>
+                                    <option value="{{ fund.id }}">{{ fund.asset_class }}</option>
                                     {% endfor %}
                                 </select>
                                 {% if _tx_add_errs.get('fund_id') %}
@@ -438,7 +438,7 @@
                                     {% if _tx_add_errs.get('fees') %}
                                     <div class="invalid-feedback">{{ _tx_add_errs.get('fees') }}</div>
                                     {% endif %}
-                                    <div id="total_cost_preview" class="tx-preview"></div>
+                                    <div id="net_amount_preview" class="tx-preview"></div>
                                 </div>
                             </div>
                             <div class="col-6">
@@ -513,7 +513,7 @@
                                 <select class="form-select" id="edit_fund_id_display" disabled>
                                     <option value="">Select asset class...</option>
                                     {% for fund in funds %}
-                                    <option value="{{ fund.id }}">{{ fund.category }}</option>
+                                    <option value="{{ fund.id }}">{{ fund.asset_class }}</option>
                                     {% endfor %}
                                 </select>
                             </div>
@@ -571,7 +571,7 @@
                                 {% if _tx_edit_errs.get('edit_fees') %}
                                 <div class="invalid-feedback">{{ _tx_edit_errs.get('edit_fees') }}</div>
                                 {% endif %}
-                                <div id="edit_total_cost_preview" class="tx-preview"></div>
+                                <div id="edit_net_amount_preview" class="tx-preview"></div>
                             </div>
                         </div>
                         <div class="col-6">
@@ -752,8 +752,8 @@ function openAddAssetModal() {
 
 // Re-open modals after server-side validation errors and restore field values.
 (function reopenModalFromServerErrors() {
-    const which = {{ (open_modal or '') | tojson }};
-    const payload = {{ (open_modal_payload or {}) | tojson }};
+    const which = {{ (active_modal or '') | tojson }};
+    const payload = {{ (modal_data or {}) | tojson }};
 
     if (!which) return;
 
@@ -810,9 +810,9 @@ function openAddAssetModal() {
                 if (context) context.classList.toggle('d-none', !locked);
                 if (contextValue) {
                     if (locked && fundEl && fundEl.selectedOptions && fundEl.selectedOptions[0]) {
-                        const catText = fundEl.selectedOptions[0].text || 'Asset Class';
+                        const assetClassText = fundEl.selectedOptions[0].text || 'Asset Class';
                         const symText = String(vals.symbol || '').toUpperCase();
-                        contextValue.textContent = symText ? `${catText}/${symText}` : catText;
+                        contextValue.textContent = symText ? `${assetClassText}/${symText}` : assetClassText;
                     } else {
                         contextValue.textContent = '';
                     }
@@ -839,9 +839,9 @@ function openAddAssetModal() {
                 if (fundInput) fundInput.value = fundId ? String(fundId) : '';
                 if (symbolInput) symbolInput.value = (symbol || '').toUpperCase();
                 if (context) {
-                    const catText = category ? String(category).toUpperCase() : 'ASSET CATEGORY';
+                    const assetClassText = category ? String(category).toUpperCase() : 'ASSET CLASS';
                     const symText = (symbol || '').toUpperCase();
-                    context.textContent = symText ? `${catText}/${symText}` : catText;
+                    context.textContent = symText ? `${assetClassText}/${symText}` : assetClassText;
                 }
 
                 new bootstrap.Modal(document.getElementById('deleteAssetModal')).show();

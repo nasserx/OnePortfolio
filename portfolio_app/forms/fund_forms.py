@@ -8,15 +8,15 @@ from portfolio_app.utils.messages import ValidationMessages
 class FundAddForm(BaseForm):
     """Form for adding a new fund."""
 
-    def __init__(self, data: dict, available_categories: List[str]):
+    def __init__(self, data: dict, available_asset_classes: List[str]):
         """Initialize form.
 
         Args:
             data: Form data
-            available_categories: List of available category names
+            available_asset_classes: List of asset class names not yet used by this user
         """
         super().__init__(data)
-        self.available_categories = available_categories
+        self.available_asset_classes = available_asset_classes
 
     def validate(self) -> bool:
         """Validate fund add form.
@@ -26,7 +26,7 @@ class FundAddForm(BaseForm):
         """
         # Validate category
         category = self._validate_required_string('category', ValidationMessages.SELECT_CATEGORY)
-        if category and category not in self.available_categories:
+        if category and category not in self.available_asset_classes:
             self.errors['category'] = f'{category} already exists.'
         elif category:
             self.cleaned_data['category'] = category

@@ -20,7 +20,7 @@
     <div class="col-12">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h1>Funds</h1>
-            {% if available_categories|length > 0 %}
+            {% if available_asset_classes|length > 0 %}
             <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addFundEntryModal">
                 Add Funds
             </button>
@@ -32,15 +32,15 @@
 <!-- Funds by Asset Class (expandable history) -->
 <div class="row">
     <div class="col-12">
-        {% if funds_data|length > 0 %}
-            {% for item in funds_data %}
+        {% if fund_details|length > 0 %}
+            {% for item in fund_details %}
             <div class="card border-0 shadow-sm mb-3">
                  <div class="card-header bg-white border-bottom py-2 px-3 category-header page-accent-surface"
-                     onclick="toggleFundEvents('{{ item.group_id }}')">
+                     onclick="toggleFundEvents('{{ item.html_group_id }}')">
                     <div class="row align-items-center g-1 summary-row">
                         <div class="col-lg-3 col-md-4 d-flex align-items-center gap-2">
-                            <i class="bi bi-chevron-right category-chevron" id="fund-chevron-{{ item.group_id }}"></i>
-                            <span class="text-dark">{{ item.fund.category }}</span>
+                            <i class="bi bi-chevron-right category-chevron" id="fund-chevron-{{ item.html_group_id }}"></i>
+                            <span class="text-dark">{{ item.fund.asset_class }}</span>
                         </div>
                         <div class="col-lg-7 col-md-6">
                             <div class="category-summary columns-3">
@@ -62,7 +62,7 @@
                             <div class="btn-group btn-group-sm" role="group">
                                 <button type="button" class="btn btn-outline-success js-deposit-funds-btn"
                                         data-fund-id="{{ item.fund.id }}"
-                                        data-category="{{ item.fund.category|e }}"
+                                        data-category="{{ item.fund.asset_class|e }}"
                                         title="Deposit"
                                         aria-label="Deposit"
                                         data-bs-toggle="tooltip"
@@ -71,7 +71,7 @@
                                 </button>
                                 <button type="button" class="btn btn-outline-danger js-withdraw-funds-btn"
                                         data-fund-id="{{ item.fund.id }}"
-                                        data-category="{{ item.fund.category|e }}"
+                                        data-category="{{ item.fund.asset_class|e }}"
                                         title="Withdraw"
                                         aria-label="Withdraw"
                                         data-bs-toggle="tooltip"
@@ -80,7 +80,7 @@
                                 </button>
                                 <button type="button" class="btn btn-outline-danger js-delete-fund-btn"
                                         data-fund-id="{{ item.fund.id }}"
-                                        data-category="{{ item.fund.category|e }}"
+                                        data-category="{{ item.fund.asset_class|e }}"
                                         title="Delete Fund"
                                         aria-label="Delete Fund"
                                         data-bs-toggle="tooltip"
@@ -92,7 +92,7 @@
                     </div>
                 </div>
 
-                <div class="category-transactions" id="fund-events-{{ item.group_id }}" style="display: none;">
+                <div class="category-transactions" id="fund-events-{{ item.html_group_id }}" style="display: none;">
                     {% if item.events|length > 0 %}
                     <div class="table-responsive">
                         <table class="table table-sm table-hover align-middle mb-0 transactions-table">
@@ -161,7 +161,7 @@
                     <div class="p-3 text-center help-message page-accent-surface">
                         <button type="button" class="btn btn-outline-success btn-sm js-deposit-funds-btn"
                                 data-fund-id="{{ item.fund.id }}"
-                                data-category="{{ item.fund.category|e }}">
+                                data-category="{{ item.fund.asset_class|e }}">
                             <i class="bi bi-arrow-down-circle"></i> Deposit
                         </button>
                     </div>
@@ -307,7 +307,7 @@
                         {% set _add_vals = (form_values.get('funds_add', {}) if form_values else {}) %}
                         <select class="form-select {% if _add_errs.get('category') %}is-invalid{% endif %}" id="category" name="category">
                             <option value="">Select asset class...</option>
-                            {% for cat in available_categories %}
+                            {% for cat in available_asset_classes %}
                             <option value="{{ cat }}" {% if _add_vals.get('category') == cat %}selected{% endif %}>{{ cat }}</option>
                             {% endfor %}
                         </select>
@@ -531,8 +531,8 @@ function editFundEvent(eventId, eventType, amountDelta, notes, dateShort) {
 
 // Re-open a modal after server-side validation errors (no browser/JS validation).
 (function reopenModalFromServerErrors() {
-    const which = {{ (open_modal or '') | tojson }};
-    const payload = {{ (open_modal_payload or {}) | tojson }};
+    const which = {{ (active_modal or '') | tojson }};
+    const payload = {{ (modal_data or {}) | tojson }};
 
     if (!which) return;
 

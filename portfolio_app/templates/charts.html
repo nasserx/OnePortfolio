@@ -57,8 +57,8 @@
 (function () {
     const chartData = {{ chart_data | tojson }};
 
-    // Category color palette (matches icon colors in config)
-    const CATEGORY_COLORS = {
+    // Asset class color palette (matches icon colors in config)
+    const ASSET_CLASS_COLORS = {
         'Stocks':      '#198754',
         'ETFs':        '#0dcaf0',
         'Commodities': '#ffc107',
@@ -66,8 +66,8 @@
     };
     const DEFAULT_COLOR = '#6c757d';
 
-    function categoryColor(name) {
-        return CATEGORY_COLORS[name] || DEFAULT_COLOR;
+    function assetClassColor(name) {
+        return ASSET_CLASS_COLORS[name] || DEFAULT_COLOR;
     }
 
     // Detect dark mode for chart text/grid colors
@@ -75,7 +75,7 @@
     const textColor  = isDark ? '#adb5bd' : '#6c757d';
     const gridColor  = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
 
-    const colors = chartData.categories.map(categoryColor);
+    const colors = chartData.categories.map(assetClassColor);
 
     // ── Allocation Donut ──────────────────────────────────────────────
     new Chart(document.getElementById('allocationChart'), {

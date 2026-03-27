@@ -6,18 +6,18 @@ from portfolio_app import db
 
 
 class FundEvent(db.Model):
-    """Funding events (deposits/withdrawals) per category."""
+    """A single funding event (Initial deposit, Deposit, or Withdrawal) for a fund."""
 
-    __tablename__ = 'capital_event'
+    __tablename__ = 'fund_event'
 
     id = db.Column(db.Integer, primary_key=True)
-    fund_id = db.Column('capital_id', db.Integer, db.ForeignKey('capital.id'), nullable=False)
+    fund_id = db.Column(db.Integer, db.ForeignKey('fund.id'), nullable=False)
 
     # Initial / Deposit / Withdrawal
     event_type = db.Column(db.String(20), nullable=False)
 
-    # Store signed delta (deposit positive, withdrawal negative)
-    amount_delta = db.Column('amount_usd_delta', Numeric(15, 2), nullable=False, default=0)
+    # Signed delta: positive for deposits/initial, negative for withdrawals
+    amount_delta = db.Column(Numeric(15, 2), nullable=False, default=0)
 
     date = db.Column(db.DateTime, default=datetime.utcnow)
     notes = db.Column(db.Text, nullable=True)

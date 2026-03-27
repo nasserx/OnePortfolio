@@ -17,9 +17,9 @@ class Config:
     # Debug mode - disabled by default for production
     DEBUG = False
 
-    # Development-only: bypass email/password authentication for local testing.
-    # Set BYPASS_AUTH=1 in environment to enable. NEVER use in production.
-    BYPASS_AUTH = os.environ.get('BYPASS_AUTH', '0') in ('1', 'true', 'True')
+    # Development-only: auto-login as first user, bypasses email/password auth.
+    # Set DEV_AUTO_LOGIN=1 in environment to enable. NEVER use in production.
+    DEV_AUTO_LOGIN = os.environ.get('DEV_AUTO_LOGIN', '0') in ('1', 'true', 'True')
 
     # Security hardening
     WTF_CSRF_ENABLED = True
@@ -33,23 +33,23 @@ class Config:
     REMEMBER_COOKIE_HTTPONLY = True
     REMEMBER_COOKIE_SECURE = os.environ.get('SESSION_COOKIE_SECURE', '0') in ('1', 'true', 'True')
     
-    # Asset categories
-    ASSET_CATEGORIES = [
+    # Supported asset classes
+    ASSET_CLASSES = [
         'Stocks',
         'ETFs',
         'Commodities',
         'Crypto'
     ]
 
-    # Icon mapping per category: (bootstrap-icon-class, text-color-class)
-    # To add a new category icon, add an entry here matching the category name exactly.
-    ASSET_CATEGORY_ICONS = {
+    # Icon mapping per asset class: (bootstrap-icon-class, text-color-class)
+    # To add a new asset class icon, add an entry here matching the asset class name exactly.
+    ASSET_CLASS_ICONS = {
         'Stocks':      ('bi-graph-up',           'text-success'),
         'ETFs':        ('bi-bar-chart-line',      'text-info'),
         'Commodities': ('bi-box-seam',            'text-warning'),
         'Crypto':      ('bi-currency-bitcoin',    'text-danger'),
     }
-    ASSET_CATEGORY_ICON_DEFAULT = ('bi-folder',  'text-secondary')
+    ASSET_CLASS_ICON_DEFAULT = ('bi-folder',  'text-secondary')
 
     # Transaction types (Buy/Sell only — Dividend uses a separate model)
     TRANSACTION_TYPES = ['Buy', 'Sell']

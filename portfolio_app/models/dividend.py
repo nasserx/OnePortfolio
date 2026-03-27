@@ -7,12 +7,12 @@ from portfolio_app import db
 
 
 class Dividend(db.Model):
-    """Represents a dividend income event linked to a fund/category."""
+    """A dividend income event linked to a fund."""
 
     __tablename__ = 'dividend'
 
     id         = db.Column(db.Integer, primary_key=True)
-    fund_id    = db.Column('capital_id', db.Integer, db.ForeignKey('capital.id'), nullable=False)
+    fund_id    = db.Column(db.Integer, db.ForeignKey('fund.id'), nullable=False)
     amount     = db.Column(Numeric(20, 10), nullable=False)
     date       = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     notes      = db.Column(db.Text, nullable=True)
@@ -33,10 +33,11 @@ class Dividend(db.Model):
         return self.date.strftime('%Y-%m-%d %H:%M') if self.date else ''
 
     def to_dict(self) -> dict:
+        """Convert model to dictionary."""
         return {
             'id':         self.id,
             'fund_id':    self.fund_id,
-            'category':   self.fund.category if self.fund else '',
+            'asset_class': self.fund.asset_class if self.fund else '',
             'type':       'Dividend',
             'amount':     float(self.amount),
             'date':       self.date_full,

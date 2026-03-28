@@ -120,6 +120,9 @@ class AuthMessages:
     CODE_SEND_FAILED = "Failed to send the code. Please try again in a moment."
     RESEND_UNAVAILABLE = "Unable to resend code. Your account may already be verified."
 
+    # Email
+    EMAIL_UPDATED = "Email address updated successfully."
+
     # Password
     PASSWORD_CHANGED = "Password changed successfully."
     PASSWORD_RESET_SUCCESS = "Your password has been reset. You can now log in."

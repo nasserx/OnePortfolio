@@ -47,6 +47,19 @@ class UserRepository(BaseRepository[User]):
             (self.model.email == identifier.lower())
         ).first()
 
+    def get_by_pending_email(self, email: str) -> Optional[User]:
+        """Get a verified user who has a pending email change to this address.
+
+        Args:
+            email: The pending (unconfirmed) new email address.
+
+        Returns:
+            The user if found, None otherwise.
+        """
+        return self.model.query.filter(
+            self.model.pending_email == email.lower()
+        ).first()
+
     def get_expired_unverified(self, now: datetime) -> List[User]:
         """Return unverified accounts whose verification code has expired.
 

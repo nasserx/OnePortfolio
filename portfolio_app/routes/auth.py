@@ -170,8 +170,16 @@ def verify_code():
             success, error_msg = svc.auth_service.verify_user(email, data['code'])
 
             if success:
-                # Auto-login after successful verification
+                from flask_login import current_user as _cu
                 svc2 = get_services()
+
+                # If the user is already logged in this was a pending email update —
+                # the email has been applied; send them back to settings.
+                if _cu.is_authenticated:
+                    flash(AuthMessages.EMAIL_UPDATED, 'success')
+                    return redirect(url_for('auth.settings', tab='security'))
+
+                # Otherwise this was a registration verification — auto-login.
                 verified_user = svc2.user_repo.get_by_email(email)
                 if verified_user:
                     login_user(verified_user)
@@ -260,7 +268,11 @@ def change_password():
 @auth_bp.route('/update-email', methods=['GET', 'POST'])
 @login_required
 def update_email():
-    """Update email page. Requires password confirmation, then sends a new OTP."""
+    """Stage a new email address and send an OTP to verify it.
+
+    The current email is not changed until the user confirms the OTP on the
+    verify-code page. The user stays logged in throughout the flow.
+    """
     form_errors = {}
     form_values = {}
 
@@ -269,7 +281,10 @@ def update_email():
 
         form = UpdateEmailForm(
             request.form,
-            check_email_taken=lambda e: svc.user_repo.get_by_email(e) is not None,
+            check_email_taken=lambda e: (
+                svc.user_repo.get_by_email(e) is not None or
+                svc.user_repo.get_by_pending_email(e) is not None
+            ),
         )
 
         if form.validate():
@@ -282,8 +297,7 @@ def update_email():
                 )
                 send_verification_email(data['email'], code)
 
-                # Log the user out so they must verify the new email before re-entering
-                logout_user()
+                # Stay logged in — email is only applied after OTP confirmation
                 return redirect(url_for('auth.verify_code', email=data['email']))
 
             except ValueError as e:

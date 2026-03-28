@@ -21,9 +21,16 @@ class User(UserMixin, db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_login = db.Column(db.DateTime, nullable=True)
 
-    # One-time 6-digit verification code (cleared after use or expiry)
+    # One-time 6-digit verification code for registration / email update
     verification_code = db.Column(db.String(6), nullable=True)
     verification_code_expires_at = db.Column(db.DateTime, nullable=True)
+
+    # Pending email change — stored here until OTP is confirmed, then moved to email
+    pending_email = db.Column(db.String(120), nullable=True)
+
+    # Separate OTP for account deletion — avoids conflicts with verification_code
+    deletion_code = db.Column(db.String(6), nullable=True)
+    deletion_code_expires_at = db.Column(db.DateTime, nullable=True)
 
     # Relationship: one user owns many funds
     funds = db.relationship('Fund', backref='owner', lazy='dynamic')

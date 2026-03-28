@@ -76,14 +76,38 @@ class AuthService:
     def verify_user(self, email: str, code: str) -> Tuple[bool, str]:
         """Verify a user's email using their 6-digit OTP code.
 
+        Handles two cases:
+        - Registration: looks up by email (is_verified=False).
+        - Email update: looks up by pending_email (is_verified=True), then
+          promotes pending_email → email and clears the pending field.
+
         Args:
-            email: The user's email address.
+            email: The email address supplied in the verification URL.
             code: The 6-digit code entered by the user.
 
         Returns:
             Tuple of (success: bool, error_message: str).
             On success, error_message is an empty string.
         """
+        # Case 1: pending email update for an already-verified account
+        user = self.user_repo.get_by_pending_email(email)
+        if user:
+            if not user.verification_code or not user.verification_code_expires_at:
+                return False, 'No verification code found. Please request a new one.'
+            if datetime.utcnow() > user.verification_code_expires_at:
+                return False, 'This code has expired. Please request a new one.'
+            if user.verification_code != code.strip():
+                return False, 'Invalid verification code.'
+
+            # Apply the pending email change
+            user.email = user.pending_email
+            user.pending_email = None
+            user.verification_code = None
+            user.verification_code_expires_at = None
+            self.user_repo.commit()
+            return True, ''
+
+        # Case 2: new registration verification
         user = self.user_repo.get_by_email(email)
         if not user:
             return False, 'No account found for this email.'
@@ -100,7 +124,6 @@ class AuthService:
         if user.verification_code != code.strip():
             return False, 'Invalid verification code.'
 
-        # Code is correct — activate the account and clear the OTP
         user.is_verified = True
         user.verification_code = None
         user.verification_code_expires_at = None
@@ -161,17 +184,20 @@ class AuthService:
     # ------------------------------------------------------------------
 
     def update_email(self, user: User, new_email: str, password: str) -> str:
-        """Update a user's email and generate a fresh verification code.
+        """Stage a new email address and generate a verification OTP.
 
-        The account is marked unverified until the user confirms the new email.
+        The current email is NOT changed until the user confirms the OTP.
+        The new address is stored in pending_email and only promoted to email
+        after successful verification, so a failed or abandoned flow leaves
+        the account fully intact.
 
         Args:
             user: The logged-in user requesting the change.
-            new_email: The new email address (will be stored lowercase).
+            new_email: The desired new email address (stored lowercase).
             password: Current password for identity confirmation.
 
         Returns:
-            The new 6-digit verification code.
+            The 6-digit OTP to be sent to new_email.
 
         Raises:
             ValueError: If the password is incorrect.
@@ -180,10 +206,10 @@ class AuthService:
             raise ValueError('Current password is incorrect.')
 
         code = self._make_verification_code()
-        user.email = new_email.lower()
-        user.is_verified = False
+        user.pending_email = new_email.lower()
         user.verification_code = code
         user.verification_code_expires_at = datetime.utcnow() + timedelta(minutes=VERIFICATION_CODE_EXPIRY_MINUTES)
+        # is_verified and email are intentionally left unchanged until confirmation
         self.user_repo.commit()
         return code
 
@@ -229,7 +255,8 @@ class AuthService:
     def request_account_deletion(self, user: User) -> str:
         """Generate and store a 6-digit OTP for account deletion confirmation.
 
-        Reuses the existing verification_code fields so no schema change is needed.
+        Uses the dedicated deletion_code fields to avoid any conflict with
+        the verification_code used for registration and email updates.
 
         Args:
             user: The authenticated user requesting account deletion.
@@ -238,13 +265,13 @@ class AuthService:
             The 6-digit confirmation code to be emailed to the user.
         """
         code = self._make_verification_code()
-        user.verification_code = code
-        user.verification_code_expires_at = datetime.utcnow() + timedelta(minutes=VERIFICATION_CODE_EXPIRY_MINUTES)
+        user.deletion_code = code
+        user.deletion_code_expires_at = datetime.utcnow() + timedelta(minutes=VERIFICATION_CODE_EXPIRY_MINUTES)
         self.user_repo.commit()
         return code
 
     def confirm_account_deletion(self, user: User, code: str) -> Tuple[bool, str]:
-        """Verify the OTP and permanently delete the user's account and all data.
+        """Verify the deletion OTP and permanently delete the user's account.
 
         Args:
             user: The authenticated user confirming deletion.
@@ -253,13 +280,13 @@ class AuthService:
         Returns:
             Tuple of (success: bool, error_message: str).
         """
-        if not user.verification_code or not user.verification_code_expires_at:
+        if not user.deletion_code or not user.deletion_code_expires_at:
             return False, 'No deletion code found. Please request a new one.'
 
-        if datetime.utcnow() > user.verification_code_expires_at:
+        if datetime.utcnow() > user.deletion_code_expires_at:
             return False, 'The confirmation code has expired. Please request a new one.'
 
-        if user.verification_code != code.strip():
+        if user.deletion_code != code.strip():
             return False, 'Invalid confirmation code.'
 
         self.user_repo.delete(user)

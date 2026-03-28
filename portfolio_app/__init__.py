@@ -148,6 +148,26 @@ def _run_migrations(app):
                     ))
                     conn.commit()
 
+                user_cols = {c['name'] for c in inspector.get_columns('user')}
+
+                if 'pending_email' not in user_cols:
+                    conn.execute(sa.text(
+                        'ALTER TABLE "user" ADD COLUMN pending_email VARCHAR(120)'
+                    ))
+                    conn.commit()
+
+                if 'deletion_code' not in user_cols:
+                    conn.execute(sa.text(
+                        'ALTER TABLE "user" ADD COLUMN deletion_code VARCHAR(6)'
+                    ))
+                    conn.commit()
+
+                if 'deletion_code_expires_at' not in user_cols:
+                    conn.execute(sa.text(
+                        'ALTER TABLE "user" ADD COLUMN deletion_code_expires_at DATETIME'
+                    ))
+                    conn.commit()
+
 
 def create_app(config_class=Config):
     """Application factory pattern."""

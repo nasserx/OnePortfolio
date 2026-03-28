@@ -34,6 +34,8 @@
 | **Email Verification** | 6-digit OTP sent to email on registration |
 | **Password Reset** | Secure reset link sent via email (expires in 1 hour) |
 | **Multi-User Auth** | Separate accounts with full data isolation; first user becomes admin |
+| **Account Settings** | Profile overview, change password, update email — all in one page |
+| **Account Deletion** | Self-service deletion with 6-digit OTP confirmation sent to email |
 | **Admin Panel** | Manage users, send password reset emails, toggle admin privileges |
 | **REST API** | JSON endpoints for portfolio data integration |
 | **Manual Entry** | Full control over your data, no third-party price feeds |
@@ -176,6 +178,7 @@ Then click **Reload** in the Web tab.
 - [x] Multi-user authentication with email verification
 - [x] Password reset via email
 - [x] Dividend income tracking
+- [x] Account settings page with self-service deletion
 - [ ] Advanced charts and analytics
 - [ ] Docker deployment support
 

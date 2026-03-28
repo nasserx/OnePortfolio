@@ -65,7 +65,7 @@ class Config:
     MAIL_DEFAULT_SENDER = ('OnePortfolio', os.environ.get('EMAIL_USER', ''))
 
     # Public base URL used in email links (no trailing slash)
-    APP_BASE_URL = os.environ.get('APP_BASE_URL', 'https://oneportfolio.pythonanywhere.com')
+    APP_BASE_URL = os.environ.get('APP_BASE_URL', '')
 
     # Token expiry (seconds)
     EMAIL_VERIFICATION_EXPIRY = 60 * 60 * 24   # 24 hours

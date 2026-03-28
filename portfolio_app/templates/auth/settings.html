@@ -1,0 +1,264 @@
+{% extends 'base.html' %}
+
+{% block title %}Settings — OnePortfolio{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-12 col-md-10 col-lg-8 col-xl-7">
+
+        <div class="mb-4">
+            <h1>Settings</h1>
+        </div>
+
+        <!-- Tab navigation -->
+        <ul class="nav nav-tabs settings-tabs mb-4" id="settingsTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link {% if request.args.get('tab', 'profile') == 'profile' %}active{% endif %}"
+                        id="tab-profile" data-bs-toggle="tab" data-bs-target="#panel-profile"
+                        type="button" role="tab" aria-controls="panel-profile"
+                        aria-selected="{{ 'true' if request.args.get('tab', 'profile') == 'profile' else 'false' }}">
+                    <i class="bi bi-person me-2" aria-hidden="true"></i>Profile
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link {% if request.args.get('tab') == 'security' %}active{% endif %}"
+                        id="tab-security" data-bs-toggle="tab" data-bs-target="#panel-security"
+                        type="button" role="tab" aria-controls="panel-security"
+                        aria-selected="{{ 'true' if request.args.get('tab') == 'security' else 'false' }}">
+                    <i class="bi bi-shield-lock me-2" aria-hidden="true"></i>Security
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link {% if request.args.get('tab') == 'account' %}active{% endif %}"
+                        id="tab-account" data-bs-toggle="tab" data-bs-target="#panel-account"
+                        type="button" role="tab" aria-controls="panel-account"
+                        aria-selected="{{ 'true' if request.args.get('tab') == 'account' else 'false' }}">
+                    <i class="bi bi-person-gear me-2" aria-hidden="true"></i>Account
+                </button>
+            </li>
+        </ul>
+
+        <!-- Tab panels -->
+        <div class="tab-content settings-tab-content">
+
+            <!-- ============================================================ -->
+            <!-- Profile tab                                                   -->
+            <!-- ============================================================ -->
+            <div class="tab-pane fade {% if request.args.get('tab', 'profile') == 'profile' %}show active{% endif %}"
+                 id="panel-profile" role="tabpanel" aria-labelledby="tab-profile">
+                <div class="card p-4">
+                    <h3 class="mb-4">
+                        <i class="bi bi-person-circle me-2 text-primary" aria-hidden="true"></i>Profile
+                    </h3>
+
+                    <!-- Username (read-only) -->
+                    <div class="mb-4">
+                        <label class="form-label">Username</label>
+                        <div class="settings-readonly-field">
+                            <i class="bi bi-person text-muted" aria-hidden="true"></i>
+                            <span>{{ current_user.username }}</span>
+                            {% if current_user.is_admin %}
+                                <span class="badge nav-admin-badge ms-auto">Admin</span>
+                            {% endif %}
+                        </div>
+                        <div class="form-text">Cannot be changed.</div>
+                    </div>
+
+                    <!-- Email (read-only) -->
+                    <div class="mb-4">
+                        <label class="form-label">Email Address</label>
+                        <div class="settings-readonly-field">
+                            <i class="bi bi-envelope text-muted" aria-hidden="true"></i>
+                            <span>{{ current_user.email or '—' }}</span>
+                            {% if current_user.is_verified %}
+                                <span class="settings-verified-badge ms-auto">
+                                    <i class="bi bi-check-circle-fill" aria-hidden="true"></i> Verified
+                                </span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Member since -->
+                    <div class="mb-2">
+                        <label class="form-label">Member Since</label>
+                        <div class="settings-readonly-field">
+                            <i class="bi bi-calendar3 text-muted" aria-hidden="true"></i>
+                            <span>{{ current_user.created_at.strftime('%B %d, %Y') if current_user.created_at else '—' }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============================================================ -->
+            <!-- Security tab                                                  -->
+            <!-- ============================================================ -->
+            <div class="tab-pane fade {% if request.args.get('tab') == 'security' %}show active{% endif %}"
+                 id="panel-security" role="tabpanel" aria-labelledby="tab-security">
+                <div class="card p-4">
+                    <h3 class="mb-4">
+                        <i class="bi bi-shield-lock me-2 text-primary" aria-hidden="true"></i>Security
+                    </h3>
+
+                    <!-- Change Password -->
+                    <div class="settings-action-row">
+                        <div>
+                            <div class="settings-action-title">
+                                <i class="bi bi-key me-2" aria-hidden="true"></i>Password
+                            </div>
+                        </div>
+                        <a href="{{ url_for('auth.change_password') }}" class="btn btn-outline-primary btn-sm">
+                            Change
+                        </a>
+                    </div>
+
+                    <hr class="my-3">
+
+                    <!-- Update Email -->
+                    <div class="settings-action-row">
+                        <div>
+                            <div class="settings-action-title">
+                                <i class="bi bi-envelope me-2" aria-hidden="true"></i>Email Address
+                            </div>
+                            <div class="settings-action-desc">
+                                {{ current_user.email or 'Not set' }} &mdash; requires re-verification.
+                            </div>
+                        </div>
+                        <a href="{{ url_for('auth.update_email') }}" class="btn btn-outline-primary btn-sm">
+                            Update Email
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============================================================ -->
+            <!-- Account tab                                                   -->
+            <!-- ============================================================ -->
+            <div class="tab-pane fade {% if request.args.get('tab') == 'account' %}show active{% endif %}"
+                 id="panel-account" role="tabpanel" aria-labelledby="tab-account">
+                <div class="card p-4">
+                    <h3 class="mb-4">
+                        <i class="bi bi-person-gear me-2 text-primary" aria-hidden="true"></i>Account
+                    </h3>
+
+                    <!-- Delete Account section -->
+                    <div class="settings-danger-zone">
+                        <div class="settings-danger-header">
+                            <i class="bi bi-exclamation-triangle me-2" aria-hidden="true"></i>
+                            Delete Account
+                        </div>
+                        <p class="settings-danger-desc">
+                            Deletes your account and all data permanently.
+                            <strong>Cannot be undone.</strong>
+                        </p>
+
+                        {% if not current_user.email %}
+                            <div class="alert alert-warning mb-0">
+                                <i class="bi bi-exclamation-circle me-2" aria-hidden="true"></i>
+                                No email on file — contact an admin to delete your account.
+                            </div>
+                        {% else %}
+                            <!-- Step 1: trigger -->
+                            <form id="form-delete-request" class="mb-0">
+                                <button type="button" class="btn btn-outline-danger btn-sm"
+                                        id="btn-show-delete-confirm">
+                                    <i class="bi bi-trash me-2" aria-hidden="true"></i>Delete Account
+                                </button>
+                            </form>
+
+                            <!-- Step 2: OTP (hidden until triggered, auto-shown on send/error) -->
+                            {% set deletion_error = request.args.get('deletion_error') %}
+                            {% set deletion_sent  = request.args.get('deletion_sent') %}
+                            <div id="delete-confirm-section"
+                                 class="{% if not deletion_error and not deletion_sent %}d-none{% endif %}">
+
+                                <form method="post" action="{{ url_for('auth.delete_account_request') }}"
+                                      class="mb-3">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="btn btn-warning btn-sm">
+                                        {% if deletion_sent %}
+                                            <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>Resend Code
+                                        {% else %}
+                                            <i class="bi bi-envelope me-1" aria-hidden="true"></i>Send Code
+                                        {% endif %}
+                                    </button>
+                                    <a href="{{ url_for('auth.settings', tab='account') }}"
+                                       class="btn btn-link btn-sm text-muted ms-1">Cancel</a>
+                                </form>
+
+                                <form method="post" action="{{ url_for('auth.delete_account_confirm') }}"
+                                      novalidate>
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <div class="mb-2">
+                                        <label for="delete-code" class="form-label">Confirmation Code</label>
+                                        <input type="text" id="delete-code" name="code"
+                                               class="form-control form-control-sm settings-code-input {% if deletion_error %}is-invalid{% endif %}"
+                                               inputmode="numeric" maxlength="6"
+                                               autocomplete="one-time-code"
+                                               placeholder="000000" autofocus required>
+                                        {% if deletion_sent and not deletion_error %}
+                                            <div class="form-text text-success mt-1">
+                                                <i class="bi bi-check-circle me-1" aria-hidden="true"></i>Code sent to {{ current_user.email }}.
+                                            </div>
+                                        {% endif %}
+                                        {% if deletion_error %}
+                                            <div class="invalid-feedback d-block mt-1">
+                                                <i class="bi bi-exclamation-circle me-1" aria-hidden="true"></i>{{ deletion_error }}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                    <button type="submit" class="btn btn-danger btn-sm mt-2"
+                                            onclick="return confirm('This will permanently delete your account. Continue?')">
+                                        <i class="bi bi-trash me-2" aria-hidden="true"></i>Confirm Deletion
+                                    </button>
+                                </form>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+        </div>{# /tab-content #}
+    </div>
+</div>
+{% endblock %}
+
+
+{% block extra_js %}
+<script>
+(function () {
+    'use strict';
+
+    // Activate the correct tab from ?tab= query param on page load
+    const tabParam = new URLSearchParams(window.location.search).get('tab');
+    if (tabParam) {
+        const btn = document.getElementById('tab-' + tabParam);
+        if (btn) bootstrap.Tab.getOrCreateInstance(btn).show();
+    }
+
+    // "Profile" tab link inside the profile panel
+    document.querySelectorAll('[data-settings-tab]').forEach(function (el) {
+        el.addEventListener('click', function () {
+            const target = document.getElementById('tab-' + el.dataset.settingsTab);
+            if (target) bootstrap.Tab.getOrCreateInstance(target).show();
+        });
+    });
+
+    // Delete account: show OTP section when "Delete Account" is clicked
+    const btnShow    = document.getElementById('btn-show-delete-confirm');
+    const section    = document.getElementById('delete-confirm-section');
+    const btnRequest = document.getElementById('form-delete-request');
+
+    // If OTP section is already visible (sent/error state), hide the trigger button
+    if (section && !section.classList.contains('d-none') && btnRequest) {
+        btnRequest.classList.add('d-none');
+    }
+
+    if (btnShow && section) {
+        btnShow.addEventListener('click', function () {
+            btnRequest.classList.add('d-none');
+            section.classList.remove('d-none');
+        });
+    }
+})();
+</script>
+{% endblock %}

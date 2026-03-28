@@ -68,6 +68,35 @@ def send_verification_email(recipient_email: str, code: str) -> bool:
         return False
 
 
+def send_deletion_confirmation_email(recipient_email: str, code: str) -> bool:
+    """Send a 6-digit account deletion confirmation code.
+
+    Args:
+        recipient_email: The user's email address.
+        code: The 6-digit OTP code to include in the email.
+
+    Returns:
+        True if sent successfully, False otherwise.
+    """
+    body = (
+        "Account deletion was requested for your OnePortfolio account.\n\n"
+        f"Confirmation code:  {code}\n\n"
+        "Expires in 10 minutes. If you did not request this, ignore this email."
+    )
+    msg = Message(
+        subject="OnePortfolio - Account Deletion Confirmation",
+        recipients=[recipient_email],
+        body=body,
+    )
+    try:
+        mail.send(msg)
+        logger.info("Deletion confirmation code sent to %s", recipient_email)
+        return True
+    except Exception:
+        logger.exception("Failed to send deletion confirmation code to %s", recipient_email)
+        return False
+
+
 def send_reset_email(recipient_email: str, token: str) -> bool:
     """Send a password reset link to the given email address.
 

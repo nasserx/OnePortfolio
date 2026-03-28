@@ -162,6 +162,21 @@ class VerifyCodeForm(BaseForm):
         return not self.has_errors()
 
 
+class ConfirmDeletionForm(BaseForm):
+    """Form for confirming account deletion via a 6-digit OTP sent to email."""
+
+    def validate(self) -> bool:
+        code = self._validate_required_string('code', ValidationMessages.VERIFICATION_CODE_REQUIRED)
+        if code:
+            code = code.strip()
+            if not code.isdigit() or len(code) != 6:
+                self.errors['code'] = ValidationMessages.VERIFICATION_CODE_INVALID
+            else:
+                self.cleaned_data['code'] = code
+
+        return not self.has_errors()
+
+
 class UpdateEmailForm(BaseForm):
     """Form for updating the logged-in user's email address."""
 

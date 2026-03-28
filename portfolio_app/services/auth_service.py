@@ -223,6 +223,50 @@ class AuthService:
         return user
 
     # ------------------------------------------------------------------
+    # Account self-deletion (OTP-confirmed)
+    # ------------------------------------------------------------------
+
+    def request_account_deletion(self, user: User) -> str:
+        """Generate and store a 6-digit OTP for account deletion confirmation.
+
+        Reuses the existing verification_code fields so no schema change is needed.
+
+        Args:
+            user: The authenticated user requesting account deletion.
+
+        Returns:
+            The 6-digit confirmation code to be emailed to the user.
+        """
+        code = self._make_verification_code()
+        user.verification_code = code
+        user.verification_code_expires_at = datetime.utcnow() + timedelta(minutes=VERIFICATION_CODE_EXPIRY_MINUTES)
+        self.user_repo.commit()
+        return code
+
+    def confirm_account_deletion(self, user: User, code: str) -> Tuple[bool, str]:
+        """Verify the OTP and permanently delete the user's account and all data.
+
+        Args:
+            user: The authenticated user confirming deletion.
+            code: The 6-digit OTP entered by the user.
+
+        Returns:
+            Tuple of (success: bool, error_message: str).
+        """
+        if not user.verification_code or not user.verification_code_expires_at:
+            return False, 'No deletion code found. Please request a new one.'
+
+        if datetime.utcnow() > user.verification_code_expires_at:
+            return False, 'The confirmation code has expired. Please request a new one.'
+
+        if user.verification_code != code.strip():
+            return False, 'Invalid confirmation code.'
+
+        self.user_repo.delete(user)
+        self.user_repo.commit()
+        return True, ''
+
+    # ------------------------------------------------------------------
     # Admin-only operations
     # ------------------------------------------------------------------
 

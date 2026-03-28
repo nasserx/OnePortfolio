@@ -75,50 +75,54 @@
                     </li>
                     {% endif %}
 
-                    <!-- App Settings (gear) -->
+                    <!-- User Menu — avatar button opens on hover -->
+                    {% if current_user.is_authenticated %}
                     <li class="nav-item dropdown settings-dropdown">
-                        <button class="nav-link settings-btn" type="button"
-                                data-bs-toggle="dropdown" data-bs-auto-close="outside"
-                                aria-expanded="false" aria-label="App Settings">
-                            <i class="bi bi-gear fs-5" aria-hidden="true"></i>
+                        <button class="nav-avatar-btn" type="button"
+                                data-bs-toggle="dropdown" data-bs-auto-close="true"
+                                aria-expanded="false" aria-label="User Menu">
+                            <i class="bi bi-person-fill" aria-hidden="true"></i>
                         </button>
-                        <ul class="dropdown-menu dropdown-menu-end settings-menu">
+
+                        <ul class="dropdown-menu dropdown-menu-end user-dropdown-menu">
+
+                            <!-- Header: username + settings gear -->
                             <li>
-                                <label class="dropdown-item d-flex align-items-center justify-content-between settings-item">
+                                <div class="nav-dropdown-header">
+                                    <div class="nav-dropdown-header-left">
+                                        <span class="nav-user-name">{{ current_user.username }}</span>
+                                        {% if current_user.is_admin %}
+                                            <span class="badge nav-admin-badge">Admin</span>
+                                        {% endif %}
+                                    </div>
+                                    <a href="{{ url_for('auth.settings') }}"
+                                       class="nav-settings-link"
+                                       aria-label="Account Settings"
+                                       title="Settings">
+                                        <i class="bi bi-gear" aria-hidden="true"></i>
+                                    </a>
+                                </div>
+                            </li>
+
+                            <li><hr class="dropdown-divider my-1"></li>
+
+                            <!-- Dark Mode toggle -->
+                            <li>
+                                <label class="nav-dark-mode-row" for="darkModeSwitch">
                                     <span class="d-flex align-items-center gap-2">
-                                        <i class="bi bi-moon-stars" aria-hidden="true"></i> Dark Mode
+                                        <i class="bi bi-moon-stars" aria-hidden="true"></i>
+                                        Dark Mode
                                     </span>
-                                    <div class="form-check form-switch mb-0 ms-3">
-                                        <input class="form-check-input" type="checkbox" id="darkModeSwitch" role="switch"
+                                    <div class="form-check form-switch mb-0">
+                                        <input class="form-check-input" type="checkbox"
+                                               id="darkModeSwitch" role="switch"
                                                aria-label="Toggle dark mode">
                                     </div>
                                 </label>
                             </li>
-                        </ul>
-                    </li>
-
-                    <!-- User Menu (person) -->
-                    {% if current_user.is_authenticated %}
-                    <li class="nav-item dropdown settings-dropdown">
-                        <button class="nav-link settings-btn" type="button"
-                                data-bs-toggle="dropdown" data-bs-auto-close="true"
-                                aria-expanded="false" aria-label="User Menu">
-                            <i class="bi bi-person fs-5" aria-hidden="true"></i>
-                        </button>
-                        <ul class="dropdown-menu dropdown-menu-end settings-menu">
-                            <!-- User info -->
-                            <li>
-                                <span class="dropdown-item-text d-flex align-items-center gap-2 px-3 py-2 nav-user-info">
-                                    <i class="bi bi-person-circle" aria-hidden="true"></i>
-                                    <span class="fw-500 nav-user-name">{{ current_user.username }}</span>
-                                    {% if current_user.is_admin %}
-                                        <span class="badge nav-admin-badge ms-1">Admin</span>
-                                    {% endif %}
-                                </span>
-                            </li>
-                            <li><hr class="dropdown-divider my-1"></li>
 
                             {% if current_user.is_admin %}
+                            <li><hr class="dropdown-divider my-1"></li>
                             <li>
                                 <a class="dropdown-item settings-item d-flex align-items-center gap-2"
                                    href="{{ url_for('admin.users') }}">
@@ -127,30 +131,19 @@
                             </li>
                             {% endif %}
 
-                            <li>
-                                <a class="dropdown-item settings-item d-flex align-items-center gap-2"
-                                   href="{{ url_for('auth.update_email') }}">
-                                    <i class="bi bi-envelope" aria-hidden="true"></i> Update Email
-                                </a>
-                            </li>
-
-                            <li>
-                                <a class="dropdown-item settings-item d-flex align-items-center gap-2"
-                                   href="{{ url_for('auth.change_password') }}">
-                                    <i class="bi bi-key" aria-hidden="true"></i> Change Password
-                                </a>
-                            </li>
-
                             <li><hr class="dropdown-divider my-1"></li>
 
+                            <!-- Logout -->
                             <li>
                                 <form method="post" action="{{ url_for('auth.logout') }}" class="m-0">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <button type="submit" class="dropdown-item settings-item btn-logout d-flex align-items-center gap-2">
+                                    <button type="submit"
+                                            class="dropdown-item settings-item btn-logout d-flex align-items-center gap-2">
                                         <i class="bi bi-box-arrow-right" aria-hidden="true"></i> Logout
                                     </button>
                                 </form>
                             </li>
+
                         </ul>
                     </li>
                     {% endif %}

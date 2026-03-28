@@ -1,5 +1,6 @@
 """Auth blueprint — login, register, logout, change password,
-email verification (6-digit OTP), forgot password, and reset password.
+email verification (6-digit OTP), forgot password, reset password,
+user settings, and account deletion.
 """
 
 import logging
@@ -11,13 +12,19 @@ from portfolio_app.forms.auth_forms import (
     LoginForm,
     RegisterForm,
     ChangePasswordForm,
+    ConfirmDeletionForm,
     ForgotPasswordForm,
     ResetPasswordForm,
     VerifyCodeForm,
     UpdateEmailForm,
 )
 from portfolio_app.utils.tokens import generate_reset_token, verify_reset_token
-from portfolio_app.utils.email import send_verification_email, send_reset_email
+from portfolio_app.utils.email import (
+    send_deletion_confirmation_email,
+    send_verification_email,
+    send_reset_email,
+)
+from portfolio_app.utils.messages import AccountMessages
 from portfolio_app.utils.messages import AuthMessages
 
 logger = logging.getLogger(__name__)
@@ -380,3 +387,72 @@ def reset_password(token):
         form_errors=form_errors,
         form_values=form_values,
     )
+
+
+# ---------------------------------------------------------------------------
+# User Settings
+# ---------------------------------------------------------------------------
+
+@auth_bp.route('/settings')
+@login_required
+def settings():
+    """User settings page with profile, security, and account tabs."""
+    return render_template('auth/settings.html')
+
+
+# ---------------------------------------------------------------------------
+# Account Deletion (OTP-confirmed)
+# ---------------------------------------------------------------------------
+
+@auth_bp.route('/settings/delete/request', methods=['POST'])
+@login_required
+def delete_account_request():
+    """Send a 6-digit OTP to the user's email to confirm account deletion."""
+    if not current_user.email:
+        return redirect(url_for('auth.settings', tab='account',
+                                deletion_error=AccountMessages.DELETION_NO_EMAIL))
+
+    svc = get_services()
+    try:
+        code = svc.auth_service.request_account_deletion(current_user)
+        sent = send_deletion_confirmation_email(current_user.email, code)
+
+        if sent:
+            return redirect(url_for('auth.settings', tab='account', deletion_sent='1'))
+        return redirect(url_for('auth.settings', tab='account',
+                                deletion_error=AccountMessages.DELETION_CODE_SEND_FAILED))
+    except Exception:
+        logger.exception('Failed to request account deletion for user %s', current_user.id)
+        return redirect(url_for('auth.settings', tab='account',
+                                deletion_error=AccountMessages.DELETION_CODE_SEND_FAILED))
+
+
+@auth_bp.route('/settings/delete/confirm', methods=['POST'])
+@login_required
+def delete_account_confirm():
+    """Verify the OTP and permanently delete the authenticated user's account."""
+    form = ConfirmDeletionForm(request.form)
+
+    def _deletion_error(msg: str):
+        return redirect(url_for('auth.settings', tab='account', deletion_error=msg))
+
+    if not form.validate():
+        first_error = next(iter(form.errors.values()), AccountMessages.DELETION_INVALID_CODE)
+        return _deletion_error(first_error)
+
+    data = form.get_cleaned_data()
+    svc = get_services()
+
+    # Fetch a fresh copy of the user before deletion so the OTP fields are current
+    user = svc.user_repo.get_by_id(current_user.id)
+    if not user:
+        return _deletion_error(AccountMessages.DELETION_INVALID_CODE)
+
+    success, error_msg = svc.auth_service.confirm_account_deletion(user, data['code'])
+
+    if success:
+        logout_user()
+        flash(AccountMessages.DELETION_CONFIRMED, 'success')
+        return redirect(url_for('auth.login'))
+
+    return _deletion_error(error_msg or AccountMessages.DELETION_INVALID_CODE)

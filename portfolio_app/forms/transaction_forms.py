@@ -182,6 +182,13 @@ class DividendAddForm(BaseForm):
         except (ValueError, TypeError):
             self.errors['fund_id'] = ValidationMessages.INVALID_CATEGORY
 
+        # Validate symbol (required — submitted as div_symbol from the form)
+        symbol = (self.data.get('div_symbol') or '').strip().upper()
+        if not symbol:
+            self.errors['div_symbol'] = ValidationMessages.SYMBOL_REQUIRED
+        else:
+            self.cleaned_data['symbol'] = symbol
+
         # Validate amount (must be > 0)
         amount_str = (self.data.get('amount') or '').strip()
         if not amount_str:

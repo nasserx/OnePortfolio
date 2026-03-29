@@ -516,8 +516,8 @@ class TransactionFormHandler {
 
         const formatted = Utils.formatMoney(total);
         this.preview.innerHTML = isSell
-            ? `Total received: <span class="tx-preview-amount">${formatted}</span>`
-            : `Total spent: <span class="tx-preview-amount">${formatted}</span>`;
+            ? `Total Received: <span class="tx-preview-amount">${formatted}</span>`
+            : `Total Spent: <span class="tx-preview-amount">${formatted}</span>`;
     }
 
     attachPreviewCalculation() {

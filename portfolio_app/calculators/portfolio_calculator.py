@@ -196,6 +196,8 @@ class PortfolioCalculator:
             roi_base = total_funds if total_funds != 0 else realized_perf['realized_cost_basis']
             realized_roi_percent, realized_roi_display = _roi_display(realized_pnl, roi_base)
 
+            total_dividends = PortfolioCalculator.get_dividend_total_for_fund(fund.id)
+
             categories.append({
                 'fund': fund,
                 'total_funds': total_funds,
@@ -205,6 +207,7 @@ class PortfolioCalculator:
                 'category_value': category_value,
                 'realized_roi_percent': realized_roi_percent,
                 'realized_roi_display': realized_roi_display,
+                'total_dividends': total_dividends,
             })
 
         # Second pass: compute allocation based on portfolio value
@@ -223,6 +226,7 @@ class PortfolioCalculator:
                 'cash': cat['cash'],
                 'realized_roi_percent': cat['realized_roi_percent'],
                 'realized_roi_display': cat['realized_roi_display'],
+                'total_dividends': cat['total_dividends'],
             })
 
         return summary, portfolio_value
@@ -233,11 +237,19 @@ class PortfolioCalculator:
 
     @staticmethod
     def get_dividend_total_for_fund(fund_id) -> Decimal:
-        """Return the sum of all dividend income recorded for a fund."""
+        """Return the sum of dividend income for a fund, only for symbol-attributed records.
+
+        Dividends without a symbol are excluded to stay consistent with the
+        per-symbol display on the transactions page.
+        """
         result = (
             Dividend.query
             .with_entities(func.sum(Dividend.amount))
-            .filter_by(fund_id=fund_id)
+            .filter(
+                Dividend.fund_id == fund_id,
+                Dividend.symbol.isnot(None),
+                Dividend.symbol != '',
+            )
             .scalar()
         )
         return _to_decimal(result) if result else ZERO
@@ -313,6 +325,7 @@ class PortfolioCalculator:
         total_invested = ZERO
         total_realized_pnl = ZERO
         total_realized_cost_basis = ZERO
+        total_dividends = ZERO
 
         for fund in funds:
             # Use deposits-only total, consistent with get_category_summary()
@@ -327,6 +340,8 @@ class PortfolioCalculator:
             total_realized_pnl += realized_perf['realized_pnl']
             total_realized_cost_basis += realized_perf['realized_cost_basis']
 
+            total_dividends += PortfolioCalculator.get_dividend_total_for_fund(fund.id)
+
         total_value = total_invested + total_cash
 
         # ROI: prefer total_investment (deposits only); fallback to cost basis
@@ -338,6 +353,7 @@ class PortfolioCalculator:
             'total_investment': total_investment,
             'total_cash': total_cash,
             'total_realized_pnl': total_realized_pnl,
+            'total_dividends': total_dividends,
             'total_value': total_value,
             'realized_roi_percent': realized_roi_percent,
             'realized_roi_display': realized_roi_display,

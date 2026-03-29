@@ -38,6 +38,9 @@
                     <span class="badge roi-badge {% if totals.realized_roi_percent >= 0 %}profit{% else %}loss{% endif %}">
                         {{ totals.realized_roi_display }}
                     </span>
+                    {% if totals.total_dividends > 0 %}
+                    <small class="dividend">+{{ totals.total_dividends|fmt_money }} dividends</small>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -58,9 +61,15 @@
                     </h5>
                 </div>
                 
-                <div class="mb-3">
-                    <p class="text-muted small mb-1">Allocated Funds</p>
-                    <h5 class="mb-0">{{ item.amount|fmt_money }}</h5>
+                <div class="row g-2 mb-3">
+                    <div class="col-12 col-sm-7">
+                        <p class="text-muted small mb-1">Allocated Funds</p>
+                        <h5 class="mb-0">{{ item.amount|fmt_money }}</h5>
+                    </div>
+                    <div class="col-12 col-sm-5">
+                        <p class="text-muted small mb-1">Dividends</p>
+                        <p class="mb-0 dividend">{% if item.total_dividends > 0 %}+{% endif %}{{ item.total_dividends|fmt_money }}</p>
+                    </div>
                 </div>
 
                 <div class="row g-2 mb-3">
@@ -84,10 +93,9 @@
                         <p class="mb-0">{{ item.total_value|fmt_money }}</p>
                     </div>
                 </div>
-                
 
             </div>
-            <div class="card-footer bg-transparent border-0">
+            <div class="card-footer bg-transparent border-0 pt-0 pb-3" style="margin-top: -1rem;">
                      <a href="{{ url_for('transactions.transaction_list', category=item.asset_class) }}"
                          class="btn btn-sm btn-outline-primary w-100 overview-btn">
                     View Transactions

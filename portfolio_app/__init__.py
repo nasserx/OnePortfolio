@@ -168,6 +168,15 @@ def _run_migrations(app):
                     ))
                     conn.commit()
 
+            # ── Step 8: dividend table — add per-symbol tracking column ────────
+            if 'dividend' in tables:
+                div_cols = {c['name'] for c in inspector.get_columns('dividend')}
+                if 'symbol' not in div_cols:
+                    conn.execute(sa.text(
+                        'ALTER TABLE dividend ADD COLUMN symbol VARCHAR(20)'
+                    ))
+                    conn.commit()
+
 
 def create_app(config_class=Config):
     """Application factory pattern."""

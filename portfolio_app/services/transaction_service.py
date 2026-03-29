@@ -257,6 +257,7 @@ class TransactionService:
     def add_dividend(
         self,
         fund_id: int,
+        symbol: str,
         amount: Decimal,
         date: datetime,
         notes: str = '',
@@ -265,6 +266,7 @@ class TransactionService:
 
         Args:
             fund_id: Fund ID
+            symbol: Asset symbol this dividend belongs to
             amount: Dividend amount (must be > 0)
             date: Dividend date
             notes: Optional notes
@@ -281,6 +283,7 @@ class TransactionService:
 
         dividend = Dividend(
             fund_id=fund_id,
+            symbol=symbol.upper(),
             amount=amount,
             date=date,
             notes=notes or None,

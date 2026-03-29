@@ -13,6 +13,7 @@ class Dividend(db.Model):
 
     id         = db.Column(db.Integer, primary_key=True)
     fund_id    = db.Column(db.Integer, db.ForeignKey('fund.id'), nullable=False)
+    symbol     = db.Column(db.String(20), nullable=True)
     amount     = db.Column(Numeric(20, 10), nullable=False)
     date       = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     notes      = db.Column(db.Text, nullable=True)
@@ -37,6 +38,7 @@ class Dividend(db.Model):
         return {
             'id':         self.id,
             'fund_id':    self.fund_id,
+            'symbol':     self.symbol or '',
             'asset_class': self.fund.asset_class if self.fund else '',
             'type':       'Dividend',
             'amount':     float(self.amount),

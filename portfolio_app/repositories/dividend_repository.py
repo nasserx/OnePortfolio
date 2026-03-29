@@ -11,11 +11,31 @@ ZERO = Decimal('0')
 class DividendRepository(BaseRepository[Dividend]):
     """Repository for Dividend model database operations."""
 
+    def get_by_fund_ids(self, fund_ids: List[int]) -> List[Dividend]:
+        """Return all dividends for multiple funds in a single query, newest first."""
+        if not fund_ids:
+            return []
+        return (
+            self.model.query
+            .filter(Dividend.fund_id.in_(fund_ids))
+            .order_by(Dividend.date.desc())
+            .all()
+        )
+
     def get_by_fund_id(self, fund_id: int) -> List[Dividend]:
         """Return all dividends for a fund, newest first."""
         return (
             self.model.query
             .filter_by(fund_id=fund_id)
+            .order_by(Dividend.date.desc())
+            .all()
+        )
+
+    def get_by_fund_and_symbol(self, fund_id: int, symbol: str) -> List[Dividend]:
+        """Return all dividends for a specific symbol within a fund, newest first."""
+        return (
+            self.model.query
+            .filter_by(fund_id=fund_id, symbol=symbol.upper())
             .order_by(Dividend.date.desc())
             .all()
         )

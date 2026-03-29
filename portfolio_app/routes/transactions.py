@@ -110,25 +110,26 @@ def _get_transactions_page_context(category_filter=''):
                 'asset_id': asset.id if asset else None,
             })
 
-    # Load dividends grouped by fund_id
-    dividends_by_fund: dict = {}
+    # Load dividends grouped by (fund_id, symbol) — single query for all funds
+    visible_fund_ids = [f.id for f in funds if not category_filter or f.asset_class == category_filter]
+    dividends_by_symbol: dict = {}
     dividend_totals: dict = {}
-    for fund in funds:
-        if category_filter and fund.asset_class != category_filter:
+    ZERO = Decimal('0')
+    for div in svc.dividend_repo.get_by_fund_ids(visible_fund_ids):
+        sym = (div.symbol or '').upper()
+        if not sym:
+            logger.debug('Dividend id=%s has no symbol, skipping display', div.id)
             continue
-        fund_dividends = svc.dividend_repo.get_by_fund_id(fund.id)
-        if fund_dividends:
-            dividends_by_fund[fund.id] = fund_dividends
-            dividend_totals[fund.id] = sum(
-                Decimal(str(d.amount)) for d in fund_dividends
-            )
+        key = (div.fund_id, sym)
+        dividends_by_symbol.setdefault(key, []).append(div)
+        dividend_totals[key] = dividend_totals.get(key, ZERO) + Decimal(str(div.amount))
 
     return {
         'holdings': holdings,
         'funds': funds,
         'transaction_types': Config.TRANSACTION_TYPES,
         'selected_category': category_filter,
-        'dividends_by_fund': dividends_by_fund,
+        'dividends_by_symbol': dividends_by_symbol,
         'dividend_totals': dividend_totals,
     }
 
@@ -315,6 +316,7 @@ def dividend_add():
         data = form.get_cleaned_data()
         svc.transaction_service.add_dividend(
             fund_id=data['fund_id'],
+            symbol=data['symbol'],
             amount=data['amount'],
             date=data['date'],
             notes=data.get('notes', ''),

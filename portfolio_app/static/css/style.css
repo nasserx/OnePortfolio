@@ -74,6 +74,11 @@
     --shadow-md: 0 4px 12px 0 rgba(28, 28, 46, 0.08), 0 2px 4px 0 rgba(28, 28, 46, 0.04);
     --shadow-lg: 0 8px 24px 0 rgba(28, 28, 46, 0.1), 0 4px 8px 0 rgba(28, 28, 46, 0.05);
     --shadow-xl: 0 16px 40px 0 rgba(28, 28, 46, 0.12), 0 8px 16px 0 rgba(28, 28, 46, 0.06);
+    /* Semantic state color tokens — change these to retheme all profit/loss/dividend labels */
+    --color-profit: var(--success-color);
+    --color-loss: var(--danger-color);
+    --color-dividend: var(--primary-color);
+    --color-neutral: var(--text-tertiary);
 }
 
 /* ============================= */
@@ -684,18 +689,8 @@ label,
 .card-body h2,
 .card-body h5,
 .card-body .fw-semibold,
-.card-body p:not(.text-muted):not(.profit):not(.loss) {
+.card-body p:not(.text-muted):not(.profit):not(.loss):not(.dividend):not(.neutral) {
     color: var(--text-primary);
-}
-
-.card-body .profit,
-.card-body h2.profit {
-    color: var(--success-color) !important;
-}
-
-.card-body .loss,
-.card-body h2.loss {
-    color: var(--danger-color) !important;
 }
 
 .stat-card {
@@ -746,18 +741,10 @@ label,
     transform: translateY(-2px);
 }
 
-.category-card p.fw-semibold:not(.profit):not(.loss),
+.category-card p.fw-semibold:not(.profit):not(.loss):not(.dividend):not(.neutral),
 .category-card h5,
-.category-card .mb-0:not(.profit):not(.loss) {
+.category-card .mb-0:not(.profit):not(.loss):not(.dividend):not(.neutral) {
     color: var(--text-primary) !important;
-}
-
-.category-card .profit {
-    color: var(--success-color) !important;
-}
-
-.category-card .loss {
-    color: var(--danger-color) !important;
 }
 
 
@@ -1535,18 +1522,11 @@ select:-webkit-autofill:focus {
 }
 
 
-/* Profit, loss, and neutral highlights */
-.profit {
-    color: var(--success-color) !important;
-}
-
-.loss {
-    color: var(--danger-color) !important;
-}
-
-.neutral {
-    color: var(--text-tertiary) !important;
-}
+/* Semantic state color classes — single source of truth, uses tokens from :root */
+.profit   { color: var(--color-profit)   !important; }
+.loss     { color: var(--color-loss)     !important; }
+.dividend { color: var(--color-dividend) !important; }
+.neutral  { color: var(--color-neutral)  !important; }
 
 
 /* Category table header */
@@ -1620,21 +1600,10 @@ select:-webkit-autofill:focus {
     min-height: 28px;
 }
 
-.category-summary .summary-value {
+.category-summary .summary-value:not(.profit):not(.loss):not(.dividend):not(.neutral) {
     color: var(--text-primary) !important;
 }
 
-.category-summary .summary-value.profit {
-    color: var(--success-color) !important;
-}
-
-.category-summary .summary-value.loss {
-    color: var(--danger-color) !important;
-}
-
-.category-summary .summary-value.neutral {
-    color: var(--text-tertiary) !important;
-}
 
 
 .overview-value {
@@ -1650,7 +1619,7 @@ select:-webkit-autofill:focus {
 }
 
 .tx-preview-amount {
-    font-weight: 600;
+    font-weight: 400;
     color: var(--text-primary);
 }
 

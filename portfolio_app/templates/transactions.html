@@ -61,14 +61,12 @@
 <!-- Transactions by Symbol -->
 <div class="row">
     <div class="col-12">
-        {% set ns = namespace(shown_fund_ids=[]) %}
         {% if holdings|length > 0 %}
             {% for item in holdings %}
-            {% set fund_divs = dividends_by_fund.get(item.fund.id, []) %}
-            {% set is_first_for_fund = item.fund.id not in ns.shown_fund_ids %}
-            {% set show_div_col  = is_first_for_fund %}
-            {% set show_div_rows = is_first_for_fund and fund_divs|length > 0 %}
-            {% if is_first_for_fund %}{% set ns.shown_fund_ids = ns.shown_fund_ids + [item.fund.id] %}{% endif %}
+            {% set _div_key = (item.fund.id, item.symbol) %}
+            {% set symbol_divs = dividends_by_symbol.get(_div_key, []) %}
+            {% set symbol_div_total = dividend_totals.get(_div_key, 0) %}
+            {% set show_div_rows = symbol_divs|length > 0 %}
             <div class="card border-0 shadow-sm mb-3 symbol-card" data-symbol="{{ item.symbol }}">
                  <div class="card-header bg-white border-bottom py-2 px-3 category-header page-accent-surface"
                      onclick="toggleSymbolTransactions('{{ item.html_group_id }}')">
@@ -79,10 +77,10 @@
                             <span class="badge bg-light text-dark border">{{ item.fund.asset_class }}</span>
                         </div>
                         <div class="col-lg-8 col-md-7">
-                            <div class="category-summary {% if show_div_col %}columns-6{% else %}columns-5{% endif %}">
+                            <div class="category-summary columns-6">
                                 <div class="summary-item">
                                     <div class="summary-label">Transactions</div>
-                                    <div class="summary-value">{{ item.summary.transaction_count }}</div>
+                                    <div class="summary-value">{{ item.summary.transaction_count + symbol_divs|length }}</div>
                                 </div>
                                 <div class="summary-item">
                                     <div class="summary-label">Total Spent</div>
@@ -105,14 +103,12 @@
                                         {{ item.summary.roi_percent_display }}
                                     </div>
                                 </div>
-                                {% if show_div_col %}
                                 <div class="summary-item">
                                     <div class="summary-label">Total Dividends</div>
-                                    <div class="summary-value {% if dividend_totals.get(item.fund.id, 0) > 0 %}profit{% endif %}">
-                                        {% if dividend_totals.get(item.fund.id, 0) > 0 %}+{% endif %}{{ dividend_totals.get(item.fund.id, 0)|fmt_money }}
+                                    <div class="summary-value dividend">
+                                        {% if symbol_div_total > 0 %}+{% endif %}{{ symbol_div_total|fmt_money }}
                                     </div>
                                 </div>
-                                {% endif %}
                             </div>
                         </div>
                         <div class="col-lg-2 col-md-2 text-end">
@@ -127,6 +123,16 @@
                                         data-bs-toggle="tooltip"
                                         data-bs-placement="top">
                                     <i class="bi bi-plus-lg"></i>
+                                </button>
+                                <button type="button"
+                                        class="btn btn-outline-success js-add-dividend-btn"
+                                        data-fund-id="{{ item.fund.id }}"
+                                        data-symbol="{{ item.symbol|e }}"
+                                        title="Add Dividend"
+                                        aria-label="Add Dividend"
+                                        data-bs-toggle="tooltip"
+                                        data-bs-placement="top">
+                                    <i class="bi bi-cash-stack"></i>
                                 </button>
                                 <button type="button"
                                         class="btn btn-outline-danger js-delete-symbol-btn"
@@ -210,13 +216,13 @@
                                 </tr>
                                 {% endfor %}
                                 {% if show_div_rows %}
-                                {% for div in fund_divs %}
+                                {% for div in symbol_divs %}
                                 <tr>
                                     <td><small class="text-muted">{{ div.date_short }}</small></td>
                                     <td>
                                         <span class="badge badge-dividend">Dividend</span>
                                     </td>
-                                    <td><small class="text-muted">—</small></td>
+                                    <td><small class="text-uppercase">{{ div.symbol or '—' }}</small></td>
                                     <td class="text-end"><small class="text-muted">—</small></td>
                                     <td class="text-end"><small class="text-muted">—</small></td>
                                     <td class="text-end"><small class="text-muted">—</small></td>
@@ -370,19 +376,14 @@
                     <div class="mb-3" id="add_tx_type_group">
                         <label for="transaction_type" class="form-label visually-hidden">Transaction Type</label>
                         <div class="row g-2">
-                            <div class="col-4 d-grid">
+                            <div class="col-6 d-grid">
                                 <button type="button" class="btn btn-buy" id="add_tx_type_buy_btn" aria-label="Buy">
                                     Buy
                                 </button>
                             </div>
-                            <div class="col-4 d-grid">
+                            <div class="col-6 d-grid">
                                 <button type="button" class="btn btn-sell" id="add_tx_type_sell_btn" aria-label="Sell">
                                     Sell
-                                </button>
-                            </div>
-                            <div class="col-4 d-grid">
-                                <button type="button" class="btn btn-dividend" id="add_tx_type_dividend_btn" aria-label="Dividends">
-                                    Dividends
                                 </button>
                             </div>
                         </div>
@@ -438,7 +439,7 @@
                                     {% if _tx_add_errs.get('fees') %}
                                     <div class="invalid-feedback">{{ _tx_add_errs.get('fees') }}</div>
                                     {% endif %}
-                                    <div id="net_amount_preview" class="tx-preview"></div>
+                                    <div id="total_cost_preview" class="tx-preview"></div>
                                 </div>
                             </div>
                             <div class="col-6">
@@ -447,33 +448,6 @@
                                     <input type="text" class="form-control {% if _tx_add_errs.get('date') %}is-invalid{% endif %}" id="add_tx_date" name="date" placeholder="YYYY-MM-DD">
                                     {% if _tx_add_errs.get('date') %}
                                     <div class="invalid-feedback d-block">{{ _tx_add_errs.get('date') }}</div>
-                                    {% endif %}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Dividend fields (hidden unless Dividends is selected) -->
-                    <div id="add_dividend_fields" style="display:none;">
-                        <div class="row g-2">
-                            <div class="col-6">
-                                <div class="mb-3">
-                                    <label for="amount" class="form-label">Amount</label>
-                                    <input type="text" inputmode="decimal" autocomplete="off"
-                                           class="form-control {% if (form_errors.get('dividend_add', {})).get('amount') %}is-invalid{% endif %}"
-                                           id="amount" name="amount" placeholder="0.00">
-                                    {% if (form_errors.get('dividend_add', {})).get('amount') %}
-                                    <div class="invalid-feedback d-block">{{ (form_errors.get('dividend_add', {})).get('amount') }}</div>
-                                    {% endif %}
-                                </div>
-                            </div>
-                            <div class="col-6">
-                                <div class="mb-3">
-                                    <label for="add_dividend_date" class="form-label">Date</label>
-                                    <input type="text" class="form-control {% if (form_errors.get('dividend_add', {})).get('date') %}is-invalid{% endif %}"
-                                           id="add_dividend_date" name="date" placeholder="YYYY-MM-DD">
-                                    {% if (form_errors.get('dividend_add', {})).get('date') %}
-                                    <div class="invalid-feedback d-block">{{ (form_errors.get('dividend_add', {})).get('date') }}</div>
                                     {% endif %}
                                 </div>
                             </div>
@@ -571,7 +545,7 @@
                                 {% if _tx_edit_errs.get('edit_fees') %}
                                 <div class="invalid-feedback">{{ _tx_edit_errs.get('edit_fees') }}</div>
                                 {% endif %}
-                                <div id="edit_net_amount_preview" class="tx-preview"></div>
+                                <div id="edit_total_cost_preview" class="tx-preview"></div>
                             </div>
                         </div>
                         <div class="col-6">
@@ -646,6 +620,49 @@
                 </div>
                 <div class="modal-footer">
                     <button type="submit" class="btn btn-danger">Delete</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Add Dividend Modal (standalone — opened from the $ button on each symbol row) -->
+<div class="modal fade" id="addDividendModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('transactions.dividend_add') }}" autocomplete="off" novalidate>
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="fund_id" id="add_div_fund_id">
+                <input type="hidden" name="div_symbol" id="add_div_symbol">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add Dividend</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <div class="mb-3">
+                                <label for="add_div_amount" class="form-label">Amount</label>
+                                <input type="text" inputmode="decimal" autocomplete="off"
+                                       class="form-control" id="add_div_amount" name="amount" placeholder="0.00">
+                                <div id="add_div_amount_error" class="invalid-feedback"></div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="mb-3">
+                                <label for="add_div_date" class="form-label">Date</label>
+                                <input type="text" class="form-control" id="add_div_date" name="date" placeholder="YYYY-MM-DD">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="add_div_notes" class="form-label">Notes (optional)</label>
+                        <textarea class="form-control" id="add_div_notes" name="notes" rows="2"></textarea>
+                    </div>
+                    <div id="add_div_error" class="alert alert-danger d-none"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary" id="add_div_submit_btn">Add Dividend</button>
                 </div>
             </form>
         </div>
@@ -946,6 +963,19 @@ function openAddTransactionModal(fundId, categoryName, symbol, forcedType) {
     if (feesInput) feesInput.dispatchEvent(new Event('input'));
     if (typeSelect) typeSelect.dispatchEvent(new Event('change'));
 
+    // Clear the type-selection error AFTER dispatching change — FormValidator
+    // may re-validate synchronously on change, so we wipe the error last.
+    if (typeSelect) {
+        typeSelect.classList.remove('is-invalid');
+        const typeContainer = typeSelect.closest('.mb-3') || typeSelect.parentElement;
+        if (typeContainer) {
+            typeContainer.querySelectorAll('.invalid-feedback').forEach(function(el) {
+                el.textContent = '';
+                el.style.display = 'none';
+            });
+        }
+    }
+
     new bootstrap.Modal(modalEl).show();
 }
 
@@ -1239,6 +1269,21 @@ function editTransaction(id, fundId, type, symbol, price, quantity, fees, notes,
     syncTypeButtons();
 
     refresh();
+
+    // Reset type-selection error every time the modal is fully hidden,
+    // so it never bleeds into the next open.
+    modalEl.addEventListener('hidden.bs.modal', function() {
+        typeSelect.value = '';
+        typeSelect.classList.remove('is-invalid');
+        syncTypeButtons();
+        const typeContainer = typeSelect.closest('.mb-3') || typeSelect.parentElement;
+        if (typeContainer) {
+            typeContainer.querySelectorAll('.invalid-feedback').forEach(function(el) {
+                el.textContent = '';
+                el.style.display = 'none';
+            });
+        }
+    });
 })();
 
 // Ensure header action buttons don't trigger row expand/collapse.
@@ -1297,7 +1342,7 @@ function editTransaction(id, fundId, type, symbol, price, quantity, fees, notes,
             openDeleteAssetModal(fundId, category, symbol, txCount);
         }
 
-        // Add dividend button in dividend section header
+        // Standalone dividend button — opens the dedicated Add Dividend modal
         const addDivBtn = ev.target && ev.target.closest ? ev.target.closest('.js-add-dividend-btn') : null;
         if (addDivBtn) {
             ev.preventDefault();
@@ -1305,8 +1350,8 @@ function editTransaction(id, fundId, type, symbol, price, quantity, fees, notes,
             if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
 
             const fundId = parseInt(addDivBtn.getAttribute('data-fund-id') || '0', 10) || null;
-            const category = addDivBtn.getAttribute('data-category') || '';
-            openAddDividendModal(fundId, category);
+            const symbol = addDivBtn.getAttribute('data-symbol') || '';
+            openStandaloneDividendModal(fundId, symbol);
         }
 
         // Edit dividend button
@@ -1336,98 +1381,105 @@ function editTransaction(id, fundId, type, symbol, price, quantity, fees, notes,
     }, true);
 })();
 
-// Global flag read by main.js validators to know which mode is active
-window.isDividendMode = false;
-
 // -----------------------------------------------------------------------
-// Dividend mode in Add Transaction Modal
+// Standalone Add Dividend Modal (opened from the $ button on symbol rows)
 // -----------------------------------------------------------------------
-(function setupDividendMode() {
-    const addForm     = document.querySelector('#addTransactionModal form');
-    const divBtn      = document.getElementById('add_tx_type_dividend_btn');
-    const buyBtn      = document.getElementById('add_tx_type_buy_btn');
-    const sellBtn     = document.getElementById('add_tx_type_sell_btn');
-    const buySellFields  = document.getElementById('add_buysell_fields');
-    const dividendFields = document.getElementById('add_dividend_fields');
-    const symbolGroup = document.getElementById('add_tx_symbol_group');
-    const typeSelect  = document.getElementById('transaction_type');
-    const titleEl     = document.getElementById('add_tx_modal_title');
-    const submitBtn   = document.getElementById('add_tx_submit_btn');
-    const modalEl     = document.getElementById('addTransactionModal');
+function openStandaloneDividendModal(fundId, symbol) {
+    const fundInput   = document.getElementById('add_div_fund_id');
+    const symInput    = document.getElementById('add_div_symbol');
 
-    const TX_ACTION  = '{{ url_for("transactions.transaction_add") }}';
-    const DIV_ACTION = '{{ url_for("transactions.dividend_add") }}';
+    const amountEl    = document.getElementById('add_div_amount');
+    const dateEl      = document.getElementById('add_div_date');
+    const notesEl     = document.getElementById('add_div_notes');
+    const errEl       = document.getElementById('add_div_error');
+    const amountErr   = document.getElementById('add_div_amount_error');
+    const submitBtn   = document.getElementById('add_div_submit_btn');
 
-    function setDividendMode(on) {
-        if (!addForm) return;
-        window.isDividendMode = on;
-        if (on) {
-            addForm.action = DIV_ACTION;
-            if (buySellFields) buySellFields.style.display = 'none';
-            if (dividendFields) dividendFields.style.display = '';
-            if (symbolGroup) symbolGroup.classList.add('d-none');
-            if (divBtn) { divBtn.classList.add('active'); divBtn.setAttribute('aria-pressed', 'true'); }
-            if (buyBtn)  { buyBtn.classList.remove('active'); buyBtn.setAttribute('aria-pressed', 'false'); }
-            if (sellBtn) { sellBtn.classList.remove('active'); sellBtn.setAttribute('aria-pressed', 'false'); }
-            if (modalEl) { modalEl.classList.remove('tx-theme-buy', 'tx-theme-sell'); modalEl.classList.add('tx-theme-dividend'); }
-            if (titleEl) titleEl.textContent = 'Add Dividend';
-            if (submitBtn) submitBtn.textContent = 'Add Dividend';
-            initFlatpickr('add_dividend_date');
-            const divDateEl = document.getElementById('add_dividend_date');
-            if (divDateEl && !divDateEl.value) divDateEl.value = todayStr();
-        } else {
-            addForm.action = TX_ACTION;
-            if (buySellFields) buySellFields.style.display = '';
-            if (dividendFields) dividendFields.style.display = 'none';
-            if (divBtn) { divBtn.classList.remove('active'); divBtn.setAttribute('aria-pressed', 'false'); }
-            if (modalEl) modalEl.classList.remove('tx-theme-dividend');
-            if (titleEl) titleEl.textContent = 'Add Transaction';
-            if (submitBtn) submitBtn.textContent = 'Add Transaction';
+    if (fundInput)  fundInput.value  = fundId ? String(fundId) : '';
+    if (symInput)   symInput.value   = (symbol || '').toUpperCase();
+    if (amountEl)   { amountEl.value = ''; amountEl.classList.remove('is-invalid'); }
+    if (amountErr)  { amountErr.textContent = ''; amountErr.style.display = 'none'; }
+    if (dateEl)     dateEl.value = todayStr();
+    if (notesEl)    notesEl.value = '';
+    if (errEl)      { errEl.textContent = ''; errEl.classList.add('d-none'); }
+    if (submitBtn)  submitBtn.disabled = false;
+
+    initFlatpickr('add_div_date');
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('addDividendModal')).show();
+}
+
+(function setupStandaloneDividendModal() {
+    const modalEl   = document.getElementById('addDividendModal');
+    const form      = modalEl ? modalEl.querySelector('form') : null;
+    const amountEl  = document.getElementById('add_div_amount');
+    const amountErr = document.getElementById('add_div_amount_error');
+    const errEl     = document.getElementById('add_div_error');
+    const submitBtn = document.getElementById('add_div_submit_btn');
+    if (!form) return;
+
+    function validateAmount() {
+        const val = String(amountEl ? amountEl.value || '' : '').trim();
+        const n   = parseFloat(val);
+        if (!val || !isFinite(n) || n <= 0) {
+            if (amountEl)  amountEl.classList.add('is-invalid');
+            if (amountErr) { amountErr.textContent = 'Amount must be greater than 0.'; amountErr.style.display = 'block'; }
+            return false;
         }
+        if (amountEl)  amountEl.classList.remove('is-invalid');
+        if (amountErr) { amountErr.textContent = ''; amountErr.style.display = 'none'; }
+        return true;
     }
 
-    if (divBtn) {
-        divBtn.addEventListener('click', function() {
-            if (typeSelect) typeSelect.value = '';
-            typeSelect.dispatchEvent(new Event('change'));  // clears buy/sell state
-            setDividendMode(true);
+    if (amountEl) {
+        amountEl.addEventListener('blur',  validateAmount);
+        amountEl.addEventListener('input', function() {
+            if (amountEl.classList.contains('is-invalid')) validateAmount();
         });
     }
 
-    // Clicking Buy or Sell exits dividend mode
-    if (buyBtn)  buyBtn.addEventListener('click', function() { setDividendMode(false); });
-    if (sellBtn) sellBtn.addEventListener('click', function() { setDividendMode(false); });
-
-    // Reset flag when modal is closed
     if (modalEl) {
-        modalEl.addEventListener('hidden.bs.modal', function() { setDividendMode(false); });
+        modalEl.addEventListener('hidden.bs.modal', function() {
+            if (amountEl)  amountEl.classList.remove('is-invalid');
+            if (amountErr) { amountErr.textContent = ''; amountErr.style.display = 'none'; }
+            if (errEl)     { errEl.textContent = ''; errEl.classList.add('d-none'); }
+        });
     }
 
-    // Expose for reopening from server errors
-    window.openAddDividendModal = function(fundId, category) {
-        const fundSelect = document.getElementById('fund_id');
-        const notesEl   = document.getElementById('notes');
-        const amountEl  = document.getElementById('amount');
-        const divDateEl = document.getElementById('add_dividend_date');
-        const symbolGroup = document.getElementById('add_tx_symbol_group');
-        const catGroup  = document.getElementById('add_tx_category_group');
-        const context   = document.getElementById('add_tx_context');
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        if (!validateAmount()) return;
+        if (submitBtn && submitBtn.disabled) return;
+        if (submitBtn) submitBtn.disabled = true;
+        if (errEl) { errEl.textContent = ''; errEl.classList.add('d-none'); }
 
-        if (fundSelect && fundId) fundSelect.value = String(fundId);
-        if (notesEl)  notesEl.value  = '';
-        if (amountEl) amountEl.value = '';
-        if (divDateEl) { divDateEl.value = todayStr(); }
-        if (symbolGroup) symbolGroup.classList.add('d-none');
-        if (catGroup) catGroup.classList.toggle('d-none', Boolean(fundId));
-        if (context) context.classList.toggle('d-none', !Boolean(fundId));
-
-        if (typeSelect) typeSelect.value = '';
-        typeSelect.dispatchEvent(new Event('change'));
-        setDividendMode(true);
-
-        new bootstrap.Modal(document.getElementById('addTransactionModal')).show();
-    };
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', form.action, true);
+        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+        xhr.onload = function() {
+            if (submitBtn) submitBtn.disabled = false;
+            try {
+                var data = JSON.parse(xhr.responseText);
+                if (data.success) {
+                    sessionStorage.setItem('flashMessage', data.message || 'Dividend added');
+                    sessionStorage.setItem('flashType', 'success');
+                    var modal = bootstrap.Modal.getInstance(modalEl);
+                    if (modal) modal.hide();
+                    location.reload();
+                } else {
+                    if (errEl) { errEl.textContent = data.error || 'Operation failed'; errEl.classList.remove('d-none'); }
+                }
+            } catch (ex) {
+                if (errEl) { errEl.textContent = 'Operation failed'; errEl.classList.remove('d-none'); }
+            }
+        };
+        xhr.onerror = function() {
+            if (submitBtn) submitBtn.disabled = false;
+            if (errEl) { errEl.textContent = 'Network error'; errEl.classList.remove('d-none'); }
+        };
+        xhr.send(new FormData(form));
+    });
 })();
+
 
 // -----------------------------------------------------------------------
 // Edit Dividend Modal

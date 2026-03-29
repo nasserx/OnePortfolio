@@ -1,4 +1,7 @@
-# Python
+# OnePortfolio — Git Ignore Rules
+
+
+# Python bytecode and compiled files
 __pycache__/
 *.py[cod]
 *$py.class
@@ -8,28 +11,27 @@ venv/
 .venv/
 env/
 
-# Test / tooling caches
+# Test and tooling caches
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
 .coverage
 htmlcov/
 
-# Local databases / artifacts
+# Local databases and build artifacts
 *.db
 *.sqlite
 *.sqlite3
 
-
-# Instance / runtime
+# Flask instance folder and runtime files
 instance/
 *.log
 *.pid
 
-# Environment variables
+# Environment variables — contains secrets, never commit
 .env
 
-# OS / editor
+# OS and editor metadata
 .DS_Store
 Thumbs.db
 .vscode/

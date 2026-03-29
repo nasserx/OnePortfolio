@@ -418,8 +418,8 @@ def test_dividends(app):
 
         # ── 6a: add dividends and verify total ──
         print("\n  6a – dividend total calculation")
-        svc1.transaction_service.add_dividend(fund1.id, _dec('100'), datetime(2026, 1, 10))
-        svc1.transaction_service.add_dividend(fund1.id, _dec('50'),  datetime(2026, 1, 20))
+        svc1.transaction_service.add_dividend(fund1.id, 'AAPL', _dec('100'), datetime(2026, 1, 10))
+        svc1.transaction_service.add_dividend(fund1.id, 'AAPL', _dec('50'),  datetime(2026, 1, 20))
 
         total = PortfolioCalculator.get_dividend_total_for_fund(fund1.id)
         _assert('Dividend total for fund1', _dec('150'), total)

@@ -280,14 +280,13 @@ class AuthService:
         Returns:
             Tuple of (success: bool, error_message: str).
         """
-        if not user.deletion_code or not user.deletion_code_expires_at:
-            return False, 'No deletion code found. Please request a new one.'
-
-        if datetime.utcnow() > user.deletion_code_expires_at:
-            return False, 'The confirmation code has expired. Please request a new one.'
-
-        if user.deletion_code != code.strip():
-            return False, 'Invalid confirmation code.'
+        if (
+            not user.deletion_code
+            or not user.deletion_code_expires_at
+            or datetime.utcnow() > user.deletion_code_expires_at
+            or user.deletion_code != code.strip()
+        ):
+            return False, 'Invalid or expired confirmation code.'
 
         self.user_repo.delete(user)
         self.user_repo.commit()

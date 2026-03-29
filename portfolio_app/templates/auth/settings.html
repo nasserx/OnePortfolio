@@ -4,41 +4,46 @@
 
 {% block content %}
 <div class="row justify-content-center">
-    <div class="col-12 col-md-10 col-lg-8 col-xl-7">
+    <div class="col-12 col-xl-10">
 
         <div class="mb-4">
             <h1>Settings</h1>
         </div>
 
-        <!-- Tab navigation -->
-        <ul class="nav nav-tabs settings-tabs mb-4" id="settingsTabs" role="tablist">
-            <li class="nav-item" role="presentation">
-                <button class="nav-link {% if request.args.get('tab', 'profile') == 'profile' %}active{% endif %}"
-                        id="tab-profile" data-bs-toggle="tab" data-bs-target="#panel-profile"
-                        type="button" role="tab" aria-controls="panel-profile"
-                        aria-selected="{{ 'true' if request.args.get('tab', 'profile') == 'profile' else 'false' }}">
-                    <i class="bi bi-person me-2" aria-hidden="true"></i>Profile
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link {% if request.args.get('tab') == 'security' %}active{% endif %}"
-                        id="tab-security" data-bs-toggle="tab" data-bs-target="#panel-security"
-                        type="button" role="tab" aria-controls="panel-security"
-                        aria-selected="{{ 'true' if request.args.get('tab') == 'security' else 'false' }}">
-                    <i class="bi bi-shield-lock me-2" aria-hidden="true"></i>Security
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link {% if request.args.get('tab') == 'account' %}active{% endif %}"
-                        id="tab-account" data-bs-toggle="tab" data-bs-target="#panel-account"
-                        type="button" role="tab" aria-controls="panel-account"
-                        aria-selected="{{ 'true' if request.args.get('tab') == 'account' else 'false' }}">
-                    <i class="bi bi-person-gear me-2" aria-hidden="true"></i>Account
-                </button>
-            </li>
-        </ul>
+        <div class="row g-4 align-items-start">
 
-        <!-- Tab panels -->
+            <!-- Sidebar navigation -->
+            <div class="col-12 col-md-3 col-lg-2">
+                <ul class="nav settings-sidebar" id="settingsTabs" role="tablist">
+                    <li class="nav-item w-100" role="presentation">
+                        <button class="nav-link settings-sidebar-link {% if request.args.get('tab', 'profile') == 'profile' %}active{% endif %}"
+                                id="tab-profile" data-bs-toggle="tab" data-bs-target="#panel-profile"
+                                type="button" role="tab" aria-controls="panel-profile"
+                                aria-selected="{{ 'true' if request.args.get('tab', 'profile') == 'profile' else 'false' }}">
+                            <i class="bi bi-person" aria-hidden="true"></i>Profile
+                        </button>
+                    </li>
+                    <li class="nav-item w-100" role="presentation">
+                        <button class="nav-link settings-sidebar-link {% if request.args.get('tab') == 'security' %}active{% endif %}"
+                                id="tab-security" data-bs-toggle="tab" data-bs-target="#panel-security"
+                                type="button" role="tab" aria-controls="panel-security"
+                                aria-selected="{{ 'true' if request.args.get('tab') == 'security' else 'false' }}">
+                            <i class="bi bi-shield-lock" aria-hidden="true"></i>Security
+                        </button>
+                    </li>
+                    <li class="nav-item w-100" role="presentation">
+                        <button class="nav-link settings-sidebar-link {% if request.args.get('tab') == 'account' %}active{% endif %}"
+                                id="tab-account" data-bs-toggle="tab" data-bs-target="#panel-account"
+                                type="button" role="tab" aria-controls="panel-account"
+                                aria-selected="{{ 'true' if request.args.get('tab') == 'account' else 'false' }}">
+                            <i class="bi bi-person-gear" aria-hidden="true"></i>Account
+                        </button>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Tab panels -->
+            <div class="col-12 col-md-9 col-lg-10">
         <div class="tab-content settings-tab-content">
 
             <!-- ============================================================ -->
@@ -206,8 +211,7 @@
                                             </div>
                                         {% endif %}
                                     </div>
-                                    <button type="submit" class="btn btn-danger btn-sm mt-2"
-                                            onclick="return confirm('This will permanently delete your account. Continue?')">
+                                    <button type="submit" class="btn btn-danger btn-sm mt-2">
                                         <i class="bi bi-trash me-2" aria-hidden="true"></i>Confirm Deletion
                                     </button>
                                 </form>
@@ -218,6 +222,8 @@
             </div>
 
         </div>{# /tab-content #}
+            </div>{# /col content #}
+        </div>{# /row sidebar+content #}
     </div>
 </div>
 {% endblock %}

@@ -141,7 +141,7 @@ class AccountMessages:
     DELETION_CODE_SENT = "Confirmation code sent. Enter it below to delete your account."
     DELETION_CODE_SEND_FAILED = "Failed to send the code. Please try again."
     DELETION_CONFIRMED = "Account deleted."
-    DELETION_INVALID_CODE = "Invalid or expired code."
+    DELETION_INVALID_CODE = "Invalid or expired confirmation code."
     DELETION_NO_EMAIL = "No email on file — contact an admin to delete your account."
 
 

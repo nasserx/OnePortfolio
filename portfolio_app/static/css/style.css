@@ -10,7 +10,7 @@
     --primary-color: #4f6ef7;
     --primary-dark: #3d5ce8;
     --primary-light: #6b85f8;
-    --primary-lighter: #eef1fe;
+    --primary-lighter: #dde3fd;
     --success-color: #0f9d58;
     --success-light: #34a853;
     --success-lighter: #e6f4ea;
@@ -83,7 +83,7 @@
     --primary-color: #6b85f8;
     --primary-dark: #8099f9;
     --primary-light: #92a8fa;
-    --primary-lighter: #14172a;
+    --primary-lighter: #1e2340;
     --success-color: #34a853;
     --success-light: #4cbb6a;
     --success-lighter: #0e2018;
@@ -522,34 +522,47 @@ label,
 /* Settings page                            */
 /* ---------------------------------------- */
 
-/* Tab nav */
-.settings-tabs {
-    border-bottom: 2px solid var(--border-color);
-    gap: 0.25rem;
+/* Vertical sidebar nav */
+.settings-sidebar {
+    flex-direction: column;
+    gap: 0.125rem;
+    position: sticky;
+    top: 80px; /* below the sticky navbar */
 }
 
-.settings-tabs .nav-link {
+.settings-sidebar-link {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    width: 100%;
+    text-align: left;
     color: var(--text-secondary);
-    border: none;
-    border-bottom: 2px solid transparent;
-    border-radius: 0;
-    padding: 0.6rem 1rem;
     font-size: 0.9rem;
     font-weight: 500;
-    margin-bottom: -2px;
+    padding: 0.55rem 0.875rem;
+    border-radius: var(--border-radius-sm);
+    border: none;
+    background: transparent;
     transition: color var(--transition-fast),
+                background-color var(--transition-fast),
                 border-color var(--transition-fast);
 }
 
-.settings-tabs .nav-link:hover {
+.settings-sidebar-link:hover {
     color: var(--text-primary);
-    background: transparent;
+    background-color: var(--surface-hover);
 }
 
-.settings-tabs .nav-link.active {
+.settings-sidebar-link.active {
     color: var(--primary-color);
-    border-bottom-color: var(--primary-color);
-    background: transparent;
+    background-color: var(--primary-lighter);
+
+    font-weight: 600;
+}
+
+.settings-sidebar-link .bi {
+    font-size: 1rem;
+    flex-shrink: 0;
 }
 
 /* Read-only field rows */

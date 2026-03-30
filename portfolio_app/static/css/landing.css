@@ -22,26 +22,9 @@
     position: sticky;
     top: 0;
     z-index: 1030;
-    background-color: transparent;
+    background-color: var(--app-bg);
     border-bottom: none;
     padding: 0.875rem 0;
-    transition:
-        background-color        0.25s ease,
-        backdrop-filter         0.25s ease,
-        -webkit-backdrop-filter 0.25s ease,
-        box-shadow              0.25s ease;
-}
-
-.landing-nav.scrolled {
-    background-color: rgba(15, 22, 41, 0.25);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: none;
-    box-shadow: none;
-}
-
-[data-bs-theme="light"] .landing-nav.scrolled {
-    background-color: rgba(248, 248, 246, 0.25);
 }
 
 .landing-nav .landing-container {
@@ -67,7 +50,7 @@
 }
 
 .landing-logo {
-    border-radius: 7px;
+    border-radius: var(--border-radius-xs);
     flex-shrink: 0;
 }
 

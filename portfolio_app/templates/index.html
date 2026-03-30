@@ -14,7 +14,7 @@
     <div class="col-md-3">
         <div class="card border-0 shadow-sm h-100 page-accent-surface stat-card">
             <div class="card-body">
-                <p class="text-muted small mb-1">Total Funds</p>
+                <p class="text-muted small mb-1 text-uppercase">Total Funds</p>
                 <h2 class="fw-bold overview-value mb-1">{{ totals.total_investment|fmt_money }}</h2>
             </div>
         </div>
@@ -22,7 +22,7 @@
     <div class="col-md-3">
         <div class="card border-0 shadow-sm h-100 page-accent-surface stat-card">
             <div class="card-body">
-                <p class="text-muted small mb-1">Portfolio Value</p>
+                <p class="text-muted small mb-1 text-uppercase">Portfolio Value</p>
                 <h2 class="fw-bold mb-1">{{ totals.total_value|fmt_money }}</h2>
             </div>
         </div>
@@ -30,7 +30,7 @@
     <div class="col-md-3">
         <div class="card border-0 shadow-sm h-100 page-accent-surface stat-card">
             <div class="card-body">
-                <p class="text-muted small mb-1">Total Dividends</p>
+                <p class="text-muted small mb-1 text-uppercase">Total Dividends</p>
                 <h2 class="fw-bold dividend mb-1">{% if totals.total_dividends > 0 %}+{% endif %}{{ totals.total_dividends|fmt_money }}</h2>
             </div>
         </div>
@@ -38,7 +38,7 @@
     <div class="col-md-3">
         <div class="card border-0 shadow-sm h-100 page-accent-surface stat-card">
             <div class="card-body">
-                <p class="text-muted small mb-1">Total Realized P&amp;L</p>
+                <p class="text-muted small mb-1 text-uppercase">Total Realized P&amp;L</p>
                 <h2 class="mb-1 fw-bold {% if totals.total_realized_pnl >= 0 %}profit{% else %}loss{% endif %}">
                     {% if totals.total_realized_pnl >= 0 %}+{% endif %}{{ totals.total_realized_pnl|fmt_money }}
                 </h2>

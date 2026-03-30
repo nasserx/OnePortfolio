@@ -74,6 +74,8 @@
     --shadow-md: 0 4px 12px 0 rgba(28, 28, 46, 0.08), 0 2px 4px 0 rgba(28, 28, 46, 0.04);
     --shadow-lg: 0 8px 24px 0 rgba(28, 28, 46, 0.1), 0 4px 8px 0 rgba(28, 28, 46, 0.05);
     --shadow-xl: 0 16px 40px 0 rgba(28, 28, 46, 0.12), 0 8px 16px 0 rgba(28, 28, 46, 0.06);
+    /* Page horizontal padding — controls breathing room on all pages */
+    --page-padding-x: clamp(1rem, 4vw, 4.5rem);
     /* Semantic state color tokens — change these to retheme all profit/loss/dividend labels */
     --color-profit: var(--success-color);
     --color-loss: var(--danger-color);
@@ -1945,8 +1947,8 @@ i.bi {
 /* Responsive design for large screens */
 @media (min-width: 1400px) {
     .container-fluid {
-        padding-left: 5%;
-        padding-right: 5%;
+        padding-left: var(--page-padding-x);
+        padding-right: var(--page-padding-x);
     }
 }
 

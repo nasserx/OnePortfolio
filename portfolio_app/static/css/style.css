@@ -747,6 +747,10 @@ label,
     color: var(--text-primary) !important;
 }
 
+.card-value {
+    display: block;
+}
+
 
 
 /* General table styles */

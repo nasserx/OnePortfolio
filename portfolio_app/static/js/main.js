@@ -1090,44 +1090,75 @@ class DropdownHoverManager {
 }
 
 
+class NumericFitManager {
+    // Shrinks numeric value elements that overflow their container so they
+    // stay on one line. Uses overflow:hidden temporarily to force an accurate
+    // scrollWidth measurement (overflow:visible makes scrollWidth == clientWidth).
+    static SELECTOR = '.card-value, .summary-value, .stat-card .card-body h2';
+    static MIN_FONT_SIZE = 10;
+
+    constructor() {
+        this._elements = [];
+        this._resizeTimer = null;
+        this.fit();
+        window.addEventListener('resize', () => {
+            clearTimeout(this._resizeTimer);
+            this._resizeTimer = setTimeout(() => this.fit(), 200);
+        });
+    }
+
+    fit() {
+        this._elements = Array.from(document.querySelectorAll(NumericFitManager.SELECTOR));
+        this._elements.forEach(el => this._fitOne(el));
+    }
+
+    _fitOne(el) {
+        el.style.fontSize   = '';
+        el.style.whiteSpace = '';
+
+        // Skip elements inside collapsed/hidden containers
+        if (el.clientWidth === 0) return;
+
+        el.style.overflow = 'hidden';
+        el.style.whiteSpace = 'nowrap';
+
+        if (el.scrollWidth <= el.clientWidth) {
+            el.style.whiteSpace = '';
+            el.style.overflow   = '';
+            return;
+        }
+
+        let size = parseFloat(getComputedStyle(el).fontSize);
+        while (el.scrollWidth > el.clientWidth && size > NumericFitManager.MIN_FONT_SIZE) {
+            size -= 0.5;
+            el.style.fontSize = size + 'px';
+        }
+        el.style.overflow = '';
+    }
+}
+
+
 class InvestmentPortfolioApp {
     constructor() {
         this.initialize();
     }
 
     initialize() {
-        // Disable native browser validation
         new NativeValidationDisabler();
 
-        // Initialize CSRF protection
         const csrfManager = new CSRFManager();
         csrfManager.injectTokenToForms();
 
-        // Initialize decimal input handlers
         new DecimalInputHandler();
-
-        // Initialize alerts auto-dismiss
         new AlertManager();
-
-        // Initialize tooltips
         new TooltipManager();
-
-        // Initialize form validators
         new FormValidatorsInitializer();
-
-        // Initialize transaction form handler
         new TransactionFormHandler();
-
-        // Initialize modal manager
         new ModalManager();
-
-        // Initialize AJAX handler for modals
         new ModalAjaxHandler();
-
-        // Settings dropdown hover behavior
         new DropdownHoverManager();
+        new NumericFitManager();
 
-        // Navbar scroll glass effect
         const navbar = document.querySelector('.app-navbar');
         if (navbar) {
             const onScroll = () => navbar.classList.toggle('scrolled', window.scrollY > 8);

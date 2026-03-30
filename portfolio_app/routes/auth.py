@@ -4,10 +4,12 @@ user settings, and account deletion.
 """
 
 import logging
+from functools import wraps
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_user, logout_user, login_required, current_user
 
 from portfolio_app.services import get_services
+from portfolio_app.utils.constants import DEMO_USERNAME
 from portfolio_app.forms.auth_forms import (
     LoginForm,
     RegisterForm,
@@ -24,12 +26,32 @@ from portfolio_app.utils.email import (
     send_verification_email,
     send_reset_email,
 )
-from portfolio_app.utils.messages import AccountMessages
-from portfolio_app.utils.messages import AuthMessages
+from portfolio_app.utils.messages import AccountMessages, AuthMessages
 
 logger = logging.getLogger(__name__)
 
 auth_bp = Blueprint('auth', __name__)
+
+
+def demo_restricted(f):
+    """Block demo account from mutating credentials; redirect to settings with a warning."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if current_user.is_authenticated and current_user.username == DEMO_USERNAME:
+            flash(AccountMessages.DEMO_ACTION_DISABLED, 'warning')
+            return redirect(url_for('auth.settings'))
+        return f(*args, **kwargs)
+    return decorated
+
+
+@auth_bp.app_context_processor
+def inject_demo_flag():
+    """Expose ``is_demo_account`` to all templates rendered by this blueprint."""
+    return {
+        'is_demo_account': (
+            current_user.is_authenticated and current_user.username == DEMO_USERNAME
+        )
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -225,6 +247,7 @@ def resend_code():
 
 @auth_bp.route('/change-password', methods=['GET', 'POST'])
 @login_required
+@demo_restricted
 def change_password():
     """Change password page."""
     form_errors = {}
@@ -267,6 +290,7 @@ def change_password():
 
 @auth_bp.route('/update-email', methods=['GET', 'POST'])
 @login_required
+@demo_restricted
 def update_email():
     """Stage a new email address and send an OTP to verify it.
 
@@ -420,6 +444,7 @@ def settings():
 
 @auth_bp.route('/settings/delete/request', methods=['POST'])
 @login_required
+@demo_restricted
 def delete_account_request():
     """Send a 6-digit OTP to the user's email to confirm account deletion."""
     if not current_user.email:
@@ -443,6 +468,7 @@ def delete_account_request():
 
 @auth_bp.route('/settings/delete/confirm', methods=['POST'])
 @login_required
+@demo_restricted
 def delete_account_confirm():
     """Verify the OTP and permanently delete the authenticated user's account."""
     form = ConfirmDeletionForm(request.form)

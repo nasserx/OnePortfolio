@@ -110,10 +110,17 @@
                             <div class="settings-action-title">
                                 <i class="bi bi-key me-2" aria-hidden="true"></i>Password
                             </div>
+                            {% if is_demo_account %}
+                                <div class="settings-action-desc">Disabled for the demo account.</div>
+                            {% endif %}
                         </div>
-                        <a href="{{ url_for('auth.change_password') }}" class="btn btn-outline-primary btn-sm">
-                            Change
-                        </a>
+                        {% if is_demo_account %}
+                            <button class="btn btn-outline-secondary btn-sm" disabled>Change</button>
+                        {% else %}
+                            <a href="{{ url_for('auth.change_password') }}" class="btn btn-outline-primary btn-sm">
+                                Change
+                            </a>
+                        {% endif %}
                     </div>
 
                     <hr class="my-3">
@@ -125,12 +132,20 @@
                                 <i class="bi bi-envelope me-2" aria-hidden="true"></i>Email Address
                             </div>
                             <div class="settings-action-desc">
-                                {{ current_user.email or 'Not set' }} &mdash; requires re-verification.
+                                {% if is_demo_account %}
+                                    Disabled for the demo account.
+                                {% else %}
+                                    {{ current_user.email or 'Not set' }} &mdash; requires re-verification.
+                                {% endif %}
                             </div>
                         </div>
-                        <a href="{{ url_for('auth.update_email') }}" class="btn btn-outline-primary btn-sm">
-                            Update Email
-                        </a>
+                        {% if is_demo_account %}
+                            <button class="btn btn-outline-secondary btn-sm" disabled>Update Email</button>
+                        {% else %}
+                            <a href="{{ url_for('auth.update_email') }}" class="btn btn-outline-primary btn-sm">
+                                Update Email
+                            </a>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -156,7 +171,12 @@
                             <strong>Cannot be undone.</strong>
                         </p>
 
-                        {% if not current_user.email %}
+                        {% if is_demo_account %}
+                            <div class="alert alert-warning mb-0">
+                                <i class="bi bi-exclamation-circle me-2" aria-hidden="true"></i>
+                                Disabled for the demo account.
+                            </div>
+                        {% elif not current_user.email %}
                             <div class="alert alert-warning mb-0">
                                 <i class="bi bi-exclamation-circle me-2" aria-hidden="true"></i>
                                 No email on file — contact an admin to delete your account.

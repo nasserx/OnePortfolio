@@ -137,6 +137,9 @@ class AuthMessages:
 class AccountMessages:
     """Account self-service messages (settings, deletion)."""
 
+    # Demo account restrictions
+    DEMO_ACTION_DISABLED = "This action is disabled for the demo account."
+
     # Deletion flow
     DELETION_CODE_SENT = "Confirmation code sent. Enter it below to delete your account."
     DELETION_CODE_SEND_FAILED = "Failed to send the code. Please try again."

@@ -1,213 +1,328 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <script>document.documentElement.setAttribute('data-bs-theme', localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));</script>
+    <script>document.documentElement.setAttribute('data-bs-theme', localStorage.getItem('theme') || 'dark');</script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{% block title %}OnePortfolio{% endblock %}</title>
 
-    <!-- Favicon & App Icons -->
     <link rel="icon" href="{{ url_for('static', filename='icons/favicon.svg') }}" type="image/svg+xml">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/apple-touch-icon.png') }}">
     <link rel="manifest" href="{{ url_for('static', filename='icons/site.webmanifest') }}">
-    <meta name="theme-color" content="#0f9d58">
+    <meta name="theme-color" content="#6366f1">
 
-    <!-- Bootstrap CSS -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-    <!-- Custom CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v='20260215-1') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v='20260415-1') }}">
 
     {% block extra_css %}{% endblock %}
 </head>
 <body>
 
-    <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-dark app-navbar" aria-label="Main navigation">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="{{ url_for('dashboard.index') }}">
-                <img src="{{ url_for('static', filename='icons/favicon.svg') }}"
-                     width="32" height="32"
-                     alt="OnePortfolio logo"
-                     class="app-logo">
-                OnePortfolio
+<div class="app-layout">
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- Sidebar -->
+    <!-- ═══════════════════════════════════════ -->
+    <aside class="app-sidebar" id="appSidebar" aria-label="Main navigation">
+
+        <!-- Brand -->
+        <a class="sidebar-brand" href="{{ url_for('dashboard.index') }}">
+            <img src="{{ url_for('static', filename='icons/favicon.svg') }}" alt="OnePortfolio">
+            OnePortfolio
+        </a>
+
+        <!-- Nav links -->
+        <nav class="sidebar-nav">
+            <a class="sidebar-nav-link {% if request.endpoint == 'dashboard.index' %}active{% endif %}"
+               href="{{ url_for('dashboard.index') }}">
+                <i class="bi bi-grid-1x2" aria-hidden="true"></i>
+                Overview
             </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
-                    aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto gap-2">
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.endpoint == 'dashboard.index' %}active{% endif %}"
-                           href="{{ url_for('dashboard.index') }}">
-                            Overview
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.endpoint == 'funds.funds_list' %}active{% endif %}"
-                           href="{{ url_for('funds.funds_list') }}">
-                            Funds
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.endpoint == 'transactions.transaction_list' %}active{% endif %}"
-                           href="{{ url_for('transactions.transaction_list') }}">
-                            Transactions
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.endpoint == 'charts.charts' %}active{% endif %}"
-                           href="{{ url_for('charts.charts') }}">
-                            Charts
-                        </a>
-                    </li>
+            <a class="sidebar-nav-link {% if request.endpoint == 'funds.funds_list' %}active{% endif %}"
+               href="{{ url_for('funds.funds_list') }}">
+                <i class="bi bi-wallet2" aria-hidden="true"></i>
+                Funds
+            </a>
+            <a class="sidebar-nav-link {% if request.endpoint == 'transactions.transaction_list' %}active{% endif %}"
+               href="{{ url_for('transactions.transaction_list') }}">
+                <i class="bi bi-arrow-left-right" aria-hidden="true"></i>
+                Transactions
+            </a>
+            <a class="sidebar-nav-link {% if request.endpoint == 'charts.charts' %}active{% endif %}"
+               href="{{ url_for('charts.charts') }}">
+                <i class="bi bi-bar-chart-line" aria-hidden="true"></i>
+                Charts
+            </a>
 
-                    <!-- Auth buttons for guests -->
-                    {% if not current_user.is_authenticated %}
-                    <li class="nav-item">
-                        <a href="{{ url_for('auth.login') }}" class="btn-nav-login">Log In</a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="{{ url_for('auth.register') }}" class="btn-nav-signup">Sign Up</a>
-                    </li>
-                    {% endif %}
+            {% if current_user.is_admin %}
+            <div class="sidebar-divider"></div>
+            <a class="sidebar-nav-link {% if request.endpoint == 'admin.users' %}active{% endif %}"
+               href="{{ url_for('admin.users') }}">
+                <i class="bi bi-shield-check" aria-hidden="true"></i>
+                Admin
+            </a>
+            {% endif %}
+        </nav>
 
-                    <!-- User Menu — avatar button opens on hover -->
-                    {% if current_user.is_authenticated %}
-                    <li class="nav-item dropdown settings-dropdown">
-                        <button class="nav-avatar-btn" type="button"
+
+    </aside>
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- Main -->
+    <!-- ═══════════════════════════════════════ -->
+    <div class="app-main">
+
+        <!-- Top Bar -->
+        <header class="app-topbar">
+            <div class="topbar-left">
+                <!-- Mobile menu toggle -->
+                <button class="btn btn-sm btn-outline-secondary d-lg-none p-1" id="sidebarToggle" aria-label="Toggle menu">
+                    <i class="bi bi-list" style="font-size:1.25rem;"></i>
+                </button>
+                <span class="fw-600 text-1" style="font-size:0.9rem; color: var(--text-2);">
+                    {% block topbar_title %}{% endblock %}
+                </span>
+            </div>
+            <div class="topbar-right">
+
+                {% if not current_user.is_authenticated %}
+                    <a href="{{ url_for('auth.login') }}" class="btn-nav-login">Log In</a>
+                    <a href="{{ url_for('auth.register') }}" class="btn-nav-signup">Sign Up</a>
+                {% else %}
+                    <!-- User menu -->
+                    <div class="dropdown">
+                        <button class="user-menu-trigger" type="button"
                                 data-bs-toggle="dropdown" data-bs-auto-close="true"
+                                data-bs-offset="0,2"
                                 aria-expanded="false" aria-label="User Menu">
-                            <i class="bi bi-person-fill" aria-hidden="true"></i>
+                            <span class="user-avatar" aria-hidden="true">{{ current_user.username[0].upper() }}</span>
                         </button>
-
                         <ul class="dropdown-menu dropdown-menu-end user-dropdown-menu">
 
-                            <!-- Header: username + settings gear -->
                             <li>
                                 <div class="nav-dropdown-header">
-                                    <div class="nav-dropdown-header-left">
-                                        <span class="nav-user-name">{{ current_user.username }}</span>
-                                        {% if current_user.is_admin %}
-                                            <span class="badge nav-admin-badge">Admin</span>
-                                        {% endif %}
-                                    </div>
-                                    <a href="{{ url_for('auth.settings') }}"
-                                       class="nav-settings-link"
-                                       aria-label="Account Settings"
-                                       title="Settings">
-                                        <i class="bi bi-gear" aria-hidden="true"></i>
-                                    </a>
+                                    <span class="nav-user-name">{{ current_user.username }}</span>
+                                    {% if current_user.is_admin %}
+                                        <span class="badge nav-admin-badge">Admin</span>
+                                    {% endif %}
                                 </div>
                             </li>
 
-                            <li><hr class="dropdown-divider my-1"></li>
+                            <li><hr class="dropdown-divider"></li>
 
-                            <!-- Dark Mode toggle -->
                             <li>
-                                <label class="nav-dark-mode-row" for="darkModeSwitch">
-                                    <span class="d-flex align-items-center gap-2">
-                                        <i class="bi bi-moon-stars" aria-hidden="true"></i>
-                                        Dark Mode
-                                    </span>
-                                    <div class="form-check form-switch mb-0">
-                                        <input class="form-check-input" type="checkbox"
-                                               id="darkModeSwitch" role="switch"
-                                               aria-label="Toggle dark mode">
-                                    </div>
-                                </label>
-                            </li>
-
-                            {% if current_user.is_admin %}
-                            <li><hr class="dropdown-divider my-1"></li>
-                            <li>
-                                <a class="dropdown-item settings-item d-flex align-items-center gap-2"
-                                   href="{{ url_for('admin.users') }}">
-                                    <i class="bi bi-shield-check" aria-hidden="true"></i> Admin Panel
+                                <a class="settings-item d-flex align-items-center gap-2"
+                                   href="{{ url_for('auth.settings') }}">
+                                    <i class="bi bi-gear" aria-hidden="true"></i> Settings
                                 </a>
                             </li>
-                            {% endif %}
 
-                            <li><hr class="dropdown-divider my-1"></li>
+                            <li>
+                                <button class="settings-item d-flex align-items-center gap-2 w-100 text-start"
+                                        id="topbarThemeBtn" aria-label="Toggle theme">
+                                    <i class="bi bi-moon-stars" id="topbarThemeIcon" aria-hidden="true"></i>
+                                    <span id="topbarThemeLabel">Dark mode</span>
+                                    <span class="theme-toggle ms-auto" id="themeToggle" aria-hidden="true">
+                                        <span class="theme-toggle-thumb"></span>
+                                    </span>
+                                </button>
+                            </li>
 
-                            <!-- Logout -->
+                            <li><hr class="dropdown-divider"></li>
+
                             <li>
                                 <form method="post" action="{{ url_for('auth.logout') }}" class="m-0">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <button type="submit"
-                                            class="dropdown-item settings-item btn-logout d-flex align-items-center gap-2">
-                                        <i class="bi bi-box-arrow-right" aria-hidden="true"></i> Logout
+                                            class="settings-item btn-logout d-flex align-items-center gap-2">
+                                        <i class="bi bi-box-arrow-right" aria-hidden="true"></i> Sign out
                                     </button>
                                 </form>
                             </li>
 
                         </ul>
-                    </li>
-                    {% endif %}
-                </ul>
-            </div>
-        </div>
-    </nav>
-
-    <!-- Flash Messages -->
-    <div class="container mt-3">
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show flash-alert" role="alert">
-                        {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                     </div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
+                {% endif %}
+            </div>
+        </header>
+
+        <!-- Page Content -->
+        <main class="app-content">
+            {% block content %}{% endblock %}
+        </main>
+
+    </div><!-- /.app-main -->
+
+</div><!-- /.app-layout -->
+
+<!-- Flash Messages — outside app-layout so position:fixed works correctly -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="flash-container" aria-live="polite">
+        {% for category, message in messages %}
+        {% set cat = 'danger' if category == 'error' else category %}
+        {% set icon = {
+            'success': 'bi-check-circle-fill',
+            'danger':  'bi-exclamation-circle-fill',
+            'warning': 'bi-exclamation-triangle-fill',
+            'info':    'bi-info-circle-fill'
+        }.get(cat, 'bi-info-circle-fill') %}
+        <div class="flash-alert flash-alert--{{ cat }}" role="alert">
+            <i class="bi {{ icon }} flash-alert__icon" aria-hidden="true"></i>
+            <span class="flash-alert__msg">{{ message }}</span>
+            <button type="button" class="flash-alert__close" aria-label="Close">
+                <i class="bi bi-x" aria-hidden="true"></i>
+            </button>
+        </div>
+        {% endfor %}
     </div>
+    {% endif %}
+{% endwith %}
 
-    <!-- Main Content -->
-    <main class="container-fluid my-4">
-        {% block content %}{% endblock %}
-    </main>
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<!-- Theme & Sidebar Script -->
+<script>
+(function() {
+    const html          = document.documentElement;
+    const topbarBtn     = document.getElementById('topbarThemeBtn');
+    const topbarIcon    = document.getElementById('topbarThemeIcon');
+    const sidebarToggle = document.getElementById('sidebarToggle');
+    const sidebar       = document.getElementById('appSidebar');
+    const systemDark    = window.matchMedia('(prefers-color-scheme: dark)');
 
-    <!-- Theme Toggle Script -->
-    <script>
-        (function() {
-            const html = document.documentElement;
-            const switchEl = document.getElementById('darkModeSwitch');
-            const systemDark = window.matchMedia('(prefers-color-scheme: dark)');
+    const topbarLabel  = document.getElementById('topbarThemeLabel');
+    const themeToggle  = document.getElementById('themeToggle');
 
-            function applyTheme(isDark) {
-                html.setAttribute('data-bs-theme', isDark ? 'dark' : 'light');
-                if (switchEl) switchEl.checked = isDark;
+    function applyTheme(isDark) {
+        html.setAttribute('data-bs-theme', isDark ? 'dark' : 'light');
+        if (topbarIcon)  topbarIcon.className = isDark ? 'bi bi-sun' : 'bi bi-moon-stars';
+        // label stays fixed — the toggle switch conveys the state visually
+        if (themeToggle) themeToggle.classList.toggle('is-on', isDark);
+    }
+
+    const saved = localStorage.getItem('theme');
+    applyTheme(saved ? saved === 'dark' : systemDark.matches);
+
+    if (topbarBtn) {
+        topbarBtn.addEventListener('click', function(e) {
+            e.stopPropagation(); // keep dropdown open while toggling theme
+            const isDark = html.getAttribute('data-bs-theme') === 'dark';
+            localStorage.setItem('theme', isDark ? 'light' : 'dark');
+            applyTheme(!isDark);
+        });
+    }
+
+    systemDark.addEventListener('change', function(e) {
+        if (!localStorage.getItem('theme')) applyTheme(e.matches);
+    });
+
+    // Topbar scroll shadow
+    const topbar = document.querySelector('.app-topbar');
+    if (topbar) {
+        window.addEventListener('scroll', function() {
+            topbar.classList.toggle('is-scrolled', window.scrollY > 4);
+        }, { passive: true });
+    }
+
+    // ── Toast system ──────────────────────────────────────────
+    var TOAST_ICONS = {
+        success: 'bi-check-circle-fill',
+        danger:  'bi-exclamation-circle-fill',
+        warning: 'bi-exclamation-triangle-fill',
+        info:    'bi-info-circle-fill'
+    };
+
+    function getOrCreateContainer() {
+        var c = document.querySelector('.flash-container');
+        if (!c) {
+            c = document.createElement('div');
+            c.className = 'flash-container';
+            c.setAttribute('aria-live', 'polite');
+            document.body.appendChild(c);
+        }
+        return c;
+    }
+
+    function dismissToast(el) {
+        el.style.transition = 'opacity 0.22s ease, transform 0.22s ease';
+        el.style.opacity = '0';
+        el.style.transform = 'translateY(8px)';
+        setTimeout(function() { if (el.parentNode) el.remove(); }, 240);
+    }
+
+    function wireToast(el) {
+        var btn = el.querySelector('.flash-alert__close');
+        if (btn) btn.addEventListener('click', function() { dismissToast(el); });
+        setTimeout(function() { if (el.parentNode) dismissToast(el); }, 4000);
+    }
+
+    // Wire server-rendered toasts
+    document.querySelectorAll('.flash-alert').forEach(wireToast);
+
+    // Show toasts stored by AJAX flows (set before location.reload())
+    var pendingMsg  = sessionStorage.getItem('flashMessage');
+    var pendingType = sessionStorage.getItem('flashType');
+    if (pendingMsg) {
+        sessionStorage.removeItem('flashMessage');
+        sessionStorage.removeItem('flashType');
+        // Slight delay so the container is ready
+        setTimeout(function() {
+            window.showToast(pendingMsg, pendingType || 'success');
+        }, 120);
+    }
+
+    // Global helper for AJAX-triggered toasts
+    window.showToast = function(message, type) {
+        var cat  = type || 'info';
+        var icon = TOAST_ICONS[cat] || TOAST_ICONS.info;
+        var el   = document.createElement('div');
+        el.className   = 'flash-alert flash-alert--' + cat;
+        el.setAttribute('role', 'alert');
+        el.innerHTML   =
+            '<i class="bi ' + icon + ' flash-alert__icon" aria-hidden="true"></i>' +
+            '<span class="flash-alert__msg">' + message + '</span>' +
+            '<button type="button" class="flash-alert__close" aria-label="Close">' +
+            '<i class="bi bi-x" aria-hidden="true"></i></button>';
+        getOrCreateContainer().appendChild(el);
+        wireToast(el);
+    };
+
+    // Hover-open user dropdown
+    const userDropdownWrapper = document.querySelector('.topbar-right .dropdown');
+    if (userDropdownWrapper) {
+        const trigger = userDropdownWrapper.querySelector('.user-menu-trigger');
+        const bsDropdown = bootstrap.Dropdown.getOrCreateInstance(trigger);
+        let closeTimer;
+        userDropdownWrapper.addEventListener('mouseenter', function() {
+            clearTimeout(closeTimer);
+            bsDropdown.show();
+        });
+        userDropdownWrapper.addEventListener('mouseleave', function() {
+            closeTimer = setTimeout(function() { bsDropdown.hide(); }, 120);
+        });
+    }
+
+    // Mobile sidebar toggle
+    if (sidebarToggle && sidebar) {
+        sidebarToggle.addEventListener('click', function() {
+            sidebar.classList.toggle('open');
+        });
+        document.addEventListener('click', function(e) {
+            if (!sidebar.contains(e.target) && !sidebarToggle.contains(e.target)) {
+                sidebar.classList.remove('open');
             }
+        });
+    }
+})();
+</script>
 
-            // Default: saved preference OR system preference
-            const saved = localStorage.getItem('theme');
-            applyTheme(saved ? saved === 'dark' : systemDark.matches);
+<script src="{{ url_for('static', filename='js/main.js', v='20260205-3') }}"></script>
 
-            // Switch toggle → save to localStorage
-            if (switchEl) {
-                switchEl.addEventListener('change', function() {
-                    localStorage.setItem('theme', this.checked ? 'dark' : 'light');
-                    applyTheme(this.checked);
-                });
-            }
-
-            // Follow system changes if user has no saved preference
-            systemDark.addEventListener('change', function(e) {
-                if (!localStorage.getItem('theme')) applyTheme(e.matches);
-            });
-        })();
-    </script>
-
-    <!-- Custom JS -->
-    <script src="{{ url_for('static', filename='js/main.js', v='20260205-3') }}"></script>
-
-    {% block extra_js %}{% endblock %}
+{% block extra_js %}{% endblock %}
 </body>
 </html>

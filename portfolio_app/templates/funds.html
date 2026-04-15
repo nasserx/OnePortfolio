@@ -16,17 +16,12 @@
 {% endblock %}
 
 {% block content %}
-<div class="row">
-    <div class="col-12">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h1>Funds</h1>
-            {% if available_asset_classes|length > 0 %}
-            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addFundEntryModal">
-                Add Funds
-            </button>
-            {% endif %}
-        </div>
-    </div>
+<div class="page-header">
+{% if available_asset_classes|length > 0 %}
+    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addFundEntryModal">
+        Add Funds
+    </button>
+    {% endif %}
 </div>
 
 <!-- Funds by Asset Class (expandable history) -->
@@ -34,8 +29,8 @@
     <div class="col-12">
         {% if fund_details|length > 0 %}
             {% for item in fund_details %}
-            <div class="card border-0 shadow-sm mb-3">
-                 <div class="card-header bg-white border-bottom py-2 px-3 category-header page-accent-surface"
+            <div class="card mb-2">
+                 <div class="card-header py-2 px-3 category-header page-accent-surface"
                      onclick="toggleFundEvents('{{ item.html_group_id }}')">
                     <div class="row align-items-center g-1 summary-row">
                         <div class="col-lg-3 col-md-4 d-flex align-items-center gap-2">
@@ -60,7 +55,7 @@
                         </div>
                         <div class="col-lg-2 col-md-2 text-end">
                             <div class="btn-group btn-group-sm" role="group">
-                                <button type="button" class="btn btn-outline-success js-deposit-funds-btn"
+                                <button type="button" class="btn btn-outline-success btn-icon js-deposit-funds-btn"
                                         data-fund-id="{{ item.fund.id }}"
                                         data-category="{{ item.fund.asset_class|e }}"
                                         title="Deposit"
@@ -69,7 +64,7 @@
                                         data-bs-placement="top">
                                     <i class="bi bi-arrow-down-circle"></i>
                                 </button>
-                                <button type="button" class="btn btn-outline-danger js-withdraw-funds-btn"
+                                <button type="button" class="btn btn-outline-danger btn-icon js-withdraw-funds-btn"
                                         data-fund-id="{{ item.fund.id }}"
                                         data-category="{{ item.fund.asset_class|e }}"
                                         title="Withdraw"
@@ -78,7 +73,7 @@
                                         data-bs-placement="top">
                                     <i class="bi bi-arrow-up-circle"></i>
                                 </button>
-                                <button type="button" class="btn btn-outline-danger js-delete-fund-btn"
+                                <button type="button" class="btn btn-outline-danger btn-icon js-delete-fund-btn"
                                         data-fund-id="{{ item.fund.id }}"
                                         data-category="{{ item.fund.asset_class|e }}"
                                         title="Delete Fund"
@@ -128,7 +123,7 @@
                                     <td><small class="text-muted">{{ display_notes or 'N/A' }}</small></td>
                                     <td class="text-center">
                                         <div class="btn-group btn-group-sm" role="group">
-                                            <button type="button" class="btn btn-outline-primary btn-sm js-edit-fund-event-btn"
+                                            <button type="button" class="btn btn-outline-primary btn-icon btn-sm js-edit-fund-event-btn"
                                                     data-event='{{ {
                                                         "id": e.id,
                                                         "type": e.event_type,
@@ -142,7 +137,7 @@
                                                     data-bs-placement="top">
                                                 <i class="bi bi-pencil"></i>
                                             </button>
-                                            <button type="button" class="btn btn-outline-danger btn-sm js-delete-fund-event-btn"
+                                            <button type="button" class="btn btn-outline-danger btn-icon btn-sm js-delete-fund-event-btn"
                                                     data-event-id="{{ e.id }}"
                                                     title="Delete"
                                                     aria-label="Delete"
@@ -170,7 +165,7 @@
             </div>
             {% endfor %}
         {% else %}
-        <div class="card border-0 shadow-sm">
+        <div class="card">
             <div class="card-body">
                 <div class="alert alert-info text-center mb-0">
                     <i class="bi bi-info-circle"></i>
@@ -406,9 +401,12 @@
         <div class="modal-content">
             <form method="POST" id="deleteFundEventForm" novalidate>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <div class="modal-header bg-danger text-white">
-                    <h5 class="modal-title">Confirm Delete</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <div class="modal-header">
+                    <h5 class="modal-title d-flex align-items-center gap-2">
+                        <i class="bi bi-trash text-danger" style="font-size:1rem;"></i>
+                        Confirm Delete
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <p>{{ Msg.confirm.DELETE_TRANSACTION }}</p>
@@ -418,7 +416,10 @@
                     {% endif %}
                 </div>
                 <div class="modal-footer">
-                    <button type="submit" class="btn btn-danger">Delete</button>
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash me-1"></i>Delete
+                    </button>
                 </div>
             </form>
         </div>
@@ -431,9 +432,12 @@
         <div class="modal-content">
             <form method="POST" id="deleteFundForm" novalidate>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <div class="modal-header bg-danger text-white">
-                    <h5 class="modal-title">Confirm Delete</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <div class="modal-header">
+                    <h5 class="modal-title d-flex align-items-center gap-2">
+                        <i class="bi bi-trash text-danger" style="font-size:1rem;"></i>
+                        Confirm Delete
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <p>Delete funds entry for <strong id="delete_category_name"></strong>?</p>
@@ -447,7 +451,10 @@
                     {% endif %}
                 </div>
                 <div class="modal-footer">
-                    <button type="submit" class="btn btn-danger">Delete</button>
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash me-1"></i>Delete
+                    </button>
                 </div>
             </form>
         </div>

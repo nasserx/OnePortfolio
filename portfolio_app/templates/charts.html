@@ -4,20 +4,14 @@
 
 {% block content %}
 
-<div class="row mb-4">
-    <div class="col-12">
-        <h1 class="mb-0">Charts</h1>
-    </div>
-</div>
-
 {% if chart_data.categories %}
-<div class="row g-4">
+<div class="row g-3">
 
     <!-- Allocation Donut -->
     <div class="col-12 col-lg-6">
-        <div class="card border-0 shadow-sm h-100 page-accent-surface">
+        <div class="card h-100 page-accent-surface">
             <div class="card-body p-4">
-                <h6 class="text-muted text-uppercase small fw-semibold mb-3">Portfolio Allocation</h6>
+                <p class="text-muted mb-3" style="font-size:.75rem; text-transform:uppercase; letter-spacing:.4px; font-weight:600;">Portfolio Allocation</p>
                 <div class="d-flex justify-content-center">
                     <canvas id="allocationChart" style="max-height: 300px;"></canvas>
                 </div>
@@ -27,9 +21,9 @@
 
     <!-- Realized P&L Bar -->
     <div class="col-12 col-lg-6">
-        <div class="card border-0 shadow-sm h-100 page-accent-surface">
+        <div class="card h-100 page-accent-surface">
             <div class="card-body p-4">
-                <h6 class="text-muted text-uppercase small fw-semibold mb-3">Realized P&L by Asset Class</h6>
+                <p class="text-muted mb-3" style="font-size:.75rem; text-transform:uppercase; letter-spacing:.4px; font-weight:600;">Realized P&amp;L by Asset Class</p>
                 <div>
                     <canvas id="pnlChart" style="max-height: 300px;"></canvas>
                 </div>
@@ -37,15 +31,11 @@
         </div>
     </div>
 
-    <!-- Add new chart cards here -->
-
 </div>
 
 {% else %}
-<div class="row">
-    <div class="col-12">
-        <p class="text-muted">No data available. <a href="{{ url_for('funds.funds_list') }}">Add funds</a> to get started.</p>
-    </div>
+<div class="alert alert-info">
+    <i class="bi bi-info-circle me-2"></i>No data available. <a href="{{ url_for('funds.funds_list') }}">Add funds</a> to get started.
 </div>
 {% endif %}
 

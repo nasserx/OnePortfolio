@@ -4,116 +4,91 @@
 
 {% block content %}
 
-<div class="row mb-4 align-items-center">
-    <div class="col">
-        <h1 class="mb-0">Overview</h1>
+<!-- Stat Cards -->
+<div class="stat-cards-row mb-4">
+    <div class="stat-card-item">
+        <span class="stat-label">Total Funds</span>
+        <span class="stat-value overview-value">{{ totals.total_investment|fmt_money }}</span>
     </div>
-</div>
-
-<div class="row g-3 mb-4">
-    <div class="col-md-3">
-        <div class="card border-0 shadow-sm h-100 page-accent-surface stat-card">
-            <div class="card-body">
-                <p class="text-muted small mb-1 text-uppercase">Total Funds</p>
-                <h2 class="fw-bold overview-value mb-1">{{ totals.total_investment|fmt_money }}</h2>
-            </div>
-        </div>
+    <div class="stat-card-item">
+        <span class="stat-label">Portfolio Value</span>
+        <span class="stat-value">{{ totals.total_value|fmt_money }}</span>
     </div>
-    <div class="col-md-3">
-        <div class="card border-0 shadow-sm h-100 page-accent-surface stat-card">
-            <div class="card-body">
-                <p class="text-muted small mb-1 text-uppercase">Portfolio Value</p>
-                <h2 class="fw-bold mb-1">{{ totals.total_value|fmt_money }}</h2>
-            </div>
-        </div>
+    <div class="stat-card-item">
+        <span class="stat-label">Total Dividends</span>
+        <span class="stat-value dividend">{% if totals.total_dividends > 0 %}+{% endif %}{{ totals.total_dividends|fmt_money }}</span>
     </div>
-    <div class="col-md-3">
-        <div class="card border-0 shadow-sm h-100 page-accent-surface stat-card">
-            <div class="card-body">
-                <p class="text-muted small mb-1 text-uppercase">Total Dividends</p>
-                <h2 class="fw-bold dividend mb-1">{% if totals.total_dividends > 0 %}+{% endif %}{{ totals.total_dividends|fmt_money }}</h2>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card border-0 shadow-sm h-100 page-accent-surface stat-card">
-            <div class="card-body">
-                <p class="text-muted small mb-1 text-uppercase">Total Realized P&amp;L</p>
-                <h2 class="mb-1 fw-bold {% if totals.total_realized_pnl >= 0 %}profit{% else %}loss{% endif %}">
-                    {% if totals.total_realized_pnl >= 0 %}+{% endif %}{{ totals.total_realized_pnl|fmt_money }}
-                </h2>
-                <div class="d-flex gap-2 flex-wrap align-items-center">
-                    <span class="badge roi-badge {% if totals.realized_roi_percent >= 0 %}profit{% else %}loss{% endif %}">
-                        {{ totals.realized_roi_display }}
-                    </span>
-                </div>
-            </div>
-        </div>
+    <div class="stat-card-item">
+        <span class="stat-label">Total Realized P&amp;L</span>
+        <span class="stat-value {% if totals.total_realized_pnl >= 0 %}profit{% else %}loss{% endif %}">
+            {% if totals.total_realized_pnl >= 0 %}+{% endif %}{{ totals.total_realized_pnl|fmt_money }}
+        </span>
+        <span class="stat-sub {% if totals.realized_roi_percent >= 0 %}profit{% else %}loss{% endif %}">{{ totals.realized_roi_display }}</span>
     </div>
 </div>
 
 <!-- Asset Allocation Cards -->
-<div class="row g-4 mb-4">
+<div class="row g-3 mb-4">
     {% for item in portfolio_summary %}
-    <div class="col-md-6 col-lg-3">
-        <div class="card border-0 shadow-sm h-100 category-card page-accent-surface">
+    <div class="col-md-6">
+        <div class="card h-100 category-card page-accent-surface">
             <div class="card-body">
-                <div class="mb-3">
-                    <h5 class="card-title mb-0">
+
+                <!-- Header row: asset class name + view link -->
+                <div class="d-flex align-items-center justify-content-between">
+                    <h5 class="mb-0 d-flex align-items-center gap-2" style="font-size:0.875rem; font-weight:600; letter-spacing:-0.1px;">
                         {% set icon, color = asset_class_icons.get(item.asset_class, asset_class_icon_default) %}
-                        <i class="bi {{ icon }} {{ color }}"></i>
+                        <span class="category-icon-wrap {{ color }}">
+                            <i class="bi {{ icon }}"></i>
+                        </span>
                         {{ item.asset_class }}
                     </h5>
-                </div>
-                
-                <div class="row g-2 mb-3">
-                    <div class="col-12 col-sm-7">
-                        <p class="text-muted small mb-1">Allocated Funds</p>
-                        <h5 class="mb-0 card-value">{{ item.amount|fmt_money }}</h5>
-                    </div>
-                    <div class="col-12 col-sm-5">
-                        <p class="text-muted small mb-1">Dividends</p>
-                        <p class="mb-0 dividend card-value">{% if item.total_dividends > 0 %}+{% endif %}{{ item.total_dividends|fmt_money }}</p>
-                    </div>
+                    <a href="{{ url_for('transactions.transaction_list', category=item.asset_class) }}"
+                       class="btn btn-sm overview-btn">
+                        View Symbols
+                    </a>
                 </div>
 
-                <div class="row g-2 mb-3">
-                    <div class="col-12 col-sm-7">
-                        <p class="text-muted small mb-1">Invested</p>
-                        <p class="mb-0 card-value">{{ item.current_invested|fmt_money }}</p>
+                <!-- 3-column metrics grid -->
+                <div class="category-metrics">
+                    <div class="metric-item">
+                        <span class="metric-label">Allocated</span>
+                        <span class="metric-value">{{ item.amount|fmt_money }}</span>
                     </div>
-                    <div class="col-12 col-sm-5">
-                        <p class="text-muted small mb-1">Cash</p>
-                        <p class="mb-0 card-value">{{ item.cash|fmt_money }}</p>
+                    <div class="metric-item">
+                        <span class="metric-label">Invested</span>
+                        <span class="metric-value">{{ item.current_invested|fmt_money }}</span>
                     </div>
-                    <div class="col-12 col-sm-7">
-                        <p class="text-muted small mb-1">Realized P&amp;L</p>
-                        <p class="mb-0 card-value {% if item.realized_pnl >= 0 %}profit{% else %}loss{% endif %}">
+                    <div class="metric-item">
+                        <span class="metric-label">Cash</span>
+                        <span class="metric-value">{{ item.cash|fmt_money }}</span>
+                    </div>
+                    <div class="metric-item">
+                        <span class="metric-label">Total Value</span>
+                        <span class="metric-value">{{ item.total_value|fmt_money }}</span>
+                    </div>
+                    <div class="metric-item">
+                        <span class="metric-label">Realized P&amp;L</span>
+                        <span class="metric-value {% if item.realized_pnl >= 0 %}profit{% else %}loss{% endif %}">
                             {% if item.realized_pnl >= 0 %}+{% endif %}{{ item.realized_pnl|fmt_money }}
-                            <small class="ms-1 {% if item.realized_roi_percent >= 0 %}profit{% else %}loss{% endif %}">({{ item.realized_roi_display }})</small>
-                        </p>
+                            <small class="{% if item.realized_roi_percent >= 0 %}profit{% else %}loss{% endif %}">({{ item.realized_roi_display }})</small>
+                        </span>
                     </div>
-                    <div class="col-12 col-sm-5">
-                        <p class="text-muted small mb-1">Total Value</p>
-                        <p class="mb-0 card-value">{{ item.total_value|fmt_money }}</p>
+                    <div class="metric-item">
+                        <span class="metric-label">Dividends</span>
+                        <span class="metric-value dividend">{% if item.total_dividends > 0 %}+{% endif %}{{ item.total_dividends|fmt_money }}</span>
                     </div>
                 </div>
 
-            </div>
-            <div class="card-footer bg-transparent border-0 pt-0 pb-3" style="margin-top: -1rem;">
-                     <a href="{{ url_for('transactions.transaction_list', category=item.asset_class) }}"
-                         class="btn btn-sm btn-outline-primary w-100 overview-btn">
-                    View Transactions
-                </a>
             </div>
         </div>
     </div>
     {% endfor %}
-    
+
     {% if portfolio_summary|length == 0 %}
     <div class="col-12">
-        <div class="alert alert-info text-center">
-            <i class="bi bi-info-circle"></i>
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle me-2"></i>
             No funds entries found. <a href="{{ url_for('funds.funds_list') }}">Add funds</a> to get started.
         </div>
     </div>

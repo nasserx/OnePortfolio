@@ -66,7 +66,7 @@ class ValidationMessages:
     INVALID_DATE_FORMAT = "Invalid date format. Use YYYY-MM-DD."
 
     # Category / fund
-    SELECT_CATEGORY = "Select a category."
+    SELECT_CATEGORY = "Select asset class."
     CATEGORY_NOT_FOUND = "Category not found."
     INVALID_CATEGORY = "Invalid category."
     INVALID_FUND_ID = "Invalid fund ID."

@@ -705,7 +705,7 @@ const ValidationRules = {
         name: 'category',
         validate: (raw) => {
             if (!String(raw || '').trim()) {
-                return { ok: false, message: 'Select a category.' };
+                return { ok: false, message: 'Select asset class.' };
             }
             return { ok: true };
         }

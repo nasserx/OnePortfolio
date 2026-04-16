@@ -17,8 +17,8 @@
 
 {% block content %}
 <div class="page-header">
-{% if available_asset_classes|length > 0 %}
-    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addFundEntryModal">
+    {% if available_asset_classes|length > 0 %}
+    <button type="button" class="btn btn-primary ms-auto" data-bs-toggle="modal" data-bs-target="#addFundEntryModal">
         Add Funds
     </button>
     {% endif %}
@@ -54,7 +54,7 @@
                             </div>
                         </div>
                         <div class="col-lg-2 col-md-2 text-end">
-                            <div class="btn-group btn-group-sm" role="group">
+                            <div class="btn-group btn-group-sm row-actions" role="group">
                                 <button type="button" class="btn btn-outline-success btn-icon js-deposit-funds-btn"
                                         data-fund-id="{{ item.fund.id }}"
                                         data-category="{{ item.fund.asset_class|e }}"
@@ -122,7 +122,7 @@
                                     </td>
                                     <td><small class="text-muted">{{ display_notes or 'N/A' }}</small></td>
                                     <td class="text-center">
-                                        <div class="btn-group btn-group-sm" role="group">
+                                        <div class="btn-group btn-group-sm row-actions" role="group">
                                             <button type="button" class="btn btn-outline-primary btn-icon btn-sm js-edit-fund-event-btn"
                                                     data-event='{{ {
                                                         "id": e.id,
@@ -488,21 +488,52 @@ function displayEventType(eventType) {
     return map[eventType] || eventType || '';
 }
 
-function toggleFundEvents(groupId) {
-    const eventsDiv = document.getElementById(`fund-events-${groupId}`);
-    const chevron = document.getElementById(`fund-chevron-${groupId}`);
-    if (!eventsDiv || !chevron) return;
+// ── Row expansion state ───────────────────────────────────────────────
+(function () {
+    var SK = 'fundsOpen', RK = 'fundsOpenRef';
 
-    if (eventsDiv.style.display === 'none') {
-        eventsDiv.style.display = 'block';
-        chevron.classList.remove('bi-chevron-right');
-        chevron.classList.add('bi-chevron-down');
-    } else {
-        eventsDiv.style.display = 'none';
-        chevron.classList.remove('bi-chevron-down');
-        chevron.classList.add('bi-chevron-right');
+    // Restore only when coming from this same page (form submit → redirect)
+    var openSet = (function () {
+        try {
+            var saved = JSON.parse(sessionStorage.getItem(SK) || 'null');
+            var ref   = sessionStorage.getItem(RK) || '';
+            if (saved && ref && document.referrer.indexOf(ref) !== -1)
+                return new Set(saved);
+        } catch (e) {}
+        sessionStorage.removeItem(SK);
+        sessionStorage.removeItem(RK);
+        return new Set();
+    }());
+
+    // Apply immediately — script runs after HTML so elements exist; no flash
+    openSet.forEach(function (id) {
+        var d = document.getElementById('fund-events-' + id);
+        var c = document.getElementById('fund-chevron-' + id);
+        if (d) d.style.display = 'block';
+        if (c) { c.classList.remove('bi-chevron-right'); c.classList.add('bi-chevron-down'); }
+    });
+
+    function save() {
+        sessionStorage.setItem(SK, JSON.stringify([...openSet]));
+        sessionStorage.setItem(RK, window.location.href);
     }
-}
+
+    window.toggleFundEvents = function (groupId) {
+        var d = document.getElementById('fund-events-' + groupId);
+        var c = document.getElementById('fund-chevron-' + groupId);
+        if (!d || !c) return;
+        if (d.style.display === 'none') {
+            d.style.display = 'block';
+            c.classList.replace('bi-chevron-right', 'bi-chevron-down');
+            openSet.add(groupId);
+        } else {
+            d.style.display = 'none';
+            c.classList.replace('bi-chevron-down', 'bi-chevron-right');
+            openSet.delete(groupId);
+        }
+        save();
+    };
+}());
 
 function depositFunds(id, category, opts) {
     opts = opts || {};

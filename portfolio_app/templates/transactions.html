@@ -8,45 +8,53 @@
 
 {% block content %}
 <div class="page-header">
-<div class="d-flex align-items-center gap-2">
+    <div class="d-flex align-items-center gap-2 ms-auto">
+
+        <!-- Asset class filter dropdown -->
+        <div class="dropdown">
+            <button class="btn btn-outline-secondary filter-dropdown-btn dropdown-toggle" type="button"
+                    data-bs-toggle="dropdown" aria-expanded="false">
+                {{ selected_category or 'All asset classes' }}
+                <i class="bi bi-chevron-down"></i>
+            </button>
+            <ul class="dropdown-menu">
+                <li>
+                    <a class="dropdown-item {% if not selected_category %}active{% endif %}"
+                       href="{{ url_for('transactions.transaction_list') }}">
+                        All asset classes
+                    </a>
+                </li>
+                {% if funds %}
+                <li><hr class="dropdown-divider"></li>
+                {% for fund in funds %}
+                <li>
+                    <a class="dropdown-item {% if selected_category == fund.asset_class %}active{% endif %}"
+                       href="{{ url_for('transactions.transaction_list', category=fund.asset_class) }}">
+                        {{ fund.asset_class }}
+                    </a>
+                </li>
+                {% endfor %}
+                {% endif %}
+            </ul>
+        </div>
+
+        <!-- Symbol search -->
         <div class="position-relative">
             <span class="position-absolute top-50 start-0 translate-middle-y ps-3 text-muted">
                 <i class="bi bi-search" style="font-size:.875rem;"></i>
             </span>
             <input type="text" class="form-control ps-5" id="symbolSearch"
                    placeholder="Search symbol..."
-                   style="width:220px; font-size:.875rem;"
+                   style="width:200px; font-size:.875rem;"
                    oninput="this.value = this.value.toUpperCase(); filterBySymbol(this.value);"
                    autocomplete="off">
         </div>
+
         {% if funds|length > 0 %}
             <button type="button" class="btn btn-primary" onclick="openAddAssetModal()">Add Symbol</button>
         {% else %}
             <a class="btn btn-primary" href="{{ url_for('funds.funds_list') }}">Add funds first</a>
         {% endif %}
-    </div>
-</div>
-
-<!-- Filters -->
-<div class="row mb-3 g-2">
-    <div class="col-auto">
-        <form method="GET" action="{{ url_for('transactions.transaction_list') }}">
-            <div class="input-group input-group-sm">
-                <select class="form-select form-select-sm" name="category" onchange="this.form.submit()">
-                    <option value="">All asset classes</option>
-                    {% for fund in funds %}
-                    <option value="{{ fund.asset_class }}" {% if selected_category == fund.asset_class %}selected{% endif %}>
-                        {{ fund.asset_class }}
-                    </option>
-                    {% endfor %}
-                </select>
-                {% if selected_category %}
-                <a href="{{ url_for('transactions.transaction_list') }}" class="btn btn-outline-secondary btn-sm">
-                    <i class="bi bi-x"></i>
-                </a>
-                {% endif %}
-            </div>
-        </form>
     </div>
 </div>
 
@@ -104,7 +112,7 @@
                             </div>
                         </div>
                         <div class="col-lg-2 col-md-2 text-end">
-                            <div class="btn-group btn-group-sm" role="group">
+                            <div class="btn-group btn-group-sm row-actions" role="group">
                                 <button type="button"
                                         class="btn btn-outline-primary btn-icon js-add-transaction-btn"
                                         data-fund-id="{{ item.fund.id }}"
@@ -176,7 +184,7 @@
                                     <td class="text-end"><small class="text-danger">{{ transaction.fees|fmt_decimal }}</small></td>
                                     <td class="text-end"><small class="text-primary">{{ transaction.net_amount|fmt_money }}</small></td>
                                     <td class="text-center">
-                                        <div class="btn-group btn-group-sm" role="group">
+                                        <div class="btn-group btn-group-sm row-actions" role="group">
                                             <button type="button" class="btn btn-outline-primary btn-icon btn-sm js-edit-transaction-btn"
                                                     data-tx='{{ {
                                                         "id": transaction.id,
@@ -220,7 +228,7 @@
                                     <td class="text-end"><small class="text-muted">—</small></td>
                                     <td class="text-end"><small class="text-primary">{{ div.amount|fmt_money }}</small></td>
                                     <td class="text-center">
-                                        <div class="btn-group btn-group-sm" role="group">
+                                        <div class="btn-group btn-group-sm row-actions" role="group">
                                             <button type="button"
                                                     class="btn btn-outline-primary btn-icon btn-sm js-edit-dividend-btn"
                                                     data-div='{{ {"id": div.id, "fundId": div.fund_id, "amount": ("%.10f"|format(div.amount)), "dateShort": div.date_short, "notes": (div.notes or "")}|tojson|e }}'
@@ -893,21 +901,51 @@ function openAddAssetModal() {
         }
     });
 })();
-function toggleSymbolTransactions(groupId) {
-    const transactionsDiv = document.getElementById(`transactions-${groupId}`);
-    const chevron = document.getElementById(`chevron-${groupId}`);
-    if (!transactionsDiv || !chevron) return;
+// ── Row expansion state ───────────────────────────────────────────────
+(function () {
+    var SK = 'txOpen', RK = 'txOpenRef';
 
-    if (transactionsDiv.style.display === 'none') {
-        transactionsDiv.style.display = 'block';
-        chevron.classList.remove('bi-chevron-right');
-        chevron.classList.add('bi-chevron-down');
-    } else {
-        transactionsDiv.style.display = 'none';
-        chevron.classList.remove('bi-chevron-down');
-        chevron.classList.add('bi-chevron-right');
+    var openSet = (function () {
+        try {
+            var saved = JSON.parse(sessionStorage.getItem(SK) || 'null');
+            var ref   = sessionStorage.getItem(RK) || '';
+            if (saved && ref && document.referrer.indexOf(ref) !== -1)
+                return new Set(saved);
+        } catch (e) {}
+        sessionStorage.removeItem(SK);
+        sessionStorage.removeItem(RK);
+        return new Set();
+    }());
+
+    // Apply immediately — no DOMContentLoaded needed, script is at end of body
+    openSet.forEach(function (id) {
+        var d = document.getElementById('transactions-' + id);
+        var c = document.getElementById('chevron-' + id);
+        if (d) d.style.display = 'block';
+        if (c) { c.classList.remove('bi-chevron-right'); c.classList.add('bi-chevron-down'); }
+    });
+
+    function save() {
+        sessionStorage.setItem(SK, JSON.stringify([...openSet]));
+        sessionStorage.setItem(RK, window.location.href);
     }
-}
+
+    window.toggleSymbolTransactions = function (groupId) {
+        var d = document.getElementById('transactions-' + groupId);
+        var c = document.getElementById('chevron-' + groupId);
+        if (!d || !c) return;
+        if (d.style.display === 'none') {
+            d.style.display = 'block';
+            c.classList.replace('bi-chevron-right', 'bi-chevron-down');
+            openSet.add(groupId);
+        } else {
+            d.style.display = 'none';
+            c.classList.replace('bi-chevron-down', 'bi-chevron-right');
+            openSet.delete(groupId);
+        }
+        save();
+    };
+}());
 
 function openAddTransactionModal(fundId, categoryName, symbol, forcedType) {
     const modalEl = document.getElementById('addTransactionModal');

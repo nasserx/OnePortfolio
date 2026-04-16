@@ -11,6 +11,9 @@
         <span class="stat-value overview-value">{{ totals.total_investment|fmt_money }}</span>
     </div>
     <div class="stat-card-item">
+        <i class="bi bi-info-circle stat-info-icon"
+           data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="top"
+           title="<b>Invested + Cash</b><br>Invested = open positions cost basis<br>Cash = funds − buys + sells + dividends"></i>
         <span class="stat-label">Portfolio Value</span>
         <span class="stat-value">{{ totals.total_value|fmt_money }}</span>
     </div>
@@ -19,6 +22,9 @@
         <span class="stat-value dividend">{% if totals.total_dividends > 0 %}+{% endif %}{{ totals.total_dividends|fmt_money }}</span>
     </div>
     <div class="stat-card-item">
+        <i class="bi bi-info-circle stat-info-icon"
+           data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="top"
+           title="<b>Σ (sell − avg cost) × qty − fees + dividends</b><br>Average cost method per symbol"></i>
         <span class="stat-label">Total Realized P&amp;L</span>
         <span class="stat-value {% if totals.total_realized_pnl >= 0 %}profit{% else %}loss{% endif %}">
             {% if totals.total_realized_pnl >= 0 %}+{% endif %}{{ totals.total_realized_pnl|fmt_money }}
@@ -95,4 +101,12 @@
     {% endif %}
 </div>
 
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el) {
+    new bootstrap.Tooltip(el, { trigger: 'hover focus' });
+});
+</script>
 {% endblock %}

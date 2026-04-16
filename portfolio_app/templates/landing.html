@@ -42,8 +42,14 @@
                 <button class="landing-theme-toggle" id="landingThemeToggle" aria-label="Toggle theme">
                     <i class="bi bi-moon-stars" id="landingThemeIcon" aria-hidden="true"></i>
                 </button>
-                <a href="{{ url_for('auth.login') }}"    class="btn-nav-login">Log In</a>
-                <a href="{{ url_for('auth.register') }}" class="btn-nav-signup">Sign Up</a>
+                <button class="btn-nav-login"
+                        data-bs-toggle="modal" data-bs-target="#authModal" data-tab="login">
+                    Log In
+                </button>
+                <button class="btn-nav-signup"
+                        data-bs-toggle="modal" data-bs-target="#authModal" data-tab="register">
+                    Sign Up
+                </button>
             </div>
         </div>
     </nav>
@@ -67,10 +73,14 @@
                     clean, minimal dashboard.
                 </p>
                 <div class="landing-cta-group">
-                    <a href="{{ url_for('auth.register') }}" class="btn-cta-primary">Get started free</a>
-                    <a href="{{ url_for('auth.login') }}"    class="btn-cta-secondary">
+                    <button class="btn-cta-primary"
+                            data-bs-toggle="modal" data-bs-target="#authModal" data-tab="register">
+                        Get started free
+                    </button>
+                    <button class="btn-cta-secondary"
+                            data-bs-toggle="modal" data-bs-target="#authModal" data-tab="login">
                         Sign in <i class="bi bi-arrow-right ms-1" aria-hidden="true"></i>
-                    </a>
+                    </button>
                 </div>
             </div>
 
@@ -90,7 +100,7 @@
                         </div>
                         <div class="preview-stat">
                             <span class="preview-stat-label">Dividends</span>
-                            <span class="preview-stat-value" style="color: var(--primary-color)">+$1,240</span>
+                            <span class="preview-stat-value" style="color: var(--primary)">+$1,240</span>
                         </div>
                         <div class="preview-stat">
                             <span class="preview-stat-label">Realized P&amp;L</span>
@@ -177,6 +187,245 @@
         </div>
     </footer>
 
+
+    <!-- ══════════════════ AUTH MODAL ══════════════════ -->
+    <div class="modal fade" id="authModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+
+                <!-- Tab bar -->
+                <div class="auth-modal-tabbar">
+                    <button class="auth-modal-tab active" id="tabLogin"  data-panel="panelLogin">Log In</button>
+                    <button class="auth-modal-tab"        id="tabSignup" data-panel="panelSignup">Sign Up</button>
+                    <button type="button" class="auth-modal-close" data-bs-dismiss="modal" aria-label="Close">
+                        <i class="bi bi-x-lg" aria-hidden="true"></i>
+                    </button>
+                </div>
+
+                <!-- ── LOGIN PANEL ── -->
+                <div id="panelLogin" class="auth-modal-panel">
+                    <div class="auth-modal-panel-header">
+                        <h2 class="auth-title">Welcome back</h2>
+                        <p class="auth-subtitle mb-0">Sign in to your portfolio</p>
+                    </div>
+
+                    <div id="loginGeneralError" class="alert alert-danger py-2 mb-3 d-none">
+                        <i class="bi bi-exclamation-circle me-1"></i>
+                        <span id="loginGeneralErrorMsg"></span>
+                    </div>
+
+                    <form id="loginForm" method="post" action="{{ url_for('auth.login') }}" novalidate>
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="_modal" value="1">
+
+                        <div class="mb-2">
+                            <div class="field-wrap">
+                                <i class="bi bi-person fi" aria-hidden="true"></i>
+                                <input type="text" id="loginUsername" name="username"
+                                       autocomplete="username"
+                                       class="form-control form-control-auth"
+                                       placeholder="Username or email" required>
+                            </div>
+                            <div class="auth-field-error d-none mt-1" data-error-for="loginUsername"></div>
+                        </div>
+
+                        <div class="mb-2">
+                            <div class="field-wrap">
+                                <i class="bi bi-lock fi" aria-hidden="true"></i>
+                                <input type="password" id="loginPassword" name="password"
+                                       autocomplete="current-password"
+                                       class="form-control form-control-auth has-toggle"
+                                       placeholder="Password" required>
+                                <button class="toggle-pw" type="button" id="loginPwToggle"
+                                        aria-label="Show or hide password">
+                                    <i class="bi bi-eye" id="loginPwIcon" aria-hidden="true"></i>
+                                </button>
+                            </div>
+                            <div class="auth-field-error d-none mt-1" data-error-for="loginPassword"></div>
+                        </div>
+
+                        <div class="mb-4 d-flex align-items-center justify-content-between">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox"
+                                       id="loginRemember" name="remember">
+                                <label class="form-check-label auth-subtitle" for="loginRemember">
+                                    Keep me signed in
+                                </label>
+                            </div>
+                            <button type="button" class="btn-modal-switch auth-subtitle fw-400"
+                                    data-panel="panelForgot">
+                                Forgot password?
+                            </button>
+                        </div>
+
+                        <button type="submit" id="loginSubmitBtn" class="btn btn-primary btn-auth w-100">
+                            Sign In
+                        </button>
+                    </form>
+
+                    <div class="text-center mt-3">
+                        <span class="auth-subtitle">Don't have an account? </span>
+                        <button type="button" class="btn-modal-switch fw-500"
+                                data-panel="panelSignup">Create one</button>
+                    </div>
+                </div><!-- /#panelLogin -->
+
+
+                <!-- ── REGISTER PANEL ── -->
+                <div id="panelSignup" class="auth-modal-panel d-none">
+                    <div class="auth-modal-panel-header">
+                        <h2 class="auth-title">Create account</h2>
+                        <p class="auth-subtitle mb-0">Start tracking your portfolio</p>
+                    </div>
+
+                    <div id="registerGeneralError" class="alert alert-danger py-2 mb-3 d-none">
+                        <i class="bi bi-exclamation-circle me-1"></i>
+                        <span id="registerGeneralErrorMsg"></span>
+                    </div>
+
+                    <form id="registerForm" method="post" action="{{ url_for('auth.register') }}" novalidate>
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="_modal" value="1">
+
+                        <div class="mb-2">
+                            <div class="field-wrap">
+                                <i class="bi bi-person fi" aria-hidden="true"></i>
+                                <input type="text" id="regUsername" name="username"
+                                       autocomplete="username"
+                                       class="form-control form-control-auth"
+                                       placeholder="Choose a username" required>
+                            </div>
+                            <div class="auth-field-error d-none mt-1" data-error-for="regUsername"></div>
+                            <div class="password-hint">Letters and underscores only.</div>
+                        </div>
+
+                        <div class="mb-2">
+                            <div class="field-wrap">
+                                <i class="bi bi-envelope fi" aria-hidden="true"></i>
+                                <input type="email" id="regEmail" name="email"
+                                       autocomplete="email"
+                                       class="form-control form-control-auth"
+                                       placeholder="you@example.com" required>
+                            </div>
+                            <div class="auth-field-error d-none mt-1" data-error-for="regEmail"></div>
+                            <div class="password-hint">A verification code will be sent to this address.</div>
+                        </div>
+
+                        <div class="mb-2">
+                            <div class="field-wrap">
+                                <i class="bi bi-lock fi" aria-hidden="true"></i>
+                                <input type="password" id="regPassword" name="password"
+                                       autocomplete="new-password"
+                                       class="form-control form-control-auth has-toggle"
+                                       placeholder="Min. 8 characters" required>
+                                <button class="toggle-pw" type="button" id="regPwToggle"
+                                        aria-label="Show or hide password">
+                                    <i class="bi bi-eye" id="regPwIcon" aria-hidden="true"></i>
+                                </button>
+                            </div>
+                            <div class="strength-bar">
+                                <div class="bar-fill" id="regStrengthBar"></div>
+                            </div>
+                            <div class="auth-field-error d-none mt-1" data-error-for="regPassword"></div>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="field-wrap">
+                                <i class="bi bi-shield-check fi" aria-hidden="true"></i>
+                                <input type="password" id="regConfirm" name="confirm_password"
+                                       autocomplete="new-password"
+                                       class="form-control form-control-auth"
+                                       placeholder="Re-enter password" required>
+                            </div>
+                            <div class="auth-field-error d-none mt-1" data-error-for="regConfirm"></div>
+                        </div>
+
+                        <button type="submit" id="registerSubmitBtn"
+                                class="btn btn-primary btn-auth w-100">
+                            Create Account
+                        </button>
+                    </form>
+
+                    <div class="text-center mt-3">
+                        <span class="auth-subtitle">Already have an account? </span>
+                        <button type="button" class="btn-modal-switch fw-500"
+                                data-panel="panelLogin">Sign in</button>
+                    </div>
+                </div><!-- /#panelSignup -->
+
+
+                <!-- ── FORGOT PASSWORD PANEL ── -->
+                <div id="panelForgot" class="auth-modal-panel d-none">
+                    <div class="auth-modal-panel-header">
+                        <h2 class="auth-title">Reset your password</h2>
+                        <p class="auth-subtitle mb-0">Enter your email and we'll send a reset link.</p>
+                    </div>
+
+                    <div id="forgotGeneralError" class="alert alert-danger py-2 mb-3 d-none">
+                        <i class="bi bi-exclamation-circle me-1"></i>
+                        <span id="forgotGeneralErrorMsg"></span>
+                    </div>
+
+                    <form id="forgotForm" method="post" action="{{ url_for('auth.forgot_password') }}" novalidate>
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="_modal" value="1">
+
+                        <div class="mb-3">
+                            <div class="field-wrap">
+                                <i class="bi bi-envelope fi" aria-hidden="true"></i>
+                                <input type="email" id="forgotEmail" name="email"
+                                       autocomplete="email"
+                                       class="form-control form-control-auth"
+                                       placeholder="you@example.com" required>
+                            </div>
+                            <div class="auth-field-error d-none mt-1" data-error-for="forgotEmail"></div>
+                        </div>
+
+                        <button type="submit" id="forgotSubmitBtn" class="btn btn-primary btn-auth w-100">
+                            Send Reset Link
+                        </button>
+                    </form>
+
+                    <div class="text-center mt-3">
+                        <button type="button" class="btn-modal-switch auth-subtitle fw-400"
+                                data-panel="panelLogin">
+                            <i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Back to Sign In
+                        </button>
+                    </div>
+                </div><!-- /#panelForgot -->
+
+
+                <!-- ── FORGOT PASSWORD SUCCESS PANEL ── -->
+                <div id="panelForgotDone" class="auth-modal-panel d-none">
+                    <div class="text-center">
+                        <div class="icon-circle">
+                            <i class="bi bi-envelope" aria-hidden="true"></i>
+                        </div>
+                        <h2 class="auth-title mb-2">Check your inbox</h2>
+                        <p class="auth-subtitle mb-4">
+                            If an account with that email exists, we've sent a reset link.<br>
+                            The link will expire in <strong>1 hour</strong>.
+                        </p>
+                        <p class="auth-subtitle mb-0">
+                            Didn't receive it? Check your spam folder, or
+                            <button type="button" class="btn-modal-switch fw-500"
+                                    data-panel="panelForgot">try again</button>.
+                        </p>
+                    </div>
+                    <hr class="my-4">
+                    <div class="text-center">
+                        <button type="button" class="btn-modal-switch auth-subtitle fw-400"
+                                data-panel="panelLogin">
+                            <i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Back to Sign In
+                        </button>
+                    </div>
+                </div><!-- /#panelForgotDone -->
+
+            </div><!-- /.modal-content -->
+        </div><!-- /.modal-dialog -->
+    </div><!-- /#authModal -->
+
+
     <!-- Vendor JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
@@ -187,15 +436,12 @@
             const icon   = document.getElementById('landingThemeIcon');
             const navbar = document.getElementById('landingNav');
 
-            /** Sync the sun/moon icon with the current theme */
+            /* ── Theme toggle ── */
             function updateIcon() {
                 icon.className = html.getAttribute('data-bs-theme') === 'dark'
-                    ? 'bi bi-sun'
-                    : 'bi bi-moon-stars';
+                    ? 'bi bi-sun' : 'bi bi-moon-stars';
             }
-
             updateIcon();
-
             btn?.addEventListener('click', () => {
                 const next = html.getAttribute('data-bs-theme') === 'dark' ? 'light' : 'dark';
                 html.setAttribute('data-bs-theme', next);
@@ -203,12 +449,198 @@
                 updateIcon();
             });
 
-            /** Add frosted-glass effect to navbar after 8px of scroll */
+            /* ── Navbar scroll effect ── */
             if (navbar) {
                 const onScroll = () => navbar.classList.toggle('scrolled', window.scrollY > 8);
                 window.addEventListener('scroll', onScroll, { passive: true });
                 onScroll();
             }
+
+            /* ══════════════════════════════════════════
+               Auth Modal
+            ══════════════════════════════════════════ */
+            const authModal = document.getElementById('authModal');
+
+            /* Switch visible panel + sync active tab.
+               Forgot panels stay under "Log In" tab. */
+            function showPanel(panelId) {
+                document.querySelectorAll('.auth-modal-panel')
+                    .forEach(p => p.classList.add('d-none'));
+                document.getElementById(panelId)?.classList.remove('d-none');
+
+                document.querySelectorAll('.auth-modal-tab')
+                    .forEach(t => t.classList.remove('active'));
+                const activeTabId = (panelId === 'panelSignup') ? 'tabSignup' : 'tabLogin';
+                document.getElementById(activeTabId)?.classList.add('active');
+            }
+
+            /* Tab bar + all panel-switch buttons */
+            document.querySelectorAll('.auth-modal-tab, .btn-modal-switch').forEach(el => {
+                el.addEventListener('click', () => showPanel(el.dataset.panel));
+            });
+
+            /* Open on correct tab when any navbar/hero trigger is clicked */
+            document.querySelectorAll('[data-bs-target="#authModal"]').forEach(trigger => {
+                trigger.addEventListener('click', () => {
+                    showPanel(trigger.dataset.tab === 'register' ? 'panelSignup' : 'panelLogin');
+                });
+            });
+
+            /* Auto-open from URL param (?modal=login or ?modal=register) */
+            const urlParam = new URLSearchParams(window.location.search).get('modal');
+            if (urlParam === 'login' || urlParam === 'register') {
+                showPanel(urlParam === 'register' ? 'panelSignup' : 'panelLogin');
+                bootstrap.Modal.getOrCreateInstance(authModal).show();
+                history.replaceState(null, '', window.location.pathname);
+            }
+
+            /* Blur landing content when modal is open */
+            authModal?.addEventListener('show.bs.modal',   () => document.body.classList.add('auth-modal-open'));
+            authModal?.addEventListener('hidden.bs.modal', () => document.body.classList.remove('auth-modal-open'));
+
+            /* Reset modal on close */
+            authModal?.addEventListener('hidden.bs.modal', () => {
+                ['panelLogin', 'panelSignup', 'panelForgot'].forEach(clearErrors);
+                authModal.querySelectorAll('form').forEach(f => f.reset());
+                const bar = document.getElementById('regStrengthBar');
+                if (bar) { bar.style.width = '0%'; bar.style.background = 'transparent'; }
+                showPanel('panelLogin');
+            });
+
+            /* ── Password visibility toggles ── */
+            function bindToggle(inputId, btnId, iconId) {
+                const input = document.getElementById(inputId);
+                const ico   = document.getElementById(iconId);
+                document.getElementById(btnId)?.addEventListener('click', () => {
+                    const show  = input.type === 'password';
+                    input.type  = show ? 'text' : 'password';
+                    ico.className = show ? 'bi bi-eye-slash' : 'bi bi-eye';
+                });
+            }
+            bindToggle('loginPassword', 'loginPwToggle', 'loginPwIcon');
+            bindToggle('regPassword',   'regPwToggle',   'regPwIcon');
+
+            /* ── Password strength meter ── */
+            const regPw = document.getElementById('regPassword');
+            const sBar  = document.getElementById('regStrengthBar');
+            if (regPw && sBar) {
+                regPw.addEventListener('input', function () {
+                    const v = this.value;
+                    let score = 0;
+                    if (v.length >= 8)          score++;
+                    if (v.length >= 12)         score++;
+                    if (/[A-Z]/.test(v))        score++;
+                    if (/[0-9]/.test(v))        score++;
+                    if (/[^A-Za-z0-9]/.test(v)) score++;
+                    const colors = ['', '#d93025', '#f9ab00', '#1a73e8', '#0f9d58', '#0f9d58'];
+                    const widths = ['0%', '20%', '40%', '65%', '85%', '100%'];
+                    sBar.style.width      = widths[score]  || '0%';
+                    sBar.style.background = colors[score] || 'transparent';
+                });
+            }
+
+            /* ══════════════════════════════════════════
+               AJAX Form Handling
+            ══════════════════════════════════════════ */
+
+            /* field name → input element id, per panel */
+            const FIELD_MAP = {
+                panelLogin:  { username: 'loginUsername', password: 'loginPassword' },
+                panelSignup: { username: 'regUsername', email: 'regEmail',
+                               password: 'regPassword', confirm_password: 'regConfirm' },
+                panelForgot: { email: 'forgotEmail' },
+            };
+            const GENERAL_ERROR = {
+                panelLogin:  { wrap: 'loginGeneralError',    msg: 'loginGeneralErrorMsg'    },
+                panelSignup: { wrap: 'registerGeneralError', msg: 'registerGeneralErrorMsg' },
+                panelForgot: { wrap: 'forgotGeneralError',   msg: 'forgotGeneralErrorMsg'   },
+            };
+
+            function clearErrors(panelId) {
+                const panel = document.getElementById(panelId);
+                if (!panel) return;
+                panel.querySelectorAll('.is-invalid')
+                    .forEach(el => el.classList.remove('is-invalid'));
+                panel.querySelectorAll('[data-error-for]').forEach(el => {
+                    el.textContent = '';
+                    el.classList.remove('d-block');
+                    el.classList.add('d-none');
+                });
+                const ge = GENERAL_ERROR[panelId];
+                if (ge) document.getElementById(ge.wrap)?.classList.add('d-none');
+            }
+
+            function showErrors(panelId, errors) {
+                const fieldMap = FIELD_MAP[panelId] || {};
+                const ge       = GENERAL_ERROR[panelId];
+
+                Object.entries(errors).forEach(([field, msg]) => {
+                    if (field === '__all__') {
+                        if (ge) {
+                            document.getElementById(ge.msg).textContent = msg;
+                            document.getElementById(ge.wrap)?.classList.remove('d-none');
+                        }
+                        return;
+                    }
+                    const inputId = fieldMap[field];
+                    if (!inputId) return;
+                    const input  = document.getElementById(inputId);
+                    const errDiv = document.querySelector(`[data-error-for="${inputId}"]`);
+                    if (input)  input.classList.add('is-invalid');
+                    if (errDiv) {
+                        errDiv.textContent = msg;
+                        errDiv.classList.remove('d-none');
+                        errDiv.classList.add('d-block');
+                    }
+                });
+            }
+
+            function setLoading(btn, loading, originalText) {
+                btn.disabled    = loading;
+                btn.textContent = loading ? 'Please wait…' : originalText;
+            }
+
+            function bindAjaxForm(formId, panelId, submitBtnId, onSuccess) {
+                const form      = document.getElementById(formId);
+                const submitBtn = document.getElementById(submitBtnId);
+                if (!form) return;
+
+                form.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    clearErrors(panelId);
+                    const origText = submitBtn.textContent;
+                    setLoading(submitBtn, true, origText);
+
+                    const formData  = new FormData(form);
+                    const csrfToken = formData.get('csrf_token');
+
+                    try {
+                        const res  = await fetch(form.action, {
+                            method: 'POST',
+                            headers: { 'X-CSRFToken': csrfToken },
+                            body: formData,
+                        });
+                        const data = await res.json();
+
+                        if (data.ok) {
+                            if (onSuccess) onSuccess(data);
+                            else window.location.href = data.redirect;
+                        } else {
+                            showErrors(panelId, data.errors || {});
+                            setLoading(submitBtn, false, origText);
+                        }
+                    } catch (_) {
+                        showErrors(panelId, { '__all__': 'Network error. Please try again.' });
+                        setLoading(submitBtn, false, origText);
+                    }
+                });
+            }
+
+            bindAjaxForm('loginForm',    'panelLogin',  'loginSubmitBtn');
+            bindAjaxForm('registerForm', 'panelSignup', 'registerSubmitBtn');
+            bindAjaxForm('forgotForm',   'panelForgot', 'forgotSubmitBtn',
+                         () => showPanel('panelForgotDone'));
+
         })();
     </script>
 

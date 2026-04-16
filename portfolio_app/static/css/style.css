@@ -476,19 +476,21 @@ label, .form-label { color: var(--text-2); font-weight: 500; font-size: 0.875rem
 /* ── Auth Nav Buttons ── */
 .btn-nav-login {
     color: var(--text-2); font-weight: 500; font-size: 0.875rem;
-    padding: 0.35rem 0.75rem; background: transparent;
+    padding: 0.35rem 0.75rem; background: transparent; cursor: pointer;
     border-radius: var(--radius-md) !important;
-    transition: all var(--transition); white-space: nowrap; display: inline-block;
+    transition: background var(--transition), color var(--transition);
+    white-space: nowrap;
 }
-.btn-nav-login:hover { color: var(--primary) !important; background: var(--surface-hover); }
+.btn-nav-login:hover { color: var(--primary); background: var(--surface-hover); }
 
 .btn-nav-signup {
     color: var(--text-inv); font-weight: 500; font-size: 0.875rem;
-    padding: 0.35rem 1rem; background: var(--primary);
+    padding: 0.35rem 1rem; background: var(--primary); cursor: pointer;
     border-radius: var(--radius-md) !important;
-    transition: background var(--transition); white-space: nowrap; display: inline-block;
+    transition: background var(--transition);
+    white-space: nowrap;
 }
-.btn-nav-signup:hover { background: var(--primary-dark); color: var(--text-inv) !important; }
+.btn-nav-signup:hover { background: var(--primary-dark); color: var(--text-inv); }
 
 /* ============================================================ */
 /* Flash Messages — Google Material snackbar style              */
@@ -922,7 +924,7 @@ textarea:-webkit-autofill, select:-webkit-autofill {
 }
 
 .form-check-input {
-    background: var(--input-bg) !important;
+    background-color: var(--input-bg) !important;
     cursor: pointer;
     outline: 1px solid var(--border-color) !important;
 }
@@ -1140,6 +1142,7 @@ textarea:-webkit-autofill, select:-webkit-autofill {
 .bg-light   { background: var(--surface-2) !important; color: var(--text-1) !important; }
 .bg-danger  { background: var(--danger)    !important; color: #fff !important; }
 
+.fw-400 { font-weight: 400; }
 .fw-500 { font-weight: 500; }
 .fw-600 { font-weight: 600; }
 

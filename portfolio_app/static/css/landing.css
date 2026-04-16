@@ -50,6 +50,14 @@
 .landing-nav .btn-nav-login  { font-size: 0.8125rem; padding: 0.3rem 0.875rem; }
 .landing-nav .btn-nav-signup { font-size: 0.8125rem; padding: 0.3rem 1rem; }
 
+/* Navbar scrolled state — elevation shadow */
+.landing-nav.scrolled {
+    box-shadow: 0 1px 3px rgba(60,64,67,.10), 0 2px 6px rgba(60,64,67,.06);
+}
+[data-bs-theme="dark"] .landing-nav.scrolled {
+    box-shadow: 0 1px 3px rgba(0,0,0,.3), 0 2px 6px rgba(0,0,0,.2);
+}
+
 
 /* ============================================================ */
 /* Hero                                                         */
@@ -84,7 +92,6 @@
     line-height: 1.12; letter-spacing: -1px;
     color: var(--text-1); margin: 0;
 }
-.landing-headline span { color: var(--primary); }
 
 .landing-subtext {
     font-size: 1rem; color: var(--text-2);
@@ -100,25 +107,25 @@
 .btn-cta-primary {
     display: inline-flex; align-items: center;
     background: var(--primary); color: #fff;
-    text-decoration: none; font-weight: 500; font-size: 0.9375rem;
-    padding: 0.7rem 1.75rem;
+    font-weight: 500; font-size: 0.9375rem;
+    padding: 0.7rem 1.75rem; cursor: pointer;
     border-radius: var(--radius-md) !important;
     transition: background var(--transition);
     white-space: nowrap;
 }
-.btn-cta-primary:hover { background: var(--primary-dark); color: #fff; text-decoration: none; }
+.btn-cta-primary:hover { background: var(--primary-dark); color: #fff; }
 
 .btn-cta-secondary {
     display: inline-flex; align-items: center; gap: 0.375rem;
-    color: var(--primary); text-decoration: none;
+    color: var(--primary);
     font-weight: 500; font-size: 0.9375rem;
-    padding: 0.7rem 1.25rem;
+    padding: 0.7rem 1.25rem; cursor: pointer;
     background: var(--primary-muted);
     border-radius: var(--radius-md) !important;
     transition: background var(--transition);
     white-space: nowrap;
 }
-.btn-cta-secondary:hover { background: var(--primary-hover); color: var(--primary); text-decoration: none; }
+.btn-cta-secondary:hover { background: var(--primary-hover); color: var(--primary); }
 
 
 /* ============================================================ */
@@ -287,6 +294,36 @@
 
 
 /* ============================================================ */
+/* Modal Backdrop Blur                                          */
+/* ============================================================ */
+
+/* Elements to blur when auth modal is open */
+.landing-nav,
+.landing-hero,
+.landing-features,
+.landing-footer {
+    transition: filter 0.15s ease, opacity 0.15s ease;
+}
+
+body.auth-modal-open .landing-nav,
+body.auth-modal-open .landing-hero,
+body.auth-modal-open .landing-features,
+body.auth-modal-open .landing-footer {
+    filter: blur(4px);
+    opacity: 0.55;
+    pointer-events: none;
+    user-select: none;
+}
+
+/* Speed up Bootstrap modal fade + backdrop */
+.modal.fade .modal-dialog { transition: transform 0.15s ease; }
+.modal-backdrop.fade       { transition: opacity  0.15s ease; }
+
+/* Lighten the Bootstrap backdrop so the blur does the heavy lifting */
+.modal-backdrop { opacity: 0.25 !important; }
+
+
+/* ============================================================ */
 /* Dark Mode                                                    */
 /* ============================================================ */
 [data-bs-theme="dark"] .landing-preview {
@@ -295,3 +332,86 @@
 [data-bs-theme="dark"] .landing-features { border-top-color: rgba(255,255,255,.08); }
 [data-bs-theme="dark"] .landing-footer   { border-top-color: rgba(255,255,255,.08); }
 [data-bs-theme="dark"] .landing-nav      { border-bottom-color: rgba(255,255,255,.08); }
+
+/* Preview card inner sections: elevate above card surface (Material 3 tonal elevation) */
+[data-bs-theme="dark"] .preview-stats,
+[data-bs-theme="dark"] .preview-bars {
+    background: var(--surface-2);
+    outline-color: rgba(255,255,255,.07) !important;
+}
+
+/* Feature cards: elevate above section background */
+[data-bs-theme="dark"] .feature-card {
+    background: var(--surface-2);
+}
+[data-bs-theme="dark"] .feature-card:hover {
+    background: var(--surface-active);
+    box-shadow: 0 2px 8px rgba(0,0,0,.28) !important;
+}
+
+/* Auth Modal */
+#authModal .modal-dialog { max-width: 420px; }
+#authModal .modal-content {
+    background: var(--surface);
+    border-radius: var(--radius-lg) !important;
+    outline: 1px solid var(--border-color) !important;
+    box-shadow: var(--shadow-overlay);
+    overflow: hidden;
+}
+[data-bs-theme="dark"] #authModal .modal-content {
+    outline-color: rgba(255,255,255,.10) !important;
+}
+
+.auth-modal-tabbar {
+    display: flex; align-items: center;
+    padding: 0 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+.auth-modal-tab {
+    padding: 1rem 0.25rem;
+    margin-right: 1.25rem;
+    font-size: 0.9375rem; font-weight: 500;
+    color: var(--text-2); background: none; cursor: pointer;
+    position: relative;
+    transition: color var(--transition);
+}
+.auth-modal-tab::after {
+    content: '';
+    position: absolute; bottom: 0; left: 0; right: 0;
+    height: 3px; background: transparent;
+    border-radius: 3px 3px 0 0;
+    transition: background var(--transition);
+}
+.auth-modal-tab.active        { color: var(--primary); font-weight: 600; }
+.auth-modal-tab.active::after { background: var(--primary); }
+
+.auth-modal-close {
+    margin-left: auto;
+    background: none; color: var(--text-3); cursor: pointer;
+    padding: 0.375rem;
+    border-radius: var(--radius-sm) !important;
+    font-size: 1rem; line-height: 1;
+    transition: background var(--transition), color var(--transition);
+}
+.auth-modal-close:hover { background: var(--surface-hover); color: var(--text-1); }
+
+.auth-modal-panel { padding: 1.75rem 2rem 2rem; }
+.auth-modal-panel-header { margin-bottom: 1.25rem; }
+
+.btn-modal-switch {
+    background: none; color: var(--primary);
+    font-weight: 500; cursor: pointer; padding: 0;
+    font-size: inherit;
+    transition: color var(--transition);
+}
+.btn-modal-switch:hover { color: var(--primary-dark); }
+/* Subdued variant — used for "Forgot password?" and "Back to Sign In" */
+.btn-modal-switch.auth-subtitle {
+    color: var(--text-3);
+    font-weight: 400;
+    font-size: 0.875rem;
+}
+.btn-modal-switch.auth-subtitle:hover { color: var(--primary); }
+
+/* Field-level error text inside the modal */
+.auth-field-error { font-size: 0.875rem; color: var(--danger); }

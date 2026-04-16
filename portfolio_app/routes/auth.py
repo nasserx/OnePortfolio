@@ -5,7 +5,7 @@ user settings, and account deletion.
 
 import logging
 from functools import wraps
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import login_user, logout_user, login_required, current_user
 
 from portfolio_app.services import get_services
@@ -68,6 +68,7 @@ def login():
     form_values = {}
 
     if request.method == 'POST':
+        from_modal = bool(request.form.get('_modal'))
         form = LoginForm(request.form)
         if form.validate():
             data = form.get_cleaned_data()
@@ -78,20 +79,29 @@ def login():
                 # Redirect to the code entry page so the user can verify immediately
                 user = svc.user_repo.get_by_username_or_email(data['username'])
                 if user and user.email:
-                    return redirect(url_for('auth.verify_code', email=user.email))
+                    verify_url = url_for('auth.verify_code', email=user.email)
+                    if from_modal:
+                        return jsonify({'ok': True, 'redirect': verify_url})
+                    return redirect(verify_url)
                 form_errors['__all__'] = AuthMessages.ACCOUNT_UNVERIFIED
                 form_values = request.form
             elif result:
                 remember = request.form.get('remember') == 'on'
                 login_user(result, remember=remember)
                 next_page = request.args.get('next')
-                return redirect(next_page or url_for('dashboard.index'))
+                redirect_url = next_page or url_for('dashboard.index')
+                if from_modal:
+                    return jsonify({'ok': True, 'redirect': redirect_url})
+                return redirect(redirect_url)
             else:
                 form_errors['__all__'] = AuthMessages.INVALID_CREDENTIALS
                 form_values = request.form
         else:
             form_errors = form.errors
             form_values = request.form
+
+        if from_modal:
+            return jsonify({'ok': False, 'errors': form_errors}), 422
 
     return render_template(
         'auth/login.html',
@@ -122,6 +132,7 @@ def register():
     form_values = {}
 
     if request.method == 'POST':
+        from_modal = bool(request.form.get('_modal'))
         svc = get_services()
 
         form = RegisterForm(
@@ -143,7 +154,10 @@ def register():
                 if not email_sent:
                     logger.error('Verification email failed for %s', user.email)
 
-                return redirect(url_for('auth.verify_code', email=user.email))
+                verify_url = url_for('auth.verify_code', email=user.email)
+                if from_modal:
+                    return jsonify({'ok': True, 'redirect': verify_url})
+                return redirect(verify_url)
 
             except ValueError as e:
                 # If the email belongs to an unverified account, resend a fresh code
@@ -155,7 +169,10 @@ def register():
                         new_code = svc.auth_service.resend_verification_code(existing.email)
                         if new_code:
                             send_verification_email(existing.email, new_code)
-                        return redirect(url_for('auth.verify_code', email=existing.email))
+                        verify_url = url_for('auth.verify_code', email=existing.email)
+                        if from_modal:
+                            return jsonify({'ok': True, 'redirect': verify_url})
+                        return redirect(verify_url)
 
                 form_errors['__all__'] = str(e)
                 form_values = request.form
@@ -166,6 +183,9 @@ def register():
         else:
             form_errors = form.errors
             form_values = request.form
+
+        if from_modal:
+            return jsonify({'ok': False, 'errors': form_errors}), 422
 
     return render_template(
         'auth/register.html',
@@ -357,22 +377,28 @@ def forgot_password():
     form_values = {}
 
     if request.method == 'POST':
+        from_modal = bool(request.form.get('_modal'))
         form = ForgotPasswordForm(request.form)
         if form.validate():
             data = form.get_cleaned_data()
             svc = get_services()
             user = svc.user_repo.get_by_email(data['email'])
 
-            # Always redirect to the confirmation page regardless of whether
-            # the email is registered, to avoid leaking account existence.
+            # Always respond the same way regardless of whether the email is
+            # registered, to avoid leaking account existence.
             if user:
                 token = generate_reset_token(user.email)
                 send_reset_email(user.email, token)
 
+            if from_modal:
+                return jsonify({'ok': True})
             return redirect(url_for('auth.reset_sent'))
         else:
             form_errors = form.errors
             form_values = request.form
+
+        if from_modal:
+            return jsonify({'ok': False, 'errors': form_errors}), 422
 
     return render_template(
         'auth/forgot_password.html',

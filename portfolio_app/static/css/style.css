@@ -14,9 +14,9 @@
     --primary-tint:     rgba(26,115,232,.08);
 
     /* ── Semantic ── */
-    --success:          #137333;
+    --success:          #34a853;
     --success-muted:    #e6f4ea;
-    --danger:           #c5221f;
+    --danger:           #e53935;
     --danger-muted:     #fce8e6;
     --warning:          #b45309;
     --warning-muted:    #fef3c7;
@@ -37,8 +37,8 @@
 
     /* ── Filled button hover (darker fill) ── */
     --btn-primary-hover:  #1557b0;
-    --btn-success-hover:  #0d652d;
-    --btn-danger-hover:   #a50e0e;
+    --btn-success-hover:  #2d9248;
+    --btn-danger-hover:   #c62828;
     --btn-warning-hover:  #92400e;
 
     /* ── Chrome ── */
@@ -65,8 +65,8 @@
     --row-alt:          #f8f9fa;
 
     /* ── Data colors ── */
-    --color-profit:     #137333;
-    --color-loss:       #c5221f;
+    --color-profit:     #2d9248;
+    --color-loss:       #e53935;
     --color-dividend:   #1a73e8;
     --color-neutral:    #80868b;
 
@@ -645,11 +645,11 @@ label, .form-label { color: var(--text-2); font-weight: 500; font-size: 0.875rem
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     margin: 1rem 0 0;
-    gap: 0;
+    gap: 0.25rem 1.5rem;
 }
 .metric-item {
-    display: flex; flex-direction: column; gap: 3px;
-    padding: 0.625rem 0;
+    display: flex; flex-direction: column; gap: 4px;
+    padding: 0.5rem 0;
 }
 .metric-label {
     font-size: 0.625rem; color: var(--text-3);
@@ -659,6 +659,12 @@ label, .form-label { color: var(--text-2); font-weight: 500; font-size: 0.875rem
 .metric-value {
     font-size: 0.9375rem; font-weight: 500;
     color: var(--text-1); font-variant-numeric: tabular-nums;
+}
+.metric-roi {
+    display: block;
+    font-size: 0.75rem; font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    margin-top: 1px;
 }
 
 .page-accent-surface,
@@ -720,22 +726,13 @@ tr:hover .row-actions {
     opacity: 1;
 }
 
-/* Row action buttons — more vivid tonal backgrounds */
-.row-actions .btn-outline-primary { background: #c8dcfc !important; }
-.row-actions .btn-outline-success  { background: #b8dfc3 !important; }
-.row-actions .btn-outline-danger   { background: #f5c4c2 !important; }
+/* Row action buttons — slightly larger icons */
+.row-actions .btn { font-size: 1.0625rem !important; }
 
-.row-actions .btn-outline-primary:hover { background: #a8c8f8 !important; }
-.row-actions .btn-outline-success:hover  { background: #96cfaa !important; }
-.row-actions .btn-outline-danger:hover   { background: #f0a8a6 !important; }
-
-[data-bs-theme="dark"] .row-actions .btn-outline-primary { background: rgba(138,180,248,.32) !important; }
-[data-bs-theme="dark"] .row-actions .btn-outline-success  { background: rgba(129,201,149,.30) !important; }
-[data-bs-theme="dark"] .row-actions .btn-outline-danger   { background: rgba(242,139,130,.30) !important; }
-
-[data-bs-theme="dark"] .row-actions .btn-outline-primary:hover { background: rgba(138,180,248,.45) !important; }
-[data-bs-theme="dark"] .row-actions .btn-outline-success:hover  { background: rgba(129,201,149,.42) !important; }
-[data-bs-theme="dark"] .row-actions .btn-outline-danger:hover   { background: rgba(242,139,130,.42) !important; }
+/* Row action buttons — vivid tonal backgrounds on hover only */
+.row-actions .btn-outline-primary:hover { background: var(--primary-hover) !important; }
+.row-actions .btn-outline-success:hover  { background: var(--success-hover) !important; }
+.row-actions .btn-outline-danger:hover   { background: var(--danger-hover)  !important; }
 
 .category-chevron {
     transition: transform 0.2s ease;
@@ -961,25 +958,30 @@ textarea:-webkit-autofill, select:-webkit-autofill {
 .btn-warning { background: var(--warning) !important; color: #fff !important; }
 .btn-warning:hover { background: var(--btn-warning-hover) !important; color: #fff !important; }
 
-/* Tonal (outlined-style with muted fill) */
+/* Tonal (outlined-style) — transparent by default, tinted on hover/focus */
 .btn-outline-primary {
-    background: var(--primary-muted) !important;
+    background: transparent !important;
     color: var(--primary) !important;
+    transition: background var(--transition) !important;
 }
-.btn-outline-primary:hover { background: var(--primary-hover) !important; }
+.btn-outline-primary:hover,
+.btn-outline-primary:focus { background: var(--primary-hover) !important; }
 
-/* Tonal buttons — Material 3: muted fill, colored text, state layer on hover */
 .btn-outline-success {
-    background: var(--success-muted) !important;
+    background: transparent !important;
     color: var(--success) !important;
+    transition: background var(--transition) !important;
 }
-.btn-outline-success:hover { background: var(--success-hover) !important; }
+.btn-outline-success:hover,
+.btn-outline-success:focus { background: var(--success-hover) !important; }
 
 .btn-outline-danger {
-    background: var(--danger-muted) !important;
+    background: transparent !important;
     color: var(--danger) !important;
+    transition: background var(--transition) !important;
 }
-.btn-outline-danger:hover { background: var(--danger-hover) !important; }
+.btn-outline-danger:hover,
+.btn-outline-danger:focus { background: var(--danger-hover) !important; }
 
 /* Ghost — used for table actions */
 .btn-outline-secondary {
@@ -1158,6 +1160,9 @@ i.bi { vertical-align: middle; }
 /* ============================================================ */
 .settings-sidebar { flex-direction: column; gap: 2px; }
 
+/* Fast tab panel transition */
+.settings-tab-content .tab-pane.fade { transition: opacity 0.1s ease; }
+
 .settings-sidebar-link {
     display: flex; align-items: center; gap: 0.625rem;
     width: 100%; text-align: left;
@@ -1165,7 +1170,7 @@ i.bi { vertical-align: middle; }
     padding: 0.45rem 0.75rem;
     background: transparent; cursor: pointer;
     border-radius: var(--radius-md) !important;
-    transition: color var(--transition), background var(--transition-slow);
+    transition: color var(--transition), background var(--transition);
 }
 .settings-sidebar-link:hover { color: var(--primary); background: var(--surface-hover); }
 .settings-sidebar-link.active {

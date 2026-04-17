@@ -65,8 +65,8 @@
     --row-alt:          #f8f9fa;
 
     /* ── Data colors ── */
-    --color-profit:     #2d9248;
-    --color-loss:       #e53935;
+    --color-profit:     #1aa34a;
+    --color-loss:       #f44336;
     --color-dividend:   #1a73e8;
     --color-neutral:    #80868b;
 
@@ -232,7 +232,7 @@ label, .form-label { color: var(--text-2); font-weight: 500; font-size: 0.875rem
     background: var(--border-color);
 }
 .sidebar-brand:hover { color: var(--text-1); opacity: 0.8; text-decoration: none; }
-.sidebar-brand img { width: 22px; height: 22px; flex-shrink: 0; }
+.sidebar-brand img { width: 28px; height: 28px; flex-shrink: 0; }
 
 .sidebar-nav {
     flex: 1;

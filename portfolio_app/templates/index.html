@@ -77,7 +77,7 @@
                         <span class="metric-label">Realized P&amp;L</span>
                         <span class="metric-value {% if item.realized_pnl >= 0 %}profit{% else %}loss{% endif %}">
                             {% if item.realized_pnl >= 0 %}+{% endif %}{{ item.realized_pnl|fmt_money }}
-                            <small class="metric-roi {% if item.realized_roi_percent >= 0 %}profit{% else %}loss{% endif %}">{{ item.realized_roi_display }}</small>
+                            <small class="metric-roi {% if item.realized_roi_percent >= 0 %}profit{% else %}loss{% endif %}">({{ item.realized_roi_display }})</small>
                         </span>
                     </div>
                     <div class="metric-item">

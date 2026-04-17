@@ -643,7 +643,7 @@ label, .form-label { color: var(--text-2); font-weight: 500; font-size: 0.875rem
 
 .category-metrics {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: 1fr 1.3fr 0.9fr;
     margin: 1rem 0 0;
     gap: 0.25rem 1.5rem;
 }
@@ -651,20 +651,21 @@ label, .form-label { color: var(--text-2); font-weight: 500; font-size: 0.875rem
     display: flex; flex-direction: column; gap: 4px;
     padding: 0.5rem 0;
 }
+.category-metrics .metric-item:nth-child(3n) {
+    padding-left: 1rem;
+}
 .metric-label {
     font-size: 0.625rem; color: var(--text-3);
     font-weight: 600; text-transform: uppercase;
     letter-spacing: 0.07em; white-space: nowrap;
 }
 .metric-value {
-    font-size: 0.9375rem; font-weight: 500;
+    font-size: 0.875rem; font-weight: 500;
     color: var(--text-1); font-variant-numeric: tabular-nums;
 }
 .metric-roi {
-    display: block;
     font-size: 0.75rem; font-weight: 500;
     font-variant-numeric: tabular-nums;
-    margin-top: 1px;
 }
 
 .page-accent-surface,
@@ -727,7 +728,7 @@ tr:hover .row-actions {
 }
 
 /* Row action buttons — slightly larger icons */
-.row-actions .btn { font-size: 1.0625rem !important; }
+.row-actions .btn { font-size: 0.9375rem !important; }
 
 /* Row action buttons — vivid tonal backgrounds on hover only */
 .row-actions .btn-outline-primary:hover { background: var(--primary-hover) !important; }

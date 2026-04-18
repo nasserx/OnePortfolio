@@ -7,8 +7,8 @@
 <!-- Stat Cards -->
 <div class="stat-cards-row mb-4">
     <div class="stat-card-item">
-        <span class="stat-label">Total Funds</span>
-        <span class="stat-value overview-value">{{ totals.total_investment|fmt_money }}</span>
+        <span class="stat-label">Total Capital</span>
+        <span class="stat-value overview-value">{{ totals.total_allocated|fmt_money }}</span>
     </div>
     <div class="stat-card-item">
         <i class="bi bi-info-circle stat-info-icon"
@@ -58,7 +58,7 @@
                 <!-- 3-column metrics grid -->
                 <div class="category-metrics">
                     <div class="metric-item">
-                        <span class="metric-label">Allocated</span>
+                        <span class="metric-label">Fund Total</span>
                         <span class="metric-value">{{ item.amount|fmt_money }}</span>
                     </div>
                     <div class="metric-item">
@@ -95,7 +95,7 @@
     <div class="col-12">
         <div class="alert alert-info">
             <i class="bi bi-info-circle me-2"></i>
-            No funds entries found. <a href="{{ url_for('funds.funds_list') }}">Add funds</a> to get started.
+            No funds yet. <a href="{{ url_for('funds.funds_list') }}">Add a fund</a> to get started.
         </div>
     </div>
     {% endif %}

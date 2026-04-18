@@ -110,7 +110,7 @@ def funds_add():
                 **ctx,
                 form_errors={'funds_add': form.errors},
                 form_values={'funds_add': request.form},
-                active_modal='addFundEntryModal',
+                active_modal='newFundModal',
             ), 400
 
         data = form.get_cleaned_data()
@@ -138,7 +138,7 @@ def funds_add():
             **ctx,
             form_errors={'funds_add': {'__all__': str(e)}},
             form_values={'funds_add': request.form},
-            active_modal='addFundEntryModal',
+            active_modal='newFundModal',
         ), 400
 
     except Exception:
@@ -154,7 +154,7 @@ def funds_add():
             **ctx,
             form_errors={'funds_add': {'__all__': ErrorMessages.OPERATION_FAILED}},
             form_values={'funds_add': request.form},
-            active_modal='addFundEntryModal',
+            active_modal='newFundModal',
         ), 400
 
 
@@ -196,7 +196,7 @@ def funds_deposit(id):
                 **ctx,
                 form_errors={'funds_deposit': form.errors},
                 form_values={'funds_deposit': request.form},
-                active_modal='depositFundModal',
+                active_modal='depositFundsModal',
                 modal_data={'fund_id': id},
             ), 400
 
@@ -250,7 +250,7 @@ def funds_withdraw(id):
                 **ctx,
                 form_errors={'funds_withdraw': form.errors},
                 form_values={'funds_withdraw': request.form},
-                active_modal='withdrawFundModal',
+                active_modal='withdrawFundsModal',
                 modal_data={'fund_id': id},
             ), 400
 
@@ -318,7 +318,7 @@ def funds_event_edit(event_id):
             date=data.get('date')
         )
 
-        flash(SuccessMessages.TRANSACTION_UPDATED, 'success')
+        flash(SuccessMessages.ENTRY_UPDATED, 'success')
 
     except ValueError as e:
         flash(get_error_message(e), 'error')
@@ -350,7 +350,7 @@ def funds_event_delete(event_id):
 
         svc.fund_service.delete_fund_event(event_id)
 
-        flash(SuccessMessages.TRANSACTION_DELETED, 'success')
+        flash(SuccessMessages.ENTRY_DELETED, 'success')
 
     except ValueError as e:
         flash(get_error_message(e), 'error')

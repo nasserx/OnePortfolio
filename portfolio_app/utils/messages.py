@@ -13,6 +13,7 @@ class ErrorMessages:
     INVALID_AMOUNT = "Invalid amount"
     INVALID_DATE = "Invalid date"
     TRANSACTION_NOT_FOUND = "Transaction not found"
+    DIVIDEND_NOT_FOUND = "Dividend not found"
     FUND_NOT_FOUND = "Fund not found"
     INVALID_INPUT = "Invalid input"
     INVALID_SYMBOL = "Invalid symbol"
@@ -40,12 +41,19 @@ class SuccessMessages:
     FUND_DELETED = "Fund deleted"
     DEPOSIT_COMPLETED = "Deposit completed"
     WITHDRAWAL_COMPLETED = "Withdrawal completed"
+    ENTRY_UPDATED = "Entry updated"
+    ENTRY_DELETED = "Entry deleted"
+    DIVIDEND_ADDED = "Dividend added"
+    DIVIDEND_UPDATED = "Dividend updated"
+    DIVIDEND_DELETED = "Dividend deleted"
 
 
 class ConfirmMessages:
     """Confirmation messages shown in delete dialogs."""
 
     DELETE_TRANSACTION = "Delete this transaction?"
+    DELETE_DIVIDEND = "Delete this dividend?"
+    DELETE_FUND_ENTRY = "Delete this entry?"
 
 
 class ValidationMessages:

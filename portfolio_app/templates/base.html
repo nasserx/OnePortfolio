@@ -48,8 +48,8 @@
             </a>
             <a class="sidebar-nav-link {% if request.endpoint == 'transactions.transaction_list' %}active{% endif %}"
                href="{{ url_for('transactions.transaction_list') }}">
-                <i class="bi bi-arrow-left-right" aria-hidden="true"></i>
-                Transactions
+                <i class="bi bi-receipt" aria-hidden="true"></i>
+                Trades
             </a>
             <a class="sidebar-nav-link {% if request.endpoint == 'charts.charts' %}active{% endif %}"
                href="{{ url_for('charts.charts') }}">

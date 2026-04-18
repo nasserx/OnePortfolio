@@ -323,9 +323,9 @@ def dividend_add():
         )
 
         if is_ajax_request():
-            return json_response(True, message=SuccessMessages.TRANSACTION_ADDED)
+            return json_response(True, message=SuccessMessages.DIVIDEND_ADDED)
 
-        flash(SuccessMessages.TRANSACTION_ADDED, 'success')
+        flash(SuccessMessages.DIVIDEND_ADDED, 'success')
         return redirect(url_for('transactions.transaction_list'))
 
     except (ValueError, ValidationError) as e:
@@ -353,8 +353,8 @@ def dividend_edit(id):
         dividend = svc.dividend_repo.get_by_id(id)
         if not dividend:
             if is_ajax_request():
-                return json_response(False, error=ErrorMessages.TRANSACTION_NOT_FOUND)
-            flash(ErrorMessages.TRANSACTION_NOT_FOUND, 'error')
+                return json_response(False, error=ErrorMessages.DIVIDEND_NOT_FOUND)
+            flash(ErrorMessages.DIVIDEND_NOT_FOUND, 'error')
             return redirect(url_for('transactions.transaction_list'))
 
         form = DividendEditForm(request.form, id)
@@ -373,9 +373,9 @@ def dividend_edit(id):
         )
 
         if is_ajax_request():
-            return json_response(True, message=SuccessMessages.TRANSACTION_UPDATED)
+            return json_response(True, message=SuccessMessages.DIVIDEND_UPDATED)
 
-        flash(SuccessMessages.TRANSACTION_UPDATED, 'success')
+        flash(SuccessMessages.DIVIDEND_UPDATED, 'success')
         return redirect(url_for('transactions.transaction_list'))
 
     except (ValueError, ValidationError) as e:
@@ -402,8 +402,8 @@ def dividend_delete(id):
         svc.transaction_service.delete_dividend(id)
 
         if is_ajax_request():
-            return json_response(True, message=SuccessMessages.TRANSACTION_DELETED)
-        flash(SuccessMessages.TRANSACTION_DELETED, 'success')
+            return json_response(True, message=SuccessMessages.DIVIDEND_DELETED)
+        flash(SuccessMessages.DIVIDEND_DELETED, 'success')
 
     except ValueError as e:
         if is_ajax_request():
@@ -436,7 +436,7 @@ def asset_add():
                 **ctx,
                 form_errors={'asset_add': form.errors},
                 form_values={'asset_add': request.form},
-                active_modal='addAssetModal',
+                active_modal='addSymbolModal',
             ), 400
 
         data = form.get_cleaned_data()

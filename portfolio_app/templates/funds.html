@@ -18,8 +18,8 @@
 {% block content %}
 <div class="page-header">
     {% if available_asset_classes|length > 0 %}
-    <button type="button" class="btn btn-primary ms-auto" data-bs-toggle="modal" data-bs-target="#addFundEntryModal">
-        Add Funds
+    <button type="button" class="btn btn-primary ms-auto" data-bs-toggle="modal" data-bs-target="#newFundModal">
+        New Fund
     </button>
     {% endif %}
 </div>
@@ -40,7 +40,7 @@
                         <div class="col-lg-7 col-md-6">
                             <div class="category-summary columns-3">
                                 <div class="summary-item">
-                                    <div class="summary-label">Total Funds</div>
+                                    <div class="summary-label">Fund Total</div>
                                     <div class="summary-value">{{ item.total_funds|fmt_money }}</div>
                                 </div>
                                 <div class="summary-item">
@@ -95,7 +95,7 @@
                                 <tr>
                                     <th style="width: 140px;">Date</th>
                                     <th class="text-end" style="width: 160px;">Deposit</th>
-                                    <th class="text-end" style="width: 160px;">Withdraw</th>
+                                    <th class="text-end" style="width: 160px;">Withdrawal</th>
                                     <th>Notes</th>
                                     <th class="text-center" style="width: 90px;">Actions</th>
                                 </tr>
@@ -139,6 +139,7 @@
                                             </button>
                                             <button type="button" class="btn btn-outline-danger btn-icon btn-sm js-delete-fund-event-btn"
                                                     data-event-id="{{ e.id }}"
+                                                    data-event-type="{{ e.event_type }}"
                                                     title="Delete"
                                                     aria-label="Delete"
                                                     data-bs-toggle="tooltip"
@@ -169,7 +170,7 @@
             <div class="card-body">
                 <div class="alert alert-info text-center mb-0">
                     <i class="bi bi-info-circle"></i>
-                    No funds entries found. Add funds to get started.
+                    No funds yet. Click 'New Fund' to get started.
                 </div>
             </div>
         </div>
@@ -178,10 +179,10 @@
 </div>
 
 <!-- Deposit Funds Modal -->
-<div class="modal fade" id="addFundsModal" tabindex="-1">
+<div class="modal fade" id="depositFundsModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <form method="POST" id="addFundsForm" autocomplete="off" novalidate>
+            <form method="POST" id="depositFundsForm" autocomplete="off" novalidate>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="modal-header">
                     <h5 class="modal-title">Deposit</h5>
@@ -285,14 +286,14 @@
     </div>
 </div>
 
-<!-- Add Funds Entry Modal (new asset class) -->
-<div class="modal fade" id="addFundEntryModal" tabindex="-1">
+<!-- New Fund Modal (new asset class) -->
+<div class="modal fade" id="newFundModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
             <form method="POST" action="{{ url_for('funds.funds_add') }}" autocomplete="off" novalidate>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="modal-header">
-                    <h5 class="modal-title">Add Funds</h5>
+                    <h5 class="modal-title">New Fund</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
@@ -349,7 +350,7 @@
             <form method="POST" id="editFundEventForm" autocomplete="off" novalidate>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="modal-header">
-                    <h5 class="modal-title">Edit Event</h5>
+                    <h5 class="modal-title" id="editFundEventModalTitle">Edit Entry</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
@@ -409,7 +410,7 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <p>{{ Msg.confirm.DELETE_TRANSACTION }}</p>
+                    <p id="delete_fund_event_msg"></p>
                     {% set _del_evt_err = (form_errors.get('funds_event_delete') or {}).get('__all__') if form_errors else None %}
                     {% if _del_evt_err %}
                         <div class="invalid-feedback d-block">{{ _del_evt_err }}</div>
@@ -440,7 +441,7 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <p>Delete funds entry for <strong id="delete_category_name"></strong>?</p>
+                    <p>Delete fund <strong id="delete_category_name"></strong>?</p>
                     <div class="alert alert-warning">
                         <i class="bi bi-exclamation-triangle"></i>
                         This also deletes all related transactions.
@@ -537,13 +538,13 @@ function displayEventType(eventType) {
 
 function depositFunds(id, category, opts) {
     opts = opts || {};
-    document.getElementById('addFundsForm').action = `/funds/deposit/${id}`;
+    document.getElementById('depositFundsForm').action = `/funds/deposit/${id}`;
     document.getElementById('add_funds_category').value = category || '';
     document.getElementById('add_funds_amount').value = (opts.amount != null ? String(opts.amount) : '');
     document.getElementById('deposit_date').value = (opts.date != null && opts.date !== '' ? String(opts.date) : todayStr());
     document.getElementById('add_funds_notes').value = (opts.notes != null ? String(opts.notes) : '');
     initFlatpickr('deposit_date');
-    new bootstrap.Modal(document.getElementById('addFundsModal')).show();
+    new bootstrap.Modal(document.getElementById('depositFundsModal')).show();
 }
 
 function withdrawFunds(id, category, opts) {
@@ -560,6 +561,9 @@ function withdrawFunds(id, category, opts) {
 function editFundEvent(eventId, eventType, amountDelta, notes, dateShort) {
     document.getElementById('editFundEventForm').action = `/funds/events/edit/${eventId}`;
     document.getElementById('edit_event_type').value = displayEventType(eventType);
+    const titleMap = { 'Deposit': 'Edit Deposit', 'Withdrawal': 'Edit Withdrawal', 'Initial': 'Edit Initial' };
+    const titleEl = document.getElementById('editFundEventModalTitle');
+    if (titleEl) titleEl.textContent = titleMap[eventType] || 'Edit Entry';
     document.getElementById('edit_event_date').value = dateShort || '';
     document.getElementById('edit_event_amount').value = Math.abs(parseFloat(amountDelta || 0)).toFixed(2);
     document.getElementById('edit_event_notes').value = notes || '';
@@ -576,7 +580,7 @@ function editFundEvent(eventId, eventType, amountDelta, notes, dateShort) {
 
     document.addEventListener('DOMContentLoaded', function() {
         try {
-            if (which === 'addFundsModal' && payload && payload.fund_id) {
+            if (which === 'depositFundsModal' && payload && payload.fund_id) {
                 depositFunds(payload.fund_id, payload.category || '', {
                     amount: {{ (_dep_vals.get('amount_delta', '') if form_values and form_values.get('funds_deposit') else '') | tojson }},
                     date: {{ (_dep_vals.get('deposit_date', '') if form_values and form_values.get('funds_deposit') else '') | tojson }},
@@ -590,11 +594,11 @@ function editFundEvent(eventId, eventType, amountDelta, notes, dateShort) {
                     notes: {{ (_with_vals.get('notes', '') if form_values and form_values.get('funds_withdraw') else '') | tojson }},
                 });
             }
-            if (which === 'addFundEntryModal') {
+            if (which === 'newFundModal') {
                 const dateEl = document.getElementById('add_fund_date');
                 if (dateEl && !dateEl.value) dateEl.value = todayStr();
                 initFlatpickr('add_fund_date');
-                new bootstrap.Modal(document.getElementById('addFundEntryModal')).show();
+                new bootstrap.Modal(document.getElementById('newFundModal')).show();
             }
             if (which === 'editFundEventModal' && payload && payload.event_id) {
                 editFundEvent(
@@ -607,7 +611,7 @@ function editFundEvent(eventId, eventType, amountDelta, notes, dateShort) {
             }
 
             if (which === 'deleteFundEventModal' && payload && payload.event_id) {
-                deleteFundEvent(payload.event_id);
+                deleteFundEvent(payload.event_id, payload.event_type || '');
             }
 
             if (which === 'deleteFundModal' && payload && payload.fund_id) {
@@ -619,8 +623,13 @@ function editFundEvent(eventId, eventType, amountDelta, notes, dateShort) {
     });
 })();
 
-function deleteFundEvent(eventId) {
+function deleteFundEvent(eventId, eventType) {
     document.getElementById('deleteFundEventForm').action = `/funds/events/delete/${eventId}`;
+    var msg = document.getElementById('delete_fund_event_msg');
+    if (msg) {
+        var label = eventType === 'Withdrawal' ? 'withdrawal' : 'deposit';
+        msg.textContent = 'Delete this ' + label + '?';
+    }
     new bootstrap.Modal(document.getElementById('deleteFundEventModal')).show();
 }
 
@@ -685,13 +694,14 @@ function deleteFund(id, category) {
             ev.stopPropagation();
             if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
             const eventId = parseInt(deleteEventBtn.getAttribute('data-event-id') || '0', 10);
-            if (eventId) deleteFundEvent(eventId);
+            const eventType = deleteEventBtn.getAttribute('data-event-type') || '';
+            if (eventId) deleteFundEvent(eventId, eventType);
         }
     }, true);
 })();
 
 // Init Flatpickr and set today's date when Add Fund modal opens
-document.getElementById('addFundEntryModal')?.addEventListener('shown.bs.modal', function() {
+document.getElementById('newFundModal')?.addEventListener('shown.bs.modal', function() {
     const dateEl = document.getElementById('add_fund_date');
     if (dateEl && !dateEl.value) dateEl.value = todayStr();
     initFlatpickr('add_fund_date');

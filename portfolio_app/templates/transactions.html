@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Transactions - OnePortfolio{% endblock %}
+{% block title %}Trades - OnePortfolio{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
@@ -14,14 +14,14 @@
         <div class="dropdown">
             <button class="btn btn-outline-secondary filter-dropdown-btn dropdown-toggle" type="button"
                     data-bs-toggle="dropdown" aria-expanded="false">
-                {{ selected_category or 'All asset classes' }}
+                {{ selected_category or 'All categories' }}
                 <i class="bi bi-chevron-down"></i>
             </button>
             <ul class="dropdown-menu">
                 <li>
                     <a class="dropdown-item {% if not selected_category %}active{% endif %}"
                        href="{{ url_for('transactions.transaction_list') }}">
-                        All asset classes
+                        All categories
                     </a>
                 </li>
                 {% if funds %}
@@ -51,9 +51,9 @@
         </div>
 
         {% if funds|length > 0 %}
-            <button type="button" class="btn btn-primary" onclick="openAddAssetModal()">Add Symbol</button>
+            <button type="button" class="btn btn-primary" onclick="openAddSymbolModal()">Add Symbol</button>
         {% else %}
-            <a class="btn btn-primary" href="{{ url_for('funds.funds_list') }}">Add funds first</a>
+            <a class="btn btn-primary" href="{{ url_for('funds.funds_list') }}">Add a fund first</a>
         {% endif %}
     </div>
 </div>
@@ -63,10 +63,10 @@
     <div class="col-12">
         {% if holdings|length > 0 %}
             {% for item in holdings %}
-            {% set _div_key = (item.fund.id, item.symbol) %}
-            {% set symbol_divs = dividends_by_symbol.get(_div_key, []) %}
-            {% set symbol_div_total = dividend_totals.get(_div_key, 0) %}
-            {% set show_div_rows = symbol_divs|length > 0 %}
+            {% set symbol_key = (item.fund.id, item.symbol) %}
+            {% set symbol_dividends = dividends_by_symbol.get(symbol_key, []) %}
+            {% set symbol_dividend_total = dividend_totals.get(symbol_key, 0) %}
+            {% set show_dividend_rows = symbol_dividends|length > 0 %}
             <div class="card mb-2 symbol-card" data-symbol="{{ item.symbol }}">
                  <div class="card-header py-2 px-3 category-header page-accent-surface"
                      onclick="toggleSymbolTransactions('{{ item.html_group_id }}')">
@@ -79,8 +79,8 @@
                         <div class="col-lg-8 col-md-7">
                             <div class="category-summary columns-6">
                                 <div class="summary-item">
-                                    <div class="summary-label">Transactions</div>
-                                    <div class="summary-value">{{ item.summary.transaction_count + symbol_divs|length }}</div>
+                                    <div class="summary-label">Records</div>
+                                    <div class="summary-value">{{ item.summary.transaction_count + symbol_dividends|length }}</div>
                                 </div>
                                 <div class="summary-item">
                                     <div class="summary-label">Total Spent</div>
@@ -106,7 +106,7 @@
                                 <div class="summary-item">
                                     <div class="summary-label">Total Dividends</div>
                                     <div class="summary-value dividend">
-                                        {% if symbol_div_total > 0 %}+{% endif %}{{ symbol_div_total|fmt_money }}
+                                        {% if symbol_dividend_total > 0 %}+{% endif %}{{ symbol_dividend_total|fmt_money }}
                                     </div>
                                 </div>
                             </div>
@@ -152,7 +152,7 @@
                 </div>
 
                 <div class="category-transactions" id="transactions-{{ item.html_group_id }}" style="display: none;">
-                    {% if item.transactions|length > 0 or show_div_rows %}
+                    {% if item.transactions|length > 0 or show_dividend_rows %}
                     <div class="table-responsive">
                         <table class="table table-sm table-hover align-middle mb-0 transactions-table">
                             <thead class="table-light">
@@ -215,8 +215,8 @@
                                     </td>
                                 </tr>
                                 {% endfor %}
-                                {% if show_div_rows %}
-                                {% for div in symbol_divs %}
+                                {% if show_dividend_rows %}
+                                {% for div in symbol_dividends %}
                                 <tr>
                                     <td><small class="text-muted">{{ div.date_short }}</small></td>
                                     <td>
@@ -279,7 +279,7 @@
 </div>
 
 <!-- Add Symbol Modal -->
-<div class="modal fade" id="addAssetModal" tabindex="-1">
+<div class="modal fade" id="addSymbolModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
             <form method="POST" action="{{ url_for('transactions.asset_add') }}" autocomplete="off" novalidate>
@@ -605,12 +605,12 @@
 </div>
 
 <!-- Delete Symbol Modal -->
-<div class="modal fade" id="deleteAssetModal" tabindex="-1">
+<div class="modal fade" id="deleteSymbolModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <form method="POST" id="deleteAssetForm" action="{{ url_for('transactions.asset_delete') }}" novalidate>
+            <form method="POST" id="deleteSymbolForm" action="{{ url_for('transactions.asset_delete') }}" novalidate>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <input type="hidden" name="delete_asset_fund_id" id="delete_asset_fund_id">
+                <input type="hidden" name="delete_asset_fund_id" id="delete_symbol_fund_id">
                 <input type="hidden" name="delete_asset_symbol" id="delete_asset_symbol">
                 <div class="modal-header">
                     <h5 class="modal-title d-flex align-items-center gap-2">
@@ -737,7 +737,7 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <p>{{ Msg.confirm.DELETE_TRANSACTION }}</p>
+                    <p>{{ Msg.confirm.DELETE_DIVIDEND }}</p>
                     <div id="delete_dividend_error" class="alert alert-danger d-none"></div>
                 </div>
                 <div class="modal-footer">
@@ -777,8 +777,8 @@ function initFlatpickr(id) {
 
 function ensureEditDatePicker() { initFlatpickr('edit_date'); }
 
-function openAddAssetModal() {
-    const modalEl = document.getElementById('addAssetModal');
+function openAddSymbolModal() {
+    const modalEl = document.getElementById('addSymbolModal');
     const symbolInput = document.getElementById('asset_symbol');
     if (symbolInput) symbolInput.value = '';
     new bootstrap.Modal(modalEl).show();
@@ -794,8 +794,8 @@ function openAddAssetModal() {
 
     document.addEventListener('DOMContentLoaded', function() {
         try {
-            if (which === 'addAssetModal') {
-                openAddAssetModal();
+            if (which === 'addSymbolModal') {
+                openAddSymbolModal();
                 const fundVal = {{ (form_values.get('asset_add', {}).get('asset_fund_id', '') if form_values else '') | tojson }};
                 const symVal = {{ (form_values.get('asset_add', {}).get('asset_symbol', '') if form_values else '') | tojson }};
                 const fundEl = document.getElementById('asset_fund_id');
@@ -862,12 +862,12 @@ function openAddAssetModal() {
                 deleteTransaction(payload.tx_id);
             }
 
-            if (which === 'deleteAssetModal') {
+            if (which === 'deleteSymbolModal') {
                 const fundId = payload && payload.fund_id ? payload.fund_id : '';
                 const symbol = payload && payload.symbol ? payload.symbol : '';
                 const category = payload && payload.category ? payload.category : '';
 
-                const fundInput = document.getElementById('delete_asset_fund_id');
+                const fundInput = document.getElementById('delete_symbol_fund_id');
                 const symbolInput = document.getElementById('delete_asset_symbol');
                 const context = document.getElementById('delete_asset_context');
 
@@ -879,7 +879,7 @@ function openAddAssetModal() {
                     context.textContent = symText ? `${assetClassText}/${symText}` : assetClassText;
                 }
 
-                new bootstrap.Modal(document.getElementById('deleteAssetModal')).show();
+                new bootstrap.Modal(document.getElementById('deleteSymbolModal')).show();
             }
 
             if (which === 'editTransactionModal' && payload && payload.id) {
@@ -1143,13 +1143,13 @@ function editTransaction(id, fundId, type, symbol, price, quantity, fees, notes,
     };
 })();
 
-// Setup delete asset AJAX handler once
-(function setupDeleteAsset() {
-    var form = document.getElementById('deleteAssetForm');
+// Setup delete symbol AJAX handler once
+(function setupDeleteSymbol() {
+    var form = document.getElementById('deleteSymbolForm');
     var errorDiv = document.getElementById('delete_asset_error');
     var submitBtn = form.querySelector('button[type="submit"]');
-    var modalEl = document.getElementById('deleteAssetModal');
-    var fundInput = document.getElementById('delete_asset_fund_id');
+    var modalEl = document.getElementById('deleteSymbolModal');
+    var fundInput = document.getElementById('delete_symbol_fund_id');
     var symbolInput = document.getElementById('delete_asset_symbol');
 
     function showError(msg) {
@@ -1196,7 +1196,7 @@ function editTransaction(id, fundId, type, symbol, price, quantity, fees, notes,
         xhr.send(new FormData(form));
     });
 
-    window.openDeleteAssetModal = function(fundId, categoryName, symbol, txCount) {
+    window.openDeleteSymbolModal = function(fundId, categoryName, symbol, txCount) {
         if (fundInput) fundInput.value = fundId ? String(fundId) : '';
         if (symbolInput) symbolInput.value = (symbol || '').toUpperCase();
 
@@ -1387,7 +1387,7 @@ function editTransaction(id, fundId, type, symbol, price, quantity, fees, notes,
             const category = delBtn.getAttribute('data-category') || '';
             const symbol = delBtn.getAttribute('data-symbol') || '';
             const txCount = parseInt(delBtn.getAttribute('data-tx-count') || '0', 10) || 0;
-            openDeleteAssetModal(fundId, category, symbol, txCount);
+            openDeleteSymbolModal(fundId, category, symbol, txCount);
         }
 
         // Standalone dividend button — opens the dedicated Add Dividend modal

@@ -823,8 +823,8 @@ class FormValidatorsInitializer {
     }
 
     initializeAllValidators() {
-        // Add funds modal (deposit)
-        this.initValidator('#addFundsForm', [
+        // Deposit funds modal
+        this.initValidator('#depositFundsForm', [
             { ...ValidationRules.fundsAmount, selector: '#add_funds_amount' },
             { ...ValidationRules.date, selector: '#deposit_date', name: 'deposit_date' }
         ]);
@@ -948,8 +948,8 @@ class ModalAjaxHandler {
             // Add Transaction handles both buy/sell AND dividend (action changes dynamically)
             { modalId: 'addTransactionModal', formSelector: '#addTransactionModal form' },
             { modalId: 'editTransactionModal', formSelector: '#editTransactionForm' },
-            { modalId: 'addFundModal', formSelector: 'form[action$="/funds/add"]' },
-            { modalId: 'addFundsModal', formSelector: '#addFundsForm' },
+            { modalId: 'newFundModal', formSelector: 'form[action$="/funds/add"]' },
+            { modalId: 'depositFundsModal', formSelector: '#depositFundsForm' },
             { modalId: 'withdrawFundsModal', formSelector: '#withdrawFundsForm' }
         ];
 

@@ -333,8 +333,8 @@ def test_dashboard_totals(app):
         print("TEST 4 – PORTFOLIO DASHBOARD TOTALS")
         print("=" * 60)
 
-        # Total Funds = 20,000 + 12,000 = 32,000 (deposits only)
-        _assert('Total Investment (sum of deposits)', 32_000, totals['total_investment'])
+        # Total Allocated = 20,000 + 12,000 = 32,000 (deposits only)
+        _assert('Total Allocated (sum of deposits)', 32_000, totals['total_allocated'])
 
         # Cash: fund_a.cash_balance=15,000 + fund_b.cash_balance=12,000 = 27,000 (no transactions)
         _assert('Total Cash (no transactions)', 27_000, totals['total_cash'])

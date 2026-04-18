@@ -320,7 +320,7 @@ class PortfolioCalculator:
             q = q.filter_by(user_id=user_id)
         funds = q.all()
 
-        total_investment = ZERO
+        total_allocated = ZERO
         total_cash = ZERO
         total_invested = ZERO
         total_realized_pnl = ZERO
@@ -329,7 +329,7 @@ class PortfolioCalculator:
 
         for fund in funds:
             # Use deposits-only total, consistent with get_category_summary()
-            total_investment += PortfolioCalculator.get_total_funds_for_fund(fund.id)
+            total_allocated += PortfolioCalculator.get_total_funds_for_fund(fund.id)
 
             total_cash += PortfolioCalculator.get_cash_balance_for_fund(fund.id)
 
@@ -344,13 +344,13 @@ class PortfolioCalculator:
 
         total_value = total_invested + total_cash
 
-        # ROI: prefer total_investment (deposits only); fallback to cost basis
-        # when fund events are deleted (total_investment=0 but trades exist).
-        roi_base = total_investment if total_investment != 0 else total_realized_cost_basis
+        # ROI: prefer total_allocated (deposits only); fallback to cost basis
+        # when fund events are deleted (total_allocated=0 but trades exist).
+        roi_base = total_allocated if total_allocated != 0 else total_realized_cost_basis
         realized_roi_percent, realized_roi_display = _roi_display(total_realized_pnl, roi_base)
 
         return {
-            'total_investment': total_investment,
+            'total_allocated': total_allocated,
             'total_cash': total_cash,
             'total_realized_pnl': total_realized_pnl,
             'total_dividends': total_dividends,

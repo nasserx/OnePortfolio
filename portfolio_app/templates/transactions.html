@@ -14,14 +14,14 @@
         <div class="dropdown">
             <button class="btn btn-outline-secondary filter-dropdown-btn dropdown-toggle" type="button"
                     data-bs-toggle="dropdown" aria-expanded="false">
-                {{ selected_category or 'All categories' }}
+                {{ selected_category or 'All' }}
                 <i class="bi bi-chevron-down"></i>
             </button>
             <ul class="dropdown-menu">
                 <li>
                     <a class="dropdown-item {% if not selected_category %}active{% endif %}"
                        href="{{ url_for('transactions.transaction_list') }}">
-                        All categories
+                        All
                     </a>
                 </li>
                 {% if funds %}

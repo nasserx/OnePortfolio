@@ -24,7 +24,7 @@
     {% endif %}
 </div>
 
-<!-- Funds by Asset Class (expandable history) -->
+<!-- Funds by Fund type (expandable history) -->
 <div class="row">
     <div class="col-12">
         {% if fund_details|length > 0 %}
@@ -190,7 +190,7 @@
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label class="form-label">Asset Class</label>
+                        <label class="form-label">Fund type</label>
                         <input type="text" class="form-control" id="add_funds_category" readonly>
                     </div>
                     {% set _dep_errs = (form_errors.get('funds_deposit', {}) if form_errors else {}) %}
@@ -244,7 +244,7 @@
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label class="form-label">Asset Class</label>
+                        <label class="form-label">Fund type</label>
                         <input type="text" class="form-control" id="withdraw_funds_category" readonly>
                     </div>
                     {% set _with_errs = (form_errors.get('funds_withdraw', {}) if form_errors else {}) %}
@@ -298,11 +298,11 @@
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label for="category" class="form-label">Asset Class</label>
+                        <label for="category" class="form-label">Fund type</label>
                         {% set _add_errs = (form_errors.get('funds_add', {}) if form_errors else {}) %}
                         {% set _add_vals = (form_values.get('funds_add', {}) if form_values else {}) %}
                         <select class="form-select {% if _add_errs.get('category') %}is-invalid{% endif %}" id="category" name="category">
-                            <option value="">Select asset class...</option>
+                            <option value="">Select fund type...</option>
                             {% for cat in available_asset_classes %}
                             <option value="{{ cat }}" {% if _add_vals.get('category') == cat %}selected{% endif %}>{{ cat }}</option>
                             {% endfor %}

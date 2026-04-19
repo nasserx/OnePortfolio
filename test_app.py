@@ -61,7 +61,8 @@ def test_transaction_calculations(app):
         svc = Services()
 
         # --- Commodities: XAU (2 buys, no sell) ---
-        comm = svc.fund_service.create_fund('Commodities', _dec(25000))
+        comm = svc.fund_service.create_fund('Commodities')
+        svc.fund_service.deposit_funds(comm.id, _dec(25000))
         t1 = Transaction(fund_id=comm.id, transaction_type='Buy',
                          date=datetime(2026, 1, 10), symbol='XAU',
                          price=2000, quantity=1.5, fees=50)
@@ -72,7 +73,8 @@ def test_transaction_calculations(app):
         t2.calculate_net_amount()
 
         # --- Stocks: AAPL (2 buys) + MSFT (1 buy) ---
-        stocks = svc.fund_service.create_fund('Stocks', _dec(40000))
+        stocks = svc.fund_service.create_fund('Stocks')
+        svc.fund_service.deposit_funds(stocks.id, _dec(40000))
         t3 = Transaction(fund_id=stocks.id, transaction_type='Buy',
                          date=datetime(2026, 1, 8), symbol='AAPL',
                          price=100, quantity=50, fees=25)
@@ -87,7 +89,8 @@ def test_transaction_calculations(app):
         t5.calculate_net_amount()
 
         # --- ETFs: ETHA (buy, partial sell, buy again) ---
-        etfs = svc.fund_service.create_fund('ETFs', _dec(200))
+        etfs = svc.fund_service.create_fund('ETFs')
+        svc.fund_service.deposit_funds(etfs.id, _dec(200))
         e1 = Transaction(fund_id=etfs.id, transaction_type='Buy',
                          date=datetime(2026, 1, 1), symbol='ETHA',
                          price=10, quantity=10, fees=0)
@@ -158,7 +161,8 @@ def test_fund_events(app):
 
         # ── Scenario A: deposits only, no withdrawals ──
         #   Initial=10,000  Deposit=5,000  → Total Funds=15,000
-        fund_a = svc.fund_service.create_fund('Stocks', _dec(10_000))
+        fund_a = svc.fund_service.create_fund('Stocks')
+        svc.fund_service.deposit_funds(fund_a.id, _dec(10_000))
         svc.fund_service.deposit_funds(fund_a.id, _dec(5_000))
 
         tf_a = PortfolioCalculator.get_total_funds_for_fund(fund_a.id)
@@ -175,7 +179,8 @@ def test_fund_events(app):
         #   Total Funds = 10,000+1,000 = 11,000
         #   fund.cash_balance = 10,000+1,000-4,999-5,999 = 2
         #   Cash = fund.cash_balance = 2 (no buys/sells)
-        fund_b = svc.fund_service.create_fund('ETFs', _dec(10_000))
+        fund_b = svc.fund_service.create_fund('ETFs')
+        svc.fund_service.deposit_funds(fund_b.id, _dec(10_000))
         svc.fund_service.deposit_funds(fund_b.id, _dec(1_000))
         svc.fund_service.withdraw_funds(fund_b.id, _dec(4_999))
         svc.fund_service.withdraw_funds(fund_b.id, _dec(5_999))
@@ -200,7 +205,8 @@ def test_fund_events(app):
         #   Total Funds = 10,000 + 1,000 = 11,000
         #   Total Value = cash + invested = 0 + 2,500.50 = 2,500.50
         #   ROI base = 11,000  →  ROI = 2,498.50 / 11,000 = ~22.71%
-        fund_c = svc.fund_service.create_fund('Crypto', _dec(10_000))
+        fund_c = svc.fund_service.create_fund('Crypto')
+        svc.fund_service.deposit_funds(fund_c.id, _dec(10_000))
         svc.fund_service.withdraw_funds(fund_c.id, _dec(4_999))
         svc.fund_service.deposit_funds(fund_c.id, _dec(1_000))
         svc.fund_service.withdraw_funds(fund_c.id, _dec(5_999))
@@ -234,7 +240,7 @@ def test_fund_events(app):
         # ── Scenario D: legacy fund with no FundEvents (fallback to fund.cash_balance) ──
         #   Simulates old database where fund.cash_balance=8,000 but no events exist.
         #   get_total_funds_for_fund() must return 8,000 (not 0).
-        legacy_fund = Fund(asset_class='Commodities', cash_balance=_dec(8_000))
+        legacy_fund = Fund(name='Legacy', cash_balance=_dec(8_000))
         db.session.add(legacy_fund)
         db.session.commit()
 
@@ -265,7 +271,8 @@ def test_category_summary(app):
 
         # Fund: Initial=10,000  Withdraw=4,999  Deposit=1,000  Withdraw=5,999
         # Buy 5000 AAPL @ $1 fees=1 | Sell 2500 AAPL @ $2 fees=1
-        fund = svc.fund_service.create_fund('Stocks', _dec(10_000))
+        fund = svc.fund_service.create_fund('Stocks')
+        svc.fund_service.deposit_funds(fund.id, _dec(10_000))
         svc.fund_service.withdraw_funds(fund.id, _dec(4_999))
         svc.fund_service.deposit_funds(fund.id, _dec(1_000))
         svc.fund_service.withdraw_funds(fund.id, _dec(5_999))
@@ -320,11 +327,13 @@ def test_dashboard_totals(app):
         svc = Services()
 
         # Fund A: Initial=20,000  Withdraw=5,000 → total_funds=20,000  fund.cash_balance=15,000
-        fa = svc.fund_service.create_fund('Stocks', _dec(20_000))
+        fa = svc.fund_service.create_fund('Stocks')
+        svc.fund_service.deposit_funds(fa.id, _dec(20_000))
         svc.fund_service.withdraw_funds(fa.id, _dec(5_000))
 
         # Fund B: Initial=10,000  Deposit=2,000 → total_funds=12,000  fund.cash_balance=12,000
-        fb = svc.fund_service.create_fund('ETFs', _dec(10_000))
+        fb = svc.fund_service.create_fund('ETFs')
+        svc.fund_service.deposit_funds(fb.id, _dec(10_000))
         svc.fund_service.deposit_funds(fb.id, _dec(2_000))
 
         totals = PortfolioCalculator.get_portfolio_dashboard_totals()
@@ -409,8 +418,10 @@ def test_dividends(app):
         svc1 = Services(user_id=u1.id)
         svc2 = Services(user_id=u2.id)
 
-        fund1 = svc1.fund_service.create_fund('Stocks', _dec(10_000), user_id=u1.id)
-        fund2 = svc2.fund_service.create_fund('ETFs',   _dec(5_000),  user_id=u2.id)
+        fund1 = svc1.fund_service.create_fund('Stocks', user_id=u1.id)
+        svc1.fund_service.deposit_funds(fund1.id, _dec(10_000))
+        fund2 = svc2.fund_service.create_fund('ETFs', user_id=u2.id)
+        svc2.fund_service.deposit_funds(fund2.id, _dec(5_000))
 
         print("\n" + "=" * 60)
         print("TEST 6 – DIVIDEND FEATURE")
@@ -452,7 +463,6 @@ def test_dividends(app):
 
         # ── 6f: ownership check – user2 cannot delete user1's dividend ──
         print("\n  6f – ownership check (cross-user delete rejected)")
-        import pytest
         try:
             svc2.transaction_service.delete_dividend(d.id)
             raise AssertionError('Should have raised ValueError for wrong owner')

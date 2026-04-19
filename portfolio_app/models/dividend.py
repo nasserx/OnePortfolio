@@ -39,7 +39,7 @@ class Dividend(db.Model):
             'id':         self.id,
             'fund_id':    self.fund_id,
             'symbol':     self.symbol or '',
-            'asset_class': self.fund.asset_class if self.fund else '',
+            'portfolio_name': self.fund.name if self.fund else '',
             'type':       'Dividend',
             'amount':     float(self.amount),
             'date':       self.date_full,

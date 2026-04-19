@@ -30,7 +30,7 @@ class Asset(db.Model):
         return {
             'id': self.id,
             'fund_id': self.fund_id,
-            'asset_class': self.fund.asset_class if getattr(self, 'fund', None) else None,
+            'portfolio_name': self.fund.name if getattr(self, 'fund', None) else None,
             'symbol': (self.symbol or '').upper(),
             'created_at': self.created_at.strftime('%Y-%m-%d') if self.created_at else None,
             'updated_at': self.updated_at.strftime('%Y-%m-%d') if self.updated_at else None,

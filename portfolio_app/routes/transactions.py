@@ -14,6 +14,7 @@ from portfolio_app.forms import (
 )
 from portfolio_app.utils import get_error_message, get_first_form_error, SuccessMessages, ErrorMessages, is_ajax_request, json_response
 from portfolio_app.utils.constants import safe_html_id
+from portfolio_app.utils.decimal_utils import ZERO
 from config import Config
 
 logger = logging.getLogger(__name__)
@@ -22,30 +23,32 @@ logger = logging.getLogger(__name__)
 transactions_bp = Blueprint('transactions', __name__)
 
 
-def _get_transactions_page_context(category_filter=''):
+def _decimal_places(value) -> int:
+    """Return the number of significant decimal places in a numeric value."""
+    if value is None:
+        return 0
+    d = Decimal(str(value))
+    s = format(d, 'f')
+    if '.' not in s:
+        return 0
+    fractional = s.split('.', 1)[1].rstrip('0')
+    return len(fractional)
+
+
+def _get_transactions_page_context(portfolio_filter=''):
     """Build context data for the transactions page.
 
     Args:
-        category_filter: Optional asset class name to filter the view.
+        portfolio_filter: Optional portfolio name to filter the view.
     """
     svc = get_services()
     fund_repo, transaction_repo, asset_repo = svc.fund_repo, svc.transaction_repo, svc.asset_repo
-    category_filter = (category_filter or '').strip()
+    portfolio_filter = (portfolio_filter or '').strip()
     funds = fund_repo.get_all()
     holdings = []
 
-    def _decimal_places(value) -> int:
-        if value is None:
-            return 0
-        d = Decimal(str(value))
-        s = format(d, 'f')
-        if '.' not in s:
-            return 0
-        fractional = s.split('.', 1)[1].rstrip('0')
-        return len(fractional)
-
     for fund in funds:
-        if category_filter and fund.asset_class != category_filter:
+        if portfolio_filter and fund.name != portfolio_filter:
             continue
 
         tracked_symbols = set()
@@ -111,10 +114,9 @@ def _get_transactions_page_context(category_filter=''):
             })
 
     # Load dividends grouped by (fund_id, symbol) — single query for all funds
-    visible_fund_ids = [f.id for f in funds if not category_filter or f.asset_class == category_filter]
+    visible_fund_ids = [f.id for f in funds if not portfolio_filter or f.name == portfolio_filter]
     dividends_by_symbol: dict = {}
     dividend_totals: dict = {}
-    ZERO = Decimal('0')
     for div in svc.dividend_repo.get_by_fund_ids(visible_fund_ids):
         sym = (div.symbol or '').upper()
         if not sym:
@@ -128,7 +130,7 @@ def _get_transactions_page_context(category_filter=''):
         'holdings': holdings,
         'funds': funds,
         'transaction_types': Config.TRANSACTION_TYPES,
-        'selected_category': category_filter,
+        'selected_portfolio': portfolio_filter,
         'dividends_by_symbol': dividends_by_symbol,
         'dividend_totals': dividend_totals,
     }
@@ -138,8 +140,8 @@ def _get_transactions_page_context(category_filter=''):
 @login_required
 def transaction_list():
     """Transactions page."""
-    category_filter = request.args.get('category', '')
-    ctx = _get_transactions_page_context(category_filter)
+    portfolio_filter = request.args.get('portfolio', '')
+    ctx = _get_transactions_page_context(portfolio_filter)
     return render_template(
         'transactions.html',
         **ctx,
@@ -204,21 +206,21 @@ def transaction_add():
         return redirect(url_for('transactions.transaction_list'))
 
 
-@transactions_bp.route('/edit/<int:id>', methods=['POST'])
+@transactions_bp.route('/edit/<int:transaction_id>', methods=['POST'])
 @login_required
-def transaction_edit(id):
+def transaction_edit(transaction_id):
     """Edit existing transaction."""
     try:
         svc = get_services()
 
-        transaction = svc.transaction_repo.get_by_id(id)
+        transaction = svc.transaction_repo.get_by_id(transaction_id)
         if not transaction:
             if is_ajax_request():
                 return json_response(False, error=ErrorMessages.TRANSACTION_NOT_FOUND)
             flash(ErrorMessages.TRANSACTION_NOT_FOUND, 'error')
             return redirect(url_for('transactions.transaction_list'))
 
-        form = TransactionEditForm(request.form, id, transaction.transaction_type)
+        form = TransactionEditForm(request.form, transaction_id, transaction.transaction_type)
         if not form.validate():
             if is_ajax_request():
                 return json_response(False, error=get_first_form_error(form.errors))
@@ -256,7 +258,7 @@ def transaction_edit(id):
         return redirect(url_for('transactions.transaction_list'))
 
     except Exception:
-        logger.exception('Failed to edit transaction %s', id)
+        logger.exception('Failed to edit transaction %s', transaction_id)
         db.session.rollback()
         if is_ajax_request():
             return json_response(False, error=ErrorMessages.OPERATION_FAILED)
@@ -264,13 +266,13 @@ def transaction_edit(id):
         return redirect(url_for('transactions.transaction_list'))
 
 
-@transactions_bp.route('/delete/<int:id>', methods=['POST'])
+@transactions_bp.route('/delete/<int:transaction_id>', methods=['POST'])
 @login_required
-def transaction_delete(id):
+def transaction_delete(transaction_id):
     """Delete transaction."""
     try:
         svc = get_services()
-        svc.transaction_service.delete_transaction(id)
+        svc.transaction_service.delete_transaction(transaction_id)
 
         if is_ajax_request():
             return json_response(True, message=SuccessMessages.TRANSACTION_DELETED)
@@ -282,7 +284,7 @@ def transaction_delete(id):
         flash(get_error_message(e), 'error')
 
     except Exception:
-        logger.exception('Failed to delete transaction %s', id)
+        logger.exception('Failed to delete transaction %s', transaction_id)
         db.session.rollback()
         if is_ajax_request():
             return json_response(False, error=ErrorMessages.OPERATION_FAILED)
@@ -343,21 +345,21 @@ def dividend_add():
         return redirect(url_for('transactions.transaction_list'))
 
 
-@transactions_bp.route('/dividends/edit/<int:id>', methods=['POST'])
+@transactions_bp.route('/dividends/edit/<int:dividend_id>', methods=['POST'])
 @login_required
-def dividend_edit(id):
+def dividend_edit(dividend_id):
     """Edit an existing dividend."""
     try:
         svc = get_services()
 
-        dividend = svc.dividend_repo.get_by_id(id)
+        dividend = svc.dividend_repo.get_by_id(dividend_id)
         if not dividend:
             if is_ajax_request():
                 return json_response(False, error=ErrorMessages.DIVIDEND_NOT_FOUND)
             flash(ErrorMessages.DIVIDEND_NOT_FOUND, 'error')
             return redirect(url_for('transactions.transaction_list'))
 
-        form = DividendEditForm(request.form, id)
+        form = DividendEditForm(request.form, dividend_id)
         if not form.validate():
             if is_ajax_request():
                 return json_response(False, error=get_first_form_error(form.errors))
@@ -385,7 +387,7 @@ def dividend_edit(id):
         return redirect(url_for('transactions.transaction_list'))
 
     except Exception:
-        logger.exception('Failed to edit dividend %s', id)
+        logger.exception('Failed to edit dividend %s', dividend_id)
         db.session.rollback()
         if is_ajax_request():
             return json_response(False, error=ErrorMessages.OPERATION_FAILED)
@@ -393,13 +395,13 @@ def dividend_edit(id):
         return redirect(url_for('transactions.transaction_list'))
 
 
-@transactions_bp.route('/dividends/delete/<int:id>', methods=['POST'])
+@transactions_bp.route('/dividends/delete/<int:dividend_id>', methods=['POST'])
 @login_required
-def dividend_delete(id):
+def dividend_delete(dividend_id):
     """Delete a dividend."""
     try:
         svc = get_services()
-        svc.transaction_service.delete_dividend(id)
+        svc.transaction_service.delete_dividend(dividend_id)
 
         if is_ajax_request():
             return json_response(True, message=SuccessMessages.DIVIDEND_DELETED)
@@ -411,7 +413,7 @@ def dividend_delete(id):
         flash(get_error_message(e), 'error')
 
     except Exception:
-        logger.exception('Failed to delete dividend %s', id)
+        logger.exception('Failed to delete dividend %s', dividend_id)
         db.session.rollback()
         if is_ajax_request():
             return json_response(False, error=ErrorMessages.OPERATION_FAILED)

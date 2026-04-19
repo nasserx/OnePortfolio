@@ -15,7 +15,7 @@ def charts() -> str:
     portfolio_summary, _ = svc.portfolio_service.get_portfolio_summary()
 
     chart_data = {
-        'categories': [item['asset_class'] for item in portfolio_summary],
+        'categories': [item['name'] for item in portfolio_summary],
         'allocations': [float(item['allocation']) for item in portfolio_summary],
         'realized_pnl': [float(item['realized_pnl']) for item in portfolio_summary],
     }

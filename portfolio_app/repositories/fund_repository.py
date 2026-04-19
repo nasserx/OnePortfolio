@@ -27,11 +27,10 @@ class FundRepository(BaseRepository[Fund]):
         """Get a fund by ID, scoped to the current user for security."""
         return self._base_query().filter_by(id=id).first()
 
-    def get_by_asset_class(self, asset_class: str) -> Optional[Fund]:
-        """Get fund by asset class name within the current user's portfolio."""
-        return self._base_query().filter_by(asset_class=asset_class).first()
+    def get_by_name(self, name: str) -> Optional[Fund]:
+        """Get fund by name within the current user's portfolio."""
+        return self._base_query().filter_by(name=name).first()
 
-    def get_available_asset_classes(self, all_asset_classes: List[str]) -> List[str]:
-        """Get asset classes not yet used by the current user."""
-        existing = {f.asset_class for f in self.get_all()}
-        return [asset_class for asset_class in all_asset_classes if asset_class not in existing]
+    def get_existing_names(self) -> List[str]:
+        """Get all portfolio names for the current user."""
+        return [f.name for f in self.get_all()]

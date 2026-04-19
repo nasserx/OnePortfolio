@@ -7,13 +7,7 @@ from portfolio_app.models.fund_event import FundEvent
 from portfolio_app.repositories.fund_repository import FundRepository
 from portfolio_app.repositories.fund_event_repository import FundEventRepository
 from portfolio_app.utils.constants import EventType
-
-ZERO = Decimal('0')
-
-
-def _to_decimal(value) -> Decimal:
-    """Convert any numeric value to Decimal safely."""
-    return Decimal(str(value))
+from portfolio_app.utils.decimal_utils import ZERO, to_decimal as _to_decimal
 
 
 class FundService:
@@ -27,32 +21,18 @@ class FundService:
     # Fund CRUD
     # ------------------------------------------------------------------
 
-    def create_fund(self, asset_class: str, amount: Decimal, user_id: Optional[int] = None, notes: str = 'Initial funding', date: Optional[Any] = None) -> Fund:
-        """Create new fund with initial deposit event.
+    def create_fund(self, name: str, user_id: Optional[int] = None) -> Fund:
+        """Create a new portfolio with zero balance.
 
         Args:
-            asset_class: Asset class name (e.g. 'Stocks', 'Crypto')
-            amount: Initial deposit amount
+            name: Portfolio name (must be unique per user)
             user_id: Owner user ID
-            notes: Label for the initial deposit event
-            date: Date of the initial deposit event
         """
-        if self.fund_repo.get_by_asset_class(asset_class):
-            raise ValueError('Fund already exists')
+        if self.fund_repo.get_by_name(name):
+            raise ValueError('A portfolio with this name already exists')
 
-        fund = Fund(asset_class=asset_class, cash_balance=amount, user_id=user_id)
+        fund = Fund(name=name, cash_balance=ZERO, user_id=user_id)
         self.fund_repo.add(fund)
-        self.fund_repo.flush()  # Obtain fund.id before creating event
-
-        event = FundEvent(
-            fund_id=fund.id,
-            event_type=EventType.INITIAL,
-            amount_delta=amount,
-            notes=notes
-        )
-        if date is not None:
-            event.date = date
-        self.event_repo.add(event)
         self.fund_repo.commit()
 
         return fund
@@ -61,20 +41,20 @@ class FundService:
         """Delete fund and cascade-delete its events and transactions.
 
         Returns:
-            The asset class name of the deleted fund.
+            The name of the deleted fund.
         """
         fund = self._require_fund(fund_id)
-        asset_class = fund.asset_class
+        name = fund.name
         self.fund_repo.delete(fund)
         self.fund_repo.commit()
-        return asset_class
+        return name
 
     # ------------------------------------------------------------------
     # Deposit / Withdraw
     # ------------------------------------------------------------------
 
     def deposit_funds(self, fund_id: int, amount_delta: Decimal, notes: Optional[str] = None, date: Optional[Any] = None) -> Fund:
-        """Deposit funds into an asset class."""
+        """Deposit funds into a portfolio."""
         fund = self._require_fund(fund_id)
         fund.cash_balance = _to_decimal(fund.cash_balance) + amount_delta
         self._create_event(fund_id, EventType.DEPOSIT, amount_delta, notes, date)
@@ -82,10 +62,12 @@ class FundService:
         return fund
 
     def withdraw_funds(self, fund_id: int, amount_delta: Decimal, notes: Optional[str] = None, date: Optional[Any] = None) -> Fund:
-        """Withdraw funds from an asset class (amount_delta is positive)."""
+        """Withdraw funds from a portfolio (amount_delta is positive)."""
         fund = self._require_fund(fund_id)
-        fund.cash_balance = _to_decimal(fund.cash_balance) - amount_delta
-        # Store withdrawal as negative delta for accurate fund history
+        current_balance = _to_decimal(fund.cash_balance)
+        if amount_delta > current_balance:
+            raise ValueError('Insufficient cash balance')
+        fund.cash_balance = current_balance - amount_delta
         self._create_event(fund_id, EventType.WITHDRAWAL, -amount_delta, notes, date)
         self.fund_repo.commit()
         return fund
@@ -98,13 +80,12 @@ class FundService:
         """Update a fund event and adjust the parent fund's balance."""
         event = self._require_event(event_id)
 
-        # Apply the difference between old and new delta to the fund balance
+        fund = self._require_fund(event.fund_id)
+
         old_delta = _to_decimal(event.amount_delta)
         delta_change = amount_delta - old_delta
 
-        fund = self.fund_repo.get_by_id(event.fund_id)
-        if fund:
-            fund.cash_balance = _to_decimal(fund.cash_balance) + delta_change
+        fund.cash_balance = _to_decimal(fund.cash_balance) + delta_change
 
         event.amount_delta = amount_delta
         if notes is not None:
@@ -116,23 +97,17 @@ class FundService:
         return event
 
     def delete_fund_event(self, event_id: int) -> int:
-        """Delete a fund event, reverse its effect, and clean up empty events.
-
-        After deletion, if only zero-delta events remain (no financial impact),
-        they are removed as well. The fund itself is kept with its current balance.
-        """
+        """Delete a fund event and reverse its effect on the balance."""
         event = self._require_event(event_id)
         fund_id = event.fund_id
 
-        # Reverse the event's effect on the fund balance
-        fund = self.fund_repo.get_by_id(fund_id)
-        if fund:
-            fund.cash_balance = _to_decimal(fund.cash_balance) - _to_decimal(event.amount_delta)
+        fund = self._require_fund(fund_id)
+
+        fund.cash_balance = _to_decimal(fund.cash_balance) - _to_decimal(event.amount_delta)
 
         self.event_repo.delete(event)
         self.event_repo.flush()
 
-        # Auto-cleanup: remove leftover zero-delta events (no useful history)
         self._cleanup_empty_events(fund_id)
 
         self.fund_repo.commit()
@@ -170,7 +145,7 @@ class FundService:
         return event
 
     def _cleanup_empty_events(self, fund_id: int) -> None:
-        """Remove all remaining events if they all have zero delta (no financial data)."""
+        """Remove all remaining events if they all have zero delta."""
         remaining = self.event_repo.get_by_fund_id(fund_id)
         if remaining and all(_to_decimal(e.amount_delta) == ZERO for e in remaining):
             for e in remaining:

@@ -70,6 +70,10 @@ class TransactionService:
         Raises:
             ValidationError: If fees exceed sell proceeds
         """
+        # Verify the fund exists and belongs to the current user
+        if not self.fund_repo.get_by_id(fund_id):
+            raise ValueError('Fund not found')
+
         # Validate fees don't exceed sell proceeds
         if transaction_type == 'Sell':
             gross = price * quantity
@@ -128,6 +132,10 @@ class TransactionService:
         if not transaction:
             raise ValueError('Transaction not found')
 
+        # Verify the transaction belongs to the current user (fund_repo is user-scoped)
+        if not self.fund_repo.get_by_id(transaction.fund_id):
+            raise ValueError('Transaction not found')
+
         # Check if anything actually changed - skip update if not
         if self._has_no_changes(transaction, price, quantity, fees, notes, symbol, date):
             return transaction
@@ -174,6 +182,10 @@ class TransactionService:
         if not transaction:
             raise ValueError('Transaction not found')
 
+        # Verify the transaction belongs to the current user (fund_repo is user-scoped)
+        if not self.fund_repo.get_by_id(transaction.fund_id):
+            raise ValueError('Transaction not found')
+
         fund_id = transaction.fund_id
         symbol = transaction.symbol
 
@@ -201,6 +213,10 @@ class TransactionService:
         """
         symbol = PortfolioCalculator.normalize_symbol(symbol)
 
+        # Verify the fund belongs to the current user (fund_repo is user-scoped)
+        if not self.fund_repo.get_by_id(fund_id):
+            raise ValueError('Fund not found')
+
         # Check if already exists
         existing = self.asset_repo.get_by_fund_and_symbol(fund_id, symbol)
         if existing:
@@ -223,6 +239,10 @@ class TransactionService:
             ValueError: If asset not found
         """
         symbol = PortfolioCalculator.normalize_symbol(symbol)
+
+        # Verify the fund belongs to the current user (fund_repo is user-scoped)
+        if not self.fund_repo.get_by_id(fund_id):
+            raise ValueError('Asset not found')
 
         asset = self.asset_repo.get_by_fund_and_symbol(fund_id, symbol)
         if not asset:

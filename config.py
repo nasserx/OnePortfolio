@@ -33,24 +33,6 @@ class Config:
     REMEMBER_COOKIE_HTTPONLY = True
     REMEMBER_COOKIE_SECURE = os.environ.get('SESSION_COOKIE_SECURE', '0') in ('1', 'true', 'True')
     
-    # Supported asset classes
-    ASSET_CLASSES = [
-        'Stocks',
-        'ETFs',
-        'Commodities',
-        'Crypto'
-    ]
-
-    # Icon mapping per asset class: (bootstrap-icon-class, text-color-class)
-    # To add a new asset class icon, add an entry here matching the asset class name exactly.
-    ASSET_CLASS_ICONS = {
-        'Stocks':      ('bi-graph-up',           'text-success'),
-        'ETFs':        ('bi-bar-chart-line',      'text-info'),
-        'Commodities': ('bi-box-seam',            'text-warning'),
-        'Crypto':      ('bi-currency-bitcoin',    'text-danger'),
-    }
-    ASSET_CLASS_ICON_DEFAULT = ('bi-folder',  'text-secondary')
-
     # Transaction types (Buy/Sell only — Dividend uses a separate model)
     TRANSACTION_TYPES = ['Buy', 'Sell']
     DIVIDEND_TYPE = 'Dividend'

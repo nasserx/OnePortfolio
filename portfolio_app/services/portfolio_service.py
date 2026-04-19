@@ -64,7 +64,7 @@ class PortfolioService:
         Returns:
             Total portfolio value
         """
-        return PortfolioCalculator.get_total_portfolio_value()
+        return PortfolioCalculator.get_total_portfolio_value(user_id=self._user_id)
 
     def get_cash_balance_for_fund(self, fund_id: int) -> Decimal:
         """Get current cash balance for a fund.

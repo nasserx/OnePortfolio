@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Trades - OnePortfolio{% endblock %}
+{% block title %}Transactions - OnePortfolio{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
@@ -10,16 +10,16 @@
 <div class="page-header">
     <div class="d-flex align-items-center gap-2 ms-auto">
 
-        <!-- Asset class filter dropdown -->
+        <!-- Portfolio filter dropdown -->
         <div class="dropdown">
             <button class="btn btn-outline-secondary filter-dropdown-btn dropdown-toggle" type="button"
                     data-bs-toggle="dropdown" aria-expanded="false">
-                {{ selected_category or 'All' }}
+                {{ selected_portfolio or 'All' }}
                 <i class="bi bi-chevron-down"></i>
             </button>
             <ul class="dropdown-menu">
                 <li>
-                    <a class="dropdown-item {% if not selected_category %}active{% endif %}"
+                    <a class="dropdown-item {% if not selected_portfolio %}active{% endif %}"
                        href="{{ url_for('transactions.transaction_list') }}">
                         All
                     </a>
@@ -28,9 +28,9 @@
                 <li><hr class="dropdown-divider"></li>
                 {% for fund in funds %}
                 <li>
-                    <a class="dropdown-item {% if selected_category == fund.asset_class %}active{% endif %}"
-                       href="{{ url_for('transactions.transaction_list', category=fund.asset_class) }}">
-                        {{ fund.asset_class }}
+                    <a class="dropdown-item {% if selected_portfolio == fund.name %}active{% endif %}"
+                       href="{{ url_for('transactions.transaction_list', category=fund.name) }}">
+                        {{ fund.name }}
                     </a>
                 </li>
                 {% endfor %}
@@ -53,7 +53,7 @@
         {% if funds|length > 0 %}
             <button type="button" class="btn btn-primary" onclick="openAddSymbolModal()">Add Symbol</button>
         {% else %}
-            <a class="btn btn-primary" href="{{ url_for('funds.funds_list') }}">Add a fund first</a>
+            <a class="btn btn-primary" href="{{ url_for('funds.funds_list') }}">Create a portfolio first</a>
         {% endif %}
     </div>
 </div>
@@ -74,7 +74,7 @@
                         <div class="col-lg-2 col-md-3 d-flex align-items-center gap-2">
                             <i class="bi bi-chevron-right category-chevron" id="chevron-{{ item.html_group_id }}"></i>
                             <span class="fw-bold text-dark">{{ item.symbol }}</span>
-                            <span class="badge bg-light text-dark border">{{ item.fund.asset_class }}</span>
+                            <span class="badge bg-light text-dark border">{{ item.fund.name }}</span>
                         </div>
                         <div class="col-lg-8 col-md-7">
                             <div class="category-summary columns-6">
@@ -116,7 +116,7 @@
                                 <button type="button"
                                         class="btn btn-outline-primary btn-icon js-add-transaction-btn"
                                         data-fund-id="{{ item.fund.id }}"
-                                        data-category="{{ item.fund.asset_class|e }}"
+                                        data-portfolio="{{ item.fund.name|e }}"
                                         data-symbol="{{ item.symbol|e }}"
                                         title="Add Transaction"
                                         aria-label="Add Transaction"
@@ -137,7 +137,7 @@
                                 <button type="button"
                                         class="btn btn-outline-danger btn-icon js-delete-symbol-btn"
                                         data-fund-id="{{ item.fund.id }}"
-                                        data-category="{{ item.fund.asset_class|e }}"
+                                        data-portfolio="{{ item.fund.name|e }}"
                                         data-symbol="{{ item.symbol|e }}"
                                         data-tx-count="{{ item.summary.transaction_count or 0 }}"
                                         title="Delete Symbol"
@@ -255,7 +255,7 @@
                     <div class="p-3 text-center help-message page-accent-surface">
                         <button type="button" class="btn btn-outline-secondary btn-sm js-add-transaction-btn"
                                 data-fund-id="{{ item.fund.id }}"
-                                data-category="{{ item.fund.asset_class|e }}"
+                                data-portfolio="{{ item.fund.name|e }}"
                                 data-symbol="{{ item.symbol|e }}">
                             <i class="bi bi-plus-lg"></i> Add Transaction
                         </button>
@@ -292,14 +292,14 @@
                     <div class="row g-2">
                         <div class="col-6">
                             <div class="mb-3">
-                                <label for="asset_fund_id" class="form-label">Asset Class</label>
+                                <label for="asset_fund_id" class="form-label">Portfolio</label>
                                 {% set _asset_errs = (form_errors.get('asset_add', {}) if form_errors else {}) %}
                                 {% set _asset_vals = (form_values.get('asset_add', {}) if form_values else {}) %}
                                 <select class="form-select {% if _asset_errs.get('asset_fund_id') %}is-invalid{% endif %}" id="asset_fund_id" name="asset_fund_id">
-                                    <option value="">Select asset class...</option>
+                                    <option value="">Select portfolio...</option>
                                     {% for fund in funds %}
-                                    <option value="{{ fund.id }}" {% if (_asset_vals.get('asset_fund_id') and _asset_vals.get('asset_fund_id')|int == fund.id) or (not _asset_vals.get('asset_fund_id') and selected_category == fund.asset_class) %}selected{% endif %}>
-                                        {{ fund.asset_class }}
+                                    <option value="{{ fund.id }}" {% if (_asset_vals.get('asset_fund_id') and _asset_vals.get('asset_fund_id')|int == fund.id) or (not _asset_vals.get('asset_fund_id') and selected_portfolio == fund.name) %}selected{% endif %}>
+                                        {{ fund.name }}
                                     </option>
                                     {% endfor %}
                                 </select>
@@ -347,12 +347,12 @@
                     <div class="row g-2">
                         <div class="col-6">
                             <div class="mb-3" id="add_tx_category_group">
-                                <label for="fund_id" class="form-label">Asset Class</label>
+                                <label for="fund_id" class="form-label">Portfolio</label>
                                 {% set _tx_add_vals = (form_values.get('transaction_add', {}) if form_values else {}) %}
                                 <select class="form-select {% if _tx_add_errs.get('fund_id') %}is-invalid{% endif %}" id="fund_id" name="fund_id">
-                                    <option value="">Select asset class...</option>
+                                    <option value="">Select portfolio...</option>
                                     {% for fund in funds %}
-                                    <option value="{{ fund.id }}">{{ fund.asset_class }}</option>
+                                    <option value="{{ fund.id }}">{{ fund.name }}</option>
                                     {% endfor %}
                                 </select>
                                 {% if _tx_add_errs.get('fund_id') %}
@@ -483,11 +483,11 @@
                     <div class="row g-2">
                         <div class="col-6">
                             <div class="mb-3">
-                                <label for="edit_fund_id_display" class="form-label">Asset Class</label>
+                                <label for="edit_fund_id_display" class="form-label">Portfolio</label>
                                 <select class="form-select" id="edit_fund_id_display" disabled>
-                                    <option value="">Select asset class...</option>
+                                    <option value="">Select portfolio...</option>
                                     {% for fund in funds %}
-                                    <option value="{{ fund.id }}">{{ fund.asset_class }}</option>
+                                    <option value="{{ fund.id }}">{{ fund.name }}</option>
                                     {% endfor %}
                                 </select>
                             </div>
@@ -845,7 +845,7 @@ function openAddSymbolModal() {
                 if (context) context.classList.toggle('d-none', !locked);
                 if (contextValue) {
                     if (locked && fundEl && fundEl.selectedOptions && fundEl.selectedOptions[0]) {
-                        const assetClassText = fundEl.selectedOptions[0].text || 'Asset Class';
+                        const assetClassText = fundEl.selectedOptions[0].text || 'Portfolio';
                         const symText = String(vals.symbol || '').toUpperCase();
                         contextValue.textContent = symText ? `${assetClassText}/${symText}` : assetClassText;
                     } else {
@@ -874,7 +874,7 @@ function openAddSymbolModal() {
                 if (fundInput) fundInput.value = fundId ? String(fundId) : '';
                 if (symbolInput) symbolInput.value = (symbol || '').toUpperCase();
                 if (context) {
-                    const assetClassText = category ? String(category).toUpperCase() : 'ASSET CLASS';
+                    const assetClassText = category ? String(category).toUpperCase() : 'PORTFOLIO';
                     const symText = (symbol || '').toUpperCase();
                     context.textContent = symText ? `${assetClassText}/${symText}` : assetClassText;
                 }
@@ -1371,7 +1371,7 @@ function editTransaction(id, fundId, type, symbol, price, quantity, fees, notes,
             if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
 
             const fundId = parseInt(addBtn.getAttribute('data-fund-id') || '0', 10) || null;
-            const category = addBtn.getAttribute('data-category') || '';
+            const category = addBtn.getAttribute('data-portfolio') || '';
             const symbol = addBtn.getAttribute('data-symbol') || '';
             openAddTransactionModal(fundId, category, symbol);
             return;
@@ -1384,7 +1384,7 @@ function editTransaction(id, fundId, type, symbol, price, quantity, fees, notes,
             if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
 
             const fundId = parseInt(delBtn.getAttribute('data-fund-id') || '0', 10) || null;
-            const category = delBtn.getAttribute('data-category') || '';
+            const category = delBtn.getAttribute('data-portfolio') || '';
             const symbol = delBtn.getAttribute('data-symbol') || '';
             const txCount = parseInt(delBtn.getAttribute('data-tx-count') || '0', 10) || 0;
             openDeleteSymbolModal(fundId, category, symbol, txCount);

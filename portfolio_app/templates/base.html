@@ -44,12 +44,17 @@
             <a class="sidebar-nav-link {% if request.endpoint == 'funds.funds_list' %}active{% endif %}"
                href="{{ url_for('funds.funds_list') }}">
                 <i class="bi bi-wallet2" aria-hidden="true"></i>
-                Funds
+                Portfolios
             </a>
             <a class="sidebar-nav-link {% if request.endpoint == 'transactions.transaction_list' %}active{% endif %}"
                href="{{ url_for('transactions.transaction_list') }}">
-                <i class="bi bi-receipt" aria-hidden="true"></i>
-                Trades
+                <i class="bi bi-arrow-left-right" aria-hidden="true"></i>
+                Transactions
+            </a>
+            <a class="sidebar-nav-link {% if request.endpoint == 'history.history_list' %}active{% endif %}"
+               href="{{ url_for('history.history_list') }}">
+                <i class="bi bi-clock-history" aria-hidden="true"></i>
+                History
             </a>
             <a class="sidebar-nav-link {% if request.endpoint == 'charts.charts' %}active{% endif %}"
                href="{{ url_for('charts.charts') }}">
@@ -62,7 +67,7 @@
             <a class="sidebar-nav-link {% if request.endpoint == 'admin.users' %}active{% endif %}"
                href="{{ url_for('admin.users') }}">
                 <i class="bi bi-shield-check" aria-hidden="true"></i>
-                Admin
+                Users
             </a>
             {% endif %}
         </nav>

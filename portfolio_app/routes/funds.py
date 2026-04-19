@@ -1,11 +1,9 @@
-"""Funds blueprint - Fund management routes."""
+"""Funds blueprint - Portfolio management routes."""
 
 import logging
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
-from decimal import Decimal
 from portfolio_app import db
-from portfolio_app.models import FundEvent
 from portfolio_app.services import get_services
 from portfolio_app.forms import (
     FundAddForm,
@@ -16,54 +14,30 @@ from portfolio_app.forms import (
 )
 from portfolio_app.calculators.portfolio_calculator import PortfolioCalculator
 from portfolio_app.utils import get_error_message, get_first_form_error, SuccessMessages, ErrorMessages, is_ajax_request, json_response
-from portfolio_app.utils.constants import EventType, safe_html_id
-from config import Config
+from portfolio_app.utils.constants import safe_html_id
 
 logger = logging.getLogger(__name__)
 
-# Create blueprint
 funds_bp = Blueprint('funds', __name__)
 
 
 def _get_funds_page_context():
-    """Build context data for the funds management page."""
+    """Build context data for the portfolios page."""
     svc = get_services()
     funds = svc.fund_repo.get_all()
-    available_asset_classes = svc.fund_repo.get_available_asset_classes(Config.ASSET_CLASSES)
 
     fund_details = []
     for fund in funds:
         events = svc.event_repo.get_by_fund_id(fund.id)
-
-        # Legacy backfill: create an Initial event for old funds that have
-        # a balance but no event history.  Skipped when amount=0 (user may
-        # have intentionally deleted all events — show Deposit button instead).
-        if not events and fund.cash_balance and Decimal(str(fund.cash_balance)) != 0:
-            try:
-                backfill = FundEvent(
-                    fund_id=fund.id,
-                    event_type=EventType.INITIAL,
-                    amount_delta=Decimal(str(fund.cash_balance)),
-                    date=fund.created_at,
-                    notes=None,
-                )
-                db.session.add(backfill)
-                db.session.commit()
-                events = [backfill]
-            except Exception:
-                logger.exception('Failed to backfill events for fund %s', fund.id)
-                db.session.rollback()
 
         total_funds = PortfolioCalculator.get_total_funds_for_fund(fund.id)
         cash = PortfolioCalculator.get_cash_balance_for_fund(fund.id)
         tx_summary = PortfolioCalculator.get_category_transactions_summary(fund.id)
         current_invested = tx_summary['current_invested']
 
-        html_group_id = safe_html_id(fund.id, fund.asset_class)
         fund_details.append({
             'fund': fund,
             'events': events,
-            'html_group_id': html_group_id,
             'total_funds': total_funds,
             'cash': cash,
             'current_invested': current_invested,
@@ -72,14 +46,13 @@ def _get_funds_page_context():
     return {
         'funds': funds,
         'fund_details': fund_details,
-        'available_asset_classes': available_asset_classes,
     }
 
 
 @funds_bp.route('/')
 @login_required
 def funds_list():
-    """Funds management page."""
+    """Portfolios page."""
     ctx = _get_funds_page_context()
     return render_template(
         'funds.html',
@@ -94,12 +67,12 @@ def funds_list():
 @funds_bp.route('/add', methods=['POST'])
 @login_required
 def funds_add():
-    """Add new fund."""
+    """Create new portfolio."""
     try:
         svc = get_services()
-        available_asset_classes = svc.fund_repo.get_available_asset_classes(Config.ASSET_CLASSES)
+        existing_names = svc.fund_repo.get_existing_names()
 
-        form = FundAddForm(request.form, available_asset_classes)
+        form = FundAddForm(request.form, existing_names)
         if not form.validate():
             if is_ajax_request():
                 return json_response(False, error=get_first_form_error(form.errors))
@@ -114,13 +87,7 @@ def funds_add():
             ), 400
 
         data = form.get_cleaned_data()
-        fund = svc.fund_service.create_fund(
-            asset_class=data['category'],
-            amount=data['amount'],
-            user_id=current_user.id,
-            notes='Initial funding',
-            date=data.get('date')
-        )
+        svc.fund_service.create_fund(name=data['name'], user_id=current_user.id)
 
         if is_ajax_request():
             return json_response(True, message=SuccessMessages.FUND_CREATED)
@@ -142,7 +109,7 @@ def funds_add():
         ), 400
 
     except Exception:
-        logger.exception('Failed to add fund')
+        logger.exception('Failed to add portfolio')
         db.session.rollback()
 
         if is_ajax_request():
@@ -158,34 +125,34 @@ def funds_add():
         ), 400
 
 
-@funds_bp.route('/delete/<int:id>', methods=['POST'])
+@funds_bp.route('/delete/<int:fund_id>', methods=['POST'])
 @login_required
-def funds_delete(id):
-    """Delete fund."""
+def funds_delete(fund_id):
+    """Delete portfolio."""
     try:
         svc = get_services()
-        svc.fund_service.delete_fund(id)
+        svc.fund_service.delete_fund(fund_id)
         flash(SuccessMessages.FUND_DELETED, 'success')
 
     except ValueError as e:
         flash(get_error_message(e), 'error')
 
     except Exception:
-        logger.exception('Failed to delete fund %s', id)
+        logger.exception('Failed to delete portfolio %s', fund_id)
         db.session.rollback()
         flash(ErrorMessages.OPERATION_FAILED, 'error')
 
     return redirect(url_for('funds.funds_list'))
 
 
-@funds_bp.route('/deposit/<int:id>', methods=['POST'])
+@funds_bp.route('/deposit/<int:fund_id>', methods=['POST'])
 @login_required
-def funds_deposit(id):
-    """Deposit funds to an asset class."""
+def funds_deposit(fund_id):
+    """Deposit funds into a portfolio."""
     try:
         svc = get_services()
 
-        form = FundDepositForm(request.form, id)
+        form = FundDepositForm(request.form, fund_id)
         if not form.validate():
             if is_ajax_request():
                 return json_response(False, error=get_first_form_error(form.errors))
@@ -197,7 +164,7 @@ def funds_deposit(id):
                 form_errors={'funds_deposit': form.errors},
                 form_values={'funds_deposit': request.form},
                 active_modal='depositFundsModal',
-                modal_data={'fund_id': id},
+                modal_data={'fund_id': fund_id},
             ), 400
 
         data = form.get_cleaned_data()
@@ -222,7 +189,7 @@ def funds_deposit(id):
         return redirect(url_for('funds.funds_list'))
 
     except Exception:
-        logger.exception('Failed to deposit to fund %s', id)
+        logger.exception('Failed to deposit to portfolio %s', fund_id)
         db.session.rollback()
 
         if is_ajax_request():
@@ -232,14 +199,14 @@ def funds_deposit(id):
         return redirect(url_for('funds.funds_list'))
 
 
-@funds_bp.route('/withdraw/<int:id>', methods=['POST'])
+@funds_bp.route('/withdraw/<int:fund_id>', methods=['POST'])
 @login_required
-def funds_withdraw(id):
-    """Withdraw funds from an asset class."""
+def funds_withdraw(fund_id):
+    """Withdraw funds from a portfolio."""
     try:
         svc = get_services()
 
-        form = FundWithdrawForm(request.form, id)
+        form = FundWithdrawForm(request.form, fund_id)
         if not form.validate():
             if is_ajax_request():
                 return json_response(False, error=get_first_form_error(form.errors))
@@ -251,7 +218,7 @@ def funds_withdraw(id):
                 form_errors={'funds_withdraw': form.errors},
                 form_values={'funds_withdraw': request.form},
                 active_modal='withdrawFundsModal',
-                modal_data={'fund_id': id},
+                modal_data={'fund_id': fund_id},
             ), 400
 
         data = form.get_cleaned_data()
@@ -276,7 +243,7 @@ def funds_withdraw(id):
         return redirect(url_for('funds.funds_list'))
 
     except Exception:
-        logger.exception('Failed to withdraw from fund %s', id)
+        logger.exception('Failed to withdraw from portfolio %s', fund_id)
         db.session.rollback()
 
         if is_ajax_request():

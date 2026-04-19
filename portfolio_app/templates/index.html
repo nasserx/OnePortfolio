@@ -7,7 +7,7 @@
 <!-- Stat Cards -->
 <div class="stat-cards-row mb-4">
     <div class="stat-card-item">
-        <span class="stat-label">Total Capital</span>
+        <span class="stat-label">Total Balance</span>
         <span class="stat-value overview-value">{{ totals.total_allocated|fmt_money }}</span>
     </div>
     <div class="stat-card-item">
@@ -42,23 +42,19 @@
 
                 <!-- Header row: asset class name + view link -->
                 <div class="d-flex align-items-center justify-content-between">
-                    <h5 class="mb-0 d-flex align-items-center gap-2" style="font-size:0.875rem; font-weight:600; letter-spacing:-0.1px;">
-                        {% set icon, color = asset_class_icons.get(item.asset_class, asset_class_icon_default) %}
-                        <span class="category-icon-wrap {{ color }}">
-                            <i class="bi {{ icon }}"></i>
-                        </span>
-                        {{ item.asset_class }}
+                    <h5 class="mb-0" style="font-size:0.875rem; font-weight:600; letter-spacing:-0.1px;">
+                        {{ item.name }}
                     </h5>
-                    <a href="{{ url_for('transactions.transaction_list', category=item.asset_class) }}"
+                    <a href="{{ url_for('transactions.transaction_list', portfolio=item.name) }}"
                        class="btn btn-sm overview-btn">
-                        View Symbols
+                        View Trades
                     </a>
                 </div>
 
                 <!-- 3-column metrics grid -->
                 <div class="category-metrics">
                     <div class="metric-item">
-                        <span class="metric-label">Fund Total</span>
+                        <span class="metric-label">Balance</span>
                         <span class="metric-value">{{ item.amount|fmt_money }}</span>
                     </div>
                     <div class="metric-item">
@@ -95,7 +91,7 @@
     <div class="col-12">
         <div class="alert alert-info">
             <i class="bi bi-info-circle me-2"></i>
-            No funds yet. <a href="{{ url_for('funds.funds_list') }}">Add a fund</a> to get started.
+            No portfolios yet. <a href="{{ url_for('funds.funds_list') }}">Create a portfolio</a> to get started.
         </div>
     </div>
     {% endif %}

@@ -177,6 +177,112 @@ def _run_migrations(app):
                     ))
                     conn.commit()
 
+            # ── Step 9: backfill FundEvent for legacy funds with no event history ─
+            # Funds that were created before FundEvent was introduced have a
+            # cash_balance but no corresponding event record. We create an
+            # Initial event so the history display is accurate. Idempotent:
+            # skipped if events already exist for a fund.
+            if 'fund' in tables and 'fund_event' in tables:
+                legacy_funds = conn.execute(sa.text(
+                    'SELECT f.id, f.cash_balance, f.created_at '
+                    'FROM fund f '
+                    'LEFT JOIN fund_event fe ON fe.fund_id = f.id '
+                    'WHERE fe.id IS NULL AND f.cash_balance IS NOT NULL AND f.cash_balance != 0'
+                )).fetchall()
+                for row in legacy_funds:
+                    conn.execute(sa.text(
+                        'INSERT INTO fund_event (fund_id, event_type, amount_delta, date) '
+                        'VALUES (:fund_id, :event_type, :amount, :date)'
+                    ), {
+                        'fund_id': row[0],
+                        'event_type': 'Initial',
+                        'amount': row[1],
+                        'date': row[2],
+                    })
+                if legacy_funds:
+                    conn.commit()
+
+            # ── Step 11: rename asset_class → name in fund table ────────────────
+            if 'fund' in tables:
+                fund_cols = {c['name'] for c in inspector.get_columns('fund')}
+                if 'asset_class' in fund_cols and 'name' not in fund_cols:
+                    conn.execute(sa.text(
+                        'ALTER TABLE fund RENAME COLUMN asset_class TO name'
+                    ))
+                    conn.commit()
+
+            # ── Step 10: closed_trade table ──────────────────────────────────────
+            # Stores a realized P&L snapshot for every sell transaction.
+            # Created by recalculate_all_averages_for_symbol() — no manual inserts needed.
+            # Both FKs carry ON DELETE CASCADE so the table stays consistent automatically.
+            tables = set(inspector.get_table_names())
+            if 'closed_trade' not in tables:
+                conn.execute(sa.text('''
+                    CREATE TABLE closed_trade (
+                        id             INTEGER PRIMARY KEY AUTOINCREMENT,
+                        transaction_id INTEGER NOT NULL UNIQUE
+                                       REFERENCES "transaction"(id) ON DELETE CASCADE,
+                        fund_id        INTEGER NOT NULL
+                                       REFERENCES fund(id) ON DELETE CASCADE,
+                        symbol         VARCHAR(20) NOT NULL,
+                        quantity_sold  NUMERIC(20,10) NOT NULL,
+                        avg_cost       NUMERIC(20,10) NOT NULL,
+                        sell_price     NUMERIC(20,10) NOT NULL,
+                        fees           NUMERIC(20,10) NOT NULL DEFAULT 0,
+                        cost_basis     NUMERIC(20,10) NOT NULL,
+                        gross_proceeds NUMERIC(20,10) NOT NULL,
+                        realized_pnl   NUMERIC(20,10) NOT NULL,
+                        closed_at      DATE NOT NULL,
+                        created_at     DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        updated_at     DATETIME DEFAULT CURRENT_TIMESTAMP
+                    )
+                '''))
+                conn.execute(sa.text(
+                    'CREATE INDEX ix_closed_trade_fund_id ON closed_trade(fund_id)'
+                ))
+                conn.execute(sa.text(
+                    'CREATE INDEX ix_closed_trade_symbol ON closed_trade(symbol)'
+                ))
+                conn.execute(sa.text(
+                    'CREATE INDEX ix_closed_trade_transaction_id ON closed_trade(transaction_id)'
+                ))
+                conn.commit()
+
+
+def _backfill_closed_trades(app):
+    """Create ClosedTrade snapshots for any existing sell transactions that lack one.
+
+    Runs once on startup — idempotent: skips funds/symbols that already have
+    up-to-date snapshots. Uses recalculate_all_averages_for_symbol() so the
+    ACM math is guaranteed to be identical to the live calculation path.
+    """
+    with app.app_context():
+        from portfolio_app.models.transaction import Transaction
+        from portfolio_app.models.closed_trade import ClosedTrade
+        from portfolio_app.calculators.portfolio_calculator import PortfolioCalculator
+
+        # Find (fund_id, symbol) pairs that have sells without a ClosedTrade
+        pairs = (
+            db.session.query(Transaction.fund_id, Transaction.symbol)
+            .outerjoin(ClosedTrade, ClosedTrade.transaction_id == Transaction.id)
+            .filter(
+                Transaction.transaction_type == 'Sell',
+                ClosedTrade.id.is_(None),
+            )
+            .distinct()
+            .all()
+        )
+
+        if not pairs:
+            return
+
+        for fund_id, symbol in pairs:
+            sym_norm = PortfolioCalculator.normalize_symbol(symbol)
+            if sym_norm:
+                PortfolioCalculator.recalculate_all_averages_for_symbol(fund_id, sym_norm)
+
+        db.session.commit()
+
 
 def create_app(config_class=Config):
     """Application factory pattern."""
@@ -247,8 +353,6 @@ def create_app(config_class=Config):
     @app.context_processor
     def inject_template_globals():
         return {
-            'asset_class_icons': app.config.get('ASSET_CLASS_ICONS', {}),
-            'asset_class_icon_default': app.config.get('ASSET_CLASS_ICON_DEFAULT', ('bi-folder', 'text-secondary')),
             'Msg': {
                 'error': ErrorMessages,
                 'success': SuccessMessages,
@@ -282,5 +386,7 @@ def create_app(config_class=Config):
     _run_migrations(app)
     with app.app_context():
         db.create_all()
+
+    _backfill_closed_trades(app)
 
     return app

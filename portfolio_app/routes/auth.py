@@ -5,6 +5,7 @@ user settings, and account deletion.
 
 import logging
 from functools import wraps
+from urllib.parse import urlparse
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import login_user, logout_user, login_required, current_user
 
@@ -89,6 +90,8 @@ def login():
                 remember = request.form.get('remember') == 'on'
                 login_user(result, remember=remember)
                 next_page = request.args.get('next')
+                if next_page and urlparse(next_page).netloc:
+                    next_page = None  # reject absolute URLs — open redirect prevention
                 redirect_url = next_page or url_for('dashboard.index')
                 if from_modal:
                     return jsonify({'ok': True, 'redirect': redirect_url})
@@ -212,17 +215,14 @@ def verify_code():
             success, error_msg = svc.auth_service.verify_user(email, data['code'])
 
             if success:
-                from flask_login import current_user as _cu
-                svc2 = get_services()
-
                 # If the user is already logged in this was a pending email update —
                 # the email has been applied; send them back to settings.
-                if _cu.is_authenticated:
+                if current_user.is_authenticated:
                     flash(AuthMessages.EMAIL_UPDATED, 'success')
                     return redirect(url_for('auth.settings', tab='security'))
 
                 # Otherwise this was a registration verification — auto-login.
-                verified_user = svc2.user_repo.get_by_email(email)
+                verified_user = svc.user_repo.get_by_email(email)
                 if verified_user:
                     login_user(verified_user)
                     return redirect(url_for('dashboard.index'))

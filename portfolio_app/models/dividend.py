@@ -1,6 +1,6 @@
 """Dividend model for dividend income transactions."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from sqlalchemy import Numeric, CheckConstraint
 from portfolio_app import db
@@ -15,9 +15,9 @@ class Dividend(db.Model):
     fund_id    = db.Column(db.Integer, db.ForeignKey('fund.id'), nullable=False)
     symbol     = db.Column(db.String(20), nullable=True)
     amount     = db.Column(Numeric(20, 10), nullable=False)
-    date       = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    date       = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     notes      = db.Column(db.Text, nullable=True)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
 
     fund = db.relationship('Fund', backref=db.backref('dividends', lazy='dynamic', cascade='all, delete-orphan'))
 

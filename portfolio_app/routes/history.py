@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 history_bp = Blueprint('history', __name__)
 
 VALID_TABS = ('all', 'deposit', 'withdrawal', 'buy', 'sell')
+PER_PAGE   = 10
 
 
 def _parse_date(date_str, end_of_day=False):
@@ -102,6 +103,22 @@ def _tab_counts(entries):
     return counts
 
 
+def _page_range(page, total_pages, window=2):
+    """Return ordered list of page numbers with None as ellipsis placeholders."""
+    if total_pages <= 7:
+        return list(range(1, total_pages + 1))
+    pages = set([1, total_pages])
+    for i in range(max(1, page - window), min(total_pages, page + window) + 1):
+        pages.add(i)
+    result, prev = [], None
+    for p in sorted(pages):
+        if prev is not None and p - prev > 1:
+            result.append(None)
+        result.append(p)
+        prev = p
+    return result
+
+
 @history_bp.route('/history')
 @login_required
 def history_list():
@@ -117,6 +134,11 @@ def history_list():
     tab           = request.args.get('tab', 'all').lower()
     if tab not in VALID_TABS:
         tab = 'all'
+
+    try:
+        page = max(1, int(request.args.get('page', 1)))
+    except ValueError:
+        page = 1
 
     # Portfolio filter
     selected_fund_id = None
@@ -144,7 +166,14 @@ def history_list():
         'buy':        lambda e: e['type'] == 'Buy',
         'sell':       lambda e: e['type'] == 'Sell',
     }
-    entries = [e for e in all_entries if tab_filters[tab](e)]
+    filtered = [e for e in all_entries if tab_filters[tab](e)]
+
+    # ── Pagination ────────────────────────────────────────────────────
+    total       = len(filtered)
+    total_pages = max(1, -(-total // PER_PAGE))   # ceiling division
+    page        = min(page, total_pages)
+    start       = (page - 1) * PER_PAGE
+    entries     = filtered[start:start + PER_PAGE]
 
     return render_template(
         'history.html',
@@ -155,4 +184,12 @@ def history_list():
         selected_fund_id=selected_fund_id,
         raw_from=raw_from,
         raw_to=raw_to,
+        # pagination
+        page=page,
+        per_page=PER_PAGE,
+        total=total,
+        total_pages=total_pages,
+        start_idx=start + 1 if total else 0,
+        end_idx=min(start + PER_PAGE, total),
+        page_range=_page_range(page, total_pages),
     )

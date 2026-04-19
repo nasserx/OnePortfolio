@@ -1,6 +1,6 @@
 """Fund model representing a named portfolio."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from sqlalchemy import Numeric
 from portfolio_app import db
@@ -15,8 +15,8 @@ class Fund(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True, index=True)
     name = db.Column(db.String(50), nullable=False)
     cash_balance = db.Column(Numeric(15, 2), nullable=False, default=0)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     # Relationships
     transactions = db.relationship('Transaction', backref='fund', lazy='dynamic', cascade='all, delete-orphan')

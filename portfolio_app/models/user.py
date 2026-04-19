@@ -1,6 +1,6 @@
 """User model for authentication."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from portfolio_app import db
@@ -18,7 +18,7 @@ class User(UserMixin, db.Model):
     is_admin = db.Column(db.Boolean, default=False, nullable=False)
     # False until the user enters the 6-digit verification code sent to their email
     is_verified = db.Column(db.Boolean, default=False, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     last_login = db.Column(db.DateTime, nullable=True)
 
     # One-time 6-digit verification code for registration / email update

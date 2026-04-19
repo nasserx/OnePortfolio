@@ -1,6 +1,6 @@
 """Asset model for tracked symbols."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import UniqueConstraint, Index
 from portfolio_app import db
 
@@ -17,8 +17,8 @@ class Asset(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     fund_id = db.Column(db.Integer, db.ForeignKey('fund.id'), nullable=False)
     symbol = db.Column(db.String(20), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (
         UniqueConstraint(fund_id, symbol, name='uq_asset_fund_symbol'),

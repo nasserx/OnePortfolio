@@ -269,30 +269,34 @@
     // Wire server-rendered toasts
     document.querySelectorAll('.flash-alert').forEach(wireToast);
 
-    // Show toasts stored by AJAX flows (set before location.reload())
-    var pendingMsg  = sessionStorage.getItem('flashMessage');
-    var pendingType = sessionStorage.getItem('flashType');
-    if (pendingMsg) {
-        sessionStorage.removeItem('flashMessage');
-        sessionStorage.removeItem('flashType');
-        // Slight delay so the container is ready
-        setTimeout(function() {
-            window.showToast(pendingMsg, pendingType || 'success');
-        }, 120);
-    }
-
     // Global helper for AJAX-triggered toasts
     window.showToast = function(message, type) {
         var cat  = type || 'info';
         var icon = TOAST_ICONS[cat] || TOAST_ICONS.info;
         var el   = document.createElement('div');
-        el.className   = 'flash-alert flash-alert--' + cat;
+        el.className = 'flash-alert flash-alert--' + cat;
         el.setAttribute('role', 'alert');
-        el.innerHTML   =
-            '<i class="bi ' + icon + ' flash-alert__icon" aria-hidden="true"></i>' +
-            '<span class="flash-alert__msg">' + message + '</span>' +
-            '<button type="button" class="flash-alert__close" aria-label="Close">' +
-            '<i class="bi bi-x" aria-hidden="true"></i></button>';
+
+        var iconEl = document.createElement('i');
+        iconEl.className = 'bi ' + icon + ' flash-alert__icon';
+        iconEl.setAttribute('aria-hidden', 'true');
+
+        var msgEl = document.createElement('span');
+        msgEl.className = 'flash-alert__msg';
+        msgEl.textContent = message;
+
+        var closeIcon = document.createElement('i');
+        closeIcon.className = 'bi bi-x';
+        closeIcon.setAttribute('aria-hidden', 'true');
+        var closeBtn = document.createElement('button');
+        closeBtn.type = 'button';
+        closeBtn.className = 'flash-alert__close';
+        closeBtn.setAttribute('aria-label', 'Close');
+        closeBtn.appendChild(closeIcon);
+
+        el.appendChild(iconEl);
+        el.appendChild(msgEl);
+        el.appendChild(closeBtn);
         getOrCreateContainer().appendChild(el);
         wireToast(el);
     };

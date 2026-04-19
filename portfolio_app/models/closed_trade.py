@@ -13,7 +13,7 @@ The snapshot captures the average cost *at the moment of the sale*
 even if earlier buy transactions are later edited.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import Numeric, Date
 from portfolio_app import db
 
@@ -53,8 +53,8 @@ class ClosedTrade(db.Model):
     realized_pnl   = db.Column(Numeric(20, 10), nullable=False)  # proceeds − basis − fees
 
     closed_at  = db.Column(Date, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     def to_dict(self):
         return {

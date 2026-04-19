@@ -283,16 +283,6 @@
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
 <script>
-function todayStr() {
-    const d = new Date();
-    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-}
-
-function initFlatpickr(id) {
-    const el = document.getElementById(id);
-    if (!el || el._flatpickr || !window.flatpickr) return;
-    window.flatpickr(el, { dateFormat: 'Y-m-d', allowInput: true });
-}
 
 function depositFunds(id, name, opts) {
     opts = opts || {};

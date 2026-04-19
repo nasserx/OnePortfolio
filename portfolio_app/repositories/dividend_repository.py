@@ -1,11 +1,10 @@
 """Dividend repository for database operations on Dividend model."""
 
-from decimal import Decimal
 from typing import List, Optional
 from portfolio_app.repositories.base import BaseRepository
 from portfolio_app.models.dividend import Dividend
-
-ZERO = Decimal('0')
+from portfolio_app.utils.decimal_utils import ZERO
+from decimal import Decimal
 
 
 class DividendRepository(BaseRepository[Dividend]):

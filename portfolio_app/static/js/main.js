@@ -188,30 +188,15 @@ const Utils = {
     }
 };
 
-class CSRFManager {
-    constructor() {
-        this.token = this.getTokenFromMeta();
-    }
+function todayStr() {
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
 
-    getTokenFromMeta() {
-        const meta = document.querySelector('meta[name="csrf-token"]');
-        return meta ? (meta.getAttribute('content') || '') : '';
-    }
-
-    injectTokenToForms() {
-        if (!this.token) return;
-
-        document.querySelectorAll('form[method="post"], form[method="POST"]')
-            .forEach(form => {
-                if (form.querySelector('input[name="csrf_token"]')) return;
-                
-                const input = document.createElement('input');
-                input.type = 'hidden';
-                input.name = 'csrf_token';
-                input.value = this.token;
-                form.insertBefore(input, form.firstChild);
-            });
-    }
+function initFlatpickr(id) {
+    const el = document.getElementById(id);
+    if (!el || el._flatpickr || !window.flatpickr) return;
+    window.flatpickr(el, { dateFormat: 'Y-m-d', allowInput: true });
 }
 
 class FormValidator {
@@ -1067,77 +1052,6 @@ class ModalAjaxHandler {
 }
 
 
-class DropdownHoverManager {
-    constructor() {
-        document.querySelectorAll('.settings-dropdown').forEach(el => {
-            const toggle = el.querySelector('[data-bs-toggle="dropdown"]');
-            const menu   = el.querySelector('.dropdown-menu');
-            const dropdown = bootstrap.Dropdown.getOrCreateInstance(toggle, {
-                offset: [0, 0],
-                popperConfig: { modifiers: [{ name: 'preventOverflow', enabled: false }] }
-            });
-            let hideTimer;
-
-            const scheduleHide = () => { hideTimer = setTimeout(() => dropdown.hide(), 80); };
-            const cancelHide   = () => clearTimeout(hideTimer);
-
-            el.addEventListener('mouseenter', () => { cancelHide(); dropdown.show(); });
-            el.addEventListener('mouseleave', scheduleHide);
-            menu?.addEventListener('mouseenter', cancelHide);
-            menu?.addEventListener('mouseleave', scheduleHide);
-        });
-    }
-}
-
-
-class NumericFitManager {
-    // Shrinks numeric value elements that overflow their container so they
-    // stay on one line. Uses overflow:hidden temporarily to force an accurate
-    // scrollWidth measurement (overflow:visible makes scrollWidth == clientWidth).
-    static SELECTOR = '.card-value, .summary-value, .stat-card .card-body h2';
-    static MIN_FONT_SIZE = 10;
-
-    constructor() {
-        this._elements = [];
-        this._resizeTimer = null;
-        this.fit();
-        window.addEventListener('resize', () => {
-            clearTimeout(this._resizeTimer);
-            this._resizeTimer = setTimeout(() => this.fit(), 200);
-        });
-    }
-
-    fit() {
-        this._elements = Array.from(document.querySelectorAll(NumericFitManager.SELECTOR));
-        this._elements.forEach(el => this._fitOne(el));
-    }
-
-    _fitOne(el) {
-        el.style.fontSize   = '';
-        el.style.whiteSpace = '';
-
-        // Skip elements inside collapsed/hidden containers
-        if (el.clientWidth === 0) return;
-
-        el.style.overflow = 'hidden';
-        el.style.whiteSpace = 'nowrap';
-
-        if (el.scrollWidth <= el.clientWidth) {
-            el.style.whiteSpace = '';
-            el.style.overflow   = '';
-            return;
-        }
-
-        let size = parseFloat(getComputedStyle(el).fontSize);
-        while (el.scrollWidth > el.clientWidth && size > NumericFitManager.MIN_FONT_SIZE) {
-            size -= 0.5;
-            el.style.fontSize = size + 'px';
-        }
-        el.style.overflow = '';
-    }
-}
-
-
 class InvestmentPortfolioApp {
     constructor() {
         this.initialize();
@@ -1145,10 +1059,6 @@ class InvestmentPortfolioApp {
 
     initialize() {
         new NativeValidationDisabler();
-
-        const csrfManager = new CSRFManager();
-        csrfManager.injectTokenToForms();
-
         new DecimalInputHandler();
         new AlertManager();
         new TooltipManager();
@@ -1156,8 +1066,6 @@ class InvestmentPortfolioApp {
         new TransactionFormHandler();
         new ModalManager();
         new ModalAjaxHandler();
-        new DropdownHoverManager();
-        new NumericFitManager();
 
         const navbar = document.querySelector('.app-navbar');
         if (navbar) {

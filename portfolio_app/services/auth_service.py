@@ -1,9 +1,8 @@
 """Authentication service for user management."""
 
 import secrets
-import string
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Tuple
 
 from portfolio_app.models.user import User
@@ -62,7 +61,7 @@ class AuthService:
             is_admin=is_first,
             is_verified=False,
             verification_code=code,
-            verification_code_expires_at=datetime.utcnow() + timedelta(minutes=VERIFICATION_CODE_EXPIRY_MINUTES),
+            verification_code_expires_at=datetime.now(timezone.utc) + timedelta(minutes=VERIFICATION_CODE_EXPIRY_MINUTES),
         )
         user.set_password(password)
         self.user_repo.add(user)
@@ -94,7 +93,7 @@ class AuthService:
         if user:
             if not user.verification_code or not user.verification_code_expires_at:
                 return False, 'No verification code found. Please request a new one.'
-            if datetime.utcnow() > user.verification_code_expires_at:
+            if datetime.now(timezone.utc) > user.verification_code_expires_at:
                 return False, 'This code has expired. Please request a new one.'
             if user.verification_code != code.strip():
                 return False, 'Invalid verification code.'
@@ -113,12 +112,12 @@ class AuthService:
             return False, 'No account found for this email.'
 
         if user.is_verified:
-            return True, ''
+            return False, 'This account is already verified. Please log in.'
 
         if not user.verification_code or not user.verification_code_expires_at:
             return False, 'No verification code found. Please request a new one.'
 
-        if datetime.utcnow() > user.verification_code_expires_at:
+        if datetime.now(timezone.utc) > user.verification_code_expires_at:
             return False, 'This code has expired. Please request a new one.'
 
         if user.verification_code != code.strip():
@@ -145,7 +144,7 @@ class AuthService:
 
         code = self._make_verification_code()
         user.verification_code = code
-        user.verification_code_expires_at = datetime.utcnow() + timedelta(minutes=VERIFICATION_CODE_EXPIRY_MINUTES)
+        user.verification_code_expires_at = datetime.now(timezone.utc) + timedelta(minutes=VERIFICATION_CODE_EXPIRY_MINUTES)
         self.user_repo.commit()
         return code
 
@@ -174,7 +173,7 @@ class AuthService:
                 # Signal to the route that the account exists but is unverified.
                 # Returning a sentinel string avoids leaking "wrong password".
                 return 'unverified'
-            user.last_login = datetime.utcnow()
+            user.last_login = datetime.now(timezone.utc)
             self.user_repo.commit()
             return user
         return None
@@ -208,7 +207,7 @@ class AuthService:
         code = self._make_verification_code()
         user.pending_email = new_email.lower()
         user.verification_code = code
-        user.verification_code_expires_at = datetime.utcnow() + timedelta(minutes=VERIFICATION_CODE_EXPIRY_MINUTES)
+        user.verification_code_expires_at = datetime.now(timezone.utc) + timedelta(minutes=VERIFICATION_CODE_EXPIRY_MINUTES)
         # is_verified and email are intentionally left unchanged until confirmation
         self.user_repo.commit()
         return code
@@ -266,7 +265,7 @@ class AuthService:
         """
         code = self._make_verification_code()
         user.deletion_code = code
-        user.deletion_code_expires_at = datetime.utcnow() + timedelta(minutes=VERIFICATION_CODE_EXPIRY_MINUTES)
+        user.deletion_code_expires_at = datetime.now(timezone.utc) + timedelta(minutes=VERIFICATION_CODE_EXPIRY_MINUTES)
         self.user_repo.commit()
         return code
 
@@ -283,7 +282,7 @@ class AuthService:
         if (
             not user.deletion_code
             or not user.deletion_code_expires_at
-            or datetime.utcnow() > user.deletion_code_expires_at
+            or datetime.now(timezone.utc) > user.deletion_code_expires_at
             or user.deletion_code != code.strip()
         ):
             return False, 'Invalid or expired confirmation code.'
@@ -295,28 +294,6 @@ class AuthService:
     # ------------------------------------------------------------------
     # Admin-only operations
     # ------------------------------------------------------------------
-
-    def reset_password(self, user_id: int) -> str:
-        """Admin action: generate and set a random temporary password.
-
-        Args:
-            user_id: ID of the user whose password will be reset.
-
-        Returns:
-            The generated temporary password (shown once to admin).
-
-        Raises:
-            ValueError: If user not found.
-        """
-        user = self.user_repo.get_by_id(user_id)
-        if not user:
-            raise ValueError('User not found.')
-
-        alphabet = string.ascii_letters + string.digits
-        temp_password = ''.join(secrets.choice(alphabet) for _ in range(12))
-        user.set_password(temp_password)
-        self.user_repo.commit()
-        return temp_password
 
     def toggle_admin(self, user_id: int, current_user: User) -> User:
         """Toggle admin status for a user (admin only).
@@ -365,7 +342,7 @@ class AuthService:
         Called at the start of every registration to keep the database clean
         and allow users to re-register freely after an expired attempt.
         """
-        expired = self.user_repo.get_expired_unverified(datetime.utcnow())
+        expired = self.user_repo.get_expired_unverified(datetime.now(timezone.utc))
         for user in expired:
             logger.info("Purging expired unverified account: %s", user.email)
             self.user_repo.delete(user)

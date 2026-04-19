@@ -29,7 +29,7 @@
                 {% for fund in funds %}
                 <li>
                     <a class="dropdown-item {% if selected_portfolio == fund.name %}active{% endif %}"
-                       href="{{ url_for('transactions.transaction_list', category=fund.name) }}">
+                       href="{{ url_for('transactions.transaction_list', portfolio=fund.name) }}">
                         {{ fund.name }}
                     </a>
                 </li>
@@ -762,17 +762,6 @@ function filterBySymbol(query) {
         var symbol = (card.getAttribute('data-symbol') || '').toUpperCase();
         card.style.display = (!q || symbol.includes(q)) ? '' : 'none';
     });
-}
-
-function todayStr() {
-    const d = new Date();
-    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-}
-
-function initFlatpickr(id) {
-    const el = document.getElementById(id);
-    if (!el || el._flatpickr || !window.flatpickr) return;
-    window.flatpickr(el, { dateFormat: 'Y-m-d', allowInput: true });
 }
 
 function ensureEditDatePicker() { initFlatpickr('edit_date'); }

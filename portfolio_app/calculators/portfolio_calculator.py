@@ -35,24 +35,6 @@ class PortfolioCalculator:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def get_quantity_held_for_fund(fund_id, exclude_transaction_id=None):
-        """Return current quantity held for a fund."""
-        query = Transaction.query.filter_by(fund_id=fund_id)
-        if exclude_transaction_id is not None:
-            query = query.filter(Transaction.id != exclude_transaction_id)
-        transactions = query.order_by(Transaction.date.asc()).all()
-
-        running_quantity = ZERO
-        for t in transactions:
-            qty = _to_decimal(t.quantity)
-            if t.transaction_type == 'Buy':
-                running_quantity += qty
-            elif t.transaction_type == 'Sell':
-                running_quantity -= qty
-
-        return running_quantity
-
-    @staticmethod
     def get_quantity_held_for_symbol(fund_id, symbol, exclude_transaction_id=None):
         """Return current quantity held for a specific symbol inside a fund."""
         normalized = PortfolioCalculator.normalize_symbol(symbol)
@@ -115,13 +97,15 @@ class PortfolioCalculator:
             return sum((_to_decimal(r.amount_delta) for r in rows), ZERO)
 
         # No event history — legacy fund. Use fund.cash_balance as best approximation.
-        fund = Fund.query.get(fund_id)
+        from portfolio_app import db
+        fund = db.session.get(Fund, fund_id)
         return _to_decimal(fund.cash_balance or 0) if fund else ZERO
 
     @staticmethod
     def get_cash_balance_for_fund(fund_id, exclude_transaction_id=None) -> Decimal:
         """Compute cash balance: cash_balance - buy_outflows + sell_inflows + dividends."""
-        fund = Fund.query.get(fund_id)
+        from portfolio_app import db
+        fund = db.session.get(Fund, fund_id)
         if not fund:
             return ZERO
 
@@ -246,17 +230,6 @@ class PortfolioCalculator:
     # ------------------------------------------------------------------
     # Realized P&L helpers
     # ------------------------------------------------------------------
-
-    @staticmethod
-    def get_realized_pnl_for_fund(fund_id):
-        """Sum realized P&L across all symbols for a fund (reads from ClosedTrade)."""
-        from portfolio_app.models.closed_trade import ClosedTrade
-        result = (
-            db.session.query(func.sum(ClosedTrade.realized_pnl))
-            .filter(ClosedTrade.fund_id == fund_id)
-            .scalar()
-        )
-        return _to_decimal(result) if result is not None else ZERO
 
     @staticmethod
     def get_realized_performance_for_fund(fund_id):

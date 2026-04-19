@@ -1,6 +1,6 @@
 """FundEvent model for funding events (deposits/withdrawals)."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import Numeric, Index
 from portfolio_app import db
 
@@ -19,7 +19,7 @@ class FundEvent(db.Model):
     # Signed delta: positive for deposits/initial, negative for withdrawals
     amount_delta = db.Column(Numeric(15, 2), nullable=False, default=0)
 
-    date = db.Column(db.DateTime, default=datetime.utcnow)
+    date = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     notes = db.Column(db.Text, nullable=True)
 
     __table_args__ = (

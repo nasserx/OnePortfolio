@@ -320,7 +320,7 @@ def create_app(config_class=Config):
     @login_manager.user_loader
     def load_user(user_id: str):
         from portfolio_app.models.user import User
-        return User.query.get(int(user_id))
+        return db.session.get(User, int(user_id))
 
     @app.errorhandler(CSRFError)
     def _handle_csrf_error(e: CSRFError):

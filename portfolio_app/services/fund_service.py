@@ -106,10 +106,6 @@ class FundService:
         fund.cash_balance = _to_decimal(fund.cash_balance) - _to_decimal(event.amount_delta)
 
         self.event_repo.delete(event)
-        self.event_repo.flush()
-
-        self._cleanup_empty_events(fund_id)
-
         self.fund_repo.commit()
         return fund_id
 
@@ -144,9 +140,3 @@ class FundService:
         self.event_repo.add(event)
         return event
 
-    def _cleanup_empty_events(self, fund_id: int) -> None:
-        """Remove all remaining events if they all have zero delta."""
-        remaining = self.event_repo.get_by_fund_id(fund_id)
-        if remaining and all(_to_decimal(e.amount_delta) == ZERO for e in remaining):
-            for e in remaining:
-                self.event_repo.delete(e)

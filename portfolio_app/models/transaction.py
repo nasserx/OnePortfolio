@@ -1,6 +1,6 @@
 """Transaction model for buy/sell operations."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from sqlalchemy import Numeric, CheckConstraint
 from portfolio_app import db
@@ -22,7 +22,7 @@ class Transaction(db.Model):
     # Buy: gross + fees  |  Sell: gross - fees
     net_amount = db.Column(Numeric(20, 10), nullable=False, default=0)
     average_cost = db.Column(Numeric(20, 10), nullable=False, default=0)
-    date = db.Column(db.DateTime, default=datetime.utcnow)
+    date = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     notes = db.Column(db.Text, nullable=True)
 
     # One sell → one ClosedTrade snapshot (None for Buy transactions).

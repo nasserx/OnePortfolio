@@ -1,15 +1,22 @@
 import os
-import secrets
 from datetime import timedelta
 from pathlib import Path
 
 basedir = Path(__file__).parent
 
 
+def _require_secret_key() -> str:
+    key = os.environ.get('SECRET_KEY')
+    if key:
+        return key
+    if os.environ.get('FLASK_ENV') == 'production':
+        raise RuntimeError('SECRET_KEY environment variable must be set in production.')
+    return 'dev-only-insecure-key-do-not-use-in-production'
+
+
 class Config:
     """Base configuration"""
-    # Generate a secure SECRET_KEY if not provided via environment variable
-    SECRET_KEY = os.environ.get('SECRET_KEY') or secrets.token_hex(32)
+    SECRET_KEY = _require_secret_key()
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
         f'sqlite:///{basedir / "portfolio.db"}'
     SQLALCHEMY_TRACK_MODIFICATIONS = False

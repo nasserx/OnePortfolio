@@ -28,7 +28,7 @@ class BaseRepository(Generic[T]):
         Returns:
             The entity if found, None otherwise
         """
-        return self.model.query.get(id)
+        return self.db.session.get(self.model, id)
 
     def get_all(self) -> List[T]:
         """Get all entities.

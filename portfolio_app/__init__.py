@@ -202,7 +202,7 @@ def _run_migrations(app):
                 if legacy_funds:
                     conn.commit()
 
-            # ── Step 11: rename asset_class → name in fund table ────────────────
+            # ── Step 10: rename asset_class → name in fund table ───────────────
             if 'fund' in tables:
                 fund_cols = {c['name'] for c in inspector.get_columns('fund')}
                 if 'asset_class' in fund_cols and 'name' not in fund_cols:
@@ -211,7 +211,7 @@ def _run_migrations(app):
                     ))
                     conn.commit()
 
-            # ── Step 10: closed_trade table ──────────────────────────────────────
+            # ── Step 11: closed_trade table ──────────────────────────────────────
             # Stores a realized P&L snapshot for every sell transaction.
             # Created by recalculate_all_averages_for_symbol() — no manual inserts needed.
             # Both FKs carry ON DELETE CASCADE so the table stays consistent automatically.

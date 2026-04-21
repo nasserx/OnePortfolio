@@ -115,7 +115,7 @@
                         <div class="col-lg-8 col-md-7">
                             <div class="category-summary columns-6">
                                 <div class="summary-item">
-                                    <div class="summary-label">Records</div>
+                                    <div class="summary-label">Transactions</div>
                                     <div class="summary-value">{{ item.summary.transaction_count + symbol_dividends|length }}</div>
                                 </div>
                                 <div class="summary-item">
@@ -413,29 +413,22 @@
 
                     <div class="mb-3" id="add_tx_type_group">
                         <label for="transaction_type" class="form-label visually-hidden">Transaction Type</label>
-                        <div class="row g-2">
-                            <div class="col-6 d-grid">
-                                <button type="button" class="btn btn-buy" id="add_tx_type_buy_btn" aria-label="Buy">
-                                    Buy
-                                </button>
-                            </div>
-                            <div class="col-6 d-grid">
-                                <button type="button" class="btn btn-sell" id="add_tx_type_sell_btn" aria-label="Sell">
-                                    Sell
-                                </button>
-                            </div>
+                        <div class="tx-type-tabs">
+                            <button type="button" class="tx-type-tab tx-tab-buy" id="add_tx_type_buy_btn">
+                                Buy
+                            </button>
+                            <button type="button" class="tx-type-tab tx-tab-sell" id="add_tx_type_sell_btn">
+                                Sell
+                            </button>
                         </div>
 
                         <!-- Hidden select for Buy/Sell form submission -->
-                        <select class="form-select visually-hidden {% if _tx_add_errs.get('transaction_type') %}is-invalid{% endif %}" id="transaction_type" name="transaction_type" tabindex="-1" aria-hidden="true">
+                        <select class="form-select visually-hidden" id="transaction_type" name="transaction_type" tabindex="-1" aria-hidden="true">
                             <option value="" selected></option>
                             <option value="Buy">Buy</option>
                             <option value="Sell">Sell</option>
                         </select>
 
-                        {% if _tx_add_errs.get('transaction_type') %}
-                        <div class="invalid-feedback">{{ _tx_add_errs.get('transaction_type') }}</div>
-                        {% endif %}
                     </div>
 
                     <!-- Buy/Sell fields -->
@@ -1171,7 +1164,7 @@ function openAddTransactionModal(fundId, categoryName, symbol, forcedType) {
         }
         if (submitBtn) submitBtn.textContent = (forcedType === 'Buy') ? 'Add' : 'Add Transaction';
     } else {
-        if (typeSelect) typeSelect.value = '';
+        if (typeSelect) typeSelect.value = 'Buy';
         if (typeGroup) typeGroup.classList.remove('d-none');
         if (titleEl) titleEl.textContent = 'Add Transaction';
         if (submitBtn) submitBtn.textContent = 'Add Transaction';
@@ -1188,19 +1181,6 @@ function openAddTransactionModal(fundId, categoryName, symbol, forcedType) {
     if (quantityInput) quantityInput.dispatchEvent(new Event('input'));
     if (feesInput) feesInput.dispatchEvent(new Event('input'));
     if (typeSelect) typeSelect.dispatchEvent(new Event('change'));
-
-    // Clear the type-selection error AFTER dispatching change — FormValidator
-    // may re-validate synchronously on change, so we wipe the error last.
-    if (typeSelect) {
-        typeSelect.classList.remove('is-invalid');
-        const typeContainer = typeSelect.closest('.mb-3') || typeSelect.parentElement;
-        if (typeContainer) {
-            typeContainer.querySelectorAll('.invalid-feedback').forEach(function(el) {
-                el.textContent = '';
-                el.style.display = 'none';
-            });
-        }
-    }
 
     new bootstrap.Modal(modalEl).show();
 }
@@ -1492,23 +1472,19 @@ function editTransaction(id, fundId, type, symbol, price, quantity, fees, notes,
     fundSelect.addEventListener('change', refresh);
     symbolInput.addEventListener('input', refresh);
 
+    if (!typeSelect.value) typeSelect.value = 'Buy';
     syncTypeButtons();
 
     refresh();
 
-    // Reset type-selection error every time the modal is fully hidden,
-    // so it never bleeds into the next open.
+    modalEl.addEventListener('show.bs.modal', function() {
+        modalEl.querySelectorAll('.is-invalid').forEach(function(el) { el.classList.remove('is-invalid'); });
+        modalEl.querySelectorAll('.invalid-feedback').forEach(function(el) { el.textContent = ''; el.classList.remove('d-block'); });
+    });
+
     modalEl.addEventListener('hidden.bs.modal', function() {
-        typeSelect.value = '';
-        typeSelect.classList.remove('is-invalid');
+        typeSelect.value = 'Buy';
         syncTypeButtons();
-        const typeContainer = typeSelect.closest('.mb-3') || typeSelect.parentElement;
-        if (typeContainer) {
-            typeContainer.querySelectorAll('.invalid-feedback').forEach(function(el) {
-                el.textContent = '';
-                el.style.display = 'none';
-            });
-        }
     });
 })();
 

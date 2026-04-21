@@ -31,13 +31,9 @@ class TransactionAddForm(BaseForm):
         except (ValueError, TypeError):
             self.errors['portfolio_id'] = ValidationMessages.INVALID_CATEGORY
 
-        transaction_type = self._validate_choice(
-            'transaction_type',
-            Config.TRANSACTION_TYPES,
-            ValidationMessages.SELECT_TRANSACTION_TYPE,
-        )
-        if transaction_type:
-            self.cleaned_data['transaction_type'] = transaction_type
+        raw_type = (self.data.get('transaction_type') or '').strip()
+        transaction_type = raw_type if raw_type in Config.TRANSACTION_TYPES else Config.TRANSACTION_TYPES[0]
+        self.cleaned_data['transaction_type'] = transaction_type
 
         symbol = self._validate_required_string('symbol', ValidationMessages.SYMBOL_REQUIRED)
         if symbol:

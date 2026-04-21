@@ -89,8 +89,6 @@ class ValidationMessages:
     INVALID_CATEGORY        = "Invalid portfolio selection."
     INVALID_PORTFOLIO_ID    = "Invalid portfolio ID."
     INVALID_FUND_ID         = INVALID_PORTFOLIO_ID
-    SELECT_TRANSACTION_TYPE = "Please select a transaction type."
-
     # Portfolio name
     NAME_TOO_LONG           = "Name must be 50 characters or less."
     PORTFOLIO_NAME_TAKEN    = 'A portfolio with this name already exists.'

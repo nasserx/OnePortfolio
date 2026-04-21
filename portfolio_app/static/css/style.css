@@ -996,6 +996,39 @@ textarea:-webkit-autofill, select:-webkit-autofill {
     color: var(--text-1) !important;
 }
 
+/* Transaction type tabs (add modal) */
+.tx-type-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 0.25rem;
+}
+.tx-type-tab {
+    flex: 1;
+    position: relative;
+    background: transparent;
+    border: none;
+    padding: 0.55rem 1rem;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    color: var(--text-2);
+    cursor: pointer;
+    transition: color var(--transition);
+}
+.tx-type-tab::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0; right: 0;
+    height: 2px;
+    background: transparent;
+    transition: background var(--transition);
+}
+.tx-type-tab:hover { color: var(--text-1); }
+.tx-tab-buy.active         { color: var(--success); }
+.tx-tab-buy.active::after  { background: var(--success); }
+.tx-tab-sell.active        { color: var(--danger); }
+.tx-tab-sell.active::after { background: var(--danger); }
+
 /* Transaction type buttons */
 .btn-buy, .btn-sell, .btn-dividend {
     width: 100%; font-weight: 500;

@@ -11,9 +11,9 @@
     <div class="col-12 col-lg-6">
         <div class="card h-100 page-accent-surface">
             <div class="card-body p-4">
-                <p class="text-muted mb-3" style="font-size:.75rem; text-transform:uppercase; letter-spacing:.4px; font-weight:600;">Asset Allocation</p>
-                <div class="d-flex justify-content-center">
-                    <canvas id="allocationChart" style="max-height: 300px;"></canvas>
+                <p class="text-muted mb-3" style="font-size:.75rem; text-transform:uppercase; letter-spacing:.4px; font-weight:600;">Portfolio Allocation</p>
+                <div style="width: 100%;">
+                    <canvas id="allocationChart"></canvas>
                 </div>
             </div>
         </div>
@@ -24,8 +24,8 @@
         <div class="card h-100 page-accent-surface">
             <div class="card-body p-4">
                 <p class="text-muted mb-3" style="font-size:.75rem; text-transform:uppercase; letter-spacing:.4px; font-weight:600;">Realized P&amp;L by Portfolio</p>
-                <div>
-                    <canvas id="pnlChart" style="max-height: 300px;"></canvas>
+                <div style="width: 100%;">
+                    <canvas id="pnlChart"></canvas>
                 </div>
             </div>
         </div>
@@ -47,28 +47,32 @@
 (function () {
     const chartData = {{ chart_data | tojson }};
 
-    // Asset class color palette (matches icon colors in config)
-    const ASSET_CLASS_COLORS = {
-        'Stocks':      '#198754',
-        'ETFs':        '#0dcaf0',
-        'Commodities': '#ffc107',
-        'Crypto':      '#dc3545',
-    };
-    const DEFAULT_COLOR = '#6c757d';
+    // Google Material-inspired vibrant palette — assigned by index, never gray
+    const PALETTE = [
+        '#4285F4', // Google Blue
+        '#EA4335', // Google Red
+        '#FBBC04', // Google Yellow
+        '#34A853', // Google Green
+        '#FF6D00', // Deep Orange
+        '#AA00FF', // Deep Purple
+        '#00B0FF', // Light Blue
+        '#00BFA5', // Teal
+        '#F06292', // Pink
+        '#8D6E63', // Brown
+    ];
 
-    function assetClassColor(name) {
-        return ASSET_CLASS_COLORS[name] || DEFAULT_COLOR;
+    function paletteColor(index) {
+        return PALETTE[index % PALETTE.length];
     }
 
-    // Detect dark mode for chart text/grid colors
-    const isDark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
-    const textColor  = isDark ? '#adb5bd' : '#6c757d';
-    const gridColor  = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
+    function isDarkMode() { return document.documentElement.getAttribute('data-bs-theme') === 'dark'; }
+    function textColor()  { return isDarkMode() ? '#dee2e6' : '#212529'; }
+    function gridColor()  { return isDarkMode() ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'; }
 
-    const colors = chartData.categories.map(assetClassColor);
+    const colors = chartData.categories.map(function(_, i) { return paletteColor(i); });
 
     // ── Allocation Donut ──────────────────────────────────────────────
-    new Chart(document.getElementById('allocationChart'), {
+    const allocationChart = new Chart(document.getElementById('allocationChart'), {
         type: 'doughnut',
         data: {
             labels: chartData.categories,
@@ -76,15 +80,27 @@
                 data: chartData.allocations,
                 backgroundColor: colors,
                 borderWidth: 0,
-                hoverOffset: 6,
+                hoverOffset: 8,
             }]
         },
         options: {
             responsive: true,
+            aspectRatio: 2,
+            layout: { padding: { top: 10, bottom: 10, left: 0, right: 60 } },
+            animation: { animateRotate: true, animateScale: true },
             plugins: {
                 legend: {
                     position: 'right',
-                    labels: { color: textColor, padding: 16, font: { size: 13 }, boxWidth: 14 }
+                    afterFit: function(legend) { legend.width = 160; },
+                    labels: {
+                        color: textColor(),
+                        padding: 16,
+                        font: { size: 12 },
+                        boxWidth: 10,
+                        boxHeight: 10,
+                        usePointStyle: true,
+                        pointStyle: 'circle',
+                    }
                 },
                 tooltip: {
                     callbacks: {
@@ -99,13 +115,13 @@
 
     // ── Realized P&L Bar ─────────────────────────────────────────────
     const pnlColors = chartData.realized_pnl.map(function(v) {
-        return v >= 0 ? 'rgba(25, 135, 84, 0.80)' : 'rgba(220, 53, 69, 0.80)';
+        return v >= 0 ? 'rgba(52, 168, 83, 0.85)' : 'rgba(234, 67, 53, 0.85)';
     });
     const pnlBorder = chartData.realized_pnl.map(function(v) {
-        return v >= 0 ? '#198754' : '#dc3545';
+        return v >= 0 ? '#34A853' : '#EA4335';
     });
 
-    new Chart(document.getElementById('pnlChart'), {
+    const pnlChart = new Chart(document.getElementById('pnlChart'), {
         type: 'bar',
         data: {
             labels: chartData.categories,
@@ -134,21 +150,37 @@
             },
             scales: {
                 x: {
-                    ticks: { color: textColor },
-                    grid: { color: gridColor }
+                    ticks: { color: textColor(), font: { size: 12 } },
+                    grid: { color: gridColor() }
                 },
                 y: {
                     ticks: {
-                        color: textColor,
+                        color: textColor(),
+                        font: { size: 12 },
                         callback: function(v) {
                             return (v >= 0 ? '+' : '') + v.toFixed(0);
                         }
                     },
-                    grid: { color: gridColor }
+                    grid: { color: gridColor() }
                 }
             }
         }
     });
+
+    // Update chart colors on theme switch without page reload
+    new MutationObserver(function() {
+        const tc = textColor();
+        const gc = gridColor();
+
+        allocationChart.options.plugins.legend.labels.color = tc;
+        allocationChart.update('none');
+
+        pnlChart.options.scales.x.ticks.color = tc;
+        pnlChart.options.scales.x.grid.color = gc;
+        pnlChart.options.scales.y.ticks.color = tc;
+        pnlChart.options.scales.y.grid.color = gc;
+        pnlChart.update('none');
+    }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-bs-theme'] });
 })();
 </script>
 {% endblock %}

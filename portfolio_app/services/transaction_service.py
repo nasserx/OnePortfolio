@@ -8,7 +8,7 @@ from portfolio_app.models.asset import Asset
 from portfolio_app.models.dividend import Dividend
 from portfolio_app.repositories.transaction_repository import TransactionRepository
 from portfolio_app.repositories.asset_repository import AssetRepository
-from portfolio_app.repositories.fund_repository import FundRepository
+from portfolio_app.repositories.fund_repository import PortfolioRepository
 from portfolio_app.repositories.dividend_repository import DividendRepository
 from portfolio_app.calculators.portfolio_calculator import PortfolioCalculator
 from portfolio_app.calculators.transaction_manager import TransactionManager
@@ -26,25 +26,17 @@ class TransactionService:
         self,
         transaction_repo: TransactionRepository,
         asset_repo: AssetRepository,
-        fund_repo: FundRepository,
+        portfolio_repo: PortfolioRepository,
         dividend_repo: Optional[DividendRepository] = None,
     ):
-        """Initialize service with repositories.
-
-        Args:
-            transaction_repo: Transaction repository
-            asset_repo: Asset repository
-            fund_repo: Fund repository
-            dividend_repo: Dividend repository
-        """
         self.transaction_repo = transaction_repo
         self.asset_repo = asset_repo
-        self.fund_repo = fund_repo
+        self.portfolio_repo = portfolio_repo
         self.dividend_repo = dividend_repo
 
     def add_transaction(
         self,
-        fund_id: int,
+        portfolio_id: int,
         transaction_type: str,
         symbol: str,
         price: Decimal,
@@ -53,36 +45,20 @@ class TransactionService:
         notes: str = '',
         date: Optional[Any] = None
     ) -> Transaction:
-        """Add a new transaction.
+        """Add a new transaction."""
+        if not self.portfolio_repo.get_by_id(portfolio_id):
+            raise ValueError('Portfolio not found')
 
-        Args:
-            fund_id: Fund ID
-            transaction_type: 'Buy' or 'Sell'
-            symbol: Asset symbol
-            price: Price per unit
-            quantity: Quantity
-            fees: Transaction fees
-            notes: Optional notes
-
-        Returns:
-            Created transaction
-
-        Raises:
-            ValidationError: If fees exceed sell proceeds
-        """
-        # Verify the fund exists and belongs to the current user
-        if not self.fund_repo.get_by_id(fund_id):
-            raise ValueError('Fund not found')
-
-        # Validate fees don't exceed sell proceeds
         if transaction_type == 'Sell':
             gross = price * quantity
             if fees > gross:
                 raise ValidationError('Fees exceed proceeds')
+            held = PortfolioCalculator.get_quantity_held_for_symbol(portfolio_id, symbol)
+            if quantity > held:
+                raise ValidationError('Insufficient quantity')
 
-        # Create transaction
         transaction = TransactionManager.create_transaction(
-            fund_id=fund_id,
+            fund_id=portfolio_id,
             transaction_type=transaction_type,
             symbol=symbol,
             price=price,
@@ -95,8 +71,7 @@ class TransactionService:
         self.transaction_repo.add(transaction)
         self.transaction_repo.flush()
 
-        # Recalculate averages
-        PortfolioCalculator.recalculate_all_averages_for_symbol(fund_id, symbol)
+        PortfolioCalculator.recalculate_all_averages_for_symbol(portfolio_id, symbol)
 
         self.transaction_repo.commit()
         return transaction
@@ -111,39 +86,20 @@ class TransactionService:
         symbol: Optional[str] = None,
         date: Optional[Any] = None
     ) -> Transaction:
-        """Update an existing transaction.
-
-        Args:
-            transaction_id: Transaction ID
-            price: New price (optional)
-            quantity: New quantity (optional)
-            fees: New fees (optional)
-            notes: New notes (optional)
-            symbol: New symbol (optional)
-            date: New date (optional)
-
-        Returns:
-            Updated transaction
-
-        Raises:
-            ValueError: If transaction not found
-        """
+        """Update an existing transaction."""
         transaction = self.transaction_repo.get_by_id(transaction_id)
         if not transaction:
             raise ValueError('Transaction not found')
 
-        # Verify the transaction belongs to the current user (fund_repo is user-scoped)
-        if not self.fund_repo.get_by_id(transaction.fund_id):
+        if not self.portfolio_repo.get_by_id(transaction.portfolio_id):
             raise ValueError('Transaction not found')
 
-        # Check if anything actually changed - skip update if not
         if self._has_no_changes(transaction, price, quantity, fees, notes, symbol, date):
             return transaction
 
         old_symbol = transaction.symbol
-        fund_id = transaction.fund_id
+        portfolio_id = transaction.portfolio_id
 
-        # Update transaction
         TransactionManager.update_transaction(
             transaction,
             price=price,
@@ -156,99 +112,64 @@ class TransactionService:
 
         self.transaction_repo.flush()
 
-        # Recalculate averages for both old and new symbols if changed
         if symbol and old_symbol != transaction.symbol:
-            PortfolioCalculator.recalculate_all_averages_for_symbol(fund_id, old_symbol)
-            PortfolioCalculator.recalculate_all_averages_for_symbol(fund_id, transaction.symbol)
+            PortfolioCalculator.recalculate_all_averages_for_symbol(portfolio_id, old_symbol)
+            PortfolioCalculator.recalculate_all_averages_for_symbol(portfolio_id, transaction.symbol)
         else:
-            PortfolioCalculator.recalculate_all_averages_for_symbol(fund_id, transaction.symbol)
+            PortfolioCalculator.recalculate_all_averages_for_symbol(portfolio_id, transaction.symbol)
 
         self.transaction_repo.commit()
         return transaction
 
     def delete_transaction(self, transaction_id: int) -> int:
-        """Delete a transaction.
-
-        Args:
-            transaction_id: Transaction ID
-
-        Returns:
-            Fund ID of the deleted transaction
-
-        Raises:
-            ValueError: If transaction not found
-        """
+        """Delete a transaction. Returns portfolio_id of the deleted transaction."""
         transaction = self.transaction_repo.get_by_id(transaction_id)
         if not transaction:
             raise ValueError('Transaction not found')
 
-        # Verify the transaction belongs to the current user (fund_repo is user-scoped)
-        if not self.fund_repo.get_by_id(transaction.fund_id):
+        if not self.portfolio_repo.get_by_id(transaction.portfolio_id):
             raise ValueError('Transaction not found')
 
-        fund_id = transaction.fund_id
+        portfolio_id = transaction.portfolio_id
         symbol = transaction.symbol
 
         self.transaction_repo.delete(transaction)
         self.transaction_repo.flush()
 
-        # Recalculate averages after deletion
-        PortfolioCalculator.recalculate_all_averages_for_symbol(fund_id, symbol)
+        PortfolioCalculator.recalculate_all_averages_for_symbol(portfolio_id, symbol)
 
         self.transaction_repo.commit()
-        return fund_id
+        return portfolio_id
 
-    def add_asset(self, fund_id: int, symbol: str) -> Asset:
-        """Add a tracked symbol to an asset class.
-
-        Args:
-            fund_id: Asset class ID
-            symbol: Symbol to track
-
-        Returns:
-            Created symbol record
-
-        Raises:
-            ValueError: If symbol is already added to this asset class
-        """
+    def add_asset(self, portfolio_id: int, symbol: str) -> Asset:
+        """Add a tracked symbol to a portfolio."""
         symbol = PortfolioCalculator.normalize_symbol(symbol)
 
-        # Verify the fund belongs to the current user (fund_repo is user-scoped)
-        if not self.fund_repo.get_by_id(fund_id):
-            raise ValueError('Fund not found')
+        if not self.portfolio_repo.get_by_id(portfolio_id):
+            raise ValueError('Portfolio not found')
 
-        # Check if already exists
-        existing = self.asset_repo.get_by_fund_and_symbol(fund_id, symbol)
+        existing = self.asset_repo.get_by_portfolio_and_symbol(portfolio_id, symbol)
         if existing:
-            raise ValueError(f"'{symbol}' is already added to this asset class.")
+            raise ValueError(f"'{symbol}' is already added to this portfolio.")
 
-        asset = Asset(fund_id=fund_id, symbol=symbol)
+        asset = Asset(portfolio_id=portfolio_id, symbol=symbol)
         self.asset_repo.add(asset)
         self.asset_repo.commit()
 
         return asset
 
-    def delete_asset(self, fund_id: int, symbol: str) -> None:
-        """Delete a tracked asset and all its transactions.
-
-        Args:
-            fund_id: Fund ID
-            symbol: Asset symbol
-
-        Raises:
-            ValueError: If asset not found
-        """
+    def delete_asset(self, portfolio_id: int, symbol: str) -> None:
+        """Delete a tracked asset and all its transactions."""
         symbol = PortfolioCalculator.normalize_symbol(symbol)
 
-        # Verify the fund belongs to the current user (fund_repo is user-scoped)
-        if not self.fund_repo.get_by_id(fund_id):
-            raise ValueError('Asset not found')
+        if not self.portfolio_repo.get_by_id(portfolio_id):
+            raise ValueError('Portfolio not found')
 
-        asset = self.asset_repo.get_by_fund_and_symbol(fund_id, symbol)
+        asset = self.asset_repo.get_by_portfolio_and_symbol(portfolio_id, symbol)
         if not asset:
             raise ValueError('Asset not found')
 
-        for tx in self.transaction_repo.get_by_symbol(fund_id, symbol):
+        for tx in self.transaction_repo.get_by_symbol(portfolio_id, symbol):
             self.transaction_repo.delete(tx)
 
         self.asset_repo.delete(asset)
@@ -276,33 +197,19 @@ class TransactionService:
 
     def add_dividend(
         self,
-        fund_id: int,
+        portfolio_id: int,
         symbol: str,
         amount: Decimal,
         date: datetime,
         notes: str = '',
     ) -> Dividend:
-        """Add a new dividend income record.
-
-        Args:
-            fund_id: Fund ID
-            symbol: Asset symbol this dividend belongs to
-            amount: Dividend amount (must be > 0)
-            date: Dividend date
-            notes: Optional notes
-
-        Returns:
-            Created Dividend
-
-        Raises:
-            ValidationError: If fund not found
-        """
-        fund = self.fund_repo.get_by_id(fund_id)
-        if not fund:
-            raise ValidationError('Category not found.')
+        """Add a new dividend income record."""
+        portfolio = self.portfolio_repo.get_by_id(portfolio_id)
+        if not portfolio:
+            raise ValueError('Portfolio not found')
 
         dividend = Dividend(
-            fund_id=fund_id,
+            portfolio_id=portfolio_id,
             symbol=symbol.upper(),
             amount=amount,
             date=date,
@@ -319,22 +226,9 @@ class TransactionService:
         date: Optional[datetime] = None,
         notes: Optional[str] = None,
     ) -> Dividend:
-        """Update an existing dividend.
-
-        Args:
-            dividend_id: Dividend ID
-            amount: New amount (optional)
-            date: New date (optional)
-            notes: New notes (optional)
-
-        Returns:
-            Updated Dividend
-
-        Raises:
-            ValueError: If dividend not found
-        """
+        """Update an existing dividend."""
         dividend = self.dividend_repo.get_by_id(dividend_id)
-        if not dividend or not self.fund_repo.get_by_id(dividend.fund_id):
+        if not dividend or not self.portfolio_repo.get_by_id(dividend.portfolio_id):
             raise ValueError('Dividend not found')
 
         if amount is not None:
@@ -348,18 +242,10 @@ class TransactionService:
         return dividend
 
     def delete_dividend(self, dividend_id: int) -> None:
-        """Delete a dividend record.
-
-        Args:
-            dividend_id: Dividend ID
-
-        Raises:
-            ValueError: If dividend not found
-        """
+        """Delete a dividend record."""
         dividend = self.dividend_repo.get_by_id(dividend_id)
-        if not dividend or not self.fund_repo.get_by_id(dividend.fund_id):
+        if not dividend or not self.portfolio_repo.get_by_id(dividend.portfolio_id):
             raise ValueError('Dividend not found')
 
         self.dividend_repo.delete(dividend)
         self.dividend_repo.commit()
-

@@ -36,27 +36,23 @@ def _decimal_places(value) -> int:
 
 
 def _get_transactions_page_context(portfolio_filter=''):
-    """Build context data for the transactions page.
-
-    Args:
-        portfolio_filter: Optional portfolio name to filter the view.
-    """
+    """Build context data for the transactions page."""
     svc = get_services()
-    fund_repo, transaction_repo, asset_repo = svc.fund_repo, svc.transaction_repo, svc.asset_repo
+    portfolio_repo, transaction_repo, asset_repo = svc.portfolio_repo, svc.transaction_repo, svc.asset_repo
     portfolio_filter = (portfolio_filter or '').strip()
-    funds = fund_repo.get_all()
+    portfolios = portfolio_repo.get_all()
     holdings = []
 
-    for fund in funds:
-        if portfolio_filter and fund.name != portfolio_filter:
+    for portfolio in portfolios:
+        if portfolio_filter and portfolio.name != portfolio_filter:
             continue
 
         tracked_symbols = set()
         asset_by_symbol = {}
 
         try:
-            fund_assets = asset_repo.get_by_fund_id(fund.id)
-            for a in fund_assets:
+            portfolio_assets = asset_repo.get_by_portfolio_id(portfolio.id)
+            for a in portfolio_assets:
                 sym_norm = PortfolioCalculator.normalize_symbol(a.symbol)
                 if sym_norm:
                     asset_by_symbol[sym_norm] = a
@@ -64,10 +60,10 @@ def _get_transactions_page_context(portfolio_filter=''):
         except OperationalError:
             asset_by_symbol = {}
 
-        fund_transactions = transaction_repo.get_by_fund_id(fund.id)
+        portfolio_transactions = transaction_repo.get_by_portfolio_id(portfolio.id)
 
         transactions_by_symbol = {}
-        for t in fund_transactions:
+        for t in portfolio_transactions:
             sym_norm = PortfolioCalculator.normalize_symbol(t.symbol)
             if not sym_norm:
                 continue
@@ -84,7 +80,6 @@ def _get_transactions_page_context(portfolio_filter=''):
             avg_cost_decimal_places = max(2, price_decimal_places)
             summary = PortfolioCalculator.get_symbol_transactions_summary_from_list(transactions)
 
-            # Per-symbol ROI: realized P&L vs cost basis of sold shares
             try:
                 realized_pnl = Decimal(str(summary.get('realized_pnl', 0) or 0))
                 cost_basis = Decimal(str(summary.get('realized_cost_basis', 0) or 0))
@@ -100,10 +95,10 @@ def _get_transactions_page_context(portfolio_filter=''):
                 summary['roi_percent'] = None
                 summary['roi_percent_display'] = '—'
 
-            html_group_id = safe_html_id(fund.id, sym_norm)
+            html_group_id = safe_html_id(portfolio.id, sym_norm)
             asset = asset_by_symbol.get(sym_norm)
             holdings.append({
-                'fund': fund,
+                'portfolio': portfolio,
                 'symbol': sym_norm,
                 'html_group_id': html_group_id,
                 'transactions': transactions_desc,
@@ -113,22 +108,22 @@ def _get_transactions_page_context(portfolio_filter=''):
                 'asset_id': asset.id if asset else None,
             })
 
-    # Load dividends grouped by (fund_id, symbol) — single query for all funds
-    visible_fund_ids = [f.id for f in funds if not portfolio_filter or f.name == portfolio_filter]
+    # Load dividends grouped by (portfolio_id, symbol) — single query for all portfolios
+    visible_portfolio_ids = [p.id for p in portfolios if not portfolio_filter or p.name == portfolio_filter]
     dividends_by_symbol: dict = {}
     dividend_totals: dict = {}
-    for div in svc.dividend_repo.get_by_fund_ids(visible_fund_ids):
+    for div in svc.dividend_repo.get_by_portfolio_ids(visible_portfolio_ids):
         sym = (div.symbol or '').upper()
         if not sym:
             logger.debug('Dividend id=%s has no symbol, skipping display', div.id)
             continue
-        key = (div.fund_id, sym)
+        key = (div.portfolio_id, sym)
         dividends_by_symbol.setdefault(key, []).append(div)
         dividend_totals[key] = dividend_totals.get(key, ZERO) + Decimal(str(div.amount))
 
     return {
         'holdings': holdings,
-        'funds': funds,
+        'funds': portfolios,
         'transaction_types': Config.TRANSACTION_TYPES,
         'selected_portfolio': portfolio_filter,
         'dividends_by_symbol': dividends_by_symbol,
@@ -157,9 +152,9 @@ def transaction_add():
     """Add new transaction."""
     try:
         svc = get_services()
-        funds = svc.fund_repo.get_all()
+        portfolios = svc.portfolio_repo.get_all()
 
-        form = TransactionAddForm(request.form, funds)
+        form = TransactionAddForm(request.form, portfolios)
         if not form.validate():
             if is_ajax_request():
                 return json_response(False, error=get_first_form_error(form.errors))
@@ -175,7 +170,7 @@ def transaction_add():
 
         data = form.get_cleaned_data()
         svc.transaction_service.add_transaction(
-            fund_id=data['fund_id'],
+            portfolio_id=data['portfolio_id'],
             transaction_type=data['transaction_type'],
             symbol=data['symbol'],
             price=data['price'],
@@ -299,9 +294,9 @@ def dividend_add():
     """Add a new dividend income record."""
     try:
         svc = get_services()
-        funds = svc.fund_repo.get_all()
+        portfolios = svc.portfolio_repo.get_all()
 
-        form = DividendAddForm(request.form, funds)
+        form = DividendAddForm(request.form, portfolios)
         if not form.validate():
             if is_ajax_request():
                 return json_response(False, error=get_first_form_error(form.errors))
@@ -317,7 +312,7 @@ def dividend_add():
 
         data = form.get_cleaned_data()
         svc.transaction_service.add_dividend(
-            fund_id=data['fund_id'],
+            portfolio_id=data['portfolio_id'],
             symbol=data['symbol'],
             amount=data['amount'],
             date=data['date'],
@@ -428,9 +423,9 @@ def asset_add():
     """Add tracked asset."""
     try:
         svc = get_services()
-        funds = svc.fund_repo.get_all()
+        portfolios = svc.portfolio_repo.get_all()
 
-        form = AssetAddForm(request.form, funds)
+        form = AssetAddForm(request.form, portfolios)
         if not form.validate():
             ctx = _get_transactions_page_context()
             return render_template(
@@ -443,7 +438,7 @@ def asset_add():
 
         data = form.get_cleaned_data()
         svc.transaction_service.add_asset(
-            fund_id=data['fund_id'],
+            portfolio_id=data['portfolio_id'],
             symbol=data['symbol']
         )
 
@@ -476,7 +471,7 @@ def asset_delete():
 
         data = form.get_cleaned_data()
         svc.transaction_service.delete_asset(
-            fund_id=data['fund_id'],
+            portfolio_id=data['portfolio_id'],
             symbol=data['symbol']
         )
 

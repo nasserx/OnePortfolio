@@ -41,8 +41,8 @@
                 <i class="bi bi-grid-1x2" aria-hidden="true"></i>
                 Overview
             </a>
-            <a class="sidebar-nav-link {% if request.endpoint == 'funds.funds_list' %}active{% endif %}"
-               href="{{ url_for('funds.funds_list') }}">
+            <a class="sidebar-nav-link {% if request.endpoint == 'portfolios.portfolios_list' %}active{% endif %}"
+               href="{{ url_for('portfolios.portfolios_list') }}">
                 <i class="bi bi-wallet2" aria-hidden="true"></i>
                 Portfolios
             </a>
@@ -51,12 +51,7 @@
                 <i class="bi bi-arrow-left-right" aria-hidden="true"></i>
                 Transactions
             </a>
-            <a class="sidebar-nav-link {% if request.endpoint == 'history.history_list' %}active{% endif %}"
-               href="{{ url_for('history.history_list') }}">
-                <i class="bi bi-clock-history" aria-hidden="true"></i>
-                History
-            </a>
-            <a class="sidebar-nav-link {% if request.endpoint == 'charts.charts' %}active{% endif %}"
+<a class="sidebar-nav-link {% if request.endpoint == 'charts.charts' %}active{% endif %}"
                href="{{ url_for('charts.charts') }}">
                 <i class="bi bi-bar-chart-line" aria-hidden="true"></i>
                 Charts

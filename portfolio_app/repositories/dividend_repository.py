@@ -10,50 +10,66 @@ from decimal import Decimal
 class DividendRepository(BaseRepository[Dividend]):
     """Repository for Dividend model database operations."""
 
-    def get_by_fund_ids(self, fund_ids: List[int]) -> List[Dividend]:
-        """Return all dividends for multiple funds in a single query, newest first."""
-        if not fund_ids:
+    def get_by_portfolio_ids(self, portfolio_ids: List[int]) -> List[Dividend]:
+        """Return all dividends for multiple portfolios in a single query, newest first."""
+        if not portfolio_ids:
             return []
         return (
             self.model.query
-            .filter(Dividend.fund_id.in_(fund_ids))
+            .filter(Dividend.portfolio_id.in_(portfolio_ids))
             .order_by(Dividend.date.desc())
             .all()
         )
 
-    def get_by_fund_id(self, fund_id: int) -> List[Dividend]:
-        """Return all dividends for a fund, newest first."""
+    def get_by_portfolio_id(self, portfolio_id: int) -> List[Dividend]:
+        """Return all dividends for a portfolio, newest first."""
         return (
             self.model.query
-            .filter_by(fund_id=fund_id)
+            .filter_by(portfolio_id=portfolio_id)
             .order_by(Dividend.date.desc())
             .all()
         )
 
-    def get_by_fund_and_symbol(self, fund_id: int, symbol: str) -> List[Dividend]:
-        """Return all dividends for a specific symbol within a fund, newest first."""
+    def get_by_portfolio_and_symbol(self, portfolio_id: int, symbol: str) -> List[Dividend]:
+        """Return all dividends for a specific symbol within a portfolio, newest first."""
         return (
             self.model.query
-            .filter_by(fund_id=fund_id, symbol=symbol.upper())
+            .filter_by(portfolio_id=portfolio_id, symbol=symbol.upper())
             .order_by(Dividend.date.desc())
             .all()
         )
 
-    def get_by_id_for_fund(self, dividend_id: int, fund_id: int) -> Optional[Dividend]:
-        """Return a dividend only if it belongs to the given fund (ownership check)."""
+    def get_by_id_for_portfolio(self, dividend_id: int, portfolio_id: int) -> Optional[Dividend]:
+        """Return a dividend only if it belongs to the given portfolio."""
         return (
             self.model.query
-            .filter_by(id=dividend_id, fund_id=fund_id)
+            .filter_by(id=dividend_id, portfolio_id=portfolio_id)
             .first()
         )
 
-    def get_total_for_fund(self, fund_id: int) -> Decimal:
-        """Return the sum of all dividend amounts for a fund."""
+    def get_total_for_portfolio(self, portfolio_id: int) -> Decimal:
+        """Return the sum of all dividend amounts for a portfolio."""
         from sqlalchemy import func
         result = (
             self.model.query
             .with_entities(func.sum(Dividend.amount))
-            .filter_by(fund_id=fund_id)
+            .filter_by(portfolio_id=portfolio_id)
             .scalar()
         )
         return Decimal(str(result)) if result else ZERO
+
+    # Backward-compatible aliases.
+    def get_by_fund_ids(self, fund_ids: List[int]) -> List[Dividend]:
+        return self.get_by_portfolio_ids(fund_ids)
+
+    def get_by_fund_id(self, fund_id: int) -> List[Dividend]:
+        return self.get_by_portfolio_id(fund_id)
+
+    def get_by_fund_and_symbol(self, fund_id: int, symbol: str) -> List[Dividend]:
+        return self.get_by_portfolio_and_symbol(fund_id, symbol)
+
+    def get_by_id_for_fund(self, dividend_id: int, fund_id: int) -> Optional[Dividend]:
+        return self.get_by_id_for_portfolio(dividend_id, fund_id)
+
+    def get_total_for_fund(self, fund_id: int) -> Decimal:
+        return self.get_total_for_portfolio(fund_id)

@@ -222,8 +222,8 @@ def _run_migrations(app):
                         id             INTEGER PRIMARY KEY AUTOINCREMENT,
                         transaction_id INTEGER NOT NULL UNIQUE
                                        REFERENCES "transaction"(id) ON DELETE CASCADE,
-                        fund_id        INTEGER NOT NULL
-                                       REFERENCES fund(id) ON DELETE CASCADE,
+                        portfolio_id   INTEGER NOT NULL
+                                       REFERENCES portfolio(id) ON DELETE CASCADE,
                         symbol         VARCHAR(20) NOT NULL,
                         quantity_sold  NUMERIC(20,10) NOT NULL,
                         avg_cost       NUMERIC(20,10) NOT NULL,
@@ -238,7 +238,7 @@ def _run_migrations(app):
                     )
                 '''))
                 conn.execute(sa.text(
-                    'CREATE INDEX ix_closed_trade_fund_id ON closed_trade(fund_id)'
+                    'CREATE INDEX ix_closed_trade_portfolio_id ON closed_trade(portfolio_id)'
                 ))
                 conn.execute(sa.text(
                     'CREATE INDEX ix_closed_trade_symbol ON closed_trade(symbol)'
@@ -247,6 +247,82 @@ def _run_migrations(app):
                     'CREATE INDEX ix_closed_trade_transaction_id ON closed_trade(transaction_id)'
                 ))
                 conn.commit()
+
+            # ── Step 12: Rename fund → portfolio ─────────────────────────────────
+            tables = set(inspector.get_table_names())
+            if 'fund' in tables and 'portfolio' not in tables:
+                conn.execute(sa.text('ALTER TABLE fund RENAME TO portfolio'))
+                conn.commit()
+                tables = set(inspector.get_table_names())
+
+            # ── Step 13: Rename fund_event → portfolio_event ─────────────────────
+            if 'fund_event' in tables and 'portfolio_event' not in tables:
+                conn.execute(sa.text('ALTER TABLE fund_event RENAME TO portfolio_event'))
+                conn.commit()
+
+            # ── Step 14: portfolio_event.fund_id → portfolio_id ──────────────────
+            tables = set(inspector.get_table_names())
+            if 'portfolio_event' in tables:
+                pe_cols = {c['name'] for c in inspector.get_columns('portfolio_event')}
+                if 'fund_id' in pe_cols:
+                    conn.execute(sa.text(
+                        'ALTER TABLE portfolio_event RENAME COLUMN fund_id TO portfolio_id'
+                    ))
+                    conn.commit()
+
+            # ── Step 15: transaction.fund_id → portfolio_id ──────────────────────
+            if 'transaction' in tables:
+                tx_cols = {c['name'] for c in inspector.get_columns('transaction')}
+                if 'fund_id' in tx_cols:
+                    conn.execute(sa.text(
+                        'ALTER TABLE "transaction" RENAME COLUMN fund_id TO portfolio_id'
+                    ))
+                    conn.commit()
+
+            # ── Step 16: asset.fund_id → portfolio_id ────────────────────────────
+            if 'asset' in tables:
+                asset_cols = {c['name'] for c in inspector.get_columns('asset')}
+                if 'fund_id' in asset_cols:
+                    conn.execute(sa.text(
+                        'ALTER TABLE asset RENAME COLUMN fund_id TO portfolio_id'
+                    ))
+                    conn.commit()
+
+            # ── Step 17: dividend.fund_id → portfolio_id ─────────────────────────
+            if 'dividend' in tables:
+                div_cols = {c['name'] for c in inspector.get_columns('dividend')}
+                if 'fund_id' in div_cols:
+                    conn.execute(sa.text(
+                        'ALTER TABLE dividend RENAME COLUMN fund_id TO portfolio_id'
+                    ))
+                    conn.commit()
+
+            # ── Step 18: closed_trade.fund_id → portfolio_id ─────────────────────
+            if 'closed_trade' in tables:
+                ct_cols = {c['name'] for c in inspector.get_columns('closed_trade')}
+                if 'fund_id' in ct_cols:
+                    conn.execute(sa.text(
+                        'ALTER TABLE closed_trade RENAME COLUMN fund_id TO portfolio_id'
+                    ))
+                    conn.execute(sa.text(
+                        'DROP INDEX IF EXISTS ix_closed_trade_fund_id'
+                    ))
+                    conn.execute(sa.text(
+                        'CREATE INDEX IF NOT EXISTS ix_closed_trade_portfolio_id ON closed_trade(portfolio_id)'
+                    ))
+                    conn.commit()
+
+            # ── Step 19: portfolio.cash_balance → net_deposits ────────────────────
+            # Reflects that this field tracks deposits minus withdrawals only —
+            # it is NOT the available cash (which also accounts for buy/sell flows).
+            tables = set(inspector.get_table_names())
+            if 'portfolio' in tables:
+                p_cols = {c['name'] for c in inspector.get_columns('portfolio')}
+                if 'cash_balance' in p_cols and 'net_deposits' not in p_cols:
+                    conn.execute(sa.text(
+                        'ALTER TABLE portfolio RENAME COLUMN cash_balance TO net_deposits'
+                    ))
+                    conn.commit()
 
 
 def _backfill_closed_trades(app):
@@ -261,9 +337,9 @@ def _backfill_closed_trades(app):
         from portfolio_app.models.closed_trade import ClosedTrade
         from portfolio_app.calculators.portfolio_calculator import PortfolioCalculator
 
-        # Find (fund_id, symbol) pairs that have sells without a ClosedTrade
+        # Find (portfolio_id, symbol) pairs that have sells without a ClosedTrade
         pairs = (
-            db.session.query(Transaction.fund_id, Transaction.symbol)
+            db.session.query(Transaction.portfolio_id, Transaction.symbol)
             .outerjoin(ClosedTrade, ClosedTrade.transaction_id == Transaction.id)
             .filter(
                 Transaction.transaction_type == 'Sell',
@@ -276,10 +352,10 @@ def _backfill_closed_trades(app):
         if not pairs:
             return
 
-        for fund_id, symbol in pairs:
+        for portfolio_id, symbol in pairs:
             sym_norm = PortfolioCalculator.normalize_symbol(symbol)
             if sym_norm:
-                PortfolioCalculator.recalculate_all_averages_for_symbol(fund_id, sym_norm)
+                PortfolioCalculator.recalculate_all_averages_for_symbol(portfolio_id, sym_norm)
 
         db.session.commit()
 

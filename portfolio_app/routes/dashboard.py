@@ -32,8 +32,8 @@ def index() -> str:
         return render_template('landing.html')
 
     svc = get_services()
-    portfolio_summary, total_value = svc.portfolio_service.get_portfolio_summary()
-    totals = svc.portfolio_service.get_portfolio_dashboard_totals()
+    portfolio_summary, total_value = svc.overview_service.get_portfolio_summary()
+    totals = svc.overview_service.get_portfolio_dashboard_totals()
 
     return render_template(
         'index.html',
@@ -46,13 +46,9 @@ def index() -> str:
 @dashboard_bp.route('/api/portfolio-summary')
 @login_required
 def api_portfolio_summary() -> Response:
-    """API endpoint for portfolio summary.
-
-    Returns:
-        JSON response with portfolio summary and total value
-    """
+    """API endpoint for portfolio summary."""
     svc = get_services()
-    portfolio_summary, total_value = svc.portfolio_service.get_portfolio_summary()
+    portfolio_summary, total_value = svc.overview_service.get_portfolio_summary()
 
     return jsonify(_jsonify_decimals({
         'portfolio_summary': portfolio_summary,
@@ -63,53 +59,42 @@ def api_portfolio_summary() -> Response:
 @dashboard_bp.route('/api/holdings')
 @login_required
 def api_holdings() -> Response:
-    """API endpoint to get held quantity for a symbol in a fund.
+    """API endpoint to get held quantity for a symbol in a portfolio.
 
     Query Parameters:
-        fund_id: Fund ID
+        portfolio_id: Portfolio ID
         symbol: Asset symbol
-
-    Returns:
-        JSON response with held quantity or error
     """
     try:
-        # Validate fund_id
         try:
-            fund_id = int(request.args.get('fund_id') or 0)
+            portfolio_id = int(request.args.get('portfolio_id') or 0)
         except (ValueError, TypeError):
-            return jsonify({'error': ErrorMessages.INVALID_FUND_ID}), 400
+            return jsonify({'error': ErrorMessages.INVALID_PORTFOLIO_ID}), 400
 
-        if fund_id <= 0:
-            return jsonify({'error': ErrorMessages.INVALID_FUND_ID}), 400
+        if portfolio_id <= 0:
+            return jsonify({'error': ErrorMessages.INVALID_PORTFOLIO_ID}), 400
 
-        # Validate symbol
         symbol = PortfolioCalculator.normalize_symbol(request.args.get('symbol', ''))
         if not symbol:
             return jsonify({'error': ErrorMessages.INVALID_SYMBOL}), 400
 
-        # Check fund exists
         svc = get_services()
-        fund = svc.fund_repo.get_by_id(fund_id)
-        if not fund:
-            return jsonify({'error': ErrorMessages.FUND_NOT_FOUND}), 404
+        portfolio = svc.portfolio_repo.get_by_id(portfolio_id)
+        if not portfolio:
+            return jsonify({'error': ErrorMessages.PORTFOLIO_NOT_FOUND}), 404
 
-        # Get held quantity
-        held_qty = PortfolioCalculator.get_quantity_held_for_symbol(fund_id, symbol)
+        held_qty = PortfolioCalculator.get_quantity_held_for_symbol(portfolio_id, symbol)
 
-        # Format quantity string (preserve full precision)
-        # Convert to string to preserve Decimal precision
         held_qty_str = str(held_qty)
 
-        # Remove trailing zeros after decimal point, but keep precision
         if '.' in held_qty_str:
             held_qty_str = held_qty_str.rstrip('0').rstrip('.')
 
-        # Handle edge cases
         if held_qty_str == '' or held_qty_str == '-0':
             held_qty_str = '0'
 
         return jsonify({
-            'fund_id': fund_id,
+            'portfolio_id': portfolio_id,
             'symbol': symbol,
             'held_quantity': held_qty_str,
         })

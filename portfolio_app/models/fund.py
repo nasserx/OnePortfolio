@@ -1,4 +1,4 @@
-"""Fund model representing a named portfolio."""
+"""Portfolio model representing a named portfolio."""
 
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -6,29 +6,32 @@ from sqlalchemy import Numeric
 from portfolio_app import db
 
 
-class Fund(db.Model):
+class Portfolio(db.Model):
     """Represents a named portfolio belonging to a user."""
 
-    __tablename__ = 'fund'
+    __tablename__ = 'portfolio'
 
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True, index=True)
     name = db.Column(db.String(50), nullable=False)
-    cash_balance = db.Column(Numeric(15, 2), nullable=False, default=0)
+    net_deposits = db.Column(Numeric(15, 2), nullable=False, default=0)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     # Relationships
-    transactions = db.relationship('Transaction', backref='fund', lazy='dynamic', cascade='all, delete-orphan')
-    events = db.relationship('FundEvent', backref='fund', lazy='dynamic', cascade='all, delete-orphan')
-    assets = db.relationship('Asset', backref='fund', lazy='dynamic', cascade='all, delete-orphan')
+    transactions = db.relationship('Transaction', backref='portfolio', lazy='dynamic', cascade='all, delete-orphan')
+    events = db.relationship('PortfolioEvent', backref='portfolio', lazy='dynamic', cascade='all, delete-orphan')
+    assets = db.relationship('Asset', backref='portfolio', lazy='dynamic', cascade='all, delete-orphan')
 
     def to_dict(self):
-        """Convert model to dictionary."""
         return {
             'id': self.id,
             'name': self.name,
-            'cash_balance': float(self.cash_balance),
+            'net_deposits': float(self.net_deposits),
             'created_at': self.created_at.strftime('%Y-%m-%d'),
             'updated_at': self.updated_at.strftime('%Y-%m-%d')
         }
+
+
+# Backward-compatible alias used during the fund → portfolio rename transition.
+Fund = Portfolio

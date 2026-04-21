@@ -12,7 +12,7 @@ class TransactionManager:
         """Create a new transaction and update calculations"""
         symbol = PortfolioCalculator.normalize_symbol(symbol)
         transaction = Transaction(
-            fund_id=fund_id,
+            portfolio_id=fund_id,
             transaction_type=transaction_type,
             symbol=symbol,
             price=price,

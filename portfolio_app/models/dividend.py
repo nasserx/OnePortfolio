@@ -7,19 +7,19 @@ from portfolio_app import db
 
 
 class Dividend(db.Model):
-    """A dividend income event linked to a fund."""
+    """A dividend income event linked to a portfolio."""
 
     __tablename__ = 'dividend'
 
-    id         = db.Column(db.Integer, primary_key=True)
-    fund_id    = db.Column(db.Integer, db.ForeignKey('fund.id'), nullable=False)
-    symbol     = db.Column(db.String(20), nullable=True)
-    amount     = db.Column(Numeric(20, 10), nullable=False)
-    date       = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
-    notes      = db.Column(db.Text, nullable=True)
-    created_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    id           = db.Column(db.Integer, primary_key=True)
+    portfolio_id = db.Column(db.Integer, db.ForeignKey('portfolio.id'), nullable=False)
+    symbol       = db.Column(db.String(20), nullable=True)
+    amount       = db.Column(Numeric(20, 10), nullable=False)
+    date         = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    notes        = db.Column(db.Text, nullable=True)
+    created_at   = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
 
-    fund = db.relationship('Fund', backref=db.backref('dividends', lazy='dynamic', cascade='all, delete-orphan'))
+    portfolio = db.relationship('Portfolio', backref=db.backref('dividends', lazy='dynamic', cascade='all, delete-orphan'))
 
     __table_args__ = (
         CheckConstraint('amount > 0', name='check_dividend_amount_positive'),
@@ -34,15 +34,14 @@ class Dividend(db.Model):
         return self.date.strftime('%Y-%m-%d %H:%M') if self.date else ''
 
     def to_dict(self) -> dict:
-        """Convert model to dictionary."""
         return {
-            'id':         self.id,
-            'fund_id':    self.fund_id,
-            'symbol':     self.symbol or '',
-            'portfolio_name': self.fund.name if self.fund else '',
-            'type':       'Dividend',
-            'amount':     float(self.amount),
-            'date':       self.date_full,
-            'date_short': self.date.strftime('%b %d, %Y') if self.date else '',
-            'notes':      self.notes or '',
+            'id':             self.id,
+            'portfolio_id':   self.portfolio_id,
+            'symbol':         self.symbol or '',
+            'portfolio_name': self.portfolio.name if self.portfolio else '',
+            'type':           'Dividend',
+            'amount':         float(self.amount),
+            'date':           self.date_full,
+            'date_short':     self.date.strftime('%b %d, %Y') if self.date else '',
+            'notes':          self.notes or '',
         }

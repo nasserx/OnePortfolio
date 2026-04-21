@@ -1,16 +1,16 @@
-"""Portfolio service for portfolio-level operations."""
+"""Overview service for portfolio-level analytics and dashboard totals."""
 
 from decimal import Decimal
 from typing import Dict, List, Tuple, Any
-from portfolio_app.repositories.fund_repository import FundRepository
+from portfolio_app.repositories.fund_repository import PortfolioRepository
 from portfolio_app.calculators.portfolio_calculator import PortfolioCalculator
 
 
-class PortfolioService:
-    """Service for portfolio-level operations and summaries."""
+class OverviewService:
+    """Service for portfolio-level analytics (overview dashboard, charts)."""
 
-    def __init__(self, fund_repo: FundRepository, user_id=None):
-        self.fund_repo = fund_repo
+    def __init__(self, portfolio_repo: PortfolioRepository, user_id=None):
+        self.portfolio_repo = portfolio_repo
         self._user_id = user_id
 
     def get_portfolio_summary(self) -> Tuple[List[Dict[str, Any]], Decimal]:
@@ -18,3 +18,7 @@ class PortfolioService:
 
     def get_portfolio_dashboard_totals(self) -> Dict[str, Any]:
         return PortfolioCalculator.get_portfolio_dashboard_totals(user_id=self._user_id)
+
+
+# Backward-compatible alias.
+PortfolioService = OverviewService

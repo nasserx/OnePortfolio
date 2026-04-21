@@ -8,28 +8,17 @@ from portfolio_app.models.transaction import Transaction
 class TransactionRepository(BaseRepository[Transaction]):
     """Repository for Transaction model database operations."""
 
-    def get_by_fund_id(self, fund_id: int) -> List[Transaction]:
-        """Get all transactions for a specific fund.
+    def get_by_portfolio_id(self, portfolio_id: int) -> List[Transaction]:
+        """Get all transactions for a specific portfolio."""
+        return self.model.query.filter_by(portfolio_id=portfolio_id).all()
 
-        Args:
-            fund_id: The fund ID
-
-        Returns:
-            List of transactions for the fund
-        """
-        return self.model.query.filter_by(fund_id=fund_id).all()
-
-    def get_by_symbol(self, fund_id: int, symbol: str) -> List[Transaction]:
-        """Get all transactions for a specific symbol in a fund.
-
-        Args:
-            fund_id: The fund ID
-            symbol: The symbol
-
-        Returns:
-            List of transactions for the symbol
-        """
+    def get_by_symbol(self, portfolio_id: int, symbol: str) -> List[Transaction]:
+        """Get all transactions for a specific symbol in a portfolio."""
         return self.model.query.filter_by(
-            fund_id=fund_id,
+            portfolio_id=portfolio_id,
             symbol=symbol.strip().upper()
         ).order_by(Transaction.date.asc()).all()
+
+    # Backward-compatible alias.
+    def get_by_fund_id(self, fund_id: int) -> List[Transaction]:
+        return self.get_by_portfolio_id(fund_id)

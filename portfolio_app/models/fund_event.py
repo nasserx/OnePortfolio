@@ -1,17 +1,17 @@
-"""FundEvent model for funding events (deposits/withdrawals)."""
+"""PortfolioEvent model for portfolio events (deposits/withdrawals)."""
 
 from datetime import datetime, timezone
 from sqlalchemy import Numeric, Index
 from portfolio_app import db
 
 
-class FundEvent(db.Model):
-    """A single funding event (Initial deposit, Deposit, or Withdrawal) for a fund."""
+class PortfolioEvent(db.Model):
+    """A single portfolio event (Initial deposit, Deposit, or Withdrawal)."""
 
-    __tablename__ = 'fund_event'
+    __tablename__ = 'portfolio_event'
 
     id = db.Column(db.Integer, primary_key=True)
-    fund_id = db.Column(db.Integer, db.ForeignKey('fund.id'), nullable=False)
+    portfolio_id = db.Column(db.Integer, db.ForeignKey('portfolio.id'), nullable=False)
 
     # Initial / Deposit / Withdrawal
     event_type = db.Column(db.String(20), nullable=False)
@@ -23,7 +23,7 @@ class FundEvent(db.Model):
     notes = db.Column(db.Text, nullable=True)
 
     __table_args__ = (
-        Index('ix_fund_event_fund_date', fund_id, date),
+        Index('ix_portfolio_event_portfolio_date', portfolio_id, date),
     )
 
     @property
@@ -37,3 +37,7 @@ class FundEvent(db.Model):
         if not self.date:
             return ''
         return self.date.strftime('%Y-%m-%d %H:%M')
+
+
+# Backward-compatible alias used during the fund → portfolio rename transition.
+FundEvent = PortfolioEvent

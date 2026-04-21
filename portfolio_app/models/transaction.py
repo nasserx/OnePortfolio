@@ -7,12 +7,12 @@ from portfolio_app import db
 
 
 class Transaction(db.Model):
-    """A single buy or sell transaction for a symbol within a fund."""
+    """A single buy or sell transaction for a symbol within a portfolio."""
 
     __tablename__ = 'transaction'
 
     id = db.Column(db.Integer, primary_key=True)
-    fund_id = db.Column(db.Integer, db.ForeignKey('fund.id'), nullable=False)
+    portfolio_id = db.Column(db.Integer, db.ForeignKey('portfolio.id'), nullable=False)
     transaction_type = db.Column(db.String(10), nullable=False)  # 'Buy' or 'Sell'
     symbol = db.Column(db.String(20), nullable=True)
     # Higher precision to support crypto-style pricing (e.g. 0.0002344)
@@ -71,11 +71,10 @@ class Transaction(db.Model):
             self.net_amount = gross + fees
 
     def to_dict(self):
-        """Convert model to dictionary."""
         return {
             'id': self.id,
-            'fund_id': self.fund_id,
-            'portfolio_name': self.fund.name,
+            'portfolio_id': self.portfolio_id,
+            'portfolio_name': self.portfolio.name,
             'transaction_type': self.transaction_type,
             'symbol': (self.symbol or '').upper(),
             'price': float(self.price),

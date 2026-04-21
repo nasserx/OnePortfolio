@@ -7,11 +7,16 @@ from portfolio_app.forms.validators import (
     get_field_error_message,
 )
 from portfolio_app.forms.fund_forms import (
+    PortfolioAddForm,
+    PortfolioDepositForm,
+    PortfolioWithdrawForm,
+    PortfolioEventEditForm,
+    PortfolioEventDeleteForm,
     FundAddForm,
     FundDepositForm,
     FundWithdrawForm,
     FundEventEditForm,
-    FundEventDeleteForm
+    FundEventDeleteForm,
 )
 from portfolio_app.forms.transaction_forms import (
     TransactionAddForm,
@@ -27,6 +32,11 @@ __all__ = [
     'parse_decimal_field',
     'validate_positive_decimal',
     'get_field_error_message',
+    'PortfolioAddForm',
+    'PortfolioDepositForm',
+    'PortfolioWithdrawForm',
+    'PortfolioEventEditForm',
+    'PortfolioEventDeleteForm',
     'FundAddForm',
     'FundDepositForm',
     'FundWithdrawForm',

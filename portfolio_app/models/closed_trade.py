@@ -6,7 +6,7 @@ Deletion is handled by database CASCADE:
   - Delete the sell Transaction  → ClosedTrade is deleted automatically.
   - Delete the symbol (Asset)    → all its Transactions are deleted
                                    → all its ClosedTrades follow.
-  - Delete the Fund              → same cascade chain.
+  - Delete the Portfolio         → same cascade chain.
 
 The snapshot captures the average cost *at the moment of the sale*
 (Average-Cost Method), so the realized P&L is historically accurate
@@ -30,12 +30,12 @@ class ClosedTrade(db.Model):
         db.Integer,
         db.ForeignKey('transaction.id', ondelete='CASCADE'),
         nullable=False,
-        unique=True,   # one snapshot per sell transaction
+        unique=True,
         index=True,
     )
-    fund_id = db.Column(
+    portfolio_id = db.Column(
         db.Integer,
-        db.ForeignKey('fund.id', ondelete='CASCADE'),
+        db.ForeignKey('portfolio.id', ondelete='CASCADE'),
         nullable=False,
         index=True,
     )
@@ -43,14 +43,14 @@ class ClosedTrade(db.Model):
 
     # ── Snapshot values — locked at the moment of the sale ────────────
     quantity_sold = db.Column(Numeric(20, 10), nullable=False)
-    avg_cost      = db.Column(Numeric(20, 10), nullable=False)   # ACM at sale time
+    avg_cost      = db.Column(Numeric(20, 10), nullable=False)
     sell_price    = db.Column(Numeric(20, 10), nullable=False)
     fees          = db.Column(Numeric(20, 10), nullable=False, default=0)
 
     # ── Derived — recomputed whenever recalculate_all_averages runs ───
-    cost_basis     = db.Column(Numeric(20, 10), nullable=False)  # avg_cost × qty
-    gross_proceeds = db.Column(Numeric(20, 10), nullable=False)  # sell_price × qty
-    realized_pnl   = db.Column(Numeric(20, 10), nullable=False)  # proceeds − basis − fees
+    cost_basis     = db.Column(Numeric(20, 10), nullable=False)
+    gross_proceeds = db.Column(Numeric(20, 10), nullable=False)
+    realized_pnl   = db.Column(Numeric(20, 10), nullable=False)
 
     closed_at  = db.Column(Date, nullable=False)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
@@ -60,7 +60,7 @@ class ClosedTrade(db.Model):
         return {
             'id':             self.id,
             'transaction_id': self.transaction_id,
-            'fund_id':        self.fund_id,
+            'portfolio_id':   self.portfolio_id,
             'symbol':         self.symbol,
             'quantity_sold':  float(self.quantity_sold),
             'avg_cost':       float(self.avg_cost),

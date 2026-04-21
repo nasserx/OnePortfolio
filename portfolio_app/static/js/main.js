@@ -613,7 +613,11 @@ class AlertManager {
         if (pendingMsg) {
             sessionStorage.removeItem('flashMessage');
             sessionStorage.removeItem('flashType');
-            this.showAlert(pendingMsg, pendingType);
+            if (window.showToast) {
+                window.showToast(pendingMsg, pendingType);
+            } else {
+                this.showAlert(pendingMsg, pendingType);
+            }
         }
 
         // Auto-dismiss existing server-rendered alerts (skip alerts inside modals)
@@ -690,7 +694,7 @@ const ValidationRules = {
         name: 'category',
         validate: (raw) => {
             if (!String(raw || '').trim()) {
-                return { ok: false, message: 'Select asset class.' };
+                return { ok: false, message: 'Please select a portfolio.' };
             }
             return { ok: true };
         }
@@ -820,22 +824,22 @@ class FormValidatorsInitializer {
             { ...ValidationRules.date, selector: '#withdraw_date', name: 'withdraw_date' }
         ]);
 
-        // Add funds entry form
-        this.initValidator('form[action$="/funds/add"]', [
+        // Add portfolio entry form
+        this.initValidator('form[action$="/portfolios/add"]', [
             { ...ValidationRules.category, selector: '#category' },
             { ...ValidationRules.fundsAmount, selector: '#amount', name: 'amount' },
             { ...ValidationRules.date, selector: '#add_fund_date', name: 'add_fund_date' }
         ]);
 
-        // Edit fund event
-        this.initValidator('#editFundEventForm', [
+        // Edit portfolio event
+        this.initValidator('#editPortfolioEventForm', [
             { ...ValidationRules.date, selector: '#edit_event_date' },
             { ...ValidationRules.fundsAmount, selector: '#edit_event_amount', name: 'amount' }
         ]);
 
         // Add asset symbol
         this.initValidator('form[action$="/assets/add"]', [
-            { ...ValidationRules.category, selector: '#asset_fund_id', name: 'fund_id' },
+            { ...ValidationRules.category, selector: '#asset_portfolio_id', name: 'portfolio_id' },
             { ...ValidationRules.symbol, selector: '#asset_symbol' }
         ]);
 
@@ -847,7 +851,7 @@ class FormValidatorsInitializer {
         };
 
         this.initValidator('form[action$="/transactions/add"]', [
-            { ...ValidationRules.category, selector: '#fund_id', name: 'fund_id' },
+            { ...ValidationRules.category, selector: '#portfolio_id', name: 'portfolio_id' },
             { ...ValidationRules.symbol, selector: '#symbol',
                 validate: skipInDividendMode(ValidationRules.symbol) },
             { ...ValidationRules.transactionType, selector: '#transaction_type',
@@ -933,7 +937,7 @@ class ModalAjaxHandler {
             // Add Transaction handles both buy/sell AND dividend (action changes dynamically)
             { modalId: 'addTransactionModal', formSelector: '#addTransactionModal form' },
             { modalId: 'editTransactionModal', formSelector: '#editTransactionForm' },
-            { modalId: 'newFundModal', formSelector: 'form[action$="/funds/add"]' },
+            { modalId: 'newPortfolioModal', formSelector: 'form[action$="/portfolios/add"]' },
             { modalId: 'depositFundsModal', formSelector: '#depositFundsForm' },
             { modalId: 'withdrawFundsModal', formSelector: '#withdrawFundsForm' }
         ];

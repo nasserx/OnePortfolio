@@ -12,34 +12,42 @@ class ErrorMessages:
     INVALID_PRICE       = "Please enter a valid price greater than zero."
     INVALID_AMOUNT      = "Please enter a valid amount greater than zero."
     INVALID_DATE        = "Please use the date format YYYY-MM-DD."
-    TRANSACTION_NOT_FOUND = "This trade no longer exists."
-    DIVIDEND_NOT_FOUND  = "This dividend record no longer exists."
-    FUND_NOT_FOUND      = "This portfolio no longer exists."
-    INVALID_INPUT       = "Invalid input."
-    INVALID_SYMBOL      = "Please enter a valid symbol (e.g., AAPL, BTC)."
-    OPERATION_FAILED    = "Something went wrong. Please try again."
-    EVENT_NOT_FOUND     = "This record no longer exists."
-    INVALID_REQUEST     = "Invalid request. Please refresh the page and try again."
-    INVALID_FUND_ID     = "Invalid portfolio ID."
-    USER_NOT_FOUND      = "User not found."
+    TRANSACTION_NOT_FOUND  = "This transaction no longer exists."
+    DIVIDEND_NOT_FOUND     = "This dividend record no longer exists."
+    PORTFOLIO_NOT_FOUND    = "This portfolio no longer exists."
+    INVALID_INPUT          = "Invalid input."
+    INVALID_SYMBOL         = "Please enter a valid symbol (e.g., AAPL, BTC)."
+    OPERATION_FAILED       = "Something went wrong. Please try again."
+    EVENT_NOT_FOUND        = "This record no longer exists."
+    INVALID_REQUEST        = "Invalid request. Please refresh the page and try again."
+    INVALID_PORTFOLIO_ID   = "Invalid portfolio ID."
+    USER_NOT_FOUND         = "User not found."
+    INSUFFICIENT_FUNDS     = "Insufficient funds. Your available cash balance is too low for this withdrawal."
+    INSUFFICIENT_QUANTITY  = "Insufficient quantity. You don't hold enough of this asset to complete the sell."
+
+    # Backward-compatible aliases
+    FUND_NOT_FOUND  = PORTFOLIO_NOT_FOUND
+    INVALID_FUND_ID = INVALID_PORTFOLIO_ID
 
 
 class SuccessMessages:
     """Success messages shown after completed actions."""
 
-    # Trade messages
-    TRANSACTION_ADDED   = "Trade recorded."
-    TRANSACTION_UPDATED = "Trade updated."
-    TRANSACTION_DELETED = "Trade deleted."
+    # Transaction messages
+    TRANSACTION_ADDED   = "Transaction recorded."
+    TRANSACTION_UPDATED = "Transaction updated."
+    TRANSACTION_DELETED = "Transaction deleted."
 
     # Symbol messages
     ASSET_ADDED         = "Symbol is now being tracked."
     ASSET_DELETED       = "Symbol removed."
 
     # Portfolio messages
-    FUND_CREATED        = "Portfolio created."
-    FUND_DELETED        = "Portfolio removed."
-    DEPOSIT_COMPLETED   = "Funds added successfully."
+    PORTFOLIO_CREATED   = "Portfolio created."
+    PORTFOLIO_DELETED   = "Portfolio removed."
+    FUND_CREATED        = PORTFOLIO_CREATED
+    FUND_DELETED        = PORTFOLIO_DELETED
+    DEPOSIT_COMPLETED   = "Deposit recorded."
     WITHDRAWAL_COMPLETED = "Withdrawal recorded."
     ENTRY_UPDATED       = "Record updated."
     ENTRY_DELETED       = "Record deleted."
@@ -53,7 +61,7 @@ class SuccessMessages:
 class ConfirmMessages:
     """Confirmation prompts shown in delete dialogs."""
 
-    DELETE_TRANSACTION  = "Delete this trade?"
+    DELETE_TRANSACTION  = "Delete this transaction?"
     DELETE_DIVIDEND     = "Delete this dividend record?"
     DELETE_FUND_ENTRY   = "Delete this record?"
 
@@ -76,11 +84,16 @@ class ValidationMessages:
     INVALID_DATE_FORMAT   = "Invalid date. Please use YYYY-MM-DD format (e.g., 2025-04-18)."
 
     # Portfolio / asset class
-    SELECT_CATEGORY       = "Please select an asset class."
-    CATEGORY_NOT_FOUND    = "Portfolio not found."
-    INVALID_CATEGORY      = "Invalid asset class."
-    INVALID_FUND_ID       = "Invalid portfolio ID."
+    SELECT_CATEGORY         = "Please select a portfolio."
+    CATEGORY_NOT_FOUND      = "Portfolio not found."
+    INVALID_CATEGORY        = "Invalid portfolio selection."
+    INVALID_PORTFOLIO_ID    = "Invalid portfolio ID."
+    INVALID_FUND_ID         = INVALID_PORTFOLIO_ID
     SELECT_TRANSACTION_TYPE = "Please select a transaction type."
+
+    # Portfolio name
+    NAME_TOO_LONG           = "Name must be 50 characters or less."
+    PORTFOLIO_NAME_TAKEN    = 'A portfolio with this name already exists.'
 
     # Symbol
     SYMBOL_REQUIRED       = "Please enter a symbol (e.g., AAPL, BTC)."
@@ -185,18 +198,20 @@ def get_error_message(exception):
 
     if 'quantity' in exception_msg and ('invalid' in exception_msg or 'must be' in exception_msg):
         return ErrorMessages.INVALID_QUANTITY
+    elif 'insufficient' in exception_msg and 'quantity' in exception_msg:
+        return ErrorMessages.INSUFFICIENT_QUANTITY
+    elif 'insufficient' in exception_msg:
+        return ErrorMessages.INSUFFICIENT_FUNDS
     elif 'price' in exception_msg and ('invalid' in exception_msg or 'must be' in exception_msg):
         return ErrorMessages.INVALID_PRICE
     elif 'amount' in exception_msg and ('invalid' in exception_msg or 'must be' in exception_msg):
         return ErrorMessages.INVALID_AMOUNT
-    elif 'insufficient' in exception_msg:
-        return str(exception).split('\n')[0].strip()
     elif 'date' in exception_msg and 'invalid' in exception_msg:
         return ErrorMessages.INVALID_DATE
     elif 'not found' in exception_msg and 'transaction' in exception_msg:
         return ErrorMessages.TRANSACTION_NOT_FOUND
-    elif 'not found' in exception_msg and 'fund' in exception_msg:
-        return ErrorMessages.FUND_NOT_FOUND
+    elif 'not found' in exception_msg and ('portfolio' in exception_msg or 'fund' in exception_msg):
+        return ErrorMessages.PORTFOLIO_NOT_FOUND
     elif 'symbol' in exception_msg and 'invalid' in exception_msg:
         return ErrorMessages.INVALID_SYMBOL
     else:

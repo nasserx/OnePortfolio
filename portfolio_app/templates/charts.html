@@ -11,7 +11,7 @@
     <div class="col-12 col-lg-6">
         <div class="card h-100 page-accent-surface">
             <div class="card-body p-4">
-                <p class="text-muted mb-3" style="font-size:.75rem; text-transform:uppercase; letter-spacing:.4px; font-weight:600;">Portfolio Allocation</p>
+                <p class="text-muted mb-3" style="font-size:.75rem; text-transform:uppercase; letter-spacing:.4px; font-weight:600;">Asset Allocation</p>
                 <div class="d-flex justify-content-center">
                     <canvas id="allocationChart" style="max-height: 300px;"></canvas>
                 </div>
@@ -23,7 +23,7 @@
     <div class="col-12 col-lg-6">
         <div class="card h-100 page-accent-surface">
             <div class="card-body p-4">
-                <p class="text-muted mb-3" style="font-size:.75rem; text-transform:uppercase; letter-spacing:.4px; font-weight:600;">Realized P&amp;L by Asset Class</p>
+                <p class="text-muted mb-3" style="font-size:.75rem; text-transform:uppercase; letter-spacing:.4px; font-weight:600;">Realized P&amp;L by Portfolio</p>
                 <div>
                     <canvas id="pnlChart" style="max-height: 300px;"></canvas>
                 </div>
@@ -35,7 +35,7 @@
 
 {% else %}
 <div class="alert alert-info">
-    <i class="bi bi-info-circle me-2"></i>No data available. <a href="{{ url_for('funds.funds_list') }}">Add funds</a> to get started.
+    <i class="bi bi-info-circle me-2"></i>No data available. <a href="{{ url_for('portfolios.portfolios_list') }}">Add a portfolio</a> to get started.
 </div>
 {% endif %}
 

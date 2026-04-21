@@ -4,19 +4,19 @@ import logging
 from typing import Optional
 from flask import g
 from portfolio_app import db
-from portfolio_app.models import Fund, FundEvent, Transaction, Asset, Dividend
+from portfolio_app.models import Portfolio, PortfolioEvent, Transaction, Asset, Dividend
 from portfolio_app.models.user import User
 from portfolio_app.repositories import (
-    FundRepository,
-    FundEventRepository,
+    PortfolioRepository,
+    PortfolioEventRepository,
     TransactionRepository,
     AssetRepository,
     DividendRepository,
 )
 from portfolio_app.repositories.user_repository import UserRepository
-from portfolio_app.services.fund_service import FundService
+from portfolio_app.services.fund_service import PortfolioService
 from portfolio_app.services.transaction_service import TransactionService
-from portfolio_app.services.portfolio_service import PortfolioService
+from portfolio_app.services.portfolio_service import OverviewService
 from portfolio_app.services.auth_service import AuthService
 
 logger = logging.getLogger(__name__)
@@ -26,26 +26,26 @@ class Services:
     """Container holding all service and repository instances for a request."""
 
     __slots__ = (
-        'fund_repo', 'event_repo', 'transaction_repo', 'asset_repo',
+        'portfolio_repo', 'portfolio_event_repo', 'transaction_repo', 'asset_repo',
         'dividend_repo', 'user_repo',
-        'fund_service', 'transaction_service', 'portfolio_service',
+        'portfolio_service', 'transaction_service', 'overview_service',
         'auth_service',
     )
 
     def __init__(self, user_id: Optional[int] = None):
-        self.fund_repo = FundRepository(Fund, db, user_id=user_id)
-        self.event_repo = FundEventRepository(FundEvent, db)
+        self.portfolio_repo = PortfolioRepository(Portfolio, db, user_id=user_id)
+        self.portfolio_event_repo = PortfolioEventRepository(PortfolioEvent, db)
         self.transaction_repo = TransactionRepository(Transaction, db)
         self.asset_repo = AssetRepository(Asset, db)
         self.dividend_repo = DividendRepository(Dividend, db)
         self.user_repo = UserRepository(User, db)
 
-        self.fund_service = FundService(self.fund_repo, self.event_repo)
+        self.portfolio_service = PortfolioService(self.portfolio_repo, self.portfolio_event_repo)
         self.transaction_service = TransactionService(
-            self.transaction_repo, self.asset_repo, self.fund_repo,
+            self.transaction_repo, self.asset_repo, self.portfolio_repo,
             dividend_repo=self.dividend_repo,
         )
-        self.portfolio_service = PortfolioService(self.fund_repo, user_id=user_id)
+        self.overview_service = OverviewService(self.portfolio_repo, user_id=user_id)
         self.auth_service = AuthService(self.user_repo)
 
 

@@ -853,6 +853,8 @@ tr:hover .row-actions {
     font-variant-numeric: tabular-nums;
 }
 .transactions-table tbody td small.text-danger { color: var(--danger) !important; }
+.transactions-table tbody td small.profit { color: var(--color-profit) !important; }
+.transactions-table tbody td small.loss   { color: var(--color-loss)   !important; }
 .transactions-table .badge { font-size: 0.7rem; padding: 0.22em 0.55em; }
 .transactions-table .btn-sm { padding: 0.2rem 0.45rem; }
 .transactions-table .btn-group.btn-group-sm { gap: 4px; }
@@ -1402,6 +1404,20 @@ i.bi { vertical-align: middle; }
 [data-bs-theme="dark"] .profit   { color: #81c995 !important; }
 [data-bs-theme="dark"] .loss     { color: #f28b82 !important; }
 [data-bs-theme="dark"] .dividend { color: #8ab4f8 !important; }
+
+/* Badges in dark: boost opacity so muted backgrounds are visible */
+[data-bs-theme="dark"] .badge-buy {
+    background: rgba(129,201,149,.28);
+    color: #81c995;
+}
+[data-bs-theme="dark"] .badge-sell {
+    background: rgba(242,139,130,.28);
+    color: #f28b82;
+}
+[data-bs-theme="dark"] .badge-dividend {
+    background: rgba(138,180,248,.28);
+    color: #8ab4f8;
+}
 
 /* Theme toggle in dark */
 [data-bs-theme="dark"] .theme-toggle {

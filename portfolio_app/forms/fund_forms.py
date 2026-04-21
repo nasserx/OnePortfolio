@@ -1,20 +1,14 @@
-"""Forms for fund-related operations."""
+"""Forms for portfolio-related operations."""
 
 from typing import List
 from portfolio_app.forms.base_form import BaseForm
 from portfolio_app.utils.messages import ValidationMessages
 
 
-class FundAddForm(BaseForm):
-    """Form for creating a new portfolio (name only, no initial deposit)."""
+class PortfolioAddForm(BaseForm):
+    """Form for creating a new portfolio."""
 
     def __init__(self, data: dict, existing_names: List[str]):
-        """Initialize form.
-
-        Args:
-            data: Form data
-            existing_names: Portfolio names already used by this user
-        """
         super().__init__(data)
         self._existing_lower = {n.lower() for n in existing_names}
 
@@ -22,27 +16,27 @@ class FundAddForm(BaseForm):
         name = self._validate_required_string('name', ValidationMessages.REQUIRED)
         if name:
             if len(name) > 50:
-                self.errors['name'] = 'Name must be 50 characters or less.'
+                self.errors['name'] = ValidationMessages.NAME_TOO_LONG
             elif name.lower() in self._existing_lower:
-                self.errors['name'] = f'A portfolio named "{name}" already exists.'
+                self.errors['name'] = ValidationMessages.PORTFOLIO_NAME_TAKEN
             else:
                 self.cleaned_data['name'] = name
 
         return not self.has_errors()
 
 
-class FundDepositForm(BaseForm):
-    """Form for depositing funds."""
+class PortfolioDepositForm(BaseForm):
+    """Form for depositing funds into a portfolio."""
 
-    def __init__(self, data: dict, fund_id: int):
+    def __init__(self, data: dict, portfolio_id: int):
         super().__init__(data)
-        self.fund_id = fund_id
+        self.portfolio_id = portfolio_id
 
     def validate(self) -> bool:
         amount_delta = self._validate_decimal('amount_delta', allow_zero=False)
         if amount_delta is not None:
             self.cleaned_data['amount_delta'] = amount_delta
-            self.cleaned_data['fund_id'] = self.fund_id
+            self.cleaned_data['portfolio_id'] = self.portfolio_id
 
         self.cleaned_data['notes'] = self._get_string('notes', default='')
 
@@ -59,18 +53,18 @@ class FundDepositForm(BaseForm):
         return not self.has_errors()
 
 
-class FundWithdrawForm(BaseForm):
-    """Form for withdrawing funds."""
+class PortfolioWithdrawForm(BaseForm):
+    """Form for withdrawing funds from a portfolio."""
 
-    def __init__(self, data: dict, fund_id: int):
+    def __init__(self, data: dict, portfolio_id: int):
         super().__init__(data)
-        self.fund_id = fund_id
+        self.portfolio_id = portfolio_id
 
     def validate(self) -> bool:
         amount_delta = self._validate_decimal('amount_delta', allow_zero=False)
         if amount_delta is not None:
             self.cleaned_data['amount_delta'] = amount_delta
-            self.cleaned_data['fund_id'] = self.fund_id
+            self.cleaned_data['portfolio_id'] = self.portfolio_id
 
         self.cleaned_data['notes'] = self._get_string('notes', default='')
 
@@ -87,8 +81,8 @@ class FundWithdrawForm(BaseForm):
         return not self.has_errors()
 
 
-class FundEventEditForm(BaseForm):
-    """Form for editing a fund event."""
+class PortfolioEventEditForm(BaseForm):
+    """Form for editing a portfolio event."""
 
     def __init__(self, data: dict, event_id: int, current_event_type: str = ''):
         super().__init__(data)
@@ -113,8 +107,8 @@ class FundEventEditForm(BaseForm):
         return not self.has_errors()
 
 
-class FundEventDeleteForm(BaseForm):
-    """Form for deleting a fund event."""
+class PortfolioEventDeleteForm(BaseForm):
+    """Form for deleting a portfolio event."""
 
     def __init__(self, data: dict, event_id: int, current_event_type: str = ''):
         super().__init__(data)
@@ -123,3 +117,11 @@ class FundEventDeleteForm(BaseForm):
     def validate(self) -> bool:
         self.cleaned_data['event_id'] = self.event_id
         return True
+
+
+# Backward-compatible aliases.
+FundAddForm = PortfolioAddForm
+FundDepositForm = PortfolioDepositForm
+FundWithdrawForm = PortfolioWithdrawForm
+FundEventEditForm = PortfolioEventEditForm
+FundEventDeleteForm = PortfolioEventDeleteForm

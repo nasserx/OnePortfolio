@@ -8,7 +8,7 @@ DEMO_USERNAME = 'demo'
 
 
 class EventType:
-    """Fund event types."""
+    """Portfolio event types."""
     INITIAL = 'Initial'
     DEPOSIT = 'Deposit'
     WITHDRAWAL = 'Withdrawal'

@@ -6,7 +6,7 @@
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Status](https://img.shields.io/badge/status-active-success.svg)
 
-> A web application for managing investment portfolios across multiple asset classes with transaction tracking, average cost computation, and realized P&L calculations — no external APIs required.
+> A web application for tracking investment portfolios across multiple asset classes — with transaction history, average cost computation, realized P&L calculations, and dividend income tracking. No external APIs or price feeds required.
 
 ## Table of Contents
 
@@ -25,20 +25,22 @@
 
 | Feature | Description |
 |---------|-------------|
-| **Multi-Asset Support** | Track Stocks, ETFs, Commodities, and Crypto |
-| **Portfolio Overview** | Total portfolio value and realized ROI per category |
-| **Fund Management** | Deposit/withdraw funds with a full audit trail |
-| **Transaction Tracking** | Buy/sell operations with automatic average cost computation |
-| **Dividend Income** | Record dividend payments per category; income is added to realized P&L automatically |
-| **Realized P&L** | Automatic profit/loss calculations on every sale and dividend received |
+| **Multi-Asset Support** | Track Stocks, ETFs, Commodities, Crypto, or any custom asset class |
+| **Portfolio Overview** | Dashboard with Total Contributed, Book Value, Total Dividends, and Realized P&L across all portfolios |
+| **Portfolio Management** | Create portfolios with deposit/withdraw support and a full event audit trail |
+| **Transaction Tracking** | Buy/sell operations with automatic Average Cost Method (ACM) computation |
+| **Dividend Income** | Record dividends per symbol; automatically factored into Realized P&L |
+| **Realized P&L** | Computed on every sell: Σ (sell price − avg cost) × qty − fees + dividends |
+| **Financial Metrics** | Book Value (Cost Basis + Cash), Net Deposits, Cost Basis, Available Cash per portfolio |
+| **Charts** | Visual breakdown of portfolio allocation and performance |
+| **Paginated Views** | Windowed pagination on both transaction symbol cards and portfolio event rows |
+| **Dark / Light Mode** | Full theme toggle with Google Material Design 3 color tokens |
 | **Email Verification** | 6-digit OTP sent to email on registration |
-| **Password Reset** | Secure reset link sent via email (expires in 1 hour) |
-| **Multi-User Auth** | Separate accounts with full data isolation; first user becomes admin |
-| **Account Settings** | Profile overview, change password, update email — all in one page |
-| **Account Deletion** | Self-service deletion with 6-digit OTP confirmation sent to email |
+| **Password Reset** | Secure reset link via email, expires in 1 hour |
+| **Multi-User Auth** | Separate accounts with full data isolation; first registered user becomes admin |
+| **Account Settings** | Change password, update email, and self-service account deletion with OTP confirmation |
 | **Admin Panel** | Manage users, send password reset emails, toggle admin privileges |
-| **REST API** | JSON endpoints for portfolio data integration |
-| **Manual Entry** | Full control over your data, no third-party price feeds |
+| **Manual Entry** | Full control over your data — no third-party price feeds or broker integrations |
 
 ## 🛠️ Tech Stack
 
@@ -46,10 +48,10 @@
 |-------|-----------|
 | Backend | Python 3.8+ · Flask 3.0.0 |
 | Database | SQLite · Flask-SQLAlchemy |
-| Frontend | HTML5 · Bootstrap 5 · JavaScript |
+| Frontend | Bootstrap 5.3 · Vanilla JavaScript · Google Material Design 3 tokens |
 | Auth | Flask-Login · Werkzeug password hashing |
 | Email | Flask-Mail · Gmail SMTP |
-| Forms | Flask-WTF |
+| Forms | Flask-WTF (CSRF) + custom validation layer |
 | Testing | pytest |
 
 ## 🌐 Live Demo
@@ -86,6 +88,8 @@ python app.py
 
 Open `http://localhost:5000` — the first registered account automatically becomes admin.
 
+> **Dev tip:** Set `DEV_AUTO_LOGIN=1` in your environment to skip the login screen and auto-login as the first user during development.
+
 ## 🔧 Configuration
 
 Set the following environment variables (in `.env` or your hosting platform's WSGI file):
@@ -98,6 +102,7 @@ Set the following environment variables (in `.env` or your hosting platform's WS
 | `APP_BASE_URL` | ✅ | Public URL of your app (e.g. `https://yourapp.pythonanywhere.com`) |
 | `DATABASE_URL` | — | SQLAlchemy URI — defaults to `sqlite:///portfolio.db` |
 | `SESSION_COOKIE_SECURE` | — | Set to `1` when serving over HTTPS |
+| `DEV_AUTO_LOGIN` | — | Set to `1` to auto-login as the first user (development only) |
 
 > **Note:** Gmail requires an [App Password](https://myaccount.google.com/apppasswords) — your regular password will not work.
 
@@ -105,23 +110,35 @@ Set the following environment variables (in `.env` or your hosting platform's WS
 
 ```
 OnePortfolio/
-├── app.py                  # Development entry point
-├── wsgi.py                 # Production WSGI entry point
+├── app.py                  # Development entry point (localhost:5000, debug=True)
+├── wsgi.py                 # Production WSGI entry point (PythonAnywhere)
 ├── config.py               # Configuration settings
 ├── requirements.txt        # Python dependencies
 ├── test_app.py             # Test suite
 └── portfolio_app/
-    ├── __init__.py         # App factory & DB migrations
-    ├── models/             # SQLAlchemy models (User, Fund, Transaction, ...)
-    ├── repositories/       # Data access layer
-    ├── services/           # Business logic (auth, funds, portfolio, ...)
-    ├── calculators/        # P&L and average cost calculators
-    ├── forms/              # WTForms form validation
-    ├── routes/             # Flask blueprints (auth, admin, dashboard, ...)
-    ├── utils/              # Email, token, and formatting helpers
-    ├── static/             # CSS and JS assets
+    ├── __init__.py         # App factory & idempotent DB migrations
+    ├── models/             # SQLAlchemy models (User, Portfolio, Transaction, Asset, Dividend, ClosedTrade, PortfolioEvent)
+    ├── repositories/       # Data access layer (filtered by user_id)
+    ├── services/           # Business logic (auth, portfolio, transaction, ...)
+    ├── calculators/        # P&L, average cost, and dashboard calculators
+    ├── forms/              # Custom form validation (base_form.py + Flask-WTF CSRF)
+    ├── routes/             # Flask blueprints (dashboard, portfolios, transactions, charts, ...)
+    ├── utils/              # Helpers (email, tokens, formatting, constants)
+    ├── static/             # CSS (style.css with Material Design 3 tokens) and JS (main.js)
     └── templates/          # Jinja2 HTML templates
 ```
+
+### Architecture
+
+The app follows a layered clean architecture pattern:
+
+```
+Routes (Blueprints) → Services → Repositories → Models (SQLAlchemy)
+        ↓                ↓
+   Forms (validation)  Calculators (financial math)
+```
+
+All services and repositories are resolved via a `get_services()` factory (dependency injection through Flask's `g`) — routes never instantiate services directly.
 
 ## 🖼️ Screenshots
 
@@ -131,7 +148,11 @@ OnePortfolio/
 ## 🧪 Testing
 
 ```bash
+# Run all tests
 pytest -v
+
+# Run a single test
+pytest -v test_app.py::test_name
 ```
 
 CI runs automatically on every push via GitHub Actions across Python 3.8, 3.10, and 3.12.
@@ -150,7 +171,7 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-In the **WSGI file** on PythonAnywhere, set environment variables and activate the virtualenv:
+In the **WSGI file** on PythonAnywhere, set environment variables and point to the app factory:
 
 ```python
 activate_this = '/home/YOUR_USERNAME/.virtualenvs/myenv/bin/activate_this.py'
@@ -174,13 +195,18 @@ Then click **Reload** in the Web tab.
 
 ## 🎯 Roadmap
 
-- [ ] Live market price integration
 - [x] Multi-user authentication with email verification
 - [x] Password reset via email
 - [x] Dividend income tracking
-- [x] Account settings page with self-service deletion
-- [ ] Advanced charts and analytics
+- [x] Realized P&L with Average Cost Method
+- [x] Portfolio management with deposit/withdraw audit trail
+- [x] Account settings with self-service deletion
+- [x] Dark / light mode with Material Design 3 tokens
+- [x] Paginated transaction and portfolio event views
+- [x] Charts page
+- [ ] Live market price integration
 - [ ] Docker deployment support
+- [ ] Export to CSV / Excel
 
 ## 📝 License
 

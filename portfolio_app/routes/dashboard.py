@@ -6,7 +6,7 @@ from flask_login import login_required, current_user
 from decimal import Decimal
 from portfolio_app.services import get_services
 from portfolio_app.calculators import PortfolioCalculator
-from portfolio_app.utils.messages import ErrorMessages
+from portfolio_app.utils.messages import MESSAGES
 
 logger = logging.getLogger(__name__)
 
@@ -63,25 +63,25 @@ def api_holdings() -> Response:
 
     Query Parameters:
         portfolio_id: Portfolio ID
-        symbol: Asset symbol
+        symbol: Ticker symbol
     """
     try:
         try:
             portfolio_id = int(request.args.get('portfolio_id') or 0)
         except (ValueError, TypeError):
-            return jsonify({'error': ErrorMessages.INVALID_PORTFOLIO_ID}), 400
+            return jsonify({'error': MESSAGES['INVALID_PORTFOLIO_ID']}), 400
 
         if portfolio_id <= 0:
-            return jsonify({'error': ErrorMessages.INVALID_PORTFOLIO_ID}), 400
+            return jsonify({'error': MESSAGES['INVALID_PORTFOLIO_ID']}), 400
 
         symbol = PortfolioCalculator.normalize_symbol(request.args.get('symbol', ''))
         if not symbol:
-            return jsonify({'error': ErrorMessages.INVALID_SYMBOL}), 400
+            return jsonify({'error': MESSAGES['INVALID_SYMBOL']}), 400
 
         svc = get_services()
         portfolio = svc.portfolio_repo.get_by_id(portfolio_id)
         if not portfolio:
-            return jsonify({'error': ErrorMessages.PORTFOLIO_NOT_FOUND}), 404
+            return jsonify({'error': MESSAGES['PORTFOLIO_NOT_FOUND']}), 404
 
         held_qty = PortfolioCalculator.get_quantity_held_for_symbol(portfolio_id, symbol)
 

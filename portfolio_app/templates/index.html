@@ -37,7 +37,7 @@
 <div class="row g-3 mb-4">
     {% for item in portfolio_summary %}
     <div class="col-md-6">
-        <div class="card h-100 category-card page-accent-surface">
+        <div class="card h-100 portfolio-card page-accent-surface">
             <div class="card-body">
 
                 <!-- Header row: asset class name + view link -->
@@ -52,7 +52,7 @@
                 </div>
 
                 <!-- 3-column metrics grid -->
-                <div class="category-metrics">
+                <div class="portfolio-metrics">
                     <div class="metric-item">
                         <span class="metric-label">Total Contributed</span>
                         <span class="metric-value">{{ item.total_contributed|fmt_money }}</span>

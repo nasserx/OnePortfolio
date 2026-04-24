@@ -1,7 +1,6 @@
 """Dividend model for dividend income transactions."""
 
 from datetime import datetime, timezone
-from decimal import Decimal
 from sqlalchemy import Numeric, CheckConstraint
 from portfolio_app import db
 

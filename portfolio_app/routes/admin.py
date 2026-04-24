@@ -2,12 +2,12 @@
 
 import logging
 from functools import wraps
-from flask import Blueprint, render_template, request, redirect, url_for, flash, abort
+from flask import Blueprint, render_template, redirect, url_for, flash, abort
 from flask_login import login_required, current_user
 from portfolio_app.services import get_services
 from portfolio_app.utils.tokens import generate_reset_token
 from portfolio_app.utils.email import send_reset_email
-from portfolio_app.utils.messages import AdminMessages
+from portfolio_app.utils.messages import MESSAGES
 
 logger = logging.getLogger(__name__)
 
@@ -43,24 +43,29 @@ def send_reset(user_id):
     try:
         user = svc.user_repo.get_by_id(user_id)
         if not user:
-            flash(AdminMessages.USER_NOT_FOUND, 'error')
+            flash(MESSAGES['USER_NOT_FOUND'], 'error')
             return redirect(url_for('admin.users'))
 
         if not user.email:
-            flash(AdminMessages.NO_EMAIL_ON_FILE.format(username=user.username), 'warning')
+            flash(MESSAGES['ADMIN_NO_EMAIL_ON_FILE_USERNAME'].format(username=user.username), 'warning')
             return redirect(url_for('admin.users'))
 
         token = generate_reset_token(user.email)
         email_sent = send_reset_email(user.email, token)
 
         if email_sent:
-            flash(AdminMessages.RESET_EMAIL_SENT.format(username=user.username, email=user.email), 'success')
+            flash(
+                MESSAGES['ADMIN_RESET_EMAIL_SENT_USERNAME_EMAIL'].format(
+                    username=user.username, email=user.email
+                ),
+                'success',
+            )
         else:
-            flash(AdminMessages.EMAIL_SEND_FAILED, 'danger')
+            flash(MESSAGES['ADMIN_EMAIL_SEND_FAILED'], 'danger')
 
     except Exception:
         logger.exception('Admin send reset email failed for user %s', user_id)
-        flash(AdminMessages.OPERATION_FAILED, 'error')
+        flash(MESSAGES['OPERATION_FAILED'], 'error')
 
     return redirect(url_for('admin.users'))
 
@@ -73,13 +78,13 @@ def toggle_admin(user_id):
     svc = get_services()
     try:
         user = svc.auth_service.toggle_admin(user_id, current_user)
-        msg = AdminMessages.ADMIN_ACCESS_GRANTED if user.is_admin else AdminMessages.ADMIN_ACCESS_REVOKED
-        flash(msg.format(username=user.username), 'success')
+        msg_key = 'ADMIN_ACCESS_GRANTED_USERNAME' if user.is_admin else 'ADMIN_ACCESS_REVOKED_USERNAME'
+        flash(MESSAGES[msg_key].format(username=user.username), 'success')
     except ValueError as e:
         flash(str(e), 'error')
     except Exception:
         logger.exception('Toggle admin failed for user %s', user_id)
-        flash(AdminMessages.OPERATION_FAILED, 'error')
+        flash(MESSAGES['OPERATION_FAILED'], 'error')
 
     return redirect(url_for('admin.users'))
 
@@ -92,12 +97,12 @@ def delete_user(user_id):
     svc = get_services()
     try:
         svc.auth_service.delete_user(user_id, current_user)
-        flash(AdminMessages.USER_DELETED, 'success')
+        flash(MESSAGES['ADMIN_USER_DELETED'], 'success')
     except ValueError as e:
         flash(str(e), 'error')
     except Exception:
         logger.exception('Admin delete user failed for user %s', user_id)
-        flash(AdminMessages.OPERATION_FAILED, 'error')
+        flash(MESSAGES['OPERATION_FAILED'], 'error')
 
     return redirect(url_for('admin.users'))
 
@@ -105,5 +110,5 @@ def delete_user(user_id):
 @admin_bp.errorhandler(403)
 def forbidden(e):
     return render_template('auth/login.html',
-                           form_errors={'__all__': AdminMessages.ACCESS_DENIED},
+                           form_errors={'__all__': MESSAGES['ADMIN_ACCESS_DENIED']},
                            form_values={}), 403

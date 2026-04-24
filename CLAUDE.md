@@ -34,7 +34,7 @@ Routes (Blueprints) → Services → Repositories → Models (SQLAlchemy)
 
 ```python
 svc = get_services()
-svc.fund_service.create_portfolio(...)
+svc.portfolio_service.create_portfolio(...)
 svc.transaction_service.add_transaction(...)
 ```
 
@@ -44,7 +44,7 @@ The DB schema has been through several renames (tracked in migrations). Current 
 - `Portfolio` (table: `portfolio`, formerly `fund`, formerly `capital`) — cash balance, belongs to User
 - `PortfolioEvent` (table: `portfolio_event`) — Deposit/Withdrawal/Initial events
 - `Transaction` — Buy/Sell with calculated `net_amount`
-- `Asset` — quantity held per symbol per portfolio
+- `Symbol` — tracked ticker per portfolio (table: `symbol`, formerly `asset`)
 - `Dividend` — income per symbol
 - `ClosedTrade` — realized P&L snapshot, created on every sell
 

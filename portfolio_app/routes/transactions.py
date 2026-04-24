@@ -1,4 +1,4 @@
-"""Transactions blueprint - Transaction and asset management routes."""
+"""Transactions blueprint - Transaction and tracked-symbol management routes."""
 
 import logging
 from flask import Blueprint, render_template, request, redirect, url_for, flash
@@ -9,10 +9,10 @@ from portfolio_app import db
 from portfolio_app.services import get_services, ValidationError
 from portfolio_app.calculators import PortfolioCalculator
 from portfolio_app.forms import (
-    TransactionAddForm, TransactionEditForm, AssetAddForm, AssetDeleteForm,
+    TransactionAddForm, TransactionEditForm, SymbolAddForm, SymbolDeleteForm,
     DividendAddForm, DividendEditForm,
 )
-from portfolio_app.utils import get_error_message, get_first_form_error, SuccessMessages, ErrorMessages, is_ajax_request, json_response
+from portfolio_app.utils import get_error_message, get_first_form_error, MESSAGES, is_ajax_request, json_response
 from portfolio_app.utils.constants import safe_html_id
 from portfolio_app.utils.decimal_utils import ZERO
 from config import Config
@@ -38,7 +38,7 @@ def _decimal_places(value) -> int:
 def _get_transactions_page_context(portfolio_filter=''):
     """Build context data for the transactions page."""
     svc = get_services()
-    portfolio_repo, transaction_repo, asset_repo = svc.portfolio_repo, svc.transaction_repo, svc.asset_repo
+    portfolio_repo, transaction_repo, symbol_repo = svc.portfolio_repo, svc.transaction_repo, svc.symbol_repo
     portfolio_filter = (portfolio_filter or '').strip()
     portfolios = portfolio_repo.get_all()
     holdings = []
@@ -48,17 +48,17 @@ def _get_transactions_page_context(portfolio_filter=''):
             continue
 
         tracked_symbols = set()
-        asset_by_symbol = {}
+        tracked_by_ticker = {}
 
         try:
-            portfolio_assets = asset_repo.get_by_portfolio_id(portfolio.id)
-            for a in portfolio_assets:
-                sym_norm = PortfolioCalculator.normalize_symbol(a.symbol)
+            portfolio_symbols = symbol_repo.get_by_portfolio_id(portfolio.id)
+            for s in portfolio_symbols:
+                sym_norm = PortfolioCalculator.normalize_symbol(s.symbol)
                 if sym_norm:
-                    asset_by_symbol[sym_norm] = a
+                    tracked_by_ticker[sym_norm] = s
                     tracked_symbols.add(sym_norm)
         except OperationalError:
-            asset_by_symbol = {}
+            tracked_by_ticker = {}
 
         portfolio_transactions = transaction_repo.get_by_portfolio_id(portfolio.id)
 
@@ -96,7 +96,7 @@ def _get_transactions_page_context(portfolio_filter=''):
                 summary['roi_percent_display'] = '—'
 
             html_group_id = safe_html_id(portfolio.id, sym_norm)
-            asset = asset_by_symbol.get(sym_norm)
+            tracked = tracked_by_ticker.get(sym_norm)
             holdings.append({
                 'portfolio': portfolio,
                 'symbol': sym_norm,
@@ -105,7 +105,7 @@ def _get_transactions_page_context(portfolio_filter=''):
                 'summary': summary,
                 'price_decimal_places': price_decimal_places,
                 'avg_cost_decimal_places': avg_cost_decimal_places,
-                'asset_id': asset.id if asset else None,
+                'symbol_id': tracked.id if tracked else None,
             })
 
     # Load dividends grouped by (portfolio_id, symbol) — single query for all portfolios
@@ -123,7 +123,7 @@ def _get_transactions_page_context(portfolio_filter=''):
 
     return {
         'holdings': holdings,
-        'funds': portfolios,
+        'portfolios': portfolios,
         'transaction_types': Config.TRANSACTION_TYPES,
         'selected_portfolio': portfolio_filter,
         'dividends_by_symbol': dividends_by_symbol,
@@ -181,9 +181,9 @@ def transaction_add():
         )
 
         if is_ajax_request():
-            return json_response(True, message=SuccessMessages.TRANSACTION_ADDED)
+            return json_response(True, message=MESSAGES['TRANSACTION_ADDED'])
 
-        flash(SuccessMessages.TRANSACTION_ADDED, 'success')
+        flash(MESSAGES['TRANSACTION_ADDED'], 'success')
         return redirect(url_for('transactions.transaction_list'))
 
     except (ValueError, ValidationError) as e:
@@ -196,8 +196,8 @@ def transaction_add():
         logger.exception('Failed to add transaction')
         db.session.rollback()
         if is_ajax_request():
-            return json_response(False, error=ErrorMessages.OPERATION_FAILED)
-        flash(ErrorMessages.OPERATION_FAILED, 'error')
+            return json_response(False, error=MESSAGES['OPERATION_FAILED'])
+        flash(MESSAGES['OPERATION_FAILED'], 'error')
         return redirect(url_for('transactions.transaction_list'))
 
 
@@ -211,8 +211,8 @@ def transaction_edit(transaction_id):
         transaction = svc.transaction_repo.get_by_id(transaction_id)
         if not transaction:
             if is_ajax_request():
-                return json_response(False, error=ErrorMessages.TRANSACTION_NOT_FOUND)
-            flash(ErrorMessages.TRANSACTION_NOT_FOUND, 'error')
+                return json_response(False, error=MESSAGES['TRANSACTION_NOT_FOUND'])
+            flash(MESSAGES['TRANSACTION_NOT_FOUND'], 'error')
             return redirect(url_for('transactions.transaction_list'))
 
         form = TransactionEditForm(request.form, transaction_id, transaction.transaction_type)
@@ -241,9 +241,9 @@ def transaction_edit(transaction_id):
         )
 
         if is_ajax_request():
-            return json_response(True, message=SuccessMessages.TRANSACTION_UPDATED)
+            return json_response(True, message=MESSAGES['TRANSACTION_UPDATED'])
 
-        flash(SuccessMessages.TRANSACTION_UPDATED, 'success')
+        flash(MESSAGES['TRANSACTION_UPDATED'], 'success')
         return redirect(url_for('transactions.transaction_list'))
 
     except (ValueError, ValidationError) as e:
@@ -256,8 +256,8 @@ def transaction_edit(transaction_id):
         logger.exception('Failed to edit transaction %s', transaction_id)
         db.session.rollback()
         if is_ajax_request():
-            return json_response(False, error=ErrorMessages.OPERATION_FAILED)
-        flash(ErrorMessages.OPERATION_FAILED, 'error')
+            return json_response(False, error=MESSAGES['OPERATION_FAILED'])
+        flash(MESSAGES['OPERATION_FAILED'], 'error')
         return redirect(url_for('transactions.transaction_list'))
 
 
@@ -270,8 +270,8 @@ def transaction_delete(transaction_id):
         svc.transaction_service.delete_transaction(transaction_id)
 
         if is_ajax_request():
-            return json_response(True, message=SuccessMessages.TRANSACTION_DELETED)
-        flash(SuccessMessages.TRANSACTION_DELETED, 'success')
+            return json_response(True, message=MESSAGES['TRANSACTION_DELETED'])
+        flash(MESSAGES['TRANSACTION_DELETED'], 'success')
 
     except ValueError as e:
         if is_ajax_request():
@@ -282,8 +282,8 @@ def transaction_delete(transaction_id):
         logger.exception('Failed to delete transaction %s', transaction_id)
         db.session.rollback()
         if is_ajax_request():
-            return json_response(False, error=ErrorMessages.OPERATION_FAILED)
-        flash(ErrorMessages.OPERATION_FAILED, 'error')
+            return json_response(False, error=MESSAGES['OPERATION_FAILED'])
+        flash(MESSAGES['OPERATION_FAILED'], 'error')
 
     return redirect(url_for('transactions.transaction_list'))
 
@@ -320,9 +320,9 @@ def dividend_add():
         )
 
         if is_ajax_request():
-            return json_response(True, message=SuccessMessages.DIVIDEND_ADDED)
+            return json_response(True, message=MESSAGES['DIVIDEND_ADDED'])
 
-        flash(SuccessMessages.DIVIDEND_ADDED, 'success')
+        flash(MESSAGES['DIVIDEND_ADDED'], 'success')
         return redirect(url_for('transactions.transaction_list'))
 
     except (ValueError, ValidationError) as e:
@@ -335,8 +335,8 @@ def dividend_add():
         logger.exception('Failed to add dividend')
         db.session.rollback()
         if is_ajax_request():
-            return json_response(False, error=ErrorMessages.OPERATION_FAILED)
-        flash(ErrorMessages.OPERATION_FAILED, 'error')
+            return json_response(False, error=MESSAGES['OPERATION_FAILED'])
+        flash(MESSAGES['OPERATION_FAILED'], 'error')
         return redirect(url_for('transactions.transaction_list'))
 
 
@@ -350,8 +350,8 @@ def dividend_edit(dividend_id):
         dividend = svc.dividend_repo.get_by_id(dividend_id)
         if not dividend:
             if is_ajax_request():
-                return json_response(False, error=ErrorMessages.DIVIDEND_NOT_FOUND)
-            flash(ErrorMessages.DIVIDEND_NOT_FOUND, 'error')
+                return json_response(False, error=MESSAGES['DIVIDEND_NOT_FOUND'])
+            flash(MESSAGES['DIVIDEND_NOT_FOUND'], 'error')
             return redirect(url_for('transactions.transaction_list'))
 
         form = DividendEditForm(request.form, dividend_id)
@@ -370,9 +370,9 @@ def dividend_edit(dividend_id):
         )
 
         if is_ajax_request():
-            return json_response(True, message=SuccessMessages.DIVIDEND_UPDATED)
+            return json_response(True, message=MESSAGES['DIVIDEND_UPDATED'])
 
-        flash(SuccessMessages.DIVIDEND_UPDATED, 'success')
+        flash(MESSAGES['DIVIDEND_UPDATED'], 'success')
         return redirect(url_for('transactions.transaction_list'))
 
     except (ValueError, ValidationError) as e:
@@ -385,8 +385,8 @@ def dividend_edit(dividend_id):
         logger.exception('Failed to edit dividend %s', dividend_id)
         db.session.rollback()
         if is_ajax_request():
-            return json_response(False, error=ErrorMessages.OPERATION_FAILED)
-        flash(ErrorMessages.OPERATION_FAILED, 'error')
+            return json_response(False, error=MESSAGES['OPERATION_FAILED'])
+        flash(MESSAGES['OPERATION_FAILED'], 'error')
         return redirect(url_for('transactions.transaction_list'))
 
 
@@ -399,8 +399,8 @@ def dividend_delete(dividend_id):
         svc.transaction_service.delete_dividend(dividend_id)
 
         if is_ajax_request():
-            return json_response(True, message=SuccessMessages.DIVIDEND_DELETED)
-        flash(SuccessMessages.DIVIDEND_DELETED, 'success')
+            return json_response(True, message=MESSAGES['DIVIDEND_DELETED'])
+        flash(MESSAGES['DIVIDEND_DELETED'], 'success')
 
     except ValueError as e:
         if is_ajax_request():
@@ -411,73 +411,73 @@ def dividend_delete(dividend_id):
         logger.exception('Failed to delete dividend %s', dividend_id)
         db.session.rollback()
         if is_ajax_request():
-            return json_response(False, error=ErrorMessages.OPERATION_FAILED)
-        flash(ErrorMessages.OPERATION_FAILED, 'error')
+            return json_response(False, error=MESSAGES['OPERATION_FAILED'])
+        flash(MESSAGES['OPERATION_FAILED'], 'error')
 
     return redirect(url_for('transactions.transaction_list'))
 
 
-@transactions_bp.route('/assets/add', methods=['POST'])
+@transactions_bp.route('/symbols/add', methods=['POST'])
 @login_required
-def asset_add():
-    """Add tracked asset."""
+def symbol_add():
+    """Track a new symbol."""
     try:
         svc = get_services()
         portfolios = svc.portfolio_repo.get_all()
 
-        form = AssetAddForm(request.form, portfolios)
+        form = SymbolAddForm(request.form, portfolios)
         if not form.validate():
             ctx = _get_transactions_page_context()
             return render_template(
                 'transactions.html',
                 **ctx,
-                form_errors={'asset_add': form.errors},
-                form_values={'asset_add': request.form},
+                form_errors={'symbol_add': form.errors},
+                form_values={'symbol_add': request.form},
                 active_modal='addSymbolModal',
             ), 400
 
         data = form.get_cleaned_data()
-        svc.transaction_service.add_asset(
+        svc.transaction_service.add_symbol(
             portfolio_id=data['portfolio_id'],
             symbol=data['symbol']
         )
 
-        flash(SuccessMessages.ASSET_ADDED, 'success')
+        flash(MESSAGES['SYMBOL_ADDED'], 'success')
 
     except ValueError as e:
         flash(get_error_message(e), 'error')
 
     except Exception:
-        logger.exception('Failed to add asset')
+        logger.exception('Failed to track symbol')
         db.session.rollback()
-        flash(ErrorMessages.OPERATION_FAILED, 'error')
+        flash(MESSAGES['OPERATION_FAILED'], 'error')
 
     return redirect(url_for('transactions.transaction_list'))
 
 
-@transactions_bp.route('/assets/delete', methods=['POST'])
+@transactions_bp.route('/symbols/delete', methods=['POST'])
 @login_required
-def asset_delete():
-    """Delete tracked asset."""
+def symbol_delete():
+    """Stop tracking a symbol."""
     try:
         svc = get_services()
 
-        form = AssetDeleteForm(request.form)
+        form = SymbolDeleteForm(request.form)
         if not form.validate():
             if is_ajax_request():
-                return json_response(False, error=ErrorMessages.INVALID_REQUEST)
-            flash(ErrorMessages.INVALID_REQUEST, 'error')
+                return json_response(False, error=MESSAGES['INVALID_REQUEST'])
+            flash(MESSAGES['INVALID_REQUEST'], 'error')
             return redirect(url_for('transactions.transaction_list'))
 
         data = form.get_cleaned_data()
-        svc.transaction_service.delete_asset(
+        svc.transaction_service.delete_symbol(
             portfolio_id=data['portfolio_id'],
             symbol=data['symbol']
         )
 
         if is_ajax_request():
-            return json_response(True, message=SuccessMessages.ASSET_DELETED)
-        flash(SuccessMessages.ASSET_DELETED, 'success')
+            return json_response(True, message=MESSAGES['SYMBOL_DELETED'])
+        flash(MESSAGES['SYMBOL_DELETED'], 'success')
 
     except ValueError as e:
         if is_ajax_request():
@@ -485,10 +485,10 @@ def asset_delete():
         flash(get_error_message(e), 'error')
 
     except Exception:
-        logger.exception('Failed to delete asset')
+        logger.exception('Failed to stop tracking symbol')
         db.session.rollback()
         if is_ajax_request():
-            return json_response(False, error=ErrorMessages.OPERATION_FAILED)
-        flash(ErrorMessages.OPERATION_FAILED, 'error')
+            return json_response(False, error=MESSAGES['OPERATION_FAILED'])
+        flash(MESSAGES['OPERATION_FAILED'], 'error')
 
     return redirect(url_for('transactions.transaction_list'))

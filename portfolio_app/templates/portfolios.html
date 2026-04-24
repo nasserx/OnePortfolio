@@ -63,25 +63,25 @@
             <div class="card mb-2 portfolio-card">
 
                 <!-- Clickable header -->
-                <div class="card-header py-2 px-3 category-header page-accent-surface"
+                <div class="card-header py-2 px-3 portfolio-header page-accent-surface"
                      onclick="togglePortfolioEvents('{{ item.portfolio.id }}')">
                     <div class="row align-items-center g-1 summary-row">
 
                         <!-- Name + chevron -->
                         <div class="col-lg-3 col-md-3 d-flex align-items-center gap-2">
-                            <i class="bi bi-chevron-right category-chevron" id="chevron-{{ item.portfolio.id }}"></i>
+                            <i class="bi bi-chevron-right portfolio-chevron" id="chevron-{{ item.portfolio.id }}"></i>
                             <span class="fw-bold">{{ item.portfolio.name }}</span>
                         </div>
 
                         <!-- Metrics -->
                         <div class="col-lg-7 col-md-5">
-                            <div class="category-summary columns-3">
+                            <div class="portfolio-summary columns-3">
                                 <div class="summary-item">
-                                    <div class="summary-label">Records</div>
+                                    <div class="summary-label">Transactions</div>
                                     <div class="summary-value">{{ item.events|length }}</div>
                                 </div>
                                 <div class="summary-item">
-                                    <div class="summary-label">Net Deposits</div>
+                                    <div class="summary-label">Total Contributed</div>
                                     <div class="summary-value">{{ item.portfolio.net_deposits|fmt_money }}</div>
                                 </div>
                                 <div class="summary-item">
@@ -125,7 +125,7 @@
                 </div>
 
                 <!-- Events table (collapsed by default) -->
-                <div class="category-transactions" id="events-{{ item.portfolio.id }}" style="display: none;">
+                <div class="portfolio-transactions" id="events-{{ item.portfolio.id }}" style="display: none;">
                     {% if item.events %}
                     <div class="table-responsive">
                         <table class="table table-sm table-hover align-middle mb-0 transactions-table">
@@ -188,7 +188,7 @@
                     <div class="tx-pagination-bar" id="pgbar-ev-{{ item.portfolio.id }}"></div>
                     {% else %}
                     <div class="p-3 text-center help-message page-accent-surface">
-                        <small class="text-muted">No events yet. Use Deposit to add funds.</small>
+                        <small class="text-muted">No transactions yet. Use Deposit to add funds.</small>
                     </div>
                     {% endif %}
                 </div>
@@ -219,7 +219,7 @@
                 <div class="modal-body">
                     <div class="mb-3">
                         <label class="form-label">Portfolio</label>
-                        <input type="text" class="form-control" id="deposit_fund_name" readonly>
+                        <input type="text" class="form-control" id="deposit_portfolio_name" readonly>
                     </div>
                     <div class="row g-2">
                         <div class="col-6">
@@ -276,7 +276,7 @@
                 <div class="modal-body">
                     <div class="mb-3">
                         <label class="form-label">Portfolio</label>
-                        <input type="text" class="form-control" id="withdraw_fund_name" readonly>
+                        <input type="text" class="form-control" id="withdraw_portfolio_name" readonly>
                     </div>
                     <div class="row g-2">
                         <div class="col-6">
@@ -394,7 +394,7 @@
             <form method="POST" id="editPortfolioEventForm" autocomplete="off" novalidate>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="modal-header">
-                    <h5 class="modal-title">Edit Record</h5>
+                    <h5 class="modal-title">Edit Transaction</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
@@ -406,10 +406,10 @@
                     <div class="row g-2">
                         <div class="col-6">
                             <div class="mb-3">
-                                <label for="edit_event_amount" class="form-label">Amount</label>
+                                <label for="edit_cash_event_amount" class="form-label">Amount</label>
                                 <input type="text" inputmode="decimal"
                                        class="form-control"
-                                       id="edit_event_amount" name="edit_event_amount"
+                                       id="edit_cash_event_amount" name="edit_cash_event_amount"
                                        placeholder="0.00">
                             </div>
                         </div>
@@ -424,9 +424,9 @@
                         </div>
                     </div>
                     <div class="mb-3">
-                        <label for="edit_event_notes" class="form-label">Notes (optional)</label>
+                        <label for="edit_cash_event_notes" class="form-label">Notes (optional)</label>
                         <input type="text" class="form-control"
-                               id="edit_event_notes" name="edit_event_notes"
+                               id="edit_cash_event_notes" name="edit_cash_event_notes"
                                maxlength="200" placeholder="Optional notes">
                     </div>
                 </div>
@@ -452,7 +452,7 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <p>Delete this <strong id="delete_event_type_name"></strong> record?</p>
+                    <p>Delete this <strong id="delete_event_type_name"></strong> transaction?</p>
                     <div class="alert alert-warning mb-0">
                         <i class="bi bi-exclamation-triangle me-1"></i>
                         This will reverse the effect on the portfolio balance.
@@ -663,7 +663,7 @@
 function depositFunds(id, name, opts) {
     opts = opts || {};
     document.getElementById('depositFundsForm').action = `/portfolios/deposit/${id}`;
-    document.getElementById('deposit_fund_name').value = name || '';
+    document.getElementById('deposit_portfolio_name').value = name || '';
     document.getElementById('add_funds_amount').value = (opts.amount != null ? String(opts.amount) : '');
     document.getElementById('deposit_date').value = (opts.date || todayStr());
     document.getElementById('add_funds_notes').value = (opts.notes || '');
@@ -674,7 +674,7 @@ function depositFunds(id, name, opts) {
 function withdrawFunds(id, name, opts) {
     opts = opts || {};
     document.getElementById('withdrawFundsForm').action = `/portfolios/withdraw/${id}`;
-    document.getElementById('withdraw_fund_name').value = name || '';
+    document.getElementById('withdraw_portfolio_name').value = name || '';
     document.getElementById('withdraw_funds_amount').value = (opts.amount != null ? String(opts.amount) : '');
     document.getElementById('withdraw_date').value = (opts.date || todayStr());
     document.getElementById('withdraw_funds_notes').value = (opts.notes || '');
@@ -693,8 +693,8 @@ function editPortfolioEvent(id, type, amount, notes, date) {
     document.getElementById('editPortfolioEventForm').action = `/portfolios/events/edit/${id}`;
     document.getElementById('edit_event_type_display').value = type || '';
     document.getElementById('edit_event_type_hidden').value = type || '';
-    document.getElementById('edit_event_amount').value = amount || '';
-    document.getElementById('edit_event_notes').value = notes || '';
+    document.getElementById('edit_cash_event_amount').value = amount || '';
+    document.getElementById('edit_cash_event_notes').value = notes || '';
     document.getElementById('edit_event_date').value = date || todayStr();
     initFlatpickr('edit_event_date');
     new bootstrap.Modal(document.getElementById('editPortfolioEventModal')).show();

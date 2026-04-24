@@ -7,6 +7,7 @@ from typing import Optional, Tuple
 
 from portfolio_app.models.user import User
 from portfolio_app.repositories.user_repository import UserRepository
+from portfolio_app.utils.messages import MESSAGES
 
 logger = logging.getLogger(__name__)
 
@@ -47,10 +48,10 @@ class AuthService:
         self._purge_expired_unverified()
 
         if self.user_repo.get_by_username(username):
-            raise ValueError('This username is already taken.')
+            raise ValueError(MESSAGES['USERNAME_TAKEN'])
 
         if self.user_repo.get_by_email(email):
-            raise ValueError('An account with this email already exists.')
+            raise ValueError(MESSAGES['EMAIL_ALREADY_EXISTS'])
 
         is_first = self.user_repo.count() == 0
         code = self._make_verification_code()
@@ -92,11 +93,11 @@ class AuthService:
         user = self.user_repo.get_by_pending_email(email)
         if user:
             if not user.verification_code or not user.verification_code_expires_at:
-                return False, 'No verification code found. Please request a new one.'
+                return False, MESSAGES['VERIFICATION_CODE_NOT_FOUND']
             if datetime.now(timezone.utc) > user.verification_code_expires_at:
-                return False, 'This code has expired. Please request a new one.'
+                return False, MESSAGES['VERIFICATION_CODE_EXPIRED']
             if user.verification_code != code.strip():
-                return False, 'Invalid verification code.'
+                return False, MESSAGES['VERIFICATION_CODE_MISMATCH']
 
             # Apply the pending email change
             user.email = user.pending_email
@@ -109,19 +110,19 @@ class AuthService:
         # Case 2: new registration verification
         user = self.user_repo.get_by_email(email)
         if not user:
-            return False, 'No account found for this email.'
+            return False, MESSAGES['ACCOUNT_NOT_FOUND']
 
         if user.is_verified:
-            return False, 'This account is already verified. Please log in.'
+            return False, MESSAGES['ACCOUNT_ALREADY_VERIFIED']
 
         if not user.verification_code or not user.verification_code_expires_at:
-            return False, 'No verification code found. Please request a new one.'
+            return False, MESSAGES['VERIFICATION_CODE_NOT_FOUND']
 
         if datetime.now(timezone.utc) > user.verification_code_expires_at:
-            return False, 'This code has expired. Please request a new one.'
+            return False, MESSAGES['VERIFICATION_CODE_EXPIRED']
 
         if user.verification_code != code.strip():
-            return False, 'Invalid verification code.'
+            return False, MESSAGES['VERIFICATION_CODE_MISMATCH']
 
         user.is_verified = True
         user.verification_code = None
@@ -202,7 +203,7 @@ class AuthService:
             ValueError: If the password is incorrect.
         """
         if not user.check_password(password):
-            raise ValueError('Current password is incorrect.')
+            raise ValueError(MESSAGES['CURRENT_PASSWORD_INCORRECT'])
 
         code = self._make_verification_code()
         user.pending_email = new_email.lower()
@@ -224,7 +225,7 @@ class AuthService:
             ValueError: If current_password is wrong.
         """
         if not user.check_password(current_password):
-            raise ValueError('Current password is incorrect.')
+            raise ValueError(MESSAGES['CURRENT_PASSWORD_INCORRECT'])
         user.set_password(new_password)
         self.user_repo.commit()
 
@@ -285,7 +286,7 @@ class AuthService:
             or datetime.now(timezone.utc) > user.deletion_code_expires_at
             or user.deletion_code != code.strip()
         ):
-            return False, 'Invalid or expired confirmation code.'
+            return False, MESSAGES['DELETION_INVALID_CODE']
 
         self.user_repo.delete(user)
         self.user_repo.commit()
@@ -307,9 +308,9 @@ class AuthService:
         """
         user = self.user_repo.get_by_id(user_id)
         if not user:
-            raise ValueError('User not found.')
+            raise ValueError(MESSAGES['USER_NOT_FOUND'])
         if user.id == current_user.id:
-            raise ValueError('You cannot change your own admin status.')
+            raise ValueError(MESSAGES['ADMIN_CANNOT_CHANGE_OWN_STATUS'])
         user.is_admin = not user.is_admin
         self.user_repo.commit()
         return user
@@ -326,9 +327,9 @@ class AuthService:
         """
         user = self.user_repo.get_by_id(user_id)
         if not user:
-            raise ValueError('User not found.')
+            raise ValueError(MESSAGES['USER_NOT_FOUND'])
         if user.id == current_user.id:
-            raise ValueError('You cannot delete your own account.')
+            raise ValueError(MESSAGES['ADMIN_CANNOT_DELETE_SELF'])
         self.user_repo.delete(user)
         self.user_repo.commit()
 

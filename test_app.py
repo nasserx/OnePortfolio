@@ -12,7 +12,7 @@ Tests cover:
 """
 
 from portfolio_app import create_app, db
-from portfolio_app.models import Fund, Transaction, FundEvent
+from portfolio_app.models import Portfolio, Transaction, PortfolioEvent
 from portfolio_app.calculators import PortfolioCalculator
 from portfolio_app.services.factory import Services
 from datetime import datetime
@@ -146,7 +146,7 @@ def test_transaction_calculations(app):
 
 def test_fund_events(app):
     """
-    Verify that get_total_funds_for_fund() returns the sum of Initial +
+    Verify that get_total_deposits_for_portfolio() returns the sum of Initial +
     Deposit events only, and that withdrawals do NOT inflate Total Funds.
     """
     with app.app_context():
@@ -165,8 +165,8 @@ def test_fund_events(app):
         svc.portfolio_service.deposit_funds(fund_a.id, _dec(10_000))
         svc.portfolio_service.deposit_funds(fund_a.id, _dec(5_000))
 
-        tf_a = PortfolioCalculator.get_total_funds_for_fund(fund_a.id)
-        cash_a = PortfolioCalculator.get_available_cash_for_fund(fund_a.id)
+        tf_a = PortfolioCalculator.get_total_deposits_for_portfolio(fund_a.id)
+        cash_a = PortfolioCalculator.get_available_cash_for_portfolio(fund_a.id)
 
         print("\n  Scenario A – deposits only")
         _assert('Total Funds (deposits only)', 15_000, tf_a)
@@ -186,8 +186,8 @@ def test_fund_events(app):
         svc.portfolio_service.withdraw_funds(fund_b.id, _dec(5_999))
         db.session.refresh(fund_b)
 
-        tf_b = PortfolioCalculator.get_total_funds_for_fund(fund_b.id)
-        cash_b = PortfolioCalculator.get_available_cash_for_fund(fund_b.id)
+        tf_b = PortfolioCalculator.get_total_deposits_for_portfolio(fund_b.id)
+        cash_b = PortfolioCalculator.get_available_cash_for_portfolio(fund_b.id)
 
         print("\n  Scenario B – deposits + withdrawals, no transactions")
         _assert('Total Funds (deposits only, ignores withdrawals)', 11_000, tf_b)
@@ -225,10 +225,10 @@ def test_fund_events(app):
         PortfolioCalculator.recalculate_all_averages_for_symbol(fund_c.id, 'AAPL')
         db.session.commit()
 
-        tf_c = PortfolioCalculator.get_total_funds_for_fund(fund_c.id)
-        cash_c = PortfolioCalculator.get_available_cash_for_fund(fund_c.id)
-        tx_c = PortfolioCalculator.get_category_transactions_summary(fund_c.id)
-        realized_c = PortfolioCalculator.get_realized_performance_for_fund(fund_c.id)
+        tf_c = PortfolioCalculator.get_total_deposits_for_portfolio(fund_c.id)
+        cash_c = PortfolioCalculator.get_available_cash_for_portfolio(fund_c.id)
+        tx_c = PortfolioCalculator.get_portfolio_transactions_summary(fund_c.id)
+        realized_c = PortfolioCalculator.get_realized_performance_for_portfolio(fund_c.id)
 
         print("\n  Scenario C – deposits + withdrawals + transactions")
         _assert('Total Funds (deposits only)', 11_000, tf_c)
@@ -239,13 +239,13 @@ def test_fund_events(app):
 
         # ── Scenario D: legacy fund with no FundEvents (fallback to fund.net_deposits) ──
         #   Simulates old database where fund.net_deposits=8,000 but no events exist.
-        #   get_total_funds_for_fund() must return 8,000 (not 0).
-        legacy_fund = Fund(name='Legacy', net_deposits=_dec(8_000))
+        #   get_total_deposits_for_portfolio() must return 8,000 (not 0).
+        legacy_fund = Portfolio(name='Legacy', net_deposits=_dec(8_000))
         db.session.add(legacy_fund)
         db.session.commit()
 
-        tf_legacy = PortfolioCalculator.get_total_funds_for_fund(legacy_fund.id)
-        cash_legacy = PortfolioCalculator.get_available_cash_for_fund(legacy_fund.id)
+        tf_legacy = PortfolioCalculator.get_total_deposits_for_portfolio(legacy_fund.id)
+        cash_legacy = PortfolioCalculator.get_available_cash_for_portfolio(legacy_fund.id)
 
         print("\n  Scenario D – legacy fund (no FundEvents, fallback to fund.net_deposits)")
         _assert('Total Funds fallback = fund.net_deposits', 8_000, tf_legacy)
@@ -260,7 +260,7 @@ def test_fund_events(app):
 
 def test_category_summary(app):
     """
-    Verify get_category_summary() uses deposits-only Total Funds
+    Verify get_portfolio_summary() uses deposits-only Total Funds
     and computes correct Total Value and ROI.
     """
     with app.app_context():
@@ -290,7 +290,7 @@ def test_category_summary(app):
         PortfolioCalculator.recalculate_all_averages_for_symbol(fund.id, 'AAPL')
         db.session.commit()
 
-        summary, portfolio_value = PortfolioCalculator.get_category_summary()
+        summary, portfolio_value = PortfolioCalculator.get_portfolio_summary()
         assert len(summary) == 1
         cat = summary[0]
 
@@ -432,31 +432,31 @@ def test_dividends(app):
         svc1.transaction_service.add_dividend(fund1.id, 'AAPL', _dec('100'), datetime(2026, 1, 10))
         svc1.transaction_service.add_dividend(fund1.id, 'AAPL', _dec('50'),  datetime(2026, 1, 20))
 
-        total = PortfolioCalculator.get_dividend_total_for_fund(fund1.id)
+        total = PortfolioCalculator.get_dividend_total_for_portfolio(fund1.id)
         _assert('Dividend total for fund1', _dec('150'), total)
 
         # ── 6b: dividends added to cash balance ──
         print("\n  6b – dividends reflected in cash")
-        cash = PortfolioCalculator.get_available_cash_for_fund(fund1.id)
+        cash = PortfolioCalculator.get_available_cash_for_portfolio(fund1.id)
         # fund.net_deposits = 10,000; no buy/sell; dividends = 150 → cash = 10,150
         _assert('Cash includes dividend income', _dec('10150'), cash)
 
         # ── 6c: dividends added to realized P&L ──
         print("\n  6c – dividends reflected in realized P&L")
-        perf = PortfolioCalculator.get_realized_performance_for_fund(fund1.id)
+        perf = PortfolioCalculator.get_realized_performance_for_portfolio(fund1.id)
         _assert('Realized P&L includes dividends', _dec('150'), perf['realized_pnl'])
 
         # ── 6d: fund2 has zero dividends (no cross-contamination) ──
         print("\n  6d – no cross-fund contamination")
-        total2 = PortfolioCalculator.get_dividend_total_for_fund(fund2.id)
+        total2 = PortfolioCalculator.get_dividend_total_for_portfolio(fund2.id)
         _assert('Dividend total for fund2 (none added)', _dec('0'), total2)
 
         # ── 6e: update dividend ──
         print("\n  6e – update dividend")
-        divs = svc1.dividend_repo.get_by_fund_id(fund1.id)
+        divs = svc1.dividend_repo.get_by_portfolio_id(fund1.id)
         d = divs[0]
         svc1.transaction_service.update_dividend(d.id, amount=_dec('200'))
-        new_total = PortfolioCalculator.get_dividend_total_for_fund(fund1.id)
+        new_total = PortfolioCalculator.get_dividend_total_for_portfolio(fund1.id)
         # get_by_fund_id returns newest first → divs[0] is the 50 dividend → updated to 200
         # other (100) stays → total = 100 + 200 = 300
         _assert('Total after update', _dec('300'), new_total)
@@ -472,7 +472,7 @@ def test_dividends(app):
         # ── 6g: delete dividend ──
         print("\n  6g – delete dividend")
         svc1.transaction_service.delete_dividend(d.id)
-        final_total = PortfolioCalculator.get_dividend_total_for_fund(fund1.id)
+        final_total = PortfolioCalculator.get_dividend_total_for_portfolio(fund1.id)
         # divs[0] (the 200 one) deleted → only the original 100 remains
         _assert('Total after delete (one removed)', _dec('100'), final_total)
 

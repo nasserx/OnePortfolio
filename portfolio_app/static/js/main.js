@@ -680,18 +680,18 @@ const ValidationRules = {
         validate: (raw) => {
             const parsed = Utils.parseNumberStrict(raw);
             if (!parsed.ok) {
-                return { ok: false, message: 'Required.' };
+                return { ok: false, message: 'This field is required.' };
             }
             if (parsed.value <= 0) {
-                return { ok: false, message: 'Amount must be greater than 0.' };
+                return { ok: false, message: 'Must be more than 0.' };
             }
             return { ok: true };
         }
     },
 
-    // Category selection
-    category: {
-        name: 'category',
+    // Portfolio dropdown selection
+    portfolioSelect: {
+        name: 'portfolio_id',
         validate: (raw) => {
             if (!String(raw || '').trim()) {
                 return { ok: false, message: 'Please select a portfolio.' };
@@ -700,7 +700,18 @@ const ValidationRules = {
         }
     },
 
-    // Asset symbol
+    // Non-empty text field (used for portfolio name)
+    requiredText: {
+        name: 'text',
+        validate: (raw) => {
+            if (!String(raw || '').trim()) {
+                return { ok: false, message: 'This field is required.' };
+            }
+            return { ok: true };
+        }
+    },
+
+    // Ticker symbol
     symbol: {
         name: 'symbol',
         validate: (raw, element) => {
@@ -708,7 +719,7 @@ const ValidationRules = {
             if (element) element.value = value;
             
             if (!value) {
-                return { ok: false, message: 'Required.' };
+                return { ok: false, message: 'This field is required.' };
             }
             if (!Utils.isValidSymbol(value)) {
                 return { ok: false, message: 'Invalid symbol format.' };
@@ -735,10 +746,10 @@ const ValidationRules = {
         validate: (raw) => {
             const parsed = Utils.parseNumberStrict(raw);
             if (!parsed.ok) {
-                return { ok: false, message: 'Required.' };
+                return { ok: false, message: 'This field is required.' };
             }
             if (parsed.value <= 0) {
-                return { ok: false, message: 'Price must be greater than 0.' };
+                return { ok: false, message: 'Must be more than 0.' };
             }
             return { ok: true };
         }
@@ -750,10 +761,10 @@ const ValidationRules = {
         validate: (raw) => {
             const parsed = Utils.parseNumberStrict(raw);
             if (!parsed.ok) {
-                return { ok: false, message: 'Required.' };
+                return { ok: false, message: 'This field is required.' };
             }
             if (parsed.value <= 0) {
-                return { ok: false, message: 'Quantity must be greater than 0.' };
+                return { ok: false, message: 'Must be more than 0.' };
             }
             return { ok: true };
         }
@@ -796,7 +807,7 @@ const ValidationRules = {
         validate: (raw) => {
             const str = String(raw || '').trim();
             if (!str) {
-                return { ok: false, message: 'Required.' };
+                return { ok: false, message: 'This field is required.' };
             }
             if (!Utils.isValidDateYMD(str)) {
                 return { ok: false, message: 'Invalid date.' };
@@ -824,23 +835,21 @@ class FormValidatorsInitializer {
             { ...ValidationRules.date, selector: '#withdraw_date', name: 'withdraw_date' }
         ]);
 
-        // Add portfolio entry form
+        // New portfolio form — only requires a non-empty name
         this.initValidator('form[action$="/portfolios/add"]', [
-            { ...ValidationRules.category, selector: '#category' },
-            { ...ValidationRules.fundsAmount, selector: '#amount', name: 'amount' },
-            { ...ValidationRules.date, selector: '#add_fund_date', name: 'add_fund_date' }
+            { ...ValidationRules.requiredText, selector: '#portfolio_name', name: 'name' }
         ]);
 
-        // Edit portfolio event
+        // Edit portfolio cash event
         this.initValidator('#editPortfolioEventForm', [
             { ...ValidationRules.date, selector: '#edit_event_date' },
-            { ...ValidationRules.fundsAmount, selector: '#edit_event_amount', name: 'amount' }
+            { ...ValidationRules.fundsAmount, selector: '#edit_cash_event_amount', name: 'amount' }
         ]);
 
-        // Add asset symbol
-        this.initValidator('form[action$="/assets/add"]', [
-            { ...ValidationRules.category, selector: '#asset_portfolio_id', name: 'portfolio_id' },
-            { ...ValidationRules.symbol, selector: '#asset_symbol' }
+        // Track a new symbol
+        this.initValidator('form[action$="/symbols/add"]', [
+            { ...ValidationRules.portfolioSelect, selector: '#symbol_portfolio_id', name: 'portfolio_id' },
+            { ...ValidationRules.symbol, selector: '#symbol_ticker' }
         ]);
 
         // Add transaction — rules are mode-aware (Buy/Sell vs Dividend)
@@ -851,7 +860,7 @@ class FormValidatorsInitializer {
         };
 
         this.initValidator('form[action$="/transactions/add"]', [
-            { ...ValidationRules.category, selector: '#portfolio_id', name: 'portfolio_id' },
+            { ...ValidationRules.portfolioSelect, selector: '#portfolio_id', name: 'portfolio_id' },
             { ...ValidationRules.symbol, selector: '#symbol',
                 validate: skipInDividendMode(ValidationRules.symbol) },
             { ...ValidationRules.transactionType, selector: '#transaction_type',
@@ -869,9 +878,9 @@ class FormValidatorsInitializer {
                 validate: (raw) => {
                     if (!window.isDividendMode) return { ok: true };
                     const str = String(raw || '').trim();
-                    if (!str) return { ok: false, message: 'Amount must be greater than 0.' };
+                    if (!str) return { ok: false, message: 'Must be more than 0.' };
                     const n = parseFloat(str);
-                    if (!isFinite(n) || n <= 0) return { ok: false, message: 'Amount must be greater than 0.' };
+                    if (!isFinite(n) || n <= 0) return { ok: false, message: 'Must be more than 0.' };
                     return { ok: true };
                 }
             },
@@ -1014,7 +1023,7 @@ class ModalAjaxHandler {
         let targetField = null;
 
         if (msg.includes('amount')) {
-            targetField = modal.querySelector('#amount');
+            targetField = modal.querySelector('#add_funds_amount, #withdraw_funds_amount, #edit_cash_event_amount, #add_div_amount, #edit_amount');
         } else if (msg.includes('quantity')) {
             targetField = modal.querySelector('#edit_quantity, #quantity');
         } else if (msg.includes('fund') || msg.includes('cash')) {
@@ -1027,7 +1036,7 @@ class ModalAjaxHandler {
         } else if (msg.includes('price')) {
             targetField = modal.querySelector('#edit_price, #price');
         } else if (msg.includes('date')) {
-            targetField = modal.querySelector('#edit_date, #add_tx_date, #add_dividend_date, #edit_event_date, #deposit_date, #withdraw_date, #add_fund_date');
+            targetField = modal.querySelector('#edit_date, #add_tx_date, #add_div_date, #edit_dividend_date, #edit_event_date, #deposit_date, #withdraw_date');
         }
 
         // Fallback: first visible input (not hidden/disabled/readonly)

@@ -324,6 +324,18 @@ def _run_migrations(app):
                     ))
                     conn.commit()
 
+            # ── Step 20: rename asset → symbol ────────────────────────────────────
+            # The "Asset" class/table was a tracked-symbol marker. Renamed for
+            # consistency with the domain term used everywhere else in the app.
+            # Drop old indexes first so db.create_all() recreates them with the
+            # new Symbol table's naming (ix_symbol_portfolio_ticker, etc.).
+            tables = set(inspector.get_table_names())
+            if 'asset' in tables and 'symbol' not in tables:
+                for ix in inspector.get_indexes('asset'):
+                    conn.execute(sa.text(f'DROP INDEX IF EXISTS "{ix["name"]}"'))
+                conn.execute(sa.text('ALTER TABLE asset RENAME TO symbol'))
+                conn.commit()
+
 
 def _backfill_closed_trades(app):
     """Create ClosedTrade snapshots for any existing sell transactions that lack one.
@@ -401,13 +413,14 @@ def create_app(config_class=Config):
     @app.errorhandler(CSRFError)
     def _handle_csrf_error(e: CSRFError):
         from flask import flash, redirect, request, url_for, jsonify
+        from portfolio_app.utils.messages import MESSAGES
 
         # Return JSON for AJAX requests
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json:
-            return jsonify({'success': False, 'error': 'Session expired. Please refresh the page.'}), 400
+            return jsonify({'success': False, 'error': MESSAGES['SESSION_EXPIRED']}), 400
 
         try:
-            flash("Security check failed (CSRF token missing/invalid). Refresh the page then try again.", "warning")
+            flash(MESSAGES['CSRF_CHECK_FAILED'], "warning")
         except Exception:
             pass
 
@@ -420,24 +433,12 @@ def create_app(config_class=Config):
     app.jinja_env.filters['fmt_decimal'] = fmt_decimal
     app.jinja_env.filters['fmt_money'] = fmt_money
 
-    # Inject asset class icons and message classes into all templates
-    from portfolio_app.utils.messages import (
-        ErrorMessages, SuccessMessages, ConfirmMessages,
-        ValidationMessages, AuthMessages, AdminMessages,
-    )
+    # Expose the MESSAGES dictionary to all templates
+    from portfolio_app.utils.messages import MESSAGES
 
     @app.context_processor
     def inject_template_globals():
-        return {
-            'Msg': {
-                'error': ErrorMessages,
-                'success': SuccessMessages,
-                'confirm': ConfirmMessages,
-                'validation': ValidationMessages,
-                'auth': AuthMessages,
-                'admin': AdminMessages,
-            },
-        }
+        return {'MESSAGES': MESSAGES}
 
     # Health check route
     @app.route('/health')
@@ -447,11 +448,11 @@ def create_app(config_class=Config):
     # Error handlers
     @app.errorhandler(404)
     def not_found(error):
-        return {'error': 'Not Found', 'message': 'The requested resource was not found'}, 404
+        return {'error': 'Not Found', 'message': MESSAGES['NOT_FOUND']}, 404
 
     @app.errorhandler(500)
     def internal_error(error):
-        return {'error': 'Internal Server Error', 'message': 'An unexpected error occurred'}, 500
+        return {'error': 'Internal Server Error', 'message': MESSAGES['INTERNAL_SERVER_ERROR']}, 500
 
     # Register blueprints
     from portfolio_app.routes import register_blueprints

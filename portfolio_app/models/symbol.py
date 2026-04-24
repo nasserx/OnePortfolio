@@ -1,14 +1,14 @@
-"""Asset model for tracked symbols."""
+"""Symbol model for tracked tickers inside a portfolio."""
 
 from datetime import datetime, timezone
 from sqlalchemy import UniqueConstraint, Index
 from portfolio_app import db
 
 
-class Asset(db.Model):
+class Symbol(db.Model):
     """A tracked symbol (ticker) inside a portfolio."""
 
-    __tablename__ = 'asset'
+    __tablename__ = 'symbol'
 
     id = db.Column(db.Integer, primary_key=True)
     portfolio_id = db.Column(db.Integer, db.ForeignKey('portfolio.id'), nullable=False)
@@ -17,8 +17,8 @@ class Asset(db.Model):
     updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (
-        UniqueConstraint(portfolio_id, symbol, name='uq_asset_portfolio_symbol'),
-        Index('ix_asset_portfolio_symbol', portfolio_id, symbol),
+        UniqueConstraint(portfolio_id, symbol, name='uq_symbol_portfolio_ticker'),
+        Index('ix_symbol_portfolio_ticker', portfolio_id, symbol),
     )
 
     def to_dict(self):

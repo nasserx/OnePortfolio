@@ -4,7 +4,7 @@ A record is created (or updated) automatically every time
 recalculate_all_averages_for_symbol() runs and encounters a Sell.
 Deletion is handled by database CASCADE:
   - Delete the sell Transaction  → ClosedTrade is deleted automatically.
-  - Delete the symbol (Asset)    → all its Transactions are deleted
+  - Delete the tracked Symbol    → all its Transactions are deleted
                                    → all its ClosedTrades follow.
   - Delete the Portfolio         → same cascade chain.
 

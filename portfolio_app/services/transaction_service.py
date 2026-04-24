@@ -4,14 +4,15 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Optional, Any
 from portfolio_app.models.transaction import Transaction
-from portfolio_app.models.asset import Asset
+from portfolio_app.models.symbol import Symbol
 from portfolio_app.models.dividend import Dividend
 from portfolio_app.repositories.transaction_repository import TransactionRepository
-from portfolio_app.repositories.asset_repository import AssetRepository
-from portfolio_app.repositories.fund_repository import PortfolioRepository
+from portfolio_app.repositories.symbol_repository import SymbolRepository
+from portfolio_app.repositories.portfolio_repository import PortfolioRepository
 from portfolio_app.repositories.dividend_repository import DividendRepository
 from portfolio_app.calculators.portfolio_calculator import PortfolioCalculator
 from portfolio_app.calculators.transaction_manager import TransactionManager
+from portfolio_app.utils.messages import MESSAGES
 
 
 class ValidationError(Exception):
@@ -25,12 +26,12 @@ class TransactionService:
     def __init__(
         self,
         transaction_repo: TransactionRepository,
-        asset_repo: AssetRepository,
+        symbol_repo: SymbolRepository,
         portfolio_repo: PortfolioRepository,
         dividend_repo: Optional[DividendRepository] = None,
     ):
         self.transaction_repo = transaction_repo
-        self.asset_repo = asset_repo
+        self.symbol_repo = symbol_repo
         self.portfolio_repo = portfolio_repo
         self.dividend_repo = dividend_repo
 
@@ -47,18 +48,18 @@ class TransactionService:
     ) -> Transaction:
         """Add a new transaction."""
         if not self.portfolio_repo.get_by_id(portfolio_id):
-            raise ValueError('Portfolio not found')
+            raise ValueError(MESSAGES['PORTFOLIO_NOT_FOUND'])
 
         if transaction_type == 'Sell':
             gross = price * quantity
             if fees > gross:
-                raise ValidationError('Fees exceed proceeds')
+                raise ValidationError(MESSAGES['FEES_EXCEED_PROCEEDS'])
             held = PortfolioCalculator.get_quantity_held_for_symbol(portfolio_id, symbol)
             if quantity > held:
-                raise ValidationError('Insufficient quantity')
+                raise ValidationError(MESSAGES['INSUFFICIENT_QUANTITY'])
 
         transaction = TransactionManager.create_transaction(
-            fund_id=portfolio_id,
+            portfolio_id=portfolio_id,
             transaction_type=transaction_type,
             symbol=symbol,
             price=price,
@@ -89,10 +90,10 @@ class TransactionService:
         """Update an existing transaction."""
         transaction = self.transaction_repo.get_by_id(transaction_id)
         if not transaction:
-            raise ValueError('Transaction not found')
+            raise ValueError(MESSAGES['TRANSACTION_NOT_FOUND'])
 
         if not self.portfolio_repo.get_by_id(transaction.portfolio_id):
-            raise ValueError('Transaction not found')
+            raise ValueError(MESSAGES['TRANSACTION_NOT_FOUND'])
 
         if self._has_no_changes(transaction, price, quantity, fees, notes, symbol, date):
             return transaction
@@ -125,10 +126,10 @@ class TransactionService:
         """Delete a transaction. Returns portfolio_id of the deleted transaction."""
         transaction = self.transaction_repo.get_by_id(transaction_id)
         if not transaction:
-            raise ValueError('Transaction not found')
+            raise ValueError(MESSAGES['TRANSACTION_NOT_FOUND'])
 
         if not self.portfolio_repo.get_by_id(transaction.portfolio_id):
-            raise ValueError('Transaction not found')
+            raise ValueError(MESSAGES['TRANSACTION_NOT_FOUND'])
 
         portfolio_id = transaction.portfolio_id
         symbol = transaction.symbol
@@ -141,39 +142,39 @@ class TransactionService:
         self.transaction_repo.commit()
         return portfolio_id
 
-    def add_asset(self, portfolio_id: int, symbol: str) -> Asset:
-        """Add a tracked symbol to a portfolio."""
+    def add_symbol(self, portfolio_id: int, symbol: str) -> Symbol:
+        """Track a new symbol in a portfolio."""
         symbol = PortfolioCalculator.normalize_symbol(symbol)
 
         if not self.portfolio_repo.get_by_id(portfolio_id):
-            raise ValueError('Portfolio not found')
+            raise ValueError(MESSAGES['PORTFOLIO_NOT_FOUND'])
 
-        existing = self.asset_repo.get_by_portfolio_and_symbol(portfolio_id, symbol)
+        existing = self.symbol_repo.get_by_portfolio_and_ticker(portfolio_id, symbol)
         if existing:
-            raise ValueError(f"'{symbol}' is already added to this portfolio.")
+            raise ValueError(MESSAGES['SYMBOL_ALREADY_TRACKED_SYMBOL'].format(symbol=symbol))
 
-        asset = Asset(portfolio_id=portfolio_id, symbol=symbol)
-        self.asset_repo.add(asset)
-        self.asset_repo.commit()
+        tracked = Symbol(portfolio_id=portfolio_id, symbol=symbol)
+        self.symbol_repo.add(tracked)
+        self.symbol_repo.commit()
 
-        return asset
+        return tracked
 
-    def delete_asset(self, portfolio_id: int, symbol: str) -> None:
-        """Delete a tracked asset and all its transactions."""
+    def delete_symbol(self, portfolio_id: int, symbol: str) -> None:
+        """Stop tracking a symbol and remove all its transactions."""
         symbol = PortfolioCalculator.normalize_symbol(symbol)
 
         if not self.portfolio_repo.get_by_id(portfolio_id):
-            raise ValueError('Portfolio not found')
+            raise ValueError(MESSAGES['PORTFOLIO_NOT_FOUND'])
 
-        asset = self.asset_repo.get_by_portfolio_and_symbol(portfolio_id, symbol)
-        if not asset:
-            raise ValueError('Asset not found')
+        tracked = self.symbol_repo.get_by_portfolio_and_ticker(portfolio_id, symbol)
+        if not tracked:
+            raise ValueError(MESSAGES['SYMBOL_NOT_FOUND'])
 
         for tx in self.transaction_repo.get_by_symbol(portfolio_id, symbol):
             self.transaction_repo.delete(tx)
 
-        self.asset_repo.delete(asset)
-        self.asset_repo.commit()
+        self.symbol_repo.delete(tracked)
+        self.symbol_repo.commit()
 
     def _has_no_changes(self, transaction, price, quantity, fees, notes, symbol, date):
         """Check if the new values are identical to the existing transaction."""
@@ -206,7 +207,7 @@ class TransactionService:
         """Add a new dividend income record."""
         portfolio = self.portfolio_repo.get_by_id(portfolio_id)
         if not portfolio:
-            raise ValueError('Portfolio not found')
+            raise ValueError(MESSAGES['PORTFOLIO_NOT_FOUND'])
 
         dividend = Dividend(
             portfolio_id=portfolio_id,
@@ -229,7 +230,7 @@ class TransactionService:
         """Update an existing dividend."""
         dividend = self.dividend_repo.get_by_id(dividend_id)
         if not dividend or not self.portfolio_repo.get_by_id(dividend.portfolio_id):
-            raise ValueError('Dividend not found')
+            raise ValueError(MESSAGES['DIVIDEND_NOT_FOUND'])
 
         if amount is not None:
             dividend.amount = amount
@@ -245,7 +246,7 @@ class TransactionService:
         """Delete a dividend record."""
         dividend = self.dividend_repo.get_by_id(dividend_id)
         if not dividend or not self.portfolio_repo.get_by_id(dividend.portfolio_id):
-            raise ValueError('Dividend not found')
+            raise ValueError(MESSAGES['DIVIDEND_NOT_FOUND'])
 
         self.dividend_repo.delete(dividend)
         self.dividend_repo.commit()

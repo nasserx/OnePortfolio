@@ -57,19 +57,3 @@ class DividendRepository(BaseRepository[Dividend]):
             .scalar()
         )
         return Decimal(str(result)) if result else ZERO
-
-    # Backward-compatible aliases.
-    def get_by_fund_ids(self, fund_ids: List[int]) -> List[Dividend]:
-        return self.get_by_portfolio_ids(fund_ids)
-
-    def get_by_fund_id(self, fund_id: int) -> List[Dividend]:
-        return self.get_by_portfolio_id(fund_id)
-
-    def get_by_fund_and_symbol(self, fund_id: int, symbol: str) -> List[Dividend]:
-        return self.get_by_portfolio_and_symbol(fund_id, symbol)
-
-    def get_by_id_for_fund(self, dividend_id: int, fund_id: int) -> Optional[Dividend]:
-        return self.get_by_id_for_portfolio(dividend_id, fund_id)
-
-    def get_total_for_fund(self, fund_id: int) -> Decimal:
-        return self.get_total_for_portfolio(fund_id)

@@ -27,7 +27,7 @@ from portfolio_app.utils.email import (
     send_verification_email,
     send_reset_email,
 )
-from portfolio_app.utils.messages import AccountMessages, AuthMessages
+from portfolio_app.utils.messages import MESSAGES
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +39,7 @@ def demo_restricted(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         if current_user.is_authenticated and current_user.username == DEMO_USERNAME:
-            flash(AccountMessages.DEMO_ACTION_DISABLED, 'warning')
+            flash(MESSAGES['DEMO_ACTION_DISABLED'], 'warning')
             return redirect(url_for('auth.settings'))
         return f(*args, **kwargs)
     return decorated
@@ -84,7 +84,7 @@ def login():
                     if from_modal:
                         return jsonify({'ok': True, 'redirect': verify_url})
                     return redirect(verify_url)
-                form_errors['__all__'] = AuthMessages.ACCOUNT_UNVERIFIED
+                form_errors['__all__'] = MESSAGES['ACCOUNT_UNVERIFIED']
                 form_values = request.form
             elif result:
                 remember = request.form.get('remember') == 'on'
@@ -97,7 +97,7 @@ def login():
                     return jsonify({'ok': True, 'redirect': redirect_url})
                 return redirect(redirect_url)
             else:
-                form_errors['__all__'] = AuthMessages.INVALID_CREDENTIALS
+                form_errors['__all__'] = MESSAGES['INVALID_CREDENTIALS']
                 form_values = request.form
         else:
             form_errors = form.errors
@@ -181,7 +181,7 @@ def register():
                 form_values = request.form
             except Exception:
                 logger.exception('Registration failed')
-                form_errors['__all__'] = AuthMessages.REGISTRATION_FAILED
+                form_errors['__all__'] = MESSAGES['REGISTRATION_FAILED']
                 form_values = request.form
         else:
             form_errors = form.errors
@@ -218,7 +218,7 @@ def verify_code():
                 # If the user is already logged in this was a pending email update —
                 # the email has been applied; send them back to settings.
                 if current_user.is_authenticated:
-                    flash(AuthMessages.EMAIL_UPDATED, 'success')
+                    flash(MESSAGES['EMAIL_UPDATED'], 'success')
                     return redirect(url_for('auth.settings', tab='security'))
 
                 # Otherwise this was a registration verification — auto-login.
@@ -252,11 +252,11 @@ def resend_code():
     if new_code:
         email_sent = send_verification_email(email, new_code)
         if email_sent:
-            flash(AuthMessages.VERIFICATION_CODE_SENT, 'success')
+            flash(MESSAGES['VERIFICATION_CODE_SENT'], 'success')
         else:
-            flash(AuthMessages.CODE_SEND_FAILED, 'danger')
+            flash(MESSAGES['VERIFICATION_CODE_SEND_FAILED'], 'danger')
     else:
-        flash(AuthMessages.RESEND_UNAVAILABLE, 'warning')
+        flash(MESSAGES['VERIFICATION_CODE_RESEND_UNAVAILABLE'], 'warning')
 
     return redirect(url_for('auth.verify_code', email=email))
 
@@ -284,14 +284,14 @@ def change_password():
                     data['current_password'],
                     data['new_password'],
                 )
-                flash(AuthMessages.PASSWORD_CHANGED, 'success')
+                flash(MESSAGES['PASSWORD_CHANGED'], 'success')
                 return redirect(url_for('dashboard.index'))
             except ValueError as e:
                 form_errors['current_password'] = str(e)
                 form_values = request.form
             except Exception:
                 logger.exception('Password change failed')
-                form_errors['__all__'] = AuthMessages.ERROR_OCCURRED
+                form_errors['__all__'] = MESSAGES['OPERATION_FAILED']
                 form_values = request.form
         else:
             form_errors = form.errors
@@ -349,7 +349,7 @@ def update_email():
                 form_values = request.form
             except Exception:
                 logger.exception('Email update failed')
-                form_errors['__all__'] = AuthMessages.ERROR_OCCURRED
+                form_errors['__all__'] = MESSAGES['OPERATION_FAILED']
                 form_values = request.form
         else:
             form_errors = form.errors
@@ -422,7 +422,7 @@ def reset_password(token):
     # Validate the token up front so expired links show an error immediately
     email = verify_reset_token(token)
     if not email:
-        flash(AuthMessages.RESET_LINK_INVALID, 'danger')
+        flash(MESSAGES['PASSWORD_RESET_LINK_INVALID'], 'danger')
         return redirect(url_for('auth.forgot_password'))
 
     form_errors = {}
@@ -436,10 +436,10 @@ def reset_password(token):
             user = svc.auth_service.reset_password_with_token(email, data['password'])
 
             if not user:
-                flash(AuthMessages.RESET_ACCOUNT_NOT_FOUND, 'danger')
+                flash(MESSAGES['PASSWORD_RESET_ACCOUNT_NOT_FOUND'], 'danger')
                 return redirect(url_for('auth.forgot_password'))
 
-            flash(AuthMessages.PASSWORD_RESET_SUCCESS, 'success')
+            flash(MESSAGES['PASSWORD_RESET_SUCCESS'], 'success')
             return redirect(url_for('auth.login'))
         else:
             form_errors = form.errors
@@ -475,7 +475,7 @@ def delete_account_request():
     """Send a 6-digit OTP to the user's email to confirm account deletion."""
     if not current_user.email:
         return redirect(url_for('auth.settings', tab='account',
-                                deletion_error=AccountMessages.DELETION_NO_EMAIL))
+                                deletion_error=MESSAGES['DELETION_NO_EMAIL']))
 
     svc = get_services()
     try:
@@ -485,11 +485,11 @@ def delete_account_request():
         if sent:
             return redirect(url_for('auth.settings', tab='account', deletion_sent='1'))
         return redirect(url_for('auth.settings', tab='account',
-                                deletion_error=AccountMessages.DELETION_CODE_SEND_FAILED))
+                                deletion_error=MESSAGES['DELETION_CODE_SEND_FAILED']))
     except Exception:
         logger.exception('Failed to request account deletion for user %s', current_user.id)
         return redirect(url_for('auth.settings', tab='account',
-                                deletion_error=AccountMessages.DELETION_CODE_SEND_FAILED))
+                                deletion_error=MESSAGES['DELETION_CODE_SEND_FAILED']))
 
 
 @auth_bp.route('/settings/delete/confirm', methods=['POST'])
@@ -503,7 +503,7 @@ def delete_account_confirm():
         return redirect(url_for('auth.settings', tab='account', deletion_error=msg))
 
     if not form.validate():
-        first_error = next(iter(form.errors.values()), AccountMessages.DELETION_INVALID_CODE)
+        first_error = next(iter(form.errors.values()), MESSAGES['DELETION_INVALID_CODE'])
         return _deletion_error(first_error)
 
     data = form.get_cleaned_data()
@@ -512,13 +512,13 @@ def delete_account_confirm():
     # Fetch a fresh copy of the user before deletion so the OTP fields are current
     user = svc.user_repo.get_by_id(current_user.id)
     if not user:
-        return _deletion_error(AccountMessages.DELETION_INVALID_CODE)
+        return _deletion_error(MESSAGES['DELETION_INVALID_CODE'])
 
     success, error_msg = svc.auth_service.confirm_account_deletion(user, data['code'])
 
     if success:
         logout_user()
-        flash(AccountMessages.DELETION_CONFIRMED, 'success')
+        flash(MESSAGES['DELETION_CONFIRMED'], 'success')
         return redirect(url_for('auth.login'))
 
-    return _deletion_error(error_msg or AccountMessages.DELETION_INVALID_CODE)
+    return _deletion_error(error_msg or MESSAGES['DELETION_INVALID_CODE'])

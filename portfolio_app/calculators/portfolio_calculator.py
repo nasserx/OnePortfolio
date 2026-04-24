@@ -68,7 +68,7 @@ class PortfolioCalculator:
         total = ZERO
         for p in portfolios:
             cash = PortfolioCalculator.get_available_cash_for_portfolio(p.id)
-            tx_summary = PortfolioCalculator.get_category_transactions_summary(p.id)
+            tx_summary = PortfolioCalculator.get_portfolio_transactions_summary(p.id)
             invested = _to_decimal(tx_summary['cost_basis'] or 0)
             total += invested + cash
         return total
@@ -123,19 +123,19 @@ class PortfolioCalculator:
         return cash
 
     # ------------------------------------------------------------------
-    # Asset class summary (dashboard cards)
+    # Portfolio summary (dashboard cards)
     # ------------------------------------------------------------------
 
     @staticmethod
-    def get_category_summary(user_id=None):
+    def get_portfolio_summary(user_id=None):
         """Get summary for each portfolio."""
         q = Portfolio.query
         if user_id is not None:
             q = q.filter_by(user_id=user_id)
         portfolios = q.all()
 
-        categories = []
-        portfolio_value = ZERO
+        portfolio_rows = []
+        total_portfolio_value = ZERO
         for portfolio in portfolios:
             total_contributed = PortfolioCalculator.get_total_deposits_for_portfolio(portfolio.id)
 
@@ -143,17 +143,17 @@ class PortfolioCalculator:
             realized_pnl = realized_perf['realized_pnl']
             total_dividends = realized_perf['total_dividends']
 
-            transactions_summary = PortfolioCalculator.get_category_transactions_summary(portfolio.id)
+            transactions_summary = PortfolioCalculator.get_portfolio_transactions_summary(portfolio.id)
             cost_basis = _to_decimal(transactions_summary['cost_basis'] or 0)
 
             cash = PortfolioCalculator.get_available_cash_for_portfolio(portfolio.id)
             book_value = cost_basis + cash
-            portfolio_value += book_value
+            total_portfolio_value += book_value
 
             roi_base = total_contributed if total_contributed != 0 else realized_perf['realized_cost_basis']
             realized_roi_percent, realized_roi_display = _roi_display(realized_pnl, roi_base)
 
-            categories.append({
+            portfolio_rows.append({
                 'portfolio': portfolio,
                 'total_contributed': total_contributed,
                 'realized_pnl': realized_pnl,
@@ -166,24 +166,24 @@ class PortfolioCalculator:
             })
 
         summary = []
-        for cat in categories:
-            allocation = (cat['book_value'] / abs(portfolio_value) * 100) if portfolio_value != 0 else ZERO
+        for row in portfolio_rows:
+            allocation = (row['book_value'] / abs(total_portfolio_value) * 100) if total_portfolio_value != 0 else ZERO
 
             summary.append({
-                'name': cat['portfolio'].name,
-                'total_contributed': cat['total_contributed'],
+                'name': row['portfolio'].name,
+                'total_contributed': row['total_contributed'],
                 'allocation': Decimal(str(allocation)),
-                'id': cat['portfolio'].id,
-                'realized_pnl': cat['realized_pnl'],
-                'cost_basis': cat['cost_basis'],
-                'book_value': cat['book_value'],
-                'cash': cat['cash'],
-                'realized_roi_percent': cat['realized_roi_percent'],
-                'realized_roi_display': cat['realized_roi_display'],
-                'total_dividends': cat['total_dividends'],
+                'id': row['portfolio'].id,
+                'realized_pnl': row['realized_pnl'],
+                'cost_basis': row['cost_basis'],
+                'book_value': row['book_value'],
+                'cash': row['cash'],
+                'realized_roi_percent': row['realized_roi_percent'],
+                'realized_roi_display': row['realized_roi_display'],
+                'total_dividends': row['total_dividends'],
             })
 
-        return summary, portfolio_value
+        return summary, total_portfolio_value
 
     # ------------------------------------------------------------------
     # Dividend helpers
@@ -260,7 +260,7 @@ class PortfolioCalculator:
             total_contributed += PortfolioCalculator.get_total_deposits_for_portfolio(portfolio.id)
             total_cash += PortfolioCalculator.get_available_cash_for_portfolio(portfolio.id)
 
-            tx_summary = PortfolioCalculator.get_category_transactions_summary(portfolio.id)
+            tx_summary = PortfolioCalculator.get_portfolio_transactions_summary(portfolio.id)
             total_cost_basis += _to_decimal(tx_summary['cost_basis'] or 0)
 
             realized_perf = PortfolioCalculator.get_realized_performance_for_portfolio(portfolio.id)
@@ -288,7 +288,7 @@ class PortfolioCalculator:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def get_category_transactions_summary(portfolio_id):
+    def get_portfolio_transactions_summary(portfolio_id):
         """Get aggregated transaction summary for a portfolio (all symbols combined)."""
         symbols = (
             Transaction.query.with_entities(Transaction.symbol)
@@ -504,27 +504,3 @@ class PortfolioCalculator:
                 running_cost     -= avg_cost * sell_qty
 
         return transactions
-
-    # ------------------------------------------------------------------
-    # Backward-compatible aliases
-    # ------------------------------------------------------------------
-
-    @staticmethod
-    def get_total_funds_for_fund(fund_id) -> Decimal:
-        return PortfolioCalculator.get_total_deposits_for_portfolio(fund_id)
-
-    @staticmethod
-    def get_available_cash_for_fund(fund_id, exclude_transaction_id=None) -> Decimal:
-        return PortfolioCalculator.get_available_cash_for_portfolio(fund_id, exclude_transaction_id)
-
-    @staticmethod
-    def get_dividend_total_for_fund(fund_id) -> Decimal:
-        return PortfolioCalculator.get_dividend_total_for_portfolio(fund_id)
-
-    @staticmethod
-    def get_realized_performance_for_fund(fund_id):
-        return PortfolioCalculator.get_realized_performance_for_portfolio(fund_id)
-
-    @staticmethod
-    def recalculate_all_averages_for_fund(fund_id):
-        return PortfolioCalculator.recalculate_all_averages_for_portfolio(fund_id)

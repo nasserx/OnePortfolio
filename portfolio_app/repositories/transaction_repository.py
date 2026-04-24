@@ -18,7 +18,3 @@ class TransactionRepository(BaseRepository[Transaction]):
             portfolio_id=portfolio_id,
             symbol=symbol.strip().upper()
         ).order_by(Transaction.date.asc()).all()
-
-    # Backward-compatible alias.
-    def get_by_fund_id(self, fund_id: int) -> List[Transaction]:
-        return self.get_by_portfolio_id(fund_id)

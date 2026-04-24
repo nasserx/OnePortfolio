@@ -3,8 +3,8 @@
 from decimal import Decimal
 from typing import List
 from portfolio_app.forms.base_form import BaseForm
-from portfolio_app.models.fund import Portfolio
-from portfolio_app.utils.messages import ValidationMessages
+from portfolio_app.models.portfolio import Portfolio
+from portfolio_app.utils.messages import MESSAGES
 from config import Config
 
 
@@ -20,22 +20,22 @@ class TransactionAddForm(BaseForm):
         try:
             portfolio_id = int(portfolio_id_str) if portfolio_id_str else 0
             if portfolio_id <= 0:
-                self.errors['portfolio_id'] = ValidationMessages.SELECT_CATEGORY
+                self.errors['portfolio_id'] = MESSAGES['PORTFOLIO_SELECT_REQUIRED']
             else:
                 portfolio = next((p for p in self.portfolios if p.id == portfolio_id), None)
                 if not portfolio:
-                    self.errors['portfolio_id'] = ValidationMessages.CATEGORY_NOT_FOUND
+                    self.errors['portfolio_id'] = MESSAGES['PORTFOLIO_NOT_FOUND']
                 else:
                     self.cleaned_data['portfolio_id'] = portfolio_id
                     self.cleaned_data['portfolio'] = portfolio
         except (ValueError, TypeError):
-            self.errors['portfolio_id'] = ValidationMessages.INVALID_CATEGORY
+            self.errors['portfolio_id'] = MESSAGES['PORTFOLIO_SELECTION_INVALID']
 
         raw_type = (self.data.get('transaction_type') or '').strip()
         transaction_type = raw_type if raw_type in Config.TRANSACTION_TYPES else Config.TRANSACTION_TYPES[0]
         self.cleaned_data['transaction_type'] = transaction_type
 
-        symbol = self._validate_required_string('symbol', ValidationMessages.SYMBOL_REQUIRED)
+        symbol = self._validate_required_string('symbol', MESSAGES['SYMBOL_REQUIRED'])
         if symbol:
             self.cleaned_data['symbol'] = symbol.upper()
 
@@ -57,13 +57,13 @@ class TransactionAddForm(BaseForm):
 
         date_str = self._get_string('date', default='')
         if not date_str:
-            self.errors['date'] = ValidationMessages.REQUIRED
+            self.errors['date'] = MESSAGES['FIELD_REQUIRED']
         else:
             from datetime import datetime
             try:
                 self.cleaned_data['date'] = datetime.strptime(date_str, '%Y-%m-%d')
             except ValueError:
-                self.errors['date'] = ValidationMessages.INVALID_DATE_FORMAT
+                self.errors['date'] = MESSAGES['INVALID_DATE_FORMAT']
 
         return not self.has_errors()
 
@@ -111,7 +111,7 @@ class TransactionEditForm(BaseForm):
             try:
                 self.cleaned_data['date'] = datetime.strptime(date_str, '%Y-%m-%d')
             except ValueError:
-                self.errors['edit_date'] = ValidationMessages.INVALID_DATE_FORMAT
+                self.errors['edit_date'] = MESSAGES['INVALID_DATE_FORMAT']
 
         return not self.has_errors()
 
@@ -128,46 +128,46 @@ class DividendAddForm(BaseForm):
         try:
             portfolio_id = int(portfolio_id_str) if portfolio_id_str else 0
             if portfolio_id <= 0:
-                self.errors['portfolio_id'] = ValidationMessages.SELECT_CATEGORY
+                self.errors['portfolio_id'] = MESSAGES['PORTFOLIO_SELECT_REQUIRED']
             else:
                 portfolio = next((p for p in self.portfolios if p.id == portfolio_id), None)
                 if not portfolio:
-                    self.errors['portfolio_id'] = ValidationMessages.CATEGORY_NOT_FOUND
+                    self.errors['portfolio_id'] = MESSAGES['PORTFOLIO_NOT_FOUND']
                 else:
                     self.cleaned_data['portfolio_id'] = portfolio_id
         except (ValueError, TypeError):
-            self.errors['portfolio_id'] = ValidationMessages.INVALID_CATEGORY
+            self.errors['portfolio_id'] = MESSAGES['PORTFOLIO_SELECTION_INVALID']
 
         symbol = (self.data.get('div_symbol') or '').strip().upper()
         if not symbol:
-            self.errors['div_symbol'] = ValidationMessages.SYMBOL_REQUIRED
+            self.errors['div_symbol'] = MESSAGES['SYMBOL_REQUIRED']
         else:
             self.cleaned_data['symbol'] = symbol
 
         amount_str = (self.data.get('amount') or '').strip()
         if not amount_str:
-            self.errors['amount'] = ValidationMessages.REQUIRED
+            self.errors['amount'] = MESSAGES['FIELD_REQUIRED']
         else:
             try:
                 amount = Decimal(amount_str.replace(',', '.'))
                 if amount <= 0:
-                    self.errors['amount'] = ValidationMessages.AMOUNT_POSITIVE
+                    self.errors['amount'] = MESSAGES['INVALID_AMOUNT']
                 else:
                     self.cleaned_data['amount'] = amount
             except Exception:
-                self.errors['amount'] = ValidationMessages.INVALID_NUMBER
+                self.errors['amount'] = MESSAGES['INVALID_NUMBER']
 
         self.cleaned_data['notes'] = self._get_string('notes', default='')
 
         date_str = self._get_string('date', default='')
         if not date_str:
-            self.errors['date'] = ValidationMessages.REQUIRED
+            self.errors['date'] = MESSAGES['FIELD_REQUIRED']
         else:
             from datetime import datetime
             try:
                 self.cleaned_data['date'] = datetime.strptime(date_str, '%Y-%m-%d')
             except ValueError:
-                self.errors['date'] = ValidationMessages.INVALID_DATE_FORMAT
+                self.errors['date'] = MESSAGES['INVALID_DATE_FORMAT']
 
         return not self.has_errors()
 
@@ -184,16 +184,16 @@ class DividendEditForm(BaseForm):
 
         amount_str = (self.data.get('edit_amount') or '').strip()
         if not amount_str:
-            self.errors['edit_amount'] = ValidationMessages.REQUIRED
+            self.errors['edit_amount'] = MESSAGES['FIELD_REQUIRED']
         else:
             try:
                 amount = Decimal(amount_str.replace(',', '.'))
                 if amount <= 0:
-                    self.errors['edit_amount'] = ValidationMessages.AMOUNT_POSITIVE
+                    self.errors['edit_amount'] = MESSAGES['INVALID_AMOUNT']
                 else:
                     self.cleaned_data['amount'] = amount
             except Exception:
-                self.errors['edit_amount'] = ValidationMessages.INVALID_NUMBER
+                self.errors['edit_amount'] = MESSAGES['INVALID_NUMBER']
 
         notes = self._get_string('edit_notes', default=None)
         if notes is not None:
@@ -201,64 +201,64 @@ class DividendEditForm(BaseForm):
 
         date_str = self._get_string('edit_date', default='')
         if not date_str:
-            self.errors['edit_date'] = ValidationMessages.REQUIRED
+            self.errors['edit_date'] = MESSAGES['FIELD_REQUIRED']
         else:
             from datetime import datetime
             try:
                 self.cleaned_data['date'] = datetime.strptime(date_str, '%Y-%m-%d')
             except ValueError:
-                self.errors['edit_date'] = ValidationMessages.INVALID_DATE_FORMAT
+                self.errors['edit_date'] = MESSAGES['INVALID_DATE_FORMAT']
 
         return not self.has_errors()
 
 
-class AssetAddForm(BaseForm):
-    """Form for adding a tracked asset."""
+class SymbolAddForm(BaseForm):
+    """Form for tracking a new symbol."""
 
     def __init__(self, data: dict, portfolios: List[Portfolio]):
         super().__init__(data)
         self.portfolios = portfolios
 
     def validate(self) -> bool:
-        portfolio_id_str = (self.data.get('asset_portfolio_id') or '').strip()
+        portfolio_id_str = (self.data.get('symbol_portfolio_id') or '').strip()
         try:
             portfolio_id = int(portfolio_id_str) if portfolio_id_str else 0
             if portfolio_id <= 0:
-                self.errors['asset_portfolio_id'] = ValidationMessages.SELECT_CATEGORY
+                self.errors['symbol_portfolio_id'] = MESSAGES['PORTFOLIO_SELECT_REQUIRED']
             else:
                 portfolio = next((p for p in self.portfolios if p.id == portfolio_id), None)
                 if not portfolio:
-                    self.errors['asset_portfolio_id'] = ValidationMessages.CATEGORY_NOT_FOUND
+                    self.errors['symbol_portfolio_id'] = MESSAGES['PORTFOLIO_NOT_FOUND']
                 else:
                     self.cleaned_data['portfolio_id'] = portfolio_id
         except (ValueError, TypeError):
-            self.errors['asset_portfolio_id'] = ValidationMessages.INVALID_CATEGORY
+            self.errors['symbol_portfolio_id'] = MESSAGES['PORTFOLIO_SELECTION_INVALID']
 
-        symbol = self._validate_required_string('asset_symbol', ValidationMessages.SYMBOL_REQUIRED)
+        symbol = self._validate_required_string('symbol_ticker', MESSAGES['SYMBOL_REQUIRED'])
         if symbol:
             self.cleaned_data['symbol'] = symbol.upper()
 
         return not self.has_errors()
 
 
-class AssetDeleteForm(BaseForm):
-    """Form for deleting a tracked asset."""
+class SymbolDeleteForm(BaseForm):
+    """Form for deleting a tracked symbol."""
 
     def __init__(self, data: dict):
         super().__init__(data)
 
     def validate(self) -> bool:
-        portfolio_id_str = (self.data.get('delete_asset_portfolio_id') or '').strip()
+        portfolio_id_str = (self.data.get('delete_symbol_portfolio_id') or '').strip()
         try:
             portfolio_id = int(portfolio_id_str) if portfolio_id_str else 0
             if portfolio_id <= 0:
-                self.errors['delete_asset_portfolio_id'] = ValidationMessages.INVALID_PORTFOLIO_ID
+                self.errors['delete_symbol_portfolio_id'] = MESSAGES['INVALID_PORTFOLIO_ID']
             else:
                 self.cleaned_data['portfolio_id'] = portfolio_id
         except (ValueError, TypeError):
-            self.errors['delete_asset_portfolio_id'] = ValidationMessages.INVALID_PORTFOLIO_ID
+            self.errors['delete_symbol_portfolio_id'] = MESSAGES['INVALID_PORTFOLIO_ID']
 
-        symbol = self._validate_required_string('delete_asset_symbol', ValidationMessages.SYMBOL_REQUIRED)
+        symbol = self._validate_required_string('delete_symbol_ticker', MESSAGES['SYMBOL_REQUIRED'])
         if symbol:
             self.cleaned_data['symbol'] = symbol.upper()
 

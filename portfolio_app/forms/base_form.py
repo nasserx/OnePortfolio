@@ -2,11 +2,8 @@
 
 from decimal import Decimal
 from typing import Dict, Any, Optional
-from portfolio_app.forms.validators import (
-    validate_positive_decimal,
-    get_field_error_message,
-)
-from portfolio_app.utils.messages import ValidationMessages
+from portfolio_app.forms.validators import validate_positive_decimal
+from portfolio_app.utils.messages import MESSAGES, get_field_positive_message
 
 
 class BaseForm:
@@ -67,8 +64,8 @@ class BaseForm:
         dec, err = validate_positive_decimal(value_str, allow_zero=allow_zero, allow_blank=allow_blank)
 
         if err:
-            if err == ValidationMessages.VALUE_POSITIVE:
-                self.errors[field_name] = get_field_error_message(field_name)
+            if err == MESSAGES['VALUE_POSITIVE']:
+                self.errors[field_name] = get_field_positive_message(field_name)
             else:
                 self.errors[field_name] = err
             return None
@@ -78,7 +75,7 @@ class BaseForm:
     def _validate_required_string(
         self,
         field_name: str,
-        error_msg: str = 'This field is required.'
+        error_msg: Optional[str] = None,
     ) -> Optional[str]:
         """Validate a required string field.
 
@@ -91,7 +88,7 @@ class BaseForm:
         """
         value = (self.data.get(field_name) or '').strip()
         if not value:
-            self.errors[field_name] = error_msg
+            self.errors[field_name] = error_msg or MESSAGES['FIELD_REQUIRED']
             return None
         return value
 
@@ -99,7 +96,7 @@ class BaseForm:
         self,
         field_name: str,
         choices: list,
-        error_msg: str = 'Invalid choice.'
+        error_msg: Optional[str] = None,
     ) -> Optional[str]:
         """Validate a choice field.
 
@@ -113,7 +110,7 @@ class BaseForm:
         """
         value = (self.data.get(field_name) or '').strip()
         if value not in choices:
-            self.errors[field_name] = error_msg
+            self.errors[field_name] = error_msg or MESSAGES['INVALID_INPUT']
             return None
         return value
 

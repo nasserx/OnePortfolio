@@ -5,7 +5,7 @@ Run this script once after deploying to create database tables and apply migrati
 """
 
 from portfolio_app import create_app, db
-from portfolio_app.models import User, Fund, Transaction, Asset, FundEvent  # noqa: F401
+from portfolio_app.models import User, Portfolio, Transaction, Symbol, PortfolioEvent  # noqa: F401
 
 
 def init_db():

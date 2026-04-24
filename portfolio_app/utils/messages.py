@@ -1,238 +1,252 @@
 """User-facing messages for the application.
 
-All user-facing strings used in routes, forms, and templates must come from
-one of the classes below — no hardcoded strings elsewhere.
+All user-facing strings — flash messages, API errors, form validation,
+template prompts, and service-layer exceptions — MUST come from the
+``MESSAGES`` dictionary below. No hardcoded user-facing strings elsewhere.
+
+Dynamic messages use ``str.format`` placeholders; the key name signals the
+placeholder(s) required. For example, ``ADMIN_ACCESS_GRANTED_USERNAME``
+expects a ``{username}`` argument::
+
+    MESSAGES['ADMIN_ACCESS_GRANTED_USERNAME'].format(username=user.username)
 """
 
 
-class ErrorMessages:
-    """Error messages shown to the user."""
+MESSAGES = {
+    # ------------------------------------------------------------------
+    # Generic error / failure messages
+    # ------------------------------------------------------------------
+    'OPERATION_FAILED':            "Something went wrong. Please try again.",
+    'INVALID_INPUT':               "Invalid input.",
+    'INVALID_REQUEST':             "Invalid request. Please refresh the page and try again.",
+    'SESSION_EXPIRED':             "Your session has expired. Please refresh the page.",
+    'CSRF_CHECK_FAILED':           "Security check failed. Please refresh the page and try again.",
+    'NOT_FOUND':                   "The requested resource was not found.",
+    'INTERNAL_SERVER_ERROR':       "An unexpected error occurred.",
 
-    INVALID_QUANTITY    = "Please enter a valid quantity greater than zero."
-    INVALID_PRICE       = "Please enter a valid price greater than zero."
-    INVALID_AMOUNT      = "Please enter a valid amount greater than zero."
-    INVALID_DATE        = "Please use the date format YYYY-MM-DD."
-    TRANSACTION_NOT_FOUND  = "This transaction no longer exists."
-    DIVIDEND_NOT_FOUND     = "This dividend record no longer exists."
-    PORTFOLIO_NOT_FOUND    = "This portfolio no longer exists."
-    INVALID_INPUT          = "Invalid input."
-    INVALID_SYMBOL         = "Please enter a valid symbol (e.g., AAPL, BTC)."
-    OPERATION_FAILED       = "Something went wrong. Please try again."
-    EVENT_NOT_FOUND        = "This record no longer exists."
-    INVALID_REQUEST        = "Invalid request. Please refresh the page and try again."
-    INVALID_PORTFOLIO_ID   = "Invalid portfolio ID."
-    USER_NOT_FOUND         = "User not found."
-    INSUFFICIENT_FUNDS     = "Insufficient funds. Your available cash balance is too low for this withdrawal."
-    INSUFFICIENT_QUANTITY  = "Insufficient quantity. You don't hold enough of this asset to complete the sell."
+    # ------------------------------------------------------------------
+    # Domain entity not-found errors
+    # ------------------------------------------------------------------
+    'PORTFOLIO_NOT_FOUND':         "This portfolio no longer exists.",
+    'TRANSACTION_NOT_FOUND':       "This transaction no longer exists.",
+    'DIVIDEND_NOT_FOUND':          "This dividend transaction no longer exists.",
+    'CASH_EVENT_NOT_FOUND':        "This transaction no longer exists.",
+    'SYMBOL_NOT_FOUND':            "This tracked symbol no longer exists.",
 
-    # Backward-compatible aliases
-    FUND_NOT_FOUND  = PORTFOLIO_NOT_FOUND
-    INVALID_FUND_ID = INVALID_PORTFOLIO_ID
+    # ------------------------------------------------------------------
+    # Domain validation errors (numeric / identifier input)
+    # ------------------------------------------------------------------
+    'INVALID_PORTFOLIO_ID':        "Invalid portfolio ID.",
+    'INVALID_SYMBOL':              "Please enter a valid symbol (e.g., AAPL, BTC).",
+    'INVALID_QUANTITY':            "Please enter a valid quantity greater than zero.",
+    'INVALID_PRICE':               "Please enter a valid price greater than zero.",
+    'INVALID_AMOUNT':              "Please enter a valid amount greater than zero.",
+    'INVALID_DATE':                "Please use the date format YYYY-MM-DD.",
 
+    # ------------------------------------------------------------------
+    # Business rule violations
+    # ------------------------------------------------------------------
+    'INSUFFICIENT_FUNDS':          "Insufficient amount. Your available cash balance is too low for this withdrawal.",
+    'INSUFFICIENT_QUANTITY':       "Insufficient quantity. You don't hold enough of this symbol to complete the sale.",
+    'FEES_EXCEED_PROCEEDS':        "Fees cannot exceed the sale proceeds.",
+    'PORTFOLIO_NAME_TAKEN':        "A portfolio with this name already exists.",
+    'SYMBOL_ALREADY_TRACKED_SYMBOL': "'{symbol}' is already being tracked in this portfolio.",
 
-class SuccessMessages:
-    """Success messages shown after completed actions."""
+    # ------------------------------------------------------------------
+    # Success — transactions
+    # ------------------------------------------------------------------
+    'TRANSACTION_ADDED':           "Transaction added.",
+    'TRANSACTION_UPDATED':         "Transaction updated.",
+    'TRANSACTION_DELETED':         "Transaction deleted.",
 
-    # Transaction messages
-    TRANSACTION_ADDED   = "Transaction recorded."
-    TRANSACTION_UPDATED = "Transaction updated."
-    TRANSACTION_DELETED = "Transaction deleted."
+    # ------------------------------------------------------------------
+    # Success — tracked symbols
+    # ------------------------------------------------------------------
+    'SYMBOL_ADDED':                "Symbol is now being tracked.",
+    'SYMBOL_DELETED':              "Symbol removed.",
 
-    # Symbol messages
-    ASSET_ADDED         = "Symbol is now being tracked."
-    ASSET_DELETED       = "Symbol removed."
+    # ------------------------------------------------------------------
+    # # Success messages for portfolios and transaction operations
+    # ------------------------------------------------------------------
+    'PORTFOLIO_CREATED':           "Portfolio created.",
+    'PORTFOLIO_DELETED':           "Portfolio removed.",
+    'DEPOSIT_COMPLETED':           "Deposit completed.",
+    'DEPOSIT_UPDATED':             "Deposit updated.",
+    'DEPOSIT_DELETED':             "Deposit deleted.",
+    'WITHDRAWAL_COMPLETED':        "Withdrawal completed.",
+    'WITHDRAWAL_UPDATED':          "Withdrawal updated.",
+    'WITHDRAWAL_DELETED':          "Withdrawal deleted.",
 
-    # Portfolio messages
-    PORTFOLIO_CREATED   = "Portfolio created."
-    PORTFOLIO_DELETED   = "Portfolio removed."
-    FUND_CREATED        = PORTFOLIO_CREATED
-    FUND_DELETED        = PORTFOLIO_DELETED
-    DEPOSIT_COMPLETED   = "Deposit recorded."
-    WITHDRAWAL_COMPLETED = "Withdrawal recorded."
-    ENTRY_UPDATED       = "Record updated."
-    ENTRY_DELETED       = "Record deleted."
+    # ------------------------------------------------------------------
+    # Success — dividends
+    # ------------------------------------------------------------------
+    'DIVIDEND_ADDED':              "Dividend income added.",
+    'DIVIDEND_UPDATED':            "Dividend updated.",
+    'DIVIDEND_DELETED':            "Dividend removed.",
 
-    # Dividend messages
-    DIVIDEND_ADDED      = "Dividend income recorded."
-    DIVIDEND_UPDATED    = "Dividend updated."
-    DIVIDEND_DELETED    = "Dividend removed."
+    # ------------------------------------------------------------------
+    # Confirmation prompts (delete dialogs)
+    # ------------------------------------------------------------------
+    'CONFIRM_DELETE_TRANSACTION':  "Delete this transaction?",
+    'CONFIRM_DELETE_DIVIDEND':     "Delete this dividend transaction?",
 
+    # ------------------------------------------------------------------
+    # Form validation — generic
+    # ------------------------------------------------------------------
+    'FIELD_REQUIRED':              "This field is required.",
+    'INVALID_NUMBER':              "Please enter a valid number.",
+    'VALUE_POSITIVE':              "Must be greater than zero.",
+    'VALUE_NON_NEGATIVE':          "Please enter zero or a positive number.",
+    'INVALID_DATE_FORMAT':         "Invalid date. Please use YYYY-MM-DD format (e.g., 2025-04-18).",
+    'NAME_TOO_LONG':               "Name must be 50 characters or less.",
 
-class ConfirmMessages:
-    """Confirmation prompts shown in delete dialogs."""
+    # ------------------------------------------------------------------
+    # Form validation — portfolio / symbol selectors
+    # ------------------------------------------------------------------
+    'PORTFOLIO_SELECT_REQUIRED':   "Please select a portfolio.",
+    'PORTFOLIO_SELECTION_INVALID': "Invalid portfolio selection.",
+    'SYMBOL_REQUIRED':             "Please enter a symbol (e.g., AAPL, BTC).",
 
-    DELETE_TRANSACTION  = "Delete this transaction?"
-    DELETE_DIVIDEND     = "Delete this dividend record?"
-    DELETE_FUND_ENTRY   = "Delete this record?"
+    # ------------------------------------------------------------------
+    # Form validation — username
+    # ------------------------------------------------------------------
+    'USERNAME_REQUIRED':           "Username is required.",
+    'USERNAME_TOO_SHORT':          "Username must be at least 3 characters.",
+    'USERNAME_TOO_LONG':           "Username cannot exceed 80 characters.",
+    'USERNAME_INVALID_CHARS':      "Username can only contain letters and underscores — no spaces or special characters.",
+    'USERNAME_TAKEN':              "This username is already taken.",
 
+    # ------------------------------------------------------------------
+    # Form validation — email
+    # ------------------------------------------------------------------
+    'EMAIL_REQUIRED':              "Email address is required.",
+    'EMAIL_INVALID':               "Please enter a valid email address.",
+    'EMAIL_TOO_LONG':              "Email address is too long.",
+    'EMAIL_TAKEN':                 "This email is already registered. Try signing in instead.",
+    'EMAIL_IN_USE':                "This email address is already linked to another account.",
+    'EMAIL_ALREADY_EXISTS':        "An account with this email already exists.",
 
-class ValidationMessages:
-    """Form and input validation error messages."""
+    # ------------------------------------------------------------------
+    # Form validation — passwords
+    # ------------------------------------------------------------------
+    'PASSWORD_REQUIRED':           "Password is required.",
+    'PASSWORD_TOO_SHORT':          "Password must be at least 8 characters long.",
+    'PASSWORD_CONFIRM_REQUIRED':   "Please confirm your password.",
+    'PASSWORDS_NO_MATCH':          "Passwords don't match. Please try again.",
+    'CURRENT_PASSWORD_REQUIRED':   "Please enter your current password.",
+    'CURRENT_PASSWORD_INCORRECT':  "Current password is incorrect.",
+    'NEW_PASSWORD_REQUIRED':       "New password is required.",
+    'NEW_PASSWORD_TOO_SHORT':      "New password must be at least 8 characters long.",
+    'NEW_PASSWORD_CONFIRM_REQUIRED': "Please confirm your new password.",
+    'EMAIL_PASSWORD_CONFIRM_REQUIRED': "Please enter your current password to confirm this change.",
 
-    # Generic
-    REQUIRED              = "This field is required."
-    INVALID_NUMBER        = "Please enter a valid number."
-    VALUE_POSITIVE        = "Must be greater than zero."
-    VALUE_NON_NEGATIVE    = "Please enter zero or a positive number."
+    # ------------------------------------------------------------------
+    # Authentication — login, registration, verification
+    # ------------------------------------------------------------------
+    'INVALID_CREDENTIALS':         "Invalid username or password.",
+    'ACCOUNT_UNVERIFIED':          "Your account hasn't been verified yet. Please check your email for the verification code.",
+    'ACCOUNT_NOT_FOUND':           "No account was found for this email.",
+    'ACCOUNT_ALREADY_VERIFIED':    "This account is already verified. Please sign in.",
+    'REGISTRATION_FAILED':         "Registration failed. Please try again.",
 
-    # Field-specific
-    PRICE_POSITIVE        = "Please enter a valid price greater than zero."
-    QUANTITY_POSITIVE     = "Please enter a valid quantity greater than zero."
-    AMOUNT_POSITIVE       = "Please enter a valid amount greater than zero."
+    'VERIFICATION_CODE_REQUIRED':  "Verification code is required.",
+    'VERIFICATION_CODE_INVALID_FORMAT': "Please enter the 6-digit code sent to your email.",
+    'VERIFICATION_CODE_MISMATCH':  "Invalid verification code.",
+    'VERIFICATION_CODE_EXPIRED':   "This code has expired. Please request a new one.",
+    'VERIFICATION_CODE_NOT_FOUND': "No verification code was found. Please request a new one.",
+    'VERIFICATION_CODE_SENT':      "A new verification code has been sent to your email.",
+    'VERIFICATION_CODE_SEND_FAILED': "Failed to send the code. Please try again in a moment.",
+    'VERIFICATION_CODE_RESEND_UNAVAILABLE': "Unable to resend the code. Your account may already be verified.",
 
-    # Date
-    INVALID_DATE_FORMAT   = "Invalid date. Please use YYYY-MM-DD format (e.g., 2025-04-18)."
+    'EMAIL_UPDATED':               "Email address updated successfully.",
+    'PASSWORD_CHANGED':            "Password changed successfully.",
+    'PASSWORD_RESET_SUCCESS':      "Your password has been reset. You can now sign in.",
+    'PASSWORD_RESET_LINK_INVALID': "This password reset link is invalid or has expired.",
+    'PASSWORD_RESET_ACCOUNT_NOT_FOUND': "No account was found for this reset link.",
 
-    # Portfolio / asset class
-    SELECT_CATEGORY         = "Please select a portfolio."
-    CATEGORY_NOT_FOUND      = "Portfolio not found."
-    INVALID_CATEGORY        = "Invalid portfolio selection."
-    INVALID_PORTFOLIO_ID    = "Invalid portfolio ID."
-    INVALID_FUND_ID         = INVALID_PORTFOLIO_ID
-    # Portfolio name
-    NAME_TOO_LONG           = "Name must be 50 characters or less."
-    PORTFOLIO_NAME_TAKEN    = 'A portfolio with this name already exists.'
+    # ------------------------------------------------------------------
+    # Account self-service (settings, deletion, demo restrictions)
+    # ------------------------------------------------------------------
+    'DEMO_ACTION_DISABLED':        "This feature is disabled in demo mode.",
+    'DELETION_CODE_SEND_FAILED':   "Failed to send the confirmation code. Please try again.",
+    'DELETION_CONFIRMED':          "Your account has been permanently deleted.",
+    'DELETION_INVALID_CODE':       "The code is incorrect or has expired. Please request a new one.",
+    'DELETION_NO_EMAIL':           "No email address is linked to your account. Please contact an administrator for help.",
 
-    # Symbol
-    SYMBOL_REQUIRED       = "Please enter a symbol (e.g., AAPL, BTC)."
+    # ------------------------------------------------------------------
+    # Admin panel
+    # ------------------------------------------------------------------
+    'USER_NOT_FOUND':              "User not found.",
+    'ADMIN_USER_DELETED':          "User account removed.",
+    'ADMIN_ACCESS_DENIED':         "You don't have permission to access this page.",
+    'ADMIN_EMAIL_SEND_FAILED':     "Failed to send the email. Please try again.",
+    'ADMIN_CANNOT_CHANGE_OWN_STATUS': "You cannot change your own admin status.",
+    'ADMIN_CANNOT_DELETE_SELF':    "You cannot delete your own account.",
 
-    # Username
-    USERNAME_REQUIRED     = "Username is required."
-    USERNAME_TOO_SHORT    = "Username must be at least 3 characters."
-    USERNAME_TOO_LONG     = "Username cannot exceed 80 characters."
-    USERNAME_INVALID_CHARS = "Username can only contain letters and underscores — no spaces or special characters."
-    USERNAME_TAKEN        = "This username is already taken."
-
-    # Email
-    EMAIL_REQUIRED        = "Email address is required."
-    EMAIL_INVALID         = "Please enter a valid email address."
-    EMAIL_TOO_LONG        = "Email address is too long."
-    EMAIL_TAKEN           = "This email is already registered. Try signing in instead."
-    EMAIL_IN_USE          = "This email address is already linked to another account."
-
-    # Password
-    PASSWORD_REQUIRED          = "Password is required."
-    PASSWORD_TOO_SHORT         = "Password must be at least 8 characters long."
-    PASSWORD_CONFIRM_REQUIRED  = "Please confirm your password."
-    PASSWORDS_NO_MATCH         = "Passwords don't match. Please try again."
-    CURRENT_PASSWORD_REQUIRED  = "Please enter your current password."
-    NEW_PASSWORD_REQUIRED      = "New password is required."
-    NEW_PASSWORD_TOO_SHORT     = "New password must be at least 8 characters long."
-    NEW_PASSWORD_CONFIRM_REQUIRED = "Please confirm your new password."
-    EMAIL_PASSWORD_CONFIRM     = "Please enter your current password to confirm this change."
-
-    # Verification code
-    VERIFICATION_CODE_REQUIRED = "Verification code is required."
-    VERIFICATION_CODE_INVALID  = "Please enter the 6-digit code sent to your email."
-
-
-class AuthMessages:
-    """Authentication and account workflow messages."""
-
-    # Login
-    INVALID_CREDENTIALS  = "Invalid username or password."
-    ACCOUNT_UNVERIFIED   = (
-        "Your account hasn't been verified yet. "
-        "Please check your email for the verification code."
-    )
-
-    # Verification
-    VERIFICATION_CODE_SENT = "A new verification code has been sent to your email."
-    CODE_SEND_FAILED       = "Failed to send the code. Please try again in a moment."
-    RESEND_UNAVAILABLE     = "Unable to resend code. Your account may already be verified."
-
-    # Email
-    EMAIL_UPDATED          = "Email address updated successfully."
-
-    # Password
-    PASSWORD_CHANGED       = "Password changed successfully."
-    PASSWORD_RESET_SUCCESS = "Your password has been reset. You can now sign in."
-    RESET_LINK_INVALID     = "This password reset link is invalid or has expired."
-    RESET_ACCOUNT_NOT_FOUND = "No account was found for this reset link."
-
-    # General
-    REGISTRATION_FAILED    = "Registration failed. Please try again."
-    ERROR_OCCURRED         = "Something went wrong. Please try again."
-
-
-class AccountMessages:
-    """Account self-service messages (settings, deletion)."""
-
-    # Demo account restrictions
-    DEMO_ACTION_DISABLED   = "This feature is disabled in demo mode."
-
-    # Deletion flow
-    DELETION_CODE_SENT     = "A confirmation code has been sent to your email. Enter it below to permanently delete your account."
-    DELETION_CODE_SEND_FAILED = "Failed to send the confirmation code. Please try again."
-    DELETION_CONFIRMED     = "Your account has been permanently deleted."
-    DELETION_INVALID_CODE  = "The code is incorrect or has expired. Please request a new one."
-    DELETION_NO_EMAIL      = "No email address is linked to your account. Please contact an administrator for help."
-
-
-class AdminMessages:
-    """Admin panel messages."""
-
-    USER_NOT_FOUND         = "User not found."
-    NO_EMAIL_ON_FILE       = "{username} has no email address on file."
-    RESET_EMAIL_SENT       = "Password reset email sent to {username} ({email})."
-    EMAIL_SEND_FAILED      = "Failed to send the email. Please try again."
-    OPERATION_FAILED       = "Something went wrong. Please try again."
-    USER_DELETED           = "User account removed."
-    ACCESS_DENIED          = "You don't have permission to access this page."
-    ADMIN_ACCESS_GRANTED   = "Admin access granted for {username}."
-    ADMIN_ACCESS_REVOKED   = "Admin access revoked for {username}."
+    # Admin — dynamic messages
+    'ADMIN_NO_EMAIL_ON_FILE_USERNAME':
+        "{username} has no email address on file.",
+    'ADMIN_RESET_EMAIL_SENT_USERNAME_EMAIL':
+        "Password reset email sent to {username} ({email}).",
+    'ADMIN_ACCESS_GRANTED_USERNAME':
+        "Admin access granted for {username}.",
+    'ADMIN_ACCESS_REVOKED_USERNAME':
+        "Admin access revoked for {username}.",
+}
 
 
-def get_error_message(exception):
-    """Convert exception to a clear, user-facing message.
+# ---------------------------------------------------------------------------
+# Field-specific positive-value error lookup
+# ---------------------------------------------------------------------------
 
-    Args:
-        exception: The exception object
+_FIELD_POSITIVE_MESSAGE_KEYS = {
+    'price':                  'INVALID_PRICE',
+    'edit_price':             'INVALID_PRICE',
+    'quantity':               'INVALID_QUANTITY',
+    'edit_quantity':          'INVALID_QUANTITY',
+    'amount':                 'INVALID_AMOUNT',
+    'amount_delta':           'INVALID_AMOUNT',
+    'edit_amount':            'INVALID_AMOUNT',
+    'edit_cash_event_amount': 'INVALID_AMOUNT',
+}
 
-    Returns:
-        str: User-friendly error message
+
+def get_field_positive_message(field_name: str) -> str:
+    """Return a field-specific 'must be positive' error message.
+
+    Falls back to the generic VALUE_POSITIVE message for unknown fields.
     """
-    exception_msg = str(exception).lower()
-
-    if 'quantity' in exception_msg and ('invalid' in exception_msg or 'must be' in exception_msg):
-        return ErrorMessages.INVALID_QUANTITY
-    elif 'insufficient' in exception_msg and 'quantity' in exception_msg:
-        return ErrorMessages.INSUFFICIENT_QUANTITY
-    elif 'insufficient' in exception_msg:
-        return ErrorMessages.INSUFFICIENT_FUNDS
-    elif 'price' in exception_msg and ('invalid' in exception_msg or 'must be' in exception_msg):
-        return ErrorMessages.INVALID_PRICE
-    elif 'amount' in exception_msg and ('invalid' in exception_msg or 'must be' in exception_msg):
-        return ErrorMessages.INVALID_AMOUNT
-    elif 'date' in exception_msg and 'invalid' in exception_msg:
-        return ErrorMessages.INVALID_DATE
-    elif 'not found' in exception_msg and 'transaction' in exception_msg:
-        return ErrorMessages.TRANSACTION_NOT_FOUND
-    elif 'not found' in exception_msg and ('portfolio' in exception_msg or 'fund' in exception_msg):
-        return ErrorMessages.PORTFOLIO_NOT_FOUND
-    elif 'symbol' in exception_msg and 'invalid' in exception_msg:
-        return ErrorMessages.INVALID_SYMBOL
-    else:
-        first_line = str(exception).split('\n')[0].strip()
-        if len(first_line) <= 80:
-            return first_line
-        return ErrorMessages.OPERATION_FAILED
+    key = _FIELD_POSITIVE_MESSAGE_KEYS.get(field_name, 'VALUE_POSITIVE')
+    return MESSAGES[key]
 
 
-def get_first_form_error(form_errors):
-    """Extract the first error message from a form errors dictionary.
+# ---------------------------------------------------------------------------
+# Exception → user-friendly message mapping
+# ---------------------------------------------------------------------------
 
-    Args:
-        form_errors: Dictionary of form errors (field: error_message)
+def get_error_message(exception: Exception) -> str:
+    """Convert a service-layer exception to a clear, user-facing message.
 
-    Returns:
-        str: First error message, or fallback if no errors found
+    The service layer raises ``ValueError`` / ``ValidationError`` with
+    canonical message strings (sourced from ``MESSAGES``). This helper
+    keeps any such message as-is for display, falling back to a generic
+    message for unexpected text.
     """
+    text = str(exception).strip()
+    first_line = text.split('\n', 1)[0].strip()
+
+    # Short, already-human-friendly messages pass through unchanged.
+    if first_line and len(first_line) <= 120:
+        return first_line
+    return MESSAGES['OPERATION_FAILED']
+
+
+def get_first_form_error(form_errors: dict) -> str:
+    """Extract the first error message from a form errors dictionary."""
     if not form_errors:
-        return ErrorMessages.INVALID_INPUT
+        return MESSAGES['INVALID_INPUT']
 
     first_error = next(iter(form_errors.values()))
-
     if isinstance(first_error, list):
-        return first_error[0] if first_error else ErrorMessages.INVALID_INPUT
+        return first_error[0] if first_error else MESSAGES['INVALID_INPUT']
     return str(first_error)

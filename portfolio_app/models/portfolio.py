@@ -1,7 +1,6 @@
 """Portfolio model representing a named portfolio."""
 
 from datetime import datetime, timezone
-from decimal import Decimal
 from sqlalchemy import Numeric
 from portfolio_app import db
 
@@ -21,7 +20,7 @@ class Portfolio(db.Model):
     # Relationships
     transactions = db.relationship('Transaction', backref='portfolio', lazy='dynamic', cascade='all, delete-orphan')
     events = db.relationship('PortfolioEvent', backref='portfolio', lazy='dynamic', cascade='all, delete-orphan')
-    assets = db.relationship('Asset', backref='portfolio', lazy='dynamic', cascade='all, delete-orphan')
+    symbols = db.relationship('Symbol', backref='portfolio', lazy='dynamic', cascade='all, delete-orphan')
 
     def to_dict(self):
         return {
@@ -31,7 +30,3 @@ class Portfolio(db.Model):
             'created_at': self.created_at.strftime('%Y-%m-%d'),
             'updated_at': self.updated_at.strftime('%Y-%m-%d')
         }
-
-
-# Backward-compatible alias used during the fund → portfolio rename transition.
-Fund = Portfolio

@@ -60,13 +60,13 @@
                         All
                     </a>
                 </li>
-                {% if funds %}
+                {% if portfolios %}
                 <li><hr class="dropdown-divider"></li>
-                {% for fund in funds %}
+                {% for portfolio in portfolios %}
                 <li>
-                    <a class="dropdown-item {% if selected_portfolio == fund.name %}active{% endif %}"
-                       href="{{ url_for('transactions.transaction_list', portfolio=fund.name) }}">
-                        {{ fund.name }}
+                    <a class="dropdown-item {% if selected_portfolio == portfolio.name %}active{% endif %}"
+                       href="{{ url_for('transactions.transaction_list', portfolio=portfolio.name) }}">
+                        {{ portfolio.name }}
                     </a>
                 </li>
                 {% endfor %}
@@ -86,7 +86,7 @@
                    autocomplete="off">
         </div>
 
-        {% if funds|length > 0 %}
+        {% if portfolios|length > 0 %}
             <button type="button" class="btn btn-primary" onclick="openAddSymbolModal()">Add Symbol</button>
         {% else %}
             <a class="btn btn-primary" href="{{ url_for('portfolios.portfolios_list') }}">Create a portfolio first</a>
@@ -104,16 +104,16 @@
             {% set symbol_dividend_total = dividend_totals.get(symbol_key, 0) %}
             {% set show_dividend_rows = symbol_dividends|length > 0 %}
             <div class="card mb-2 symbol-card" data-symbol="{{ item.symbol }}">
-                 <div class="card-header py-2 px-3 category-header page-accent-surface"
+                 <div class="card-header py-2 px-3 portfolio-header page-accent-surface"
                      onclick="toggleSymbolTransactions('{{ item.html_group_id }}')">
                     <div class="row align-items-center g-1 summary-row">
                         <div class="col-lg-2 col-md-3 d-flex align-items-center gap-2">
-                            <i class="bi bi-chevron-right category-chevron" id="chevron-{{ item.html_group_id }}"></i>
+                            <i class="bi bi-chevron-right portfolio-chevron" id="chevron-{{ item.html_group_id }}"></i>
                             <span class="fw-bold text-dark">{{ item.symbol }}</span>
                             <span class="badge bg-light text-dark border">{{ item.portfolio.name }}</span>
                         </div>
                         <div class="col-lg-8 col-md-7">
-                            <div class="category-summary columns-6">
+                            <div class="portfolio-summary columns-6">
                                 <div class="summary-item">
                                     <div class="summary-label">Transactions</div>
                                     <div class="summary-value">{{ item.summary.transaction_count + symbol_dividends|length }}</div>
@@ -187,7 +187,7 @@
                     </div>
                 </div>
 
-                <div class="category-transactions" id="transactions-{{ item.html_group_id }}" style="display: none;">
+                <div class="portfolio-transactions" id="transactions-{{ item.html_group_id }}" style="display: none;">
                     {% if item.transactions|length > 0 or show_dividend_rows %}
                     <div class="table-responsive">
                         <table class="table table-sm table-hover align-middle mb-0 transactions-table">
@@ -320,7 +320,7 @@
 <div class="modal fade" id="addSymbolModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <form method="POST" action="{{ url_for('transactions.asset_add') }}" autocomplete="off" novalidate>
+            <form method="POST" action="{{ url_for('transactions.symbol_add') }}" autocomplete="off" novalidate>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="modal-header">
                     <h5 class="modal-title">Add Symbol</h5>
@@ -330,29 +330,29 @@
                     <div class="row g-2">
                         <div class="col-6">
                             <div class="mb-3">
-                                <label for="asset_portfolio_id" class="form-label">Portfolio</label>
-                                {% set _asset_errs = (form_errors.get('asset_add', {}) if form_errors else {}) %}
-                                {% set _asset_vals = (form_values.get('asset_add', {}) if form_values else {}) %}
-                                <select class="form-select {% if _asset_errs.get('asset_portfolio_id') %}is-invalid{% endif %}" id="asset_portfolio_id" name="asset_portfolio_id">
+                                <label for="symbol_portfolio_id" class="form-label">Portfolio</label>
+                                {% set _symbol_errs = (form_errors.get('symbol_add', {}) if form_errors else {}) %}
+                                {% set _symbol_vals = (form_values.get('symbol_add', {}) if form_values else {}) %}
+                                <select class="form-select {% if _symbol_errs.get('symbol_portfolio_id') %}is-invalid{% endif %}" id="symbol_portfolio_id" name="symbol_portfolio_id">
                                     <option value="">Select portfolio...</option>
-                                    {% for fund in funds %}
-                                    <option value="{{ fund.id }}" {% if (_asset_vals.get('asset_portfolio_id') and _asset_vals.get('asset_portfolio_id')|int == fund.id) or (not _asset_vals.get('asset_portfolio_id') and selected_portfolio == fund.name) %}selected{% endif %}>
-                                        {{ fund.name }}
+                                    {% for portfolio in portfolios %}
+                                    <option value="{{ portfolio.id }}" {% if (_symbol_vals.get('symbol_portfolio_id') and _symbol_vals.get('symbol_portfolio_id')|int == portfolio.id) or (not _symbol_vals.get('symbol_portfolio_id') and selected_portfolio == portfolio.name) %}selected{% endif %}>
+                                        {{ portfolio.name }}
                                     </option>
                                     {% endfor %}
                                 </select>
-                                {% if _asset_errs.get('asset_portfolio_id') %}
-                                <div class="invalid-feedback">{{ _asset_errs.get('asset_portfolio_id') }}</div>
+                                {% if _symbol_errs.get('symbol_portfolio_id') %}
+                                <div class="invalid-feedback">{{ _symbol_errs.get('symbol_portfolio_id') }}</div>
                                 {% endif %}
                             </div>
                         </div>
                         <div class="col-6">
                             <div class="mb-3">
-                                <label for="asset_symbol" class="form-label">Symbol</label>
-                                <input type="text" class="form-control {% if _asset_errs.get('asset_symbol') %}is-invalid{% endif %}" id="asset_symbol" name="asset_symbol" maxlength="20"
+                                <label for="symbol_ticker" class="form-label">Symbol</label>
+                                <input type="text" class="form-control {% if _symbol_errs.get('symbol_ticker') %}is-invalid{% endif %}" id="symbol_ticker" name="symbol_ticker" maxlength="20"
                                     placeholder="e.g., AAPL" oninput="this.value = this.value.toUpperCase();">
-                                {% if _asset_errs.get('asset_symbol') %}
-                                <div class="invalid-feedback">{{ _asset_errs.get('asset_symbol') }}</div>
+                                {% if _symbol_errs.get('symbol_ticker') %}
+                                <div class="invalid-feedback">{{ _symbol_errs.get('symbol_ticker') }}</div>
                                 {% endif %}
                             </div>
                         </div>
@@ -384,13 +384,13 @@
                     {% set _tx_add_errs = (form_errors.get('transaction_add', {}) if form_errors else {}) %}
                     <div class="row g-2">
                         <div class="col-6">
-                            <div class="mb-3" id="add_tx_category_group">
+                            <div class="mb-3" id="add_tx_portfolio_group">
                                 <label for="portfolio_id" class="form-label">Portfolio</label>
                                 {% set _tx_add_vals = (form_values.get('transaction_add', {}) if form_values else {}) %}
                                 <select class="form-select {% if _tx_add_errs.get('portfolio_id') %}is-invalid{% endif %}" id="portfolio_id" name="portfolio_id">
                                     <option value="">Select portfolio...</option>
-                                    {% for fund in funds %}
-                                    <option value="{{ fund.id }}">{{ fund.name }}</option>
+                                    {% for portfolio in portfolios %}
+                                    <option value="{{ portfolio.id }}">{{ portfolio.name }}</option>
                                     {% endfor %}
                                 </select>
                                 {% if _tx_add_errs.get('portfolio_id') %}
@@ -514,11 +514,11 @@
                     <div class="row g-2">
                         <div class="col-6">
                             <div class="mb-3">
-                                <label for="edit_fund_id_display" class="form-label">Portfolio</label>
-                                <select class="form-select" id="edit_fund_id_display" disabled>
+                                <label for="edit_portfolio_id_display" class="form-label">Portfolio</label>
+                                <select class="form-select" id="edit_portfolio_id_display" disabled>
                                     <option value="">Select portfolio...</option>
-                                    {% for fund in funds %}
-                                    <option value="{{ fund.id }}">{{ fund.name }}</option>
+                                    {% for portfolio in portfolios %}
+                                    <option value="{{ portfolio.id }}">{{ portfolio.name }}</option>
                                     {% endfor %}
                                 </select>
                             </div>
@@ -617,7 +617,7 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <p>{{ Msg.confirm.DELETE_TRANSACTION }}</p>
+                    <p>{{ MESSAGES['CONFIRM_DELETE_TRANSACTION'] }}</p>
                     <div class="alert alert-warning">
                         <i class="bi bi-exclamation-triangle"></i>
                         This will recalculate average costs for this symbol.
@@ -639,10 +639,10 @@
 <div class="modal fade" id="deleteSymbolModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <form method="POST" id="deleteSymbolForm" action="{{ url_for('transactions.asset_delete') }}" novalidate>
+            <form method="POST" id="deleteSymbolForm" action="{{ url_for('transactions.symbol_delete') }}" novalidate>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <input type="hidden" name="delete_asset_portfolio_id" id="delete_symbol_portfolio_id">
-                <input type="hidden" name="delete_asset_symbol" id="delete_asset_symbol">
+                <input type="hidden" name="delete_symbol_portfolio_id" id="delete_symbol_portfolio_id">
+                <input type="hidden" name="delete_symbol_ticker" id="delete_symbol_ticker">
                 <div class="modal-header">
                     <h5 class="modal-title d-flex align-items-center gap-2">
                         <i class="bi bi-trash text-danger" style="font-size:1rem;"></i>
@@ -651,12 +651,12 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <p class="mb-2">Delete <strong id="delete_asset_symbol_name"></strong>?</p>
-                    <div id="delete_asset_warning" class="alert alert-warning mb-2 d-none">
+                    <p class="mb-2">Delete <strong id="delete_symbol_name"></strong>?</p>
+                    <div id="delete_symbol_warning" class="alert alert-warning mb-2 d-none">
                         <i class="bi bi-exclamation-triangle-fill me-1"></i>
-                        <span id="delete_asset_warning_text"></span>
+                        <span id="delete_symbol_warning_text"></span>
                     </div>
-                    <div id="delete_asset_error" class="alert alert-danger d-none"></div>
+                    <div id="delete_symbol_error" class="alert alert-danger d-none"></div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -768,7 +768,7 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <p>{{ Msg.confirm.DELETE_DIVIDEND }}</p>
+                    <p>{{ MESSAGES['CONFIRM_DELETE_DIVIDEND'] }}</p>
                     <div id="delete_dividend_error" class="alert alert-danger d-none"></div>
                 </div>
                 <div class="modal-footer">
@@ -800,7 +800,7 @@ function ensureEditDatePicker() { initFlatpickr('edit_date'); }
 
 function openAddSymbolModal() {
     const modalEl = document.getElementById('addSymbolModal');
-    const symbolInput = document.getElementById('asset_symbol');
+    const symbolInput = document.getElementById('symbol_ticker');
     if (symbolInput) symbolInput.value = '';
     new bootstrap.Modal(modalEl).show();
 }
@@ -817,18 +817,18 @@ function openAddSymbolModal() {
         try {
             if (which === 'addSymbolModal') {
                 openAddSymbolModal();
-                const fundVal = {{ (form_values.get('asset_add', {}).get('asset_portfolio_id', '') if form_values else '') | tojson }};
-                const symVal = {{ (form_values.get('asset_add', {}).get('asset_symbol', '') if form_values else '') | tojson }};
-                const fundEl = document.getElementById('asset_portfolio_id');
-                const symEl = document.getElementById('asset_symbol');
-                if (fundEl && fundVal) fundEl.value = String(fundVal);
+                const portfolioVal = {{ (form_values.get('symbol_add', {}).get('symbol_portfolio_id', '') if form_values else '') | tojson }};
+                const symVal = {{ (form_values.get('symbol_add', {}).get('symbol_ticker', '') if form_values else '') | tojson }};
+                const portfolioEl = document.getElementById('symbol_portfolio_id');
+                const symEl = document.getElementById('symbol_ticker');
+                if (portfolioEl && portfolioVal) portfolioEl.value = String(portfolioVal);
                 if (symEl && symVal) symEl.value = String(symVal);
             }
 
             if (which === 'addTransactionModal') {
                 const vals = {{ (form_values.get('transaction_add', {}) if form_values else {}) | tojson }};
 
-                const fundEl = document.getElementById('portfolio_id');
+                const portfolioEl = document.getElementById('portfolio_id');
                 const symEl = document.getElementById('symbol');
                 const typeEl = document.getElementById('transaction_type');
                 const priceEl = document.getElementById('price');
@@ -836,7 +836,7 @@ function openAddSymbolModal() {
                 const feesEl = document.getElementById('fees');
                 const notesEl = document.getElementById('notes');
 
-                if (fundEl && vals.portfolio_id) fundEl.value = String(vals.portfolio_id);
+                if (portfolioEl && vals.portfolio_id) portfolioEl.value = String(vals.portfolio_id);
                 if (symEl && vals.symbol) symEl.value = String(vals.symbol).toUpperCase();
                 if (typeEl && vals.transaction_type) {
                     typeEl.value = String(vals.transaction_type);
@@ -855,24 +855,12 @@ function openAddSymbolModal() {
                 if (feesEl) feesEl.dispatchEvent(new Event('input'));
 
                 // Preserve the locked layout when the modal was opened from a symbol row.
-                const categoryGroup = document.getElementById('add_tx_category_group');
+                const portfolioGroup = document.getElementById('add_tx_portfolio_group');
                 const symbolGroup = document.getElementById('add_tx_symbol_group');
-                const context = document.getElementById('add_tx_context');
-                const contextValue = document.getElementById('add_tx_context_value');
                 const locked = Boolean(vals.portfolio_id) && Boolean(vals.symbol);
 
-                if (categoryGroup) categoryGroup.classList.toggle('d-none', locked);
+                if (portfolioGroup) portfolioGroup.classList.toggle('d-none', locked);
                 if (symbolGroup) symbolGroup.classList.toggle('d-none', locked);
-                if (context) context.classList.toggle('d-none', !locked);
-                if (contextValue) {
-                    if (locked && fundEl && fundEl.selectedOptions && fundEl.selectedOptions[0]) {
-                        const assetClassText = fundEl.selectedOptions[0].text || 'Portfolio';
-                        const symText = String(vals.symbol || '').toUpperCase();
-                        contextValue.textContent = symText ? `${assetClassText}/${symText}` : assetClassText;
-                    } else {
-                        contextValue.textContent = '';
-                    }
-                }
 
                 initFlatpickr('add_tx_date');
                 const modalEl = document.getElementById('addTransactionModal');
@@ -884,21 +872,14 @@ function openAddSymbolModal() {
             }
 
             if (which === 'deleteSymbolModal') {
-                const fundId = payload && payload.portfolio_id ? payload.portfolio_id : '';
+                const portfolioId = payload && payload.portfolio_id ? payload.portfolio_id : '';
                 const symbol = payload && payload.symbol ? payload.symbol : '';
-                const category = payload && payload.category ? payload.category : '';
 
-                const fundInput = document.getElementById('delete_symbol_portfolio_id');
-                const symbolInput = document.getElementById('delete_asset_symbol');
-                const context = document.getElementById('delete_asset_context');
+                const portfolioInput = document.getElementById('delete_symbol_portfolio_id');
+                const symbolInput = document.getElementById('delete_symbol_ticker');
 
-                if (fundInput) fundInput.value = fundId ? String(fundId) : '';
+                if (portfolioInput) portfolioInput.value = portfolioId ? String(portfolioId) : '';
                 if (symbolInput) symbolInput.value = (symbol || '').toUpperCase();
-                if (context) {
-                    const assetClassText = category ? String(category).toUpperCase() : 'PORTFOLIO';
-                    const symText = (symbol || '').toUpperCase();
-                    context.textContent = symText ? `${assetClassText}/${symText}` : assetClassText;
-                }
 
                 new bootstrap.Modal(document.getElementById('deleteSymbolModal')).show();
             }
@@ -1118,18 +1099,16 @@ function openAddSymbolModal() {
     };
 }());
 
-function openAddTransactionModal(fundId, categoryName, symbol, forcedType) {
+function openAddTransactionModal(portfolioId, portfolioName, symbol, forcedType) {
     const modalEl = document.getElementById('addTransactionModal');
-    const categoryGroup = document.getElementById('add_tx_category_group');
+    const portfolioGroup = document.getElementById('add_tx_portfolio_group');
     const symbolGroup = document.getElementById('add_tx_symbol_group');
     const typeGroup = document.getElementById('add_tx_type_group');
-    const context = document.getElementById('add_tx_context');
-    const contextValue = document.getElementById('add_tx_context_value');
 
     const titleEl = document.getElementById('add_tx_modal_title');
     const submitBtn = document.getElementById('add_tx_submit_btn');
 
-    const fundSelect = document.getElementById('portfolio_id');
+    const portfolioSelect = document.getElementById('portfolio_id');
     const symbolInput = document.getElementById('symbol');
     const typeSelect = document.getElementById('transaction_type');
     const priceInput = document.getElementById('price');
@@ -1137,10 +1116,10 @@ function openAddTransactionModal(fundId, categoryName, symbol, forcedType) {
     const feesInput = document.getElementById('fees');
     const notesInput = document.getElementById('notes');
 
-    if (fundId) {
-        fundSelect.value = fundId;
+    if (portfolioId) {
+        portfolioSelect.value = portfolioId;
     } else {
-        fundSelect.value = '';
+        portfolioSelect.value = '';
     }
 
     symbolInput.value = symbol ? (symbol || '').toUpperCase() : '';
@@ -1159,7 +1138,7 @@ function openAddTransactionModal(fundId, categoryName, symbol, forcedType) {
         typeSelect.value = forcedType;
         if (typeGroup) typeGroup.classList.add('d-none');
         if (titleEl) {
-            const isNewInvestment = (forcedType === 'Buy') && !fundId && !symbol;
+            const isNewInvestment = (forcedType === 'Buy') && !portfolioId && !symbol;
             titleEl.textContent = isNewInvestment ? 'New Investment' : ((forcedType === 'Buy') ? 'Add Buy' : 'Add Transaction');
         }
         if (submitBtn) submitBtn.textContent = (forcedType === 'Buy') ? 'Add' : 'Add Transaction';
@@ -1170,11 +1149,9 @@ function openAddTransactionModal(fundId, categoryName, symbol, forcedType) {
         if (submitBtn) submitBtn.textContent = 'Add Transaction';
     }
 
-    const locked = Boolean(fundId) && Boolean(symbol);
-    categoryGroup.classList.toggle('d-none', locked);
+    const locked = Boolean(portfolioId) && Boolean(symbol);
+    portfolioGroup.classList.toggle('d-none', locked);
     symbolGroup.classList.toggle('d-none', locked);
-
-    if (context) context.classList.toggle('d-none', !locked);
 
     // Trigger previews to recalculate after programmatic value changes
     if (priceInput) priceInput.dispatchEvent(new Event('input'));
@@ -1185,7 +1162,7 @@ function openAddTransactionModal(fundId, categoryName, symbol, forcedType) {
     new bootstrap.Modal(modalEl).show();
 }
 
-function editTransaction(id, fundId, type, symbol, price, quantity, fees, notes, dateShort) {
+function editTransaction(id, portfolioId, type, symbol, price, quantity, fees, notes, dateShort) {
     document.getElementById('editTransactionForm').action = `/transactions/edit/${id}`;
 
     function trimTrailingZeros(v) {
@@ -1203,7 +1180,7 @@ function editTransaction(id, fundId, type, symbol, price, quantity, fees, notes,
         return out.endsWith('.') ? out.slice(0, -1) : out;
     }
 
-    const categorySelect = document.getElementById('edit_fund_id_display');
+    const portfolioSelect = document.getElementById('edit_portfolio_id_display');
     const typeSelect = document.getElementById('edit_transaction_type_display');
     const symbolInput = document.getElementById('edit_symbol');
     const priceInput = document.getElementById('edit_price');
@@ -1212,7 +1189,7 @@ function editTransaction(id, fundId, type, symbol, price, quantity, fees, notes,
     const notesInput = document.getElementById('edit_notes');
     const dateInput = document.getElementById('edit_date');
 
-    if (categorySelect) categorySelect.value = fundId ? String(fundId) : '';
+    if (portfolioSelect) portfolioSelect.value = portfolioId ? String(portfolioId) : '';
     if (typeSelect) typeSelect.value = type || '';
     if (symbolInput) symbolInput.value = (symbol || '').toUpperCase();
     if (priceInput) priceInput.value = trimTrailingZeros(price);
@@ -1222,16 +1199,6 @@ function editTransaction(id, fundId, type, symbol, price, quantity, fees, notes,
     if (dateInput) dateInput.value = dateShort || '';
 
     ensureEditDatePicker();
-
-    // Context banner like Add (but always shown)
-    const ctxValue = document.getElementById('edit_tx_context_value');
-    const selectedCategoryText = categorySelect && categorySelect.selectedOptions && categorySelect.selectedOptions[0]
-        ? categorySelect.selectedOptions[0].text
-        : '';
-    if (ctxValue) {
-        const symbolText = (symbol || '').toUpperCase();
-        ctxValue.textContent = selectedCategoryText ? (symbolText ? `${selectedCategoryText}/${symbolText}` : selectedCategoryText) : 'Edit Transaction';
-    }
 
     // Trigger preview recalculation after programmatic value changes
     if (priceInput) priceInput.dispatchEvent(new Event('input'));
@@ -1304,11 +1271,11 @@ function editTransaction(id, fundId, type, symbol, price, quantity, fees, notes,
 // Setup delete symbol AJAX handler once
 (function setupDeleteSymbol() {
     var form = document.getElementById('deleteSymbolForm');
-    var errorDiv = document.getElementById('delete_asset_error');
+    var errorDiv = document.getElementById('delete_symbol_error');
     var submitBtn = form.querySelector('button[type="submit"]');
     var modalEl = document.getElementById('deleteSymbolModal');
-    var fundInput = document.getElementById('delete_symbol_portfolio_id');
-    var symbolInput = document.getElementById('delete_asset_symbol');
+    var portfolioInput = document.getElementById('delete_symbol_portfolio_id');
+    var symbolInput = document.getElementById('delete_symbol_ticker');
 
     function showError(msg) {
         errorDiv.textContent = msg || 'Operation failed';
@@ -1354,13 +1321,13 @@ function editTransaction(id, fundId, type, symbol, price, quantity, fees, notes,
         xhr.send(new FormData(form));
     });
 
-    window.openDeleteSymbolModal = function(fundId, categoryName, symbol, txCount) {
-        if (fundInput) fundInput.value = fundId ? String(fundId) : '';
+    window.openDeleteSymbolModal = function(portfolioId, portfolioName, symbol, txCount) {
+        if (portfolioInput) portfolioInput.value = portfolioId ? String(portfolioId) : '';
         if (symbolInput) symbolInput.value = (symbol || '').toUpperCase();
 
-        var symbolName = document.getElementById('delete_asset_symbol_name');
-        var warningDiv = document.getElementById('delete_asset_warning');
-        var warningText = document.getElementById('delete_asset_warning_text');
+        var symbolName = document.getElementById('delete_symbol_name');
+        var warningDiv = document.getElementById('delete_symbol_warning');
+        var warningText = document.getElementById('delete_symbol_warning_text');
 
         if (symbolName) symbolName.textContent = (symbol || '').toUpperCase();
 
@@ -1383,13 +1350,13 @@ function editTransaction(id, fundId, type, symbol, price, quantity, fees, notes,
     const typeSelect = document.getElementById('transaction_type');
     const buyBtn = document.getElementById('add_tx_type_buy_btn');
     const sellBtn = document.getElementById('add_tx_type_sell_btn');
-    const fundSelect = document.getElementById('portfolio_id');
+    const portfolioSelect = document.getElementById('portfolio_id');
     const symbolInput = document.getElementById('symbol');
     const quantityInput = document.getElementById('quantity');
     const maxRow = document.getElementById('add_sell_max_row');
     const maxBtn = document.getElementById('add_sell_max_btn');
 
-    if (!modalEl || !typeSelect || !fundSelect || !symbolInput || !quantityInput || !maxRow || !maxBtn || !buyBtn || !sellBtn) return;
+    if (!modalEl || !typeSelect || !portfolioSelect || !symbolInput || !quantityInput || !maxRow || !maxBtn || !buyBtn || !sellBtn) return;
 
     let lastHeldQty = null;
 
@@ -1406,10 +1373,10 @@ function editTransaction(id, fundId, type, symbol, price, quantity, fees, notes,
             return;
         }
 
-        const fundId = parseInt(fundSelect.value || '0', 10);
+        const portfolioId = parseInt(portfolioSelect.value || '0', 10);
         const symbol = (symbolInput.value || '').trim().toUpperCase();
 
-        if (!fundId || !symbol) {
+        if (!portfolioId || !symbol) {
             setState({ visible: true, enabled: false, heldQty: null });
             return;
         }
@@ -1417,7 +1384,7 @@ function editTransaction(id, fundId, type, symbol, price, quantity, fees, notes,
         setState({ visible: true, enabled: false, heldQty: null });
 
         try {
-            const url = `/api/holdings?portfolio_id=${encodeURIComponent(String(fundId))}&symbol=${encodeURIComponent(symbol)}`;
+            const url = `/api/holdings?portfolio_id=${encodeURIComponent(String(portfolioId))}&symbol=${encodeURIComponent(symbol)}`;
             const resp = await fetch(url, { headers: { 'Accept': 'application/json' } });
             if (!resp.ok) {
                 throw new Error(`HTTP ${resp.status}`);
@@ -1469,7 +1436,7 @@ function editTransaction(id, fundId, type, symbol, price, quantity, fees, notes,
         syncTypeButtons();
         refresh();
     });
-    fundSelect.addEventListener('change', refresh);
+    portfolioSelect.addEventListener('change', refresh);
     symbolInput.addEventListener('input', refresh);
 
     if (!typeSelect.value) typeSelect.value = 'Buy';
@@ -1524,10 +1491,10 @@ function editTransaction(id, fundId, type, symbol, price, quantity, fees, notes,
             ev.stopPropagation();
             if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
 
-            const fundId = parseInt(addBtn.getAttribute('data-portfolio-id') || '0', 10) || null;
-            const category = addBtn.getAttribute('data-portfolio') || '';
+            const portfolioId = parseInt(addBtn.getAttribute('data-portfolio-id') || '0', 10) || null;
+            const portfolioName = addBtn.getAttribute('data-portfolio') || '';
             const symbol = addBtn.getAttribute('data-symbol') || '';
-            openAddTransactionModal(fundId, category, symbol);
+            openAddTransactionModal(portfolioId, portfolioName, symbol);
             return;
         }
 
@@ -1537,11 +1504,11 @@ function editTransaction(id, fundId, type, symbol, price, quantity, fees, notes,
             ev.stopPropagation();
             if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
 
-            const fundId = parseInt(delBtn.getAttribute('data-portfolio-id') || '0', 10) || null;
-            const category = delBtn.getAttribute('data-portfolio') || '';
+            const portfolioId = parseInt(delBtn.getAttribute('data-portfolio-id') || '0', 10) || null;
+            const portfolioName = delBtn.getAttribute('data-portfolio') || '';
             const symbol = delBtn.getAttribute('data-symbol') || '';
             const txCount = parseInt(delBtn.getAttribute('data-tx-count') || '0', 10) || 0;
-            openDeleteSymbolModal(fundId, category, symbol, txCount);
+            openDeleteSymbolModal(portfolioId, portfolioName, symbol, txCount);
         }
 
         // Standalone dividend button — opens the dedicated Add Dividend modal
@@ -1551,9 +1518,9 @@ function editTransaction(id, fundId, type, symbol, price, quantity, fees, notes,
             ev.stopPropagation();
             if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
 
-            const fundId = parseInt(addDivBtn.getAttribute('data-portfolio-id') || '0', 10) || null;
+            const portfolioId = parseInt(addDivBtn.getAttribute('data-portfolio-id') || '0', 10) || null;
             const symbol = addDivBtn.getAttribute('data-symbol') || '';
-            openStandaloneDividendModal(fundId, symbol);
+            openStandaloneDividendModal(portfolioId, symbol);
         }
 
         // Edit dividend button
@@ -1586,8 +1553,8 @@ function editTransaction(id, fundId, type, symbol, price, quantity, fees, notes,
 // -----------------------------------------------------------------------
 // Standalone Add Dividend Modal (opened from the $ button on symbol rows)
 // -----------------------------------------------------------------------
-function openStandaloneDividendModal(fundId, symbol) {
-    const fundInput   = document.getElementById('add_div_portfolio_id');
+function openStandaloneDividendModal(portfolioId, symbol) {
+    const portfolioInput   = document.getElementById('add_div_portfolio_id');
     const symInput    = document.getElementById('add_div_symbol');
 
     const amountEl    = document.getElementById('add_div_amount');
@@ -1597,7 +1564,7 @@ function openStandaloneDividendModal(fundId, symbol) {
     const amountErr   = document.getElementById('add_div_amount_error');
     const submitBtn   = document.getElementById('add_div_submit_btn');
 
-    if (fundInput)  fundInput.value  = fundId ? String(fundId) : '';
+    if (portfolioInput)  portfolioInput.value  = portfolioId ? String(portfolioId) : '';
     if (symInput)   symInput.value   = (symbol || '').toUpperCase();
     if (amountEl)   { amountEl.value = ''; amountEl.classList.remove('is-invalid'); }
     if (amountErr)  { amountErr.textContent = ''; amountErr.style.display = 'none'; }

@@ -14,12 +14,19 @@ from portfolio_app.forms import (
 )
 from portfolio_app.calculators.portfolio_calculator import PortfolioCalculator
 from portfolio_app.utils.decimal_utils import ZERO
-from portfolio_app.utils import get_error_message, get_first_form_error, SuccessMessages, ErrorMessages, is_ajax_request, json_response
-from portfolio_app.utils.constants import safe_html_id
+from portfolio_app.utils import get_error_message, get_first_form_error, MESSAGES, is_ajax_request, json_response
 
 logger = logging.getLogger(__name__)
 
 portfolios_bp = Blueprint('portfolios', __name__)
+
+# Maps a PortfolioEvent type + action to its specific flash-message key.
+# 'Initial' (legacy backfill) and any unknown type fall back to the generic
+# TRANSACTION_* keys via .get(..., default) at the call site.
+_EVENT_MESSAGE_KEYS = {
+    'updated': {'Deposit': 'DEPOSIT_UPDATED', 'Withdrawal': 'WITHDRAWAL_UPDATED'},
+    'deleted': {'Deposit': 'DEPOSIT_DELETED', 'Withdrawal': 'WITHDRAWAL_DELETED'},
+}
 
 
 def _get_portfolios_page_context():
@@ -32,7 +39,7 @@ def _get_portfolios_page_context():
         events = svc.portfolio_event_repo.get_by_portfolio_id(portfolio.id)
 
         cash = PortfolioCalculator.get_available_cash_for_portfolio(portfolio.id)
-        tx_summary = PortfolioCalculator.get_category_transactions_summary(portfolio.id)
+        tx_summary = PortfolioCalculator.get_portfolio_transactions_summary(portfolio.id)
         cost_basis = tx_summary['cost_basis']
         book_value = cash + cost_basis
 
@@ -69,7 +76,7 @@ def portfolios_list():
     """Portfolios page."""
     ctx = _get_portfolios_page_context()
     return render_template(
-        'funds.html',
+        'portfolios.html',
         **ctx,
         form_errors={},
         form_values={},
@@ -93,7 +100,7 @@ def portfolios_add():
 
             ctx = _get_portfolios_page_context()
             return render_template(
-                'funds.html',
+                'portfolios.html',
                 **ctx,
                 form_errors={'portfolios_add': form.errors},
                 form_values={'portfolios_add': request.form},
@@ -104,9 +111,9 @@ def portfolios_add():
         svc.portfolio_service.create_portfolio(name=data['name'], user_id=current_user.id)
 
         if is_ajax_request():
-            return json_response(True, message=SuccessMessages.PORTFOLIO_CREATED)
+            return json_response(True, message=MESSAGES['PORTFOLIO_CREATED'])
 
-        flash(SuccessMessages.PORTFOLIO_CREATED, 'success')
+        flash(MESSAGES['PORTFOLIO_CREATED'], 'success')
         return redirect(url_for('portfolios.portfolios_list'))
 
     except ValueError as e:
@@ -115,7 +122,7 @@ def portfolios_add():
 
         ctx = _get_portfolios_page_context()
         return render_template(
-            'funds.html',
+            'portfolios.html',
             **ctx,
             form_errors={'portfolios_add': {'__all__': str(e)}},
             form_values={'portfolios_add': request.form},
@@ -127,13 +134,13 @@ def portfolios_add():
         db.session.rollback()
 
         if is_ajax_request():
-            return json_response(False, error=ErrorMessages.OPERATION_FAILED)
+            return json_response(False, error=MESSAGES['OPERATION_FAILED'])
 
         ctx = _get_portfolios_page_context()
         return render_template(
-            'funds.html',
+            'portfolios.html',
             **ctx,
-            form_errors={'portfolios_add': {'__all__': ErrorMessages.OPERATION_FAILED}},
+            form_errors={'portfolios_add': {'__all__': MESSAGES['OPERATION_FAILED']}},
             form_values={'portfolios_add': request.form},
             active_modal='newPortfolioModal',
         ), 400
@@ -146,7 +153,7 @@ def portfolios_delete(portfolio_id):
     try:
         svc = get_services()
         svc.portfolio_service.delete_portfolio(portfolio_id)
-        flash(SuccessMessages.PORTFOLIO_DELETED, 'success')
+        flash(MESSAGES['PORTFOLIO_DELETED'], 'success')
 
     except ValueError as e:
         flash(get_error_message(e), 'error')
@@ -154,7 +161,7 @@ def portfolios_delete(portfolio_id):
     except Exception:
         logger.exception('Failed to delete portfolio %s', portfolio_id)
         db.session.rollback()
-        flash(ErrorMessages.OPERATION_FAILED, 'error')
+        flash(MESSAGES['OPERATION_FAILED'], 'error')
 
     return redirect(url_for('portfolios.portfolios_list'))
 
@@ -173,7 +180,7 @@ def portfolios_deposit(portfolio_id):
 
             ctx = _get_portfolios_page_context()
             return render_template(
-                'funds.html',
+                'portfolios.html',
                 **ctx,
                 form_errors={'portfolios_deposit': form.errors},
                 form_values={'portfolios_deposit': request.form},
@@ -190,9 +197,9 @@ def portfolios_deposit(portfolio_id):
         )
 
         if is_ajax_request():
-            return json_response(True, message=SuccessMessages.DEPOSIT_COMPLETED)
+            return json_response(True, message=MESSAGES['DEPOSIT_COMPLETED'])
 
-        flash(SuccessMessages.DEPOSIT_COMPLETED, 'success')
+        flash(MESSAGES['DEPOSIT_COMPLETED'], 'success')
         return redirect(url_for('portfolios.portfolios_list'))
 
     except ValueError as e:
@@ -207,9 +214,9 @@ def portfolios_deposit(portfolio_id):
         db.session.rollback()
 
         if is_ajax_request():
-            return json_response(False, error=ErrorMessages.OPERATION_FAILED)
+            return json_response(False, error=MESSAGES['OPERATION_FAILED'])
 
-        flash(ErrorMessages.OPERATION_FAILED, 'error')
+        flash(MESSAGES['OPERATION_FAILED'], 'error')
         return redirect(url_for('portfolios.portfolios_list'))
 
 
@@ -227,7 +234,7 @@ def portfolios_withdraw(portfolio_id):
 
             ctx = _get_portfolios_page_context()
             return render_template(
-                'funds.html',
+                'portfolios.html',
                 **ctx,
                 form_errors={'portfolios_withdraw': form.errors},
                 form_values={'portfolios_withdraw': request.form},
@@ -244,9 +251,9 @@ def portfolios_withdraw(portfolio_id):
         )
 
         if is_ajax_request():
-            return json_response(True, message=SuccessMessages.WITHDRAWAL_COMPLETED)
+            return json_response(True, message=MESSAGES['WITHDRAWAL_COMPLETED'])
 
-        flash(SuccessMessages.WITHDRAWAL_COMPLETED, 'success')
+        flash(MESSAGES['WITHDRAWAL_COMPLETED'], 'success')
         return redirect(url_for('portfolios.portfolios_list'))
 
     except ValueError as e:
@@ -261,9 +268,9 @@ def portfolios_withdraw(portfolio_id):
         db.session.rollback()
 
         if is_ajax_request():
-            return json_response(False, error=ErrorMessages.OPERATION_FAILED)
+            return json_response(False, error=MESSAGES['OPERATION_FAILED'])
 
-        flash(ErrorMessages.OPERATION_FAILED, 'error')
+        flash(MESSAGES['OPERATION_FAILED'], 'error')
         return redirect(url_for('portfolios.portfolios_list'))
 
 
@@ -276,14 +283,14 @@ def portfolios_event_edit(event_id):
 
         event = svc.portfolio_event_repo.get_by_id(event_id)
         if not event:
-            flash(ErrorMessages.EVENT_NOT_FOUND, 'error')
+            flash(MESSAGES['CASH_EVENT_NOT_FOUND'], 'error')
             return redirect(url_for('portfolios.portfolios_list'))
 
         form = PortfolioEventEditForm(request.form, event_id, event.event_type)
         if not form.validate():
             ctx = _get_portfolios_page_context()
             return render_template(
-                'funds.html',
+                'portfolios.html',
                 **ctx,
                 form_errors={'portfolio_event_edit': form.errors},
                 form_values={'portfolio_event_edit': request.form},
@@ -293,7 +300,8 @@ def portfolios_event_edit(event_id):
 
         data = form.get_cleaned_data()
         amount = data['amount_delta']
-        if event.event_type == 'Withdrawal':
+        event_type = event.event_type
+        if event_type == 'Withdrawal':
             amount = -amount
         svc.portfolio_service.update_portfolio_event(
             event_id=data['event_id'],
@@ -302,7 +310,8 @@ def portfolios_event_edit(event_id):
             date=data.get('date')
         )
 
-        flash(SuccessMessages.ENTRY_UPDATED, 'success')
+        msg_key = _EVENT_MESSAGE_KEYS['updated'].get(event_type, 'TRANSACTION_UPDATED')
+        flash(MESSAGES[msg_key], 'success')
 
     except ValueError as e:
         flash(get_error_message(e), 'error')
@@ -310,7 +319,7 @@ def portfolios_event_edit(event_id):
     except Exception:
         logger.exception('Failed to edit event %s', event_id)
         db.session.rollback()
-        flash(ErrorMessages.OPERATION_FAILED, 'error')
+        flash(MESSAGES['OPERATION_FAILED'], 'error')
 
     return redirect(url_for('portfolios.portfolios_list'))
 
@@ -324,17 +333,19 @@ def portfolios_event_delete(event_id):
 
         event = svc.portfolio_event_repo.get_by_id(event_id)
         if not event:
-            flash(ErrorMessages.EVENT_NOT_FOUND, 'error')
+            flash(MESSAGES['CASH_EVENT_NOT_FOUND'], 'error')
             return redirect(url_for('portfolios.portfolios_list'))
 
-        form = PortfolioEventDeleteForm(request.form, event_id, event.event_type)
+        event_type = event.event_type
+        form = PortfolioEventDeleteForm(request.form, event_id, event_type)
         if not form.validate():
             flash(get_first_form_error(form.errors), 'error')
             return redirect(url_for('portfolios.portfolios_list'))
 
         svc.portfolio_service.delete_portfolio_event(event_id)
 
-        flash(SuccessMessages.ENTRY_DELETED, 'success')
+        msg_key = _EVENT_MESSAGE_KEYS['deleted'].get(event_type, 'TRANSACTION_DELETED')
+        flash(MESSAGES[msg_key], 'success')
 
     except ValueError as e:
         flash(get_error_message(e), 'error')
@@ -342,6 +353,6 @@ def portfolios_event_delete(event_id):
     except Exception:
         logger.exception('Failed to delete event %s', event_id)
         db.session.rollback()
-        flash(ErrorMessages.OPERATION_FAILED, 'error')
+        flash(MESSAGES['OPERATION_FAILED'], 'error')
 
     return redirect(url_for('portfolios.portfolios_list'))

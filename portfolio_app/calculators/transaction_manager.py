@@ -8,11 +8,11 @@ class TransactionManager:
     """Manager for transaction operations"""
 
     @staticmethod
-    def create_transaction(fund_id, transaction_type, price, quantity, fees, notes='', symbol=None, date=None):
+    def create_transaction(portfolio_id, transaction_type, price, quantity, fees, notes='', symbol=None, date=None):
         """Create a new transaction and update calculations"""
         symbol = PortfolioCalculator.normalize_symbol(symbol)
         transaction = Transaction(
-            portfolio_id=fund_id,
+            portfolio_id=portfolio_id,
             transaction_type=transaction_type,
             symbol=symbol,
             price=price,

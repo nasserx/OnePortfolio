@@ -2,7 +2,7 @@
 
 from typing import Optional, List
 from portfolio_app.repositories.base import BaseRepository
-from portfolio_app.models.fund import Portfolio
+from portfolio_app.models.portfolio import Portfolio
 
 
 class PortfolioRepository(BaseRepository[Portfolio]):
@@ -29,7 +29,3 @@ class PortfolioRepository(BaseRepository[Portfolio]):
 
     def get_existing_names(self) -> List[str]:
         return [p.name for p in self.get_all()]
-
-
-# Backward-compatible alias.
-FundRepository = PortfolioRepository

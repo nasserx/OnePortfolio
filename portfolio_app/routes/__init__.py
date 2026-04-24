@@ -6,7 +6,7 @@ from flask import Flask
 def register_blueprints(app: Flask) -> None:
     """Register all blueprints with the Flask app."""
     from portfolio_app.routes.dashboard import dashboard_bp
-    from portfolio_app.routes.funds import portfolios_bp
+    from portfolio_app.routes.portfolios import portfolios_bp
     from portfolio_app.routes.transactions import transactions_bp
     from portfolio_app.routes.charts import charts_bp
     from portfolio_app.routes.auth import auth_bp

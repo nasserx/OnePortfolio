@@ -2,7 +2,7 @@
 
 from decimal import Decimal, InvalidOperation
 from typing import Optional, Tuple
-from portfolio_app.utils.messages import ValidationMessages
+from portfolio_app.utils.messages import MESSAGES
 
 
 def parse_decimal_field(
@@ -19,11 +19,11 @@ def parse_decimal_field(
     """
     v = (value or '').strip()
     if v == '':
-        return (None, None) if allow_blank else (None, ValidationMessages.REQUIRED)
+        return (None, None) if allow_blank else (None, MESSAGES['FIELD_REQUIRED'])
     try:
         return Decimal(v), None
     except (InvalidOperation, ValueError, TypeError):
-        return None, ValidationMessages.INVALID_NUMBER
+        return None, MESSAGES['INVALID_NUMBER']
 
 
 def validate_positive_decimal(
@@ -44,26 +44,8 @@ def validate_positive_decimal(
         return None, None
     if allow_zero:
         if dec < 0:
-            return None, ValidationMessages.VALUE_NON_NEGATIVE
+            return None, MESSAGES['VALUE_NON_NEGATIVE']
         return dec, None
     if dec <= 0:
-        return None, ValidationMessages.VALUE_POSITIVE
+        return None, MESSAGES['VALUE_POSITIVE']
     return dec, None
-
-
-def get_field_error_message(field_name: str) -> str:
-    """Get field-specific positive-value error message.
-
-    Args:
-        field_name: Name of the field
-
-    Returns:
-        Field-specific error message
-    """
-    if field_name in ('price', 'edit_price'):
-        return ValidationMessages.PRICE_POSITIVE
-    if field_name in ('quantity', 'edit_quantity'):
-        return ValidationMessages.QUANTITY_POSITIVE
-    if field_name in ('amount', 'amount_delta', 'edit_amount', 'edit_event_amount'):
-        return ValidationMessages.AMOUNT_POSITIVE
-    return ValidationMessages.VALUE_POSITIVE

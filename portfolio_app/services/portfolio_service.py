@@ -58,7 +58,7 @@ class PortfolioService:
         portfolio = self._require_portfolio(portfolio_id)
         available_cash = PortfolioCalculator.get_available_cash_for_portfolio(portfolio_id)
         if amount_delta > available_cash:
-            raise ValueError(MESSAGES['INSUFFICIENT_FUNDS'])
+            raise ValueError(MESSAGES['INSUFFICIENT_AMOUNT'])
         portfolio.net_deposits = _to_decimal(portfolio.net_deposits) - amount_delta
         self._create_event(portfolio_id, EventType.WITHDRAWAL, -amount_delta, notes, date)
         self.portfolio_repo.commit()

@@ -1,21 +1,12 @@
 """User-facing messages for the application.
 
-All user-facing strings — flash messages, API errors, form validation,
-template prompts, and service-layer exceptions — MUST come from the
-``MESSAGES`` dictionary below. No hardcoded user-facing strings elsewhere.
-
-Dynamic messages use ``str.format`` placeholders; the key name signals the
-placeholder(s) required. For example, ``ADMIN_ACCESS_GRANTED_USERNAME``
-expects a ``{username}`` argument::
-
-    MESSAGES['ADMIN_ACCESS_GRANTED_USERNAME'].format(username=user.username)
+All user-facing strings MUST come from ``MESSAGES`` below — no hardcoded
+strings elsewhere. Dynamic messages use ``str.format`` placeholders.
 """
 
 
 MESSAGES = {
-    # ------------------------------------------------------------------
-    # Generic error / failure messages
-    # ------------------------------------------------------------------
+    # Generic errors
     'OPERATION_FAILED':            "Something went wrong. Please try again.",
     'INVALID_INPUT':               "Invalid input.",
     'INVALID_REQUEST':             "Invalid request. Please refresh the page and try again.",
@@ -24,75 +15,53 @@ MESSAGES = {
     'NOT_FOUND':                   "The requested resource was not found.",
     'INTERNAL_SERVER_ERROR':       "An unexpected error occurred.",
 
-    # ------------------------------------------------------------------
-    # Domain entity not-found errors
-    # ------------------------------------------------------------------
+    # Not-found errors
     'PORTFOLIO_NOT_FOUND':         "This portfolio no longer exists.",
     'TRANSACTION_NOT_FOUND':       "This transaction no longer exists.",
     'DIVIDEND_NOT_FOUND':          "This dividend transaction no longer exists.",
     'CASH_EVENT_NOT_FOUND':        "This transaction no longer exists.",
     'SYMBOL_NOT_FOUND':            "This tracked symbol no longer exists.",
 
-    # ------------------------------------------------------------------
-    # Domain validation errors (numeric / identifier input)
-    # ------------------------------------------------------------------
+    # Input validation
     'INVALID_PORTFOLIO_ID':        "Invalid portfolio ID.",
     'INVALID_SYMBOL':              "Please enter a valid symbol (e.g., AAPL, BTC).",
     'INVALID_QUANTITY':            "Please enter a valid quantity greater than zero.",
     'INVALID_PRICE':               "Please enter a valid price greater than zero.",
     'INVALID_AMOUNT':              "Please enter a valid amount greater than zero.",
-    'INVALID_DATE':                "Please use the date format YYYY-MM-DD.",
 
-    # ------------------------------------------------------------------
-    # Business rule violations
-    # ------------------------------------------------------------------
-    'INSUFFICIENT_FUNDS':          "Insufficient amount. Your available cash balance is too low for this withdrawal.",
+    # Business rules
+    'INSUFFICIENT_AMOUNT':         "Insufficient amount. Your available cash balance is too low for this withdrawal.",
     'INSUFFICIENT_QUANTITY':       "Insufficient quantity. You don't hold enough of this symbol to complete the sale.",
     'FEES_EXCEED_PROCEEDS':        "Fees cannot exceed the sale proceeds.",
     'PORTFOLIO_NAME_TAKEN':        "A portfolio with this name already exists.",
-    'SYMBOL_ALREADY_TRACKED_SYMBOL': "'{symbol}' is already being tracked in this portfolio.",
+    'SYMBOL_ALREADY_TRACKED':      "'{symbol}' is already being tracked in this portfolio.",
 
-    # ------------------------------------------------------------------
-    # Success — transactions
-    # ------------------------------------------------------------------
+    # Transactions
     'TRANSACTION_ADDED':           "Transaction added.",
     'TRANSACTION_UPDATED':         "Transaction updated.",
-    'TRANSACTION_DELETED':         "Transaction deleted.",
+    'TRANSACTION_REMOVED':         "Transaction removed.",
 
-    # ------------------------------------------------------------------
-    # Success — tracked symbols
-    # ------------------------------------------------------------------
-    'SYMBOL_ADDED':                "Symbol is now being tracked.",
-    'SYMBOL_DELETED':              "Symbol removed.",
+    # Tracked symbols
+    'SYMBOL_ADDED':                "'{symbol}' added to portfolio.",
+    'SYMBOL_REMOVED':              "Symbol removed.",
 
-    # ------------------------------------------------------------------
-    # # Success messages for portfolios and transaction operations
-    # ------------------------------------------------------------------
+    # Portfolios and cash events
+    # Edits/removals of deposits or withdrawals reuse TRANSACTION_UPDATED / TRANSACTION_REMOVED.
     'PORTFOLIO_CREATED':           "Portfolio created.",
-    'PORTFOLIO_DELETED':           "Portfolio removed.",
-    'DEPOSIT_COMPLETED':           "Deposit completed.",
-    'DEPOSIT_UPDATED':             "Deposit updated.",
-    'DEPOSIT_DELETED':             "Deposit deleted.",
-    'WITHDRAWAL_COMPLETED':        "Withdrawal completed.",
-    'WITHDRAWAL_UPDATED':          "Withdrawal updated.",
-    'WITHDRAWAL_DELETED':          "Withdrawal deleted.",
+    'PORTFOLIO_REMOVED':           "Portfolio removed.",
+    'DEPOSIT_SUCCESSFUL':          "Deposit successful.",
+    'WITHDRAWAL_SUCCESSFUL':       "Withdrawal successful.",
 
-    # ------------------------------------------------------------------
-    # Success — dividends
-    # ------------------------------------------------------------------
+    # Dividends
     'DIVIDEND_ADDED':              "Dividend income added.",
     'DIVIDEND_UPDATED':            "Dividend updated.",
-    'DIVIDEND_DELETED':            "Dividend removed.",
+    'DIVIDEND_REMOVED':            "Dividend removed.",
 
-    # ------------------------------------------------------------------
-    # Confirmation prompts (delete dialogs)
-    # ------------------------------------------------------------------
-    'CONFIRM_DELETE_TRANSACTION':  "Delete this transaction?",
-    'CONFIRM_DELETE_DIVIDEND':     "Delete this dividend transaction?",
+    # Remove confirmation prompts
+    'CONFIRM_REMOVE_TRANSACTION':  "Remove this transaction?",
+    'CONFIRM_REMOVE_DIVIDEND':     "Remove this dividend transaction?",
 
-    # ------------------------------------------------------------------
     # Form validation — generic
-    # ------------------------------------------------------------------
     'FIELD_REQUIRED':              "This field is required.",
     'INVALID_NUMBER':              "Please enter a valid number.",
     'VALUE_POSITIVE':              "Must be greater than zero.",
@@ -100,25 +69,19 @@ MESSAGES = {
     'INVALID_DATE_FORMAT':         "Invalid date. Please use YYYY-MM-DD format (e.g., 2025-04-18).",
     'NAME_TOO_LONG':               "Name must be 50 characters or less.",
 
-    # ------------------------------------------------------------------
     # Form validation — portfolio / symbol selectors
-    # ------------------------------------------------------------------
     'PORTFOLIO_SELECT_REQUIRED':   "Please select a portfolio.",
     'PORTFOLIO_SELECTION_INVALID': "Invalid portfolio selection.",
     'SYMBOL_REQUIRED':             "Please enter a symbol (e.g., AAPL, BTC).",
 
-    # ------------------------------------------------------------------
     # Form validation — username
-    # ------------------------------------------------------------------
     'USERNAME_REQUIRED':           "Username is required.",
     'USERNAME_TOO_SHORT':          "Username must be at least 3 characters.",
     'USERNAME_TOO_LONG':           "Username cannot exceed 80 characters.",
     'USERNAME_INVALID_CHARS':      "Username can only contain letters and underscores — no spaces or special characters.",
     'USERNAME_TAKEN':              "This username is already taken.",
 
-    # ------------------------------------------------------------------
     # Form validation — email
-    # ------------------------------------------------------------------
     'EMAIL_REQUIRED':              "Email address is required.",
     'EMAIL_INVALID':               "Please enter a valid email address.",
     'EMAIL_TOO_LONG':              "Email address is too long.",
@@ -126,9 +89,7 @@ MESSAGES = {
     'EMAIL_IN_USE':                "This email address is already linked to another account.",
     'EMAIL_ALREADY_EXISTS':        "An account with this email already exists.",
 
-    # ------------------------------------------------------------------
     # Form validation — passwords
-    # ------------------------------------------------------------------
     'PASSWORD_REQUIRED':           "Password is required.",
     'PASSWORD_TOO_SHORT':          "Password must be at least 8 characters long.",
     'PASSWORD_CONFIRM_REQUIRED':   "Please confirm your password.",
@@ -140,9 +101,7 @@ MESSAGES = {
     'NEW_PASSWORD_CONFIRM_REQUIRED': "Please confirm your new password.",
     'EMAIL_PASSWORD_CONFIRM_REQUIRED': "Please enter your current password to confirm this change.",
 
-    # ------------------------------------------------------------------
-    # Authentication — login, registration, verification
-    # ------------------------------------------------------------------
+    # Auth — login, registration, verification
     'INVALID_CREDENTIALS':         "Invalid username or password.",
     'ACCOUNT_UNVERIFIED':          "Your account hasn't been verified yet. Please check your email for the verification code.",
     'ACCOUNT_NOT_FOUND':           "No account was found for this email.",
@@ -164,20 +123,16 @@ MESSAGES = {
     'PASSWORD_RESET_LINK_INVALID': "This password reset link is invalid or has expired.",
     'PASSWORD_RESET_ACCOUNT_NOT_FOUND': "No account was found for this reset link.",
 
-    # ------------------------------------------------------------------
-    # Account self-service (settings, deletion, demo restrictions)
-    # ------------------------------------------------------------------
+    # Account self-service
     'DEMO_ACTION_DISABLED':        "This feature is disabled in demo mode.",
     'DELETION_CODE_SEND_FAILED':   "Failed to send the confirmation code. Please try again.",
     'DELETION_CONFIRMED':          "Your account has been permanently deleted.",
     'DELETION_INVALID_CODE':       "The code is incorrect or has expired. Please request a new one.",
     'DELETION_NO_EMAIL':           "No email address is linked to your account. Please contact an administrator for help.",
 
-    # ------------------------------------------------------------------
     # Admin panel
-    # ------------------------------------------------------------------
     'USER_NOT_FOUND':              "User not found.",
-    'ADMIN_USER_DELETED':          "User account removed.",
+    'ADMIN_USER_REMOVED':          "User account removed.",
     'ADMIN_ACCESS_DENIED':         "You don't have permission to access this page.",
     'ADMIN_EMAIL_SEND_FAILED':     "Failed to send the email. Please try again.",
     'ADMIN_CANNOT_CHANGE_OWN_STATUS': "You cannot change your own admin status.",
@@ -195,10 +150,7 @@ MESSAGES = {
 }
 
 
-# ---------------------------------------------------------------------------
 # Field-specific positive-value error lookup
-# ---------------------------------------------------------------------------
-
 _FIELD_POSITIVE_MESSAGE_KEYS = {
     'price':                  'INVALID_PRICE',
     'edit_price':             'INVALID_PRICE',
@@ -219,10 +171,6 @@ def get_field_positive_message(field_name: str) -> str:
     key = _FIELD_POSITIVE_MESSAGE_KEYS.get(field_name, 'VALUE_POSITIVE')
     return MESSAGES[key]
 
-
-# ---------------------------------------------------------------------------
-# Exception → user-friendly message mapping
-# ---------------------------------------------------------------------------
 
 def get_error_message(exception: Exception) -> str:
     """Convert a service-layer exception to a clear, user-facing message.

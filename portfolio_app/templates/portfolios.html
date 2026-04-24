@@ -114,7 +114,7 @@
                                         class="btn btn-outline-danger btn-icon js-delete-portfolio-btn"
                                         data-portfolio-id="{{ item.portfolio.id }}"
                                         data-name="{{ item.portfolio.name|e }}"
-                                        title="Delete Portfolio"
+                                        title="Remove Portfolio"
                                         data-bs-toggle="tooltip" data-bs-placement="top">
                                     <i class="bi bi-trash"></i>
                                 </button>
@@ -174,7 +174,7 @@
                                                     class="btn btn-outline-danger btn-icon btn-sm js-delete-portfolio-event-btn"
                                                     data-event-id="{{ event.id }}"
                                                     data-event-type="{{ event.event_type }}"
-                                                    title="Delete"
+                                                    title="Remove"
                                                     data-bs-toggle="tooltip" data-bs-placement="top">
                                                 <i class="bi bi-trash"></i>
                                             </button>
@@ -356,7 +356,7 @@
     </div>
 </div>
 
-<!-- ── Delete Portfolio Modal ─────────────────────────────────────── -->
+<!-- ── Remove Portfolio Modal ─────────────────────────────────────── -->
 <div class="modal fade" id="deletePortfolioModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -365,21 +365,21 @@
                 <div class="modal-header">
                     <h5 class="modal-title d-flex align-items-center gap-2">
                         <i class="bi bi-trash text-danger" style="font-size:1rem;"></i>
-                        Confirm Delete
+                        Confirm Remove
                     </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <p>Delete portfolio <strong id="delete_portfolio_name"></strong>?</p>
+                    <p>Remove portfolio <strong id="delete_portfolio_name"></strong>?</p>
                     <div class="alert alert-warning mb-0">
                         <i class="bi bi-exclamation-triangle me-1"></i>
-                        This will also delete all transactions and history for this portfolio.
+                        This will also remove all transactions and history for this portfolio.
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-danger">
-                        <i class="bi bi-trash me-1"></i>Delete
+                        <i class="bi bi-trash me-1"></i>Remove
                     </button>
                 </div>
             </form>
@@ -438,7 +438,7 @@
     </div>
 </div>
 
-<!-- ── Delete Portfolio Event Modal ──────────────────────────────── -->
+<!-- ── Remove Portfolio Event Modal ──────────────────────────────── -->
 <div class="modal fade" id="deletePortfolioEventModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -447,12 +447,12 @@
                 <div class="modal-header">
                     <h5 class="modal-title d-flex align-items-center gap-2">
                         <i class="bi bi-trash text-danger" style="font-size:1rem;"></i>
-                        Confirm Delete
+                        Confirm Remove
                     </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <p>Delete this <strong id="delete_event_type_name"></strong> transaction?</p>
+                    <p>Remove this <strong id="delete_event_type_name"></strong> transaction?</p>
                     <div class="alert alert-warning mb-0">
                         <i class="bi bi-exclamation-triangle me-1"></i>
                         This will reverse the effect on the portfolio balance.
@@ -461,7 +461,7 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-danger">
-                        <i class="bi bi-trash me-1"></i>Delete
+                        <i class="bi bi-trash me-1"></i>Remove
                     </button>
                 </div>
             </form>

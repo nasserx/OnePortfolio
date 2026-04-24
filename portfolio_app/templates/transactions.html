@@ -176,8 +176,8 @@
                                         data-portfolio="{{ item.portfolio.name|e }}"
                                         data-symbol="{{ item.symbol|e }}"
                                         data-tx-count="{{ item.summary.transaction_count or 0 }}"
-                                        title="Delete Symbol"
-                                        aria-label="Delete Symbol"
+                                        title="Remove Symbol"
+                                        aria-label="Remove Symbol"
                                         data-bs-toggle="tooltip"
                                         data-bs-placement="top">
                                     <i class="bi bi-trash"></i>
@@ -241,8 +241,8 @@
                                             </button>
                                             <button type="button" class="btn btn-outline-danger btn-icon btn-sm js-delete-transaction-btn"
                                                     data-tx-id="{{ transaction.id }}"
-                                                    title="Delete"
-                                                    aria-label="Delete"
+                                                    title="Remove"
+                                                    aria-label="Remove"
                                                     data-bs-toggle="tooltip"
                                                     data-bs-placement="top">
                                                 <i class="bi bi-trash"></i>
@@ -275,7 +275,7 @@
                                             <button type="button"
                                                     class="btn btn-outline-danger btn-icon btn-sm js-delete-dividend-btn"
                                                     data-div-id="{{ div.id }}"
-                                                    title="Delete" aria-label="Delete"
+                                                    title="Remove" aria-label="Remove"
                                                     data-bs-toggle="tooltip" data-bs-placement="top">
                                                 <i class="bi bi-trash"></i>
                                             </button>
@@ -603,7 +603,7 @@
     </div>
 </div>
 
-<!-- Delete Transaction Modal -->
+<!-- Remove Transaction Modal -->
 <div class="modal fade" id="deleteTransactionModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -612,12 +612,12 @@
                 <div class="modal-header">
                     <h5 class="modal-title d-flex align-items-center gap-2">
                         <i class="bi bi-trash text-danger" style="font-size:1rem;"></i>
-                        Confirm Delete
+                        Confirm Remove
                     </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <p>{{ MESSAGES['CONFIRM_DELETE_TRANSACTION'] }}</p>
+                    <p>{{ MESSAGES['CONFIRM_REMOVE_TRANSACTION'] }}</p>
                     <div class="alert alert-warning">
                         <i class="bi bi-exclamation-triangle"></i>
                         This will recalculate average costs for this symbol.
@@ -627,7 +627,7 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-danger">
-                        <i class="bi bi-trash me-1"></i>Delete
+                        <i class="bi bi-trash me-1"></i>Remove
                     </button>
                 </div>
             </form>
@@ -635,7 +635,7 @@
     </div>
 </div>
 
-<!-- Delete Symbol Modal -->
+<!-- Remove Symbol Modal -->
 <div class="modal fade" id="deleteSymbolModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -646,12 +646,12 @@
                 <div class="modal-header">
                     <h5 class="modal-title d-flex align-items-center gap-2">
                         <i class="bi bi-trash text-danger" style="font-size:1rem;"></i>
-                        Confirm Delete
+                        Confirm Remove
                     </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <p class="mb-2">Delete <strong id="delete_symbol_name"></strong>?</p>
+                    <p class="mb-2">Remove <strong id="delete_symbol_name"></strong>?</p>
                     <div id="delete_symbol_warning" class="alert alert-warning mb-2 d-none">
                         <i class="bi bi-exclamation-triangle-fill me-1"></i>
                         <span id="delete_symbol_warning_text"></span>
@@ -661,7 +661,7 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-danger">
-                        <i class="bi bi-trash me-1"></i>Delete
+                        <i class="bi bi-trash me-1"></i>Remove
                     </button>
                 </div>
             </form>
@@ -754,7 +754,7 @@
     </div>
 </div>
 
-<!-- Delete Dividend Modal -->
+<!-- Remove Dividend Modal -->
 <div class="modal fade" id="deleteDividendModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -763,18 +763,18 @@
                 <div class="modal-header">
                     <h5 class="modal-title d-flex align-items-center gap-2">
                         <i class="bi bi-trash text-danger" style="font-size:1rem;"></i>
-                        Confirm Delete
+                        Confirm Remove
                     </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <p>{{ MESSAGES['CONFIRM_DELETE_DIVIDEND'] }}</p>
+                    <p>{{ MESSAGES['CONFIRM_REMOVE_DIVIDEND'] }}</p>
                     <div id="delete_dividend_error" class="alert alert-danger d-none"></div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-danger">
-                        <i class="bi bi-trash me-1"></i>Delete
+                        <i class="bi bi-trash me-1"></i>Remove
                     </button>
                 </div>
             </form>
@@ -1241,7 +1241,7 @@ function editTransaction(id, portfolioId, type, symbol, price, quantity, fees, n
             try {
                 var data = JSON.parse(xhr.responseText);
                 if (data.success) {
-                    sessionStorage.setItem('flashMessage', data.message || 'Transaction deleted');
+                    sessionStorage.setItem('flashMessage', data.message || 'Transaction removed');
                     sessionStorage.setItem('flashType', 'success');
                     var modal = bootstrap.Modal.getInstance(modalEl);
                     if (modal) modal.hide();
@@ -1302,7 +1302,7 @@ function editTransaction(id, portfolioId, type, symbol, price, quantity, fees, n
             try {
                 var data = JSON.parse(xhr.responseText);
                 if (data.success) {
-                    sessionStorage.setItem('flashMessage', data.message || 'Symbol deleted');
+                    sessionStorage.setItem('flashMessage', data.message || 'Symbol removed');
                     sessionStorage.setItem('flashType', 'success');
                     var modal = bootstrap.Modal.getInstance(modalEl);
                     if (modal) modal.hide();
@@ -1332,7 +1332,7 @@ function editTransaction(id, portfolioId, type, symbol, price, quantity, fees, n
         if (symbolName) symbolName.textContent = (symbol || '').toUpperCase();
 
         if (txCount > 0 && warningDiv && warningText) {
-            warningText.textContent = 'This will also permanently delete ' + txCount +
+            warningText.textContent = 'This will also permanently remove ' + txCount +
                 ' transaction' + (txCount !== 1 ? 's' : '') + ' for this symbol.';
             warningDiv.classList.remove('d-none');
         } else if (warningDiv) {
@@ -1591,7 +1591,7 @@ function openStandaloneDividendModal(portfolioId, symbol) {
         const n   = parseFloat(val);
         if (!val || !isFinite(n) || n <= 0) {
             if (amountEl)  amountEl.classList.add('is-invalid');
-            if (amountErr) { amountErr.textContent = 'Amount must be greater than 0.'; amountErr.style.display = 'block'; }
+            if (amountErr) { amountErr.textContent = 'Must be more than 0.'; amountErr.style.display = 'block'; }
             return false;
         }
         if (amountEl)  amountEl.classList.remove('is-invalid');
@@ -1695,7 +1695,7 @@ function openEditDividendModal(id, amount, dateShort, notes) {
         var n   = parseFloat(val);
         if (!val || !isFinite(n) || n <= 0) {
             if (amountEl)  amountEl.classList.add('is-invalid');
-            if (amountErr) { amountErr.textContent = 'Amount must be greater than 0.'; amountErr.style.display = 'block'; }
+            if (amountErr) { amountErr.textContent = 'Must be more than 0.'; amountErr.style.display = 'block'; }
             return false;
         }
         if (amountEl)  amountEl.classList.remove('is-invalid');
@@ -1776,7 +1776,7 @@ function openEditDividendModal(id, amount, dateShort, notes) {
             try {
                 var data = JSON.parse(xhr.responseText);
                 if (data.success) {
-                    sessionStorage.setItem('flashMessage', data.message || 'Dividend deleted');
+                    sessionStorage.setItem('flashMessage', data.message || 'Dividend removed');
                     sessionStorage.setItem('flashType', 'success');
                     var modal = bootstrap.Modal.getInstance(modalEl);
                     if (modal) modal.hide();

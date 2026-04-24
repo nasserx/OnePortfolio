@@ -1157,6 +1157,25 @@ textarea:-webkit-autofill, select:-webkit-autofill {
     position: absolute; right: 0.875rem; top: 50%; transform: translateY(-50%);
 }
 
+/* Compact font sizing for action modals — match inner-table small text. */
+#depositFundsModal .form-label,
+#withdrawFundsModal .form-label,
+#addTransactionModal .form-label,
+#editTransactionModal .form-label,
+#editPortfolioEventModal .form-label,
+#addDividendModal .form-label,
+#editDividendModal .form-label { font-size: 0.75rem; margin-bottom: 0.25rem; }
+
+#depositFundsModal .form-control, #depositFundsModal .form-select,
+#withdrawFundsModal .form-control, #withdrawFundsModal .form-select,
+#addTransactionModal .form-control, #addTransactionModal .form-select,
+#editTransactionModal .form-control, #editTransactionModal .form-select,
+#editPortfolioEventModal .form-control, #editPortfolioEventModal .form-select,
+#addDividendModal .form-control, #addDividendModal .form-select,
+#editDividendModal .form-control, #editDividendModal .form-select {
+    font-size: 0.8125rem; padding: 0.375rem 0.625rem;
+}
+
 /* ============================================================ */
 /* Utilities                                                    */
 /* ============================================================ */

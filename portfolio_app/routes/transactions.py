@@ -270,8 +270,8 @@ def transaction_delete(transaction_id):
         svc.transaction_service.delete_transaction(transaction_id)
 
         if is_ajax_request():
-            return json_response(True, message=MESSAGES['TRANSACTION_DELETED'])
-        flash(MESSAGES['TRANSACTION_DELETED'], 'success')
+            return json_response(True, message=MESSAGES['TRANSACTION_REMOVED'])
+        flash(MESSAGES['TRANSACTION_REMOVED'], 'success')
 
     except ValueError as e:
         if is_ajax_request():
@@ -399,8 +399,8 @@ def dividend_delete(dividend_id):
         svc.transaction_service.delete_dividend(dividend_id)
 
         if is_ajax_request():
-            return json_response(True, message=MESSAGES['DIVIDEND_DELETED'])
-        flash(MESSAGES['DIVIDEND_DELETED'], 'success')
+            return json_response(True, message=MESSAGES['DIVIDEND_REMOVED'])
+        flash(MESSAGES['DIVIDEND_REMOVED'], 'success')
 
     except ValueError as e:
         if is_ajax_request():
@@ -442,7 +442,7 @@ def symbol_add():
             symbol=data['symbol']
         )
 
-        flash(MESSAGES['SYMBOL_ADDED'], 'success')
+        flash(MESSAGES['SYMBOL_ADDED'].format(symbol=data['symbol']), 'success')
 
     except ValueError as e:
         flash(get_error_message(e), 'error')
@@ -476,8 +476,8 @@ def symbol_delete():
         )
 
         if is_ajax_request():
-            return json_response(True, message=MESSAGES['SYMBOL_DELETED'])
-        flash(MESSAGES['SYMBOL_DELETED'], 'success')
+            return json_response(True, message=MESSAGES['SYMBOL_REMOVED'])
+        flash(MESSAGES['SYMBOL_REMOVED'], 'success')
 
     except ValueError as e:
         if is_ajax_request():

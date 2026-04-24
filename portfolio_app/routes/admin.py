@@ -97,7 +97,7 @@ def delete_user(user_id):
     svc = get_services()
     try:
         svc.auth_service.delete_user(user_id, current_user)
-        flash(MESSAGES['ADMIN_USER_DELETED'], 'success')
+        flash(MESSAGES['ADMIN_USER_REMOVED'], 'success')
     except ValueError as e:
         flash(str(e), 'error')
     except Exception:

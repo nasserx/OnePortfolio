@@ -151,7 +151,7 @@ class TransactionService:
 
         existing = self.symbol_repo.get_by_portfolio_and_ticker(portfolio_id, symbol)
         if existing:
-            raise ValueError(MESSAGES['SYMBOL_ALREADY_TRACKED_SYMBOL'].format(symbol=symbol))
+            raise ValueError(MESSAGES['SYMBOL_ALREADY_TRACKED'].format(symbol=symbol))
 
         tracked = Symbol(portfolio_id=portfolio_id, symbol=symbol)
         self.symbol_repo.add(tracked)

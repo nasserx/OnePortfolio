@@ -20,14 +20,6 @@ logger = logging.getLogger(__name__)
 
 portfolios_bp = Blueprint('portfolios', __name__)
 
-# Maps a PortfolioEvent type + action to its specific flash-message key.
-# 'Initial' (legacy backfill) and any unknown type fall back to the generic
-# TRANSACTION_* keys via .get(..., default) at the call site.
-_EVENT_MESSAGE_KEYS = {
-    'updated': {'Deposit': 'DEPOSIT_UPDATED', 'Withdrawal': 'WITHDRAWAL_UPDATED'},
-    'deleted': {'Deposit': 'DEPOSIT_DELETED', 'Withdrawal': 'WITHDRAWAL_DELETED'},
-}
-
 
 def _get_portfolios_page_context():
     """Build context data for the portfolios page."""
@@ -153,7 +145,7 @@ def portfolios_delete(portfolio_id):
     try:
         svc = get_services()
         svc.portfolio_service.delete_portfolio(portfolio_id)
-        flash(MESSAGES['PORTFOLIO_DELETED'], 'success')
+        flash(MESSAGES['PORTFOLIO_REMOVED'], 'success')
 
     except ValueError as e:
         flash(get_error_message(e), 'error')
@@ -197,9 +189,9 @@ def portfolios_deposit(portfolio_id):
         )
 
         if is_ajax_request():
-            return json_response(True, message=MESSAGES['DEPOSIT_COMPLETED'])
+            return json_response(True, message=MESSAGES['DEPOSIT_SUCCESSFUL'])
 
-        flash(MESSAGES['DEPOSIT_COMPLETED'], 'success')
+        flash(MESSAGES['DEPOSIT_SUCCESSFUL'], 'success')
         return redirect(url_for('portfolios.portfolios_list'))
 
     except ValueError as e:
@@ -251,9 +243,9 @@ def portfolios_withdraw(portfolio_id):
         )
 
         if is_ajax_request():
-            return json_response(True, message=MESSAGES['WITHDRAWAL_COMPLETED'])
+            return json_response(True, message=MESSAGES['WITHDRAWAL_SUCCESSFUL'])
 
-        flash(MESSAGES['WITHDRAWAL_COMPLETED'], 'success')
+        flash(MESSAGES['WITHDRAWAL_SUCCESSFUL'], 'success')
         return redirect(url_for('portfolios.portfolios_list'))
 
     except ValueError as e:
@@ -310,8 +302,7 @@ def portfolios_event_edit(event_id):
             date=data.get('date')
         )
 
-        msg_key = _EVENT_MESSAGE_KEYS['updated'].get(event_type, 'TRANSACTION_UPDATED')
-        flash(MESSAGES[msg_key], 'success')
+        flash(MESSAGES['TRANSACTION_UPDATED'], 'success')
 
     except ValueError as e:
         flash(get_error_message(e), 'error')
@@ -344,8 +335,7 @@ def portfolios_event_delete(event_id):
 
         svc.portfolio_service.delete_portfolio_event(event_id)
 
-        msg_key = _EVENT_MESSAGE_KEYS['deleted'].get(event_type, 'TRANSACTION_DELETED')
-        flash(MESSAGES[msg_key], 'success')
+        flash(MESSAGES['TRANSACTION_REMOVED'], 'success')
 
     except ValueError as e:
         flash(get_error_message(e), 'error')

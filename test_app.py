@@ -13,6 +13,7 @@ Tests cover:
 
 from portfolio_app import create_app, db
 from portfolio_app.models import Portfolio, Transaction, PortfolioEvent
+from portfolio_app.models.user import User
 from portfolio_app.calculators import PortfolioCalculator
 from portfolio_app.services.factory import Services
 from datetime import datetime
@@ -21,6 +22,19 @@ from config import Config
 from pathlib import Path
 
 ZERO = Decimal('0')
+
+
+def _seed_user(username: str = 'tester') -> int:
+    """Insert a verified test user and return its id.
+
+    Required because portfolio.user_id is NOT NULL — every test needs an
+    owner before it can create a portfolio.
+    """
+    user = User(username=username, email=f'{username}@example.com', is_verified=True)
+    user.set_password('test-password')
+    db.session.add(user)
+    db.session.commit()
+    return user.id
 
 
 class TestConfig(Config):
@@ -58,10 +72,11 @@ def test_transaction_calculations(app):
         db.drop_all()
         db.create_all()
 
-        svc = Services()
+        uid = _seed_user()
+        svc = Services(user_id=uid)
 
         # --- Commodities: XAU (2 buys, no sell) ---
-        comm = svc.portfolio_service.create_portfolio('Commodities')
+        comm = svc.portfolio_service.create_portfolio('Commodities', user_id=uid)
         svc.portfolio_service.deposit_funds(comm.id, _dec(25000))
         t1 = Transaction(portfolio_id=comm.id, transaction_type='Buy',
                          date=datetime(2026, 1, 10), symbol='XAU',
@@ -73,7 +88,7 @@ def test_transaction_calculations(app):
         t2.calculate_net_amount()
 
         # --- Stocks: AAPL (2 buys) + MSFT (1 buy) ---
-        stocks = svc.portfolio_service.create_portfolio('Stocks')
+        stocks = svc.portfolio_service.create_portfolio('Stocks', user_id=uid)
         svc.portfolio_service.deposit_funds(stocks.id, _dec(40000))
         t3 = Transaction(portfolio_id=stocks.id, transaction_type='Buy',
                          date=datetime(2026, 1, 8), symbol='AAPL',
@@ -89,7 +104,7 @@ def test_transaction_calculations(app):
         t5.calculate_net_amount()
 
         # --- ETFs: ETHA (buy, partial sell, buy again) ---
-        etfs = svc.portfolio_service.create_portfolio('ETFs')
+        etfs = svc.portfolio_service.create_portfolio('ETFs', user_id=uid)
         svc.portfolio_service.deposit_funds(etfs.id, _dec(200))
         e1 = Transaction(portfolio_id=etfs.id, transaction_type='Buy',
                          date=datetime(2026, 1, 1), symbol='ETHA',
@@ -153,7 +168,8 @@ def test_fund_events(app):
         db.drop_all()
         db.create_all()
 
-        svc = Services()
+        uid = _seed_user()
+        svc = Services(user_id=uid)
 
         print("\n" + "=" * 60)
         print("TEST 2 – FUND EVENTS (Total Funds = deposits only)")
@@ -161,7 +177,7 @@ def test_fund_events(app):
 
         # ── Scenario A: deposits only, no withdrawals ──
         #   Initial=10,000  Deposit=5,000  → Total Funds=15,000
-        fund_a = svc.portfolio_service.create_portfolio('Stocks')
+        fund_a = svc.portfolio_service.create_portfolio('Stocks', user_id=uid)
         svc.portfolio_service.deposit_funds(fund_a.id, _dec(10_000))
         svc.portfolio_service.deposit_funds(fund_a.id, _dec(5_000))
 
@@ -179,7 +195,7 @@ def test_fund_events(app):
         #   Total Funds = 10,000+1,000 = 11,000
         #   fund.net_deposits = 10,000+1,000-4,999-5,999 = 2
         #   Cash = fund.net_deposits = 2 (no buys/sells)
-        fund_b = svc.portfolio_service.create_portfolio('ETFs')
+        fund_b = svc.portfolio_service.create_portfolio('ETFs', user_id=uid)
         svc.portfolio_service.deposit_funds(fund_b.id, _dec(10_000))
         svc.portfolio_service.deposit_funds(fund_b.id, _dec(1_000))
         svc.portfolio_service.withdraw_funds(fund_b.id, _dec(4_999))
@@ -205,7 +221,7 @@ def test_fund_events(app):
         #   Total Funds = 10,000 + 1,000 = 11,000
         #   Total Value = cash + invested = 0 + 2,500.50 = 2,500.50
         #   ROI base = 11,000  →  ROI = 2,498.50 / 11,000 = ~22.71%
-        fund_c = svc.portfolio_service.create_portfolio('Crypto')
+        fund_c = svc.portfolio_service.create_portfolio('Crypto', user_id=uid)
         svc.portfolio_service.deposit_funds(fund_c.id, _dec(10_000))
         svc.portfolio_service.withdraw_funds(fund_c.id, _dec(4_999))
         svc.portfolio_service.deposit_funds(fund_c.id, _dec(1_000))
@@ -240,7 +256,7 @@ def test_fund_events(app):
         # ── Scenario D: legacy fund with no FundEvents (fallback to fund.net_deposits) ──
         #   Simulates old database where fund.net_deposits=8,000 but no events exist.
         #   get_total_deposits_for_portfolio() must return 8,000 (not 0).
-        legacy_fund = Portfolio(name='Legacy', net_deposits=_dec(8_000))
+        legacy_fund = Portfolio(name='Legacy', net_deposits=_dec(8_000), user_id=uid)
         db.session.add(legacy_fund)
         db.session.commit()
 
@@ -267,11 +283,12 @@ def test_category_summary(app):
         db.drop_all()
         db.create_all()
 
-        svc = Services()
+        uid = _seed_user()
+        svc = Services(user_id=uid)
 
         # Fund: Initial=10,000  Withdraw=4,999  Deposit=1,000  Withdraw=5,999
         # Buy 5000 AAPL @ $1 fees=1 | Sell 2500 AAPL @ $2 fees=1
-        fund = svc.portfolio_service.create_portfolio('Stocks')
+        fund = svc.portfolio_service.create_portfolio('Stocks', user_id=uid)
         svc.portfolio_service.deposit_funds(fund.id, _dec(10_000))
         svc.portfolio_service.withdraw_funds(fund.id, _dec(4_999))
         svc.portfolio_service.deposit_funds(fund.id, _dec(1_000))
@@ -290,7 +307,7 @@ def test_category_summary(app):
         PortfolioCalculator.recalculate_all_averages_for_symbol(fund.id, 'AAPL')
         db.session.commit()
 
-        summary, portfolio_value = PortfolioCalculator.get_portfolio_summary()
+        summary, portfolio_value = PortfolioCalculator.get_portfolio_summary(user_id=uid)
         assert len(summary) == 1
         cat = summary[0]
 
@@ -324,19 +341,20 @@ def test_dashboard_totals(app):
         db.drop_all()
         db.create_all()
 
-        svc = Services()
+        uid = _seed_user()
+        svc = Services(user_id=uid)
 
         # Fund A: Initial=20,000  Withdraw=5,000 → total_funds=20,000  fund.net_deposits=15,000
-        fa = svc.portfolio_service.create_portfolio('Stocks')
+        fa = svc.portfolio_service.create_portfolio('Stocks', user_id=uid)
         svc.portfolio_service.deposit_funds(fa.id, _dec(20_000))
         svc.portfolio_service.withdraw_funds(fa.id, _dec(5_000))
 
         # Fund B: Initial=10,000  Deposit=2,000 → total_funds=12,000  fund.net_deposits=12,000
-        fb = svc.portfolio_service.create_portfolio('ETFs')
+        fb = svc.portfolio_service.create_portfolio('ETFs', user_id=uid)
         svc.portfolio_service.deposit_funds(fb.id, _dec(10_000))
         svc.portfolio_service.deposit_funds(fb.id, _dec(2_000))
 
-        totals = PortfolioCalculator.get_portfolio_dashboard_totals()
+        totals = PortfolioCalculator.get_portfolio_dashboard_totals(user_id=uid)
 
         print("\n" + "=" * 60)
         print("TEST 4 – PORTFOLIO DASHBOARD TOTALS")

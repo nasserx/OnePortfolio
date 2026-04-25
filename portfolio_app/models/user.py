@@ -28,8 +28,15 @@ class User(UserMixin, db.Model):
     deletion_code = db.Column(db.String(6), nullable=True)
     deletion_code_expires_at = db.Column(db.DateTime, nullable=True)
 
-    # Relationship: one user owns many portfolios
-    portfolios = db.relationship('Portfolio', backref='owner', lazy='dynamic')
+    # Relationship: one user owns many portfolios. ORM-level cascade ensures
+    # that deleting a user cleans up portfolios (and through their own
+    # cascades, transactions / events / dividends / symbols).
+    portfolios = db.relationship(
+        'Portfolio',
+        backref='owner',
+        lazy='dynamic',
+        cascade='all, delete-orphan',
+    )
 
     def set_password(self, password: str) -> None:
         self.password_hash = generate_password_hash(password)

@@ -25,16 +25,6 @@ class Transaction(db.Model):
     date = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     notes = db.Column(db.Text, nullable=True)
 
-    # One sell → one ClosedTrade snapshot (None for Buy transactions).
-    # passive_deletes=True lets the DB CASCADE handle deletion without a pre-load SELECT.
-    closed_trade = db.relationship(
-        'ClosedTrade',
-        backref='transaction',
-        uselist=False,
-        cascade='all, delete-orphan',
-        passive_deletes=True,
-    )
-
     @property
     def date_short(self):
         if not self.date:

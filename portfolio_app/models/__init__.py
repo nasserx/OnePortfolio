@@ -5,7 +5,6 @@ from portfolio_app.models.transaction import Transaction
 from portfolio_app.models.symbol import Symbol
 from portfolio_app.models.portfolio_event import PortfolioEvent
 from portfolio_app.models.dividend import Dividend
-from portfolio_app.models.closed_trade import ClosedTrade
 from portfolio_app.models.user import User
 
 __all__ = [
@@ -14,6 +13,5 @@ __all__ = [
     'Symbol',
     'PortfolioEvent',
     'Dividend',
-    'ClosedTrade',
     'User',
 ]

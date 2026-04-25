@@ -11,7 +11,15 @@ class Portfolio(db.Model):
     __tablename__ = 'portfolio'
 
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True, index=True)
+    # Every portfolio is owned by exactly one user. Pre-existing rows with
+    # NULL user_id are purged in migration step 22; new rows are required to
+    # carry an owner so cross-user queries cannot accidentally surface them.
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey('user.id', ondelete='CASCADE'),
+        nullable=False,
+        index=True,
+    )
     name = db.Column(db.String(50), nullable=False)
     net_deposits = db.Column(Numeric(15, 2), nullable=False, default=0)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))

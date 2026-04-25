@@ -6,6 +6,11 @@ from portfolio_app import db
 from portfolio_app.models import Portfolio, Transaction, PortfolioEvent, Dividend
 from portfolio_app.utils.decimal_utils import ZERO, to_decimal as _to_decimal, safe_divide as _safe_divide
 
+# Realized P&L is computed on demand from the transactions table. There is
+# intentionally no snapshot table — a single source of truth eliminates the
+# class of bugs where a stored snapshot drifts from the underlying trades
+# (e.g., orphan rows surviving a deletion under FK-OFF SQLite).
+
 
 def _roi_display(pnl: Decimal, base: Decimal) -> tuple:
     """Compute ROI percentage and display string.
@@ -210,22 +215,31 @@ class PortfolioCalculator:
 
     @staticmethod
     def get_realized_performance_for_portfolio(portfolio_id):
-        """Return realized P&L (including dividends), cost basis, and proceeds for a portfolio."""
-        from portfolio_app.models.closed_trade import ClosedTrade
+        """Return realized P&L (including dividends), cost basis, and proceeds for a portfolio.
 
-        row = (
-            db.session.query(
-                func.sum(ClosedTrade.realized_pnl),
-                func.sum(ClosedTrade.cost_basis),
-                func.sum(ClosedTrade.gross_proceeds),
-            )
-            .filter(ClosedTrade.portfolio_id == portfolio_id)
-            .one()
+        Computed by walking the transactions table per symbol with the
+        average-cost method — no snapshot table involved, so deleting a
+        sell removes its contribution immediately.
+        """
+        symbols = (
+            Transaction.query.with_entities(Transaction.symbol)
+            .filter_by(portfolio_id=portfolio_id)
+            .distinct()
+            .all()
         )
 
-        realized_pnl        = _to_decimal(row[0]) if row[0] is not None else ZERO
-        realized_cost_basis = _to_decimal(row[1]) if row[1] is not None else ZERO
-        realized_proceeds   = _to_decimal(row[2]) if row[2] is not None else ZERO
+        realized_pnl        = ZERO
+        realized_cost_basis = ZERO
+        realized_proceeds   = ZERO
+
+        for (sym,) in symbols:
+            sym_norm = PortfolioCalculator.normalize_symbol(sym)
+            if not sym_norm:
+                continue
+            s = PortfolioCalculator.get_symbol_transactions_summary(portfolio_id, sym_norm)
+            realized_pnl        += _to_decimal(s['realized_pnl'])
+            realized_cost_basis += _to_decimal(s['realized_cost_basis'])
+            realized_proceeds   += _to_decimal(s['realized_proceeds'])
 
         dividends = PortfolioCalculator.get_dividend_total_for_portfolio(portfolio_id)
         realized_pnl += dividends
@@ -434,15 +448,9 @@ class PortfolioCalculator:
 
     @staticmethod
     def recalculate_all_averages_for_symbol(portfolio_id, symbol):
-        """Recalculate average costs for all transactions of a (portfolio, symbol) pair.
-
-        For every Sell transaction encountered, creates or updates the corresponding
-        ClosedTrade snapshot so realized P&L is always persisted at ACM values.
-        The caller is responsible for committing the session.
+        """Recalculate average costs and net_amount for all transactions of a
+        (portfolio, symbol) pair. The caller is responsible for committing.
         """
-        from portfolio_app.models.closed_trade import ClosedTrade
-        from portfolio_app import db
-
         symbol = PortfolioCalculator.normalize_symbol(symbol)
         buy_first = case((Transaction.transaction_type == 'Buy', 0), else_=1)
         transactions = (
@@ -467,39 +475,9 @@ class PortfolioCalculator:
                 transaction.average_cost = _safe_divide(running_cost, running_quantity)
 
             elif transaction.transaction_type == 'Sell':
-                sell_qty   = _to_decimal(transaction.quantity)
-                sell_price = _to_decimal(transaction.price)
-                fees       = _to_decimal(transaction.fees)
-                avg_cost   = _safe_divide(running_cost, running_quantity)
-
+                sell_qty = _to_decimal(transaction.quantity)
+                avg_cost = _safe_divide(running_cost, running_quantity)
                 transaction.average_cost = avg_cost
-
-                gross_proceeds = sell_price * sell_qty
-                cost_basis     = avg_cost * sell_qty
-                realized_pnl   = gross_proceeds - cost_basis - fees
-
-                closed = ClosedTrade.query.filter_by(
-                    transaction_id=transaction.id
-                ).first()
-                if closed is None:
-                    closed = ClosedTrade(transaction_id=transaction.id)
-                    db.session.add(closed)
-
-                closed.portfolio_id   = portfolio_id
-                closed.symbol         = symbol
-                closed.quantity_sold  = sell_qty
-                closed.avg_cost       = avg_cost
-                closed.sell_price     = sell_price
-                closed.fees           = fees
-                closed.cost_basis     = cost_basis
-                closed.gross_proceeds = gross_proceeds
-                closed.realized_pnl   = realized_pnl
-                closed.closed_at      = (
-                    transaction.date.date()
-                    if hasattr(transaction.date, 'date')
-                    else transaction.date
-                )
-
                 running_quantity -= sell_qty
                 running_cost     -= avg_cost * sell_qty
 

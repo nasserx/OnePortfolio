@@ -41,16 +41,17 @@ svc.transaction_service.add_transaction(...)
 ### Models → Tables
 
 The DB schema has been through several renames (tracked in migrations). Current model names:
-- `Portfolio` (table: `portfolio`, formerly `fund`, formerly `capital`) — cash balance, belongs to User
+- `Portfolio` (table: `portfolio`, formerly `fund`, formerly `capital`) — cash balance, belongs to User (`user_id` is NOT NULL with `ON DELETE CASCADE`)
 - `PortfolioEvent` (table: `portfolio_event`) — Deposit/Withdrawal/Initial events
 - `Transaction` — Buy/Sell with calculated `net_amount`
 - `Symbol` — tracked ticker per portfolio (table: `symbol`, formerly `asset`)
 - `Dividend` — income per symbol
-- `ClosedTrade` — realized P&L snapshot, created on every sell
+
+Realized P&L is **computed dynamically** from `Transaction` rows (average-cost method) — there is no snapshot table. The previous `ClosedTrade` table was removed because its rows orphaned under SQLite's default FK-OFF mode and surfaced as ghost profit after deletions.
 
 ### Migrations
 
-`portfolio_app/__init__.py` → `_run_migrations()` runs on every app startup before `db.create_all()`. All 18+ steps are idempotent (check column/table existence via SQLAlchemy inspector before altering). Never delete migration steps — add new ones at the end.
+`portfolio_app/__init__.py` → `_run_migrations()` runs on every app startup before `db.create_all()`. All 24+ steps are idempotent (check column/table existence via SQLAlchemy inspector before altering). Never delete migration steps — add new ones at the end. SQLite FK enforcement is disabled for the duration of the migration (some legacy tables had stale FK targets from the `capital → fund → portfolio` rename chain) and re-enabled before the connection returns to the pool. An engine-connect listener (`_enable_sqlite_foreign_keys`) keeps `PRAGMA foreign_keys=ON` for all subsequent connections.
 
 ### Forms
 
@@ -61,7 +62,7 @@ Custom form base class in `portfolio_app/forms/base_form.py` (not Flask-WTF). `v
 `PortfolioCalculator` (static methods) handles:
 - Average cost method (ACM) on buys
 - Cash balance = deposits − withdrawals − buys + sells + dividends
-- Realized P&L via `ClosedTrade` records created on sell
+- Realized P&L computed on demand by walking the transactions table per symbol (no snapshot)
 - Category/asset-class summary for dashboard cards
 
 `TransactionManager` creates `Transaction` objects with computed `net_amount`.
@@ -93,8 +94,8 @@ DEV_AUTO_LOGIN=1                        # dev only — auto-login as first user
 
 ## Key Conventions
 
-- Repositories filter all queries by `user_id` — never query cross-user data
-- `ClosedTrade` rows are immutable snapshots; recalculate via `PortfolioCalculator.recalculate_all_averages_for_symbol()` when needed
+- `PortfolioRepository` filters all queries by `user_id`. Other repositories filter by `portfolio_id`; ownership is enforced transitively by services calling `portfolio_repo.get_by_id()` first.
+- `recalculate_all_averages_for_symbol()` updates each transaction's `average_cost` and `net_amount` after add/edit/delete — no snapshot writes
 - Flash messages for full-page forms; `sessionStorage` + page reload for AJAX modal forms
 - `Utils.escapeHtml()` must be used before inserting any user-provided string into the DOM via JS
 - Decimal arithmetic uses Python's `Decimal` type throughout the backend; `decimal_utils.py` has helpers

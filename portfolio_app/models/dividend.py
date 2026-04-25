@@ -12,7 +12,12 @@ class Dividend(db.Model):
 
     id           = db.Column(db.Integer, primary_key=True)
     portfolio_id = db.Column(db.Integer, db.ForeignKey('portfolio.id'), nullable=False)
-    symbol       = db.Column(db.String(20), nullable=True)
+    # Every dividend is attributed to a symbol. The dashboard groups
+    # holdings by (portfolio_id, symbol); a null-symbol dividend would be
+    # invisible there and was historically dropped from totals by a
+    # defensive filter in the calculator. Enforce non-null at the schema
+    # boundary so the filter can go away.
+    symbol       = db.Column(db.String(20), nullable=False)
     amount       = db.Column(Numeric(20, 10), nullable=False)
     date         = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     notes        = db.Column(db.Text, nullable=True)

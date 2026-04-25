@@ -209,9 +209,13 @@ class TransactionService:
         if not portfolio:
             raise ValueError(MESSAGES['PORTFOLIO_NOT_FOUND'])
 
+        normalized_symbol = (symbol or '').strip().upper()
+        if not normalized_symbol:
+            raise ValidationError(MESSAGES['SYMBOL_REQUIRED'])
+
         dividend = Dividend(
             portfolio_id=portfolio_id,
-            symbol=symbol.upper(),
+            symbol=normalized_symbol,
             amount=amount,
             date=date,
             notes=notes or None,

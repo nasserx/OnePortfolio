@@ -7,7 +7,6 @@ from portfolio_app.models.portfolio_event import PortfolioEvent
 from portfolio_app.repositories.portfolio_repository import PortfolioRepository
 from portfolio_app.repositories.portfolio_event_repository import PortfolioEventRepository
 from portfolio_app.utils.constants import EventType
-from portfolio_app.utils.decimal_utils import ZERO, to_decimal as _to_decimal
 from portfolio_app.utils.messages import MESSAGES
 from portfolio_app.calculators.portfolio_calculator import PortfolioCalculator
 
@@ -24,11 +23,11 @@ class PortfolioService:
     # ------------------------------------------------------------------
 
     def create_portfolio(self, name: str, user_id: Optional[int] = None) -> Portfolio:
-        """Create a new portfolio with zero balance."""
+        """Create a new portfolio."""
         if self.portfolio_repo.get_by_name(name):
             raise ValueError(MESSAGES['PORTFOLIO_NAME_TAKEN'])
 
-        portfolio = Portfolio(name=name, net_deposits=ZERO, user_id=user_id)
+        portfolio = Portfolio(name=name, user_id=user_id)
         self.portfolio_repo.add(portfolio)
         self.portfolio_repo.commit()
         return portfolio
@@ -48,7 +47,6 @@ class PortfolioService:
     def deposit_funds(self, portfolio_id: int, amount_delta: Decimal, notes: Optional[str] = None, date: Optional[Any] = None) -> Portfolio:
         """Deposit funds into a portfolio."""
         portfolio = self._require_portfolio(portfolio_id)
-        portfolio.net_deposits = _to_decimal(portfolio.net_deposits) + amount_delta
         self._create_event(portfolio_id, EventType.DEPOSIT, amount_delta, notes, date)
         self.portfolio_repo.commit()
         return portfolio
@@ -59,7 +57,6 @@ class PortfolioService:
         available_cash = PortfolioCalculator.get_available_cash_for_portfolio(portfolio_id)
         if amount_delta > available_cash:
             raise ValueError(MESSAGES['INSUFFICIENT_AMOUNT'])
-        portfolio.net_deposits = _to_decimal(portfolio.net_deposits) - amount_delta
         self._create_event(portfolio_id, EventType.WITHDRAWAL, -amount_delta, notes, date)
         self.portfolio_repo.commit()
         return portfolio
@@ -69,13 +66,9 @@ class PortfolioService:
     # ------------------------------------------------------------------
 
     def update_portfolio_event(self, event_id: int, amount_delta: Decimal, notes: Optional[str] = None, date: Optional[Any] = None) -> PortfolioEvent:
-        """Update a portfolio event and adjust the parent portfolio's balance."""
+        """Update a portfolio event. Net deposits are derived on read."""
         event = self._require_event(event_id)
-        portfolio = self._require_portfolio(event.portfolio_id)
-
-        old_delta = _to_decimal(event.amount_delta)
-        delta_change = amount_delta - old_delta
-        portfolio.net_deposits = _to_decimal(portfolio.net_deposits) + delta_change
+        self._require_portfolio(event.portfolio_id)
 
         event.amount_delta = amount_delta
         if notes is not None:
@@ -87,12 +80,10 @@ class PortfolioService:
         return event
 
     def delete_portfolio_event(self, event_id: int) -> int:
-        """Delete a portfolio event and reverse its effect on the balance."""
+        """Delete a portfolio event. Net deposits are derived on read."""
         event = self._require_event(event_id)
         portfolio_id = event.portfolio_id
-
-        portfolio = self._require_portfolio(portfolio_id)
-        portfolio.net_deposits = _to_decimal(portfolio.net_deposits) - _to_decimal(event.amount_delta)
+        self._require_portfolio(portfolio_id)
 
         self.portfolio_event_repo.delete(event)
         self.portfolio_repo.commit()

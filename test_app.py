@@ -183,36 +183,36 @@ def test_fund_events(app):
 
         tf_a = PortfolioCalculator.get_total_deposits_for_portfolio(fund_a.id)
         cash_a = PortfolioCalculator.get_available_cash_for_portfolio(fund_a.id)
+        net_a = PortfolioCalculator.get_net_deposits_for_portfolio(fund_a.id)
 
         print("\n  Scenario A – deposits only")
         _assert('Total Funds (deposits only)', 15_000, tf_a)
         _assert('Cash (no transactions)', 15_000, cash_a)
-        _assert('fund.net_deposits equals cash when no transactions',
-                cash_a, _dec(str(fund_a.net_deposits)))
+        _assert('Net deposits equals cash when no transactions', cash_a, net_a)
 
         # ── Scenario B: deposits + withdrawals, no transactions ──
         #   Initial=10,000  Deposit=1,000  Withdraw=4,999  Withdraw=5,999
         #   Total Funds = 10,000+1,000 = 11,000
-        #   fund.net_deposits = 10,000+1,000-4,999-5,999 = 2
-        #   Cash = fund.net_deposits = 2 (no buys/sells)
+        #   Net deposits = 10,000+1,000-4,999-5,999 = 2
+        #   Cash = net deposits = 2 (no buys/sells)
         fund_b = svc.portfolio_service.create_portfolio('ETFs', user_id=uid)
         svc.portfolio_service.deposit_funds(fund_b.id, _dec(10_000))
         svc.portfolio_service.deposit_funds(fund_b.id, _dec(1_000))
         svc.portfolio_service.withdraw_funds(fund_b.id, _dec(4_999))
         svc.portfolio_service.withdraw_funds(fund_b.id, _dec(5_999))
-        db.session.refresh(fund_b)
 
         tf_b = PortfolioCalculator.get_total_deposits_for_portfolio(fund_b.id)
         cash_b = PortfolioCalculator.get_available_cash_for_portfolio(fund_b.id)
+        net_b = PortfolioCalculator.get_net_deposits_for_portfolio(fund_b.id)
 
         print("\n  Scenario B – deposits + withdrawals, no transactions")
         _assert('Total Funds (deposits only, ignores withdrawals)', 11_000, tf_b)
-        _assert('fund.net_deposits (net after withdrawals)', 2, _dec(str(fund_b.net_deposits)))
-        _assert('Cash = fund.net_deposits when no transactions', 2, cash_b)
+        _assert('Net deposits (net after withdrawals)', 2, net_b)
+        _assert('Cash = net deposits when no transactions', 2, cash_b)
 
         # ── Scenario C: deposits + withdrawals + transactions ──
         #   Initial=10,000  Withdraw=4,999  Deposit=1,000  Withdraw=5,999
-        #   fund.net_deposits = 2
+        #   Net deposits = 2
         #   Buy  5000 AAPL @ $1 fees=1 → outflow=5,001
         #   Sell 2500 AAPL @ $2 fees=1 → inflow=4,999
         #   Cash = 2 - 5,001 + 4,999 = 0
@@ -226,7 +226,6 @@ def test_fund_events(app):
         svc.portfolio_service.withdraw_funds(fund_c.id, _dec(4_999))
         svc.portfolio_service.deposit_funds(fund_c.id, _dec(1_000))
         svc.portfolio_service.withdraw_funds(fund_c.id, _dec(5_999))
-        db.session.refresh(fund_c)
 
         buy = Transaction(portfolio_id=fund_c.id, transaction_type='Buy',
                           date=datetime(2026, 1, 1), symbol='AAPL',
@@ -243,29 +242,16 @@ def test_fund_events(app):
 
         tf_c = PortfolioCalculator.get_total_deposits_for_portfolio(fund_c.id)
         cash_c = PortfolioCalculator.get_available_cash_for_portfolio(fund_c.id)
+        net_c = PortfolioCalculator.get_net_deposits_for_portfolio(fund_c.id)
         tx_c = PortfolioCalculator.get_portfolio_transactions_summary(fund_c.id)
         realized_c = PortfolioCalculator.get_realized_performance_for_portfolio(fund_c.id)
 
         print("\n  Scenario C – deposits + withdrawals + transactions")
         _assert('Total Funds (deposits only)', 11_000, tf_c)
-        _assert('fund.net_deposits (net)', 2, _dec(str(fund_c.net_deposits)))
+        _assert('Net deposits', 2, net_c)
         _assert('Cash (after buys/sells)', 0, cash_c)
         _assert('Cost Basis (2500 remaining)', _dec('2500.50'), tx_c['cost_basis'])
         _assert('Realized P&L', _dec('2498.50'), realized_c['realized_pnl'])
-
-        # ── Scenario D: legacy fund with no FundEvents (fallback to fund.net_deposits) ──
-        #   Simulates old database where fund.net_deposits=8,000 but no events exist.
-        #   get_total_deposits_for_portfolio() must return 8,000 (not 0).
-        legacy_fund = Portfolio(name='Legacy', net_deposits=_dec(8_000), user_id=uid)
-        db.session.add(legacy_fund)
-        db.session.commit()
-
-        tf_legacy = PortfolioCalculator.get_total_deposits_for_portfolio(legacy_fund.id)
-        cash_legacy = PortfolioCalculator.get_available_cash_for_portfolio(legacy_fund.id)
-
-        print("\n  Scenario D – legacy fund (no FundEvents, fallback to fund.net_deposits)")
-        _assert('Total Funds fallback = fund.net_deposits', 8_000, tf_legacy)
-        _assert('Cash fallback = fund.net_deposits (no transactions)', 8_000, cash_legacy)
 
         print("  All fund event checks passed.")
 
@@ -344,12 +330,12 @@ def test_dashboard_totals(app):
         uid = _seed_user()
         svc = Services(user_id=uid)
 
-        # Fund A: Initial=20,000  Withdraw=5,000 → total_funds=20,000  fund.net_deposits=15,000
+        # Fund A: Initial=20,000  Withdraw=5,000 → total_funds=20,000  net_deposits=15,000
         fa = svc.portfolio_service.create_portfolio('Stocks', user_id=uid)
         svc.portfolio_service.deposit_funds(fa.id, _dec(20_000))
         svc.portfolio_service.withdraw_funds(fa.id, _dec(5_000))
 
-        # Fund B: Initial=10,000  Deposit=2,000 → total_funds=12,000  fund.net_deposits=12,000
+        # Fund B: Initial=10,000  Deposit=2,000 → total_funds=12,000  net_deposits=12,000
         fb = svc.portfolio_service.create_portfolio('ETFs', user_id=uid)
         svc.portfolio_service.deposit_funds(fb.id, _dec(10_000))
         svc.portfolio_service.deposit_funds(fb.id, _dec(2_000))
@@ -363,7 +349,7 @@ def test_dashboard_totals(app):
         # Total Contributed = 20,000 + 12,000 = 32,000 (deposits only)
         _assert('Total Contributed (sum of deposits)', 32_000, totals['total_contributed'])
 
-        # Cash: fund_a.net_deposits=15,000 + fund_b.net_deposits=12,000 = 27,000 (no transactions)
+        # Cash: net_deposits(A)=15,000 + net_deposits(B)=12,000 = 27,000 (no transactions)
         _assert('Total Cash (no transactions)', 27_000, totals['total_cash'])
 
         # Total Value = cash + invested = 27,000 + 0 = 27,000
@@ -456,7 +442,7 @@ def test_dividends(app):
         # ── 6b: dividends added to cash balance ──
         print("\n  6b – dividends reflected in cash")
         cash = PortfolioCalculator.get_available_cash_for_portfolio(fund1.id)
-        # fund.net_deposits = 10,000; no buy/sell; dividends = 150 → cash = 10,150
+        # net_deposits = 10,000; no buy/sell; dividends = 150 → cash = 10,150
         _assert('Cash includes dividend income', _dec('10150'), cash)
 
         # ── 6c: dividends added to realized P&L ──

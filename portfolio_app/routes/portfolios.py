@@ -35,6 +35,8 @@ def _get_portfolios_page_context():
         cost_basis = tx_summary['cost_basis']
         book_value = cash + cost_basis
 
+        total_contributed = PortfolioCalculator.get_total_deposits_for_portfolio(portfolio.id)
+
         realized_perf = PortfolioCalculator.get_realized_performance_for_portfolio(portfolio.id)
         realized_pnl = realized_perf['realized_pnl']
         realized_cost_basis = realized_perf['realized_cost_basis']
@@ -49,6 +51,7 @@ def _get_portfolios_page_context():
         portfolio_details.append({
             'portfolio': portfolio,
             'events': events,
+            'total_contributed': total_contributed,
             'book_value': book_value,
             'realized_pnl': realized_pnl,
             'realized_cost_basis': realized_cost_basis,

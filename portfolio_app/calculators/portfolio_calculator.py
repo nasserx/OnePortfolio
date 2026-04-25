@@ -83,31 +83,37 @@ class PortfolioCalculator:
         """Total deposits = sum of Initial + Deposit events only.
 
         Withdrawals are excluded so this represents gross capital ever allocated.
-        Fallback: portfolios with no event history return net_deposits directly.
         """
-        rows = (
-            PortfolioEvent.query
-            .with_entities(PortfolioEvent.amount_delta)
+        result = (
+            db.session.query(func.sum(PortfolioEvent.amount_delta))
             .filter(
                 PortfolioEvent.portfolio_id == portfolio_id,
                 PortfolioEvent.event_type.in_(['Initial', 'Deposit']),
             )
-            .all()
+            .scalar()
         )
-        if rows:
-            return sum((_to_decimal(r.amount_delta) for r in rows), ZERO)
+        return _to_decimal(result) if result is not None else ZERO
 
-        portfolio = db.session.get(Portfolio, portfolio_id)
-        return _to_decimal(portfolio.net_deposits or 0) if portfolio else ZERO
+    @staticmethod
+    def get_net_deposits_for_portfolio(portfolio_id) -> Decimal:
+        """Net deposits = signed sum of all PortfolioEvent rows.
+
+        ``amount_delta`` is positive for Initial/Deposit and negative for
+        Withdrawal, so a plain SUM gives ``deposits − withdrawals``. This
+        replaces the denormalized ``portfolio.net_deposits`` column whose
+        value could drift if the events log was edited outside the service.
+        """
+        result = (
+            db.session.query(func.sum(PortfolioEvent.amount_delta))
+            .filter(PortfolioEvent.portfolio_id == portfolio_id)
+            .scalar()
+        )
+        return _to_decimal(result) if result is not None else ZERO
 
     @staticmethod
     def get_available_cash_for_portfolio(portfolio_id, exclude_transaction_id=None) -> Decimal:
-        """Available cash: net_deposits - buy_outflows + sell_inflows + dividends."""
-        portfolio = db.session.get(Portfolio, portfolio_id)
-        if not portfolio:
-            return ZERO
-
-        cash = _to_decimal(portfolio.net_deposits or 0)
+        """Available cash: net deposits − buy_outflows + sell_inflows + dividends."""
+        cash = PortfolioCalculator.get_net_deposits_for_portfolio(portfolio_id)
         query = Transaction.query.filter_by(portfolio_id=portfolio_id)
         if exclude_transaction_id is not None:
             query = query.filter(Transaction.id != exclude_transaction_id)
@@ -196,15 +202,11 @@ class PortfolioCalculator:
 
     @staticmethod
     def get_dividend_total_for_portfolio(portfolio_id) -> Decimal:
-        """Return the sum of dividend income for a portfolio (symbol-attributed records only)."""
+        """Return the sum of dividend income for a portfolio."""
         result = (
             Dividend.query
             .with_entities(func.sum(Dividend.amount))
-            .filter(
-                Dividend.portfolio_id == portfolio_id,
-                Dividend.symbol.isnot(None),
-                Dividend.symbol != '',
-            )
+            .filter(Dividend.portfolio_id == portfolio_id)
             .scalar()
         )
         return _to_decimal(result) if result else ZERO

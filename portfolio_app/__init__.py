@@ -28,6 +28,12 @@ def _enable_sqlite_foreign_keys(dbapi_connection, connection_record):
         cursor.close()
 
 
+# Bumped whenever a new migration step is added below. Stored in the SQLite
+# header (PRAGMA user_version) after a successful migration so subsequent
+# boots can short-circuit the whole inspection pass.
+TARGET_SCHEMA_VERSION = 25
+
+
 def _run_migrations(app):
     """Apply incremental schema changes that SQLAlchemy create_all() cannot handle.
 
@@ -35,11 +41,23 @@ def _run_migrations(app):
     databases. Each step checks the current state before acting, so re-running
     after a partial migration is safe.
 
+    Warm starts short-circuit via ``PRAGMA user_version``: once a successful
+    migration writes ``TARGET_SCHEMA_VERSION`` into the SQLite header, every
+    subsequent boot exits this function in one query. That also closes the
+    multi-worker race window — the first worker to finish bumps the version,
+    so any other worker arriving moments later takes the fast path.
+
     Requires SQLite 3.25+ for RENAME COLUMN support (released 2018).
     """
     import sqlalchemy as sa
     with app.app_context():
         with db.engine.connect() as conn:
+            raw_conn = conn.connection.driver_connection
+
+            current_version = raw_conn.execute('PRAGMA user_version').fetchone()[0]
+            if current_version >= TARGET_SCHEMA_VERSION:
+                return
+
             # FK enforcement must be OFF for the duration of the migration.
             # Several legacy tables in deployed databases still carry FK
             # references to renamed parent tables (e.g. ``REFERENCES capital``
@@ -50,7 +68,6 @@ def _run_migrations(app):
             # and SQLAlchemy autobegins on the first execute(). We bypass
             # SQLAlchemy by going through the raw DBAPI connection so the
             # PRAGMA reaches SQLite while it's still in autocommit mode.
-            raw_conn = conn.connection.driver_connection
             raw_conn.execute('PRAGMA foreign_keys=OFF')
             try:
                 _apply_migration_steps(conn, sa)
@@ -59,6 +76,9 @@ def _run_migrations(app):
                 # it returns to the pool. New connections inherit FK=ON via
                 # the engine-level listener.
                 raw_conn.execute('PRAGMA foreign_keys=ON')
+
+            # Mark this DB as up-to-date so future boots skip everything above.
+            raw_conn.execute(f'PRAGMA user_version = {TARGET_SCHEMA_VERSION}')
 
 
 def _apply_migration_steps(conn, sa):
@@ -413,7 +433,19 @@ def _apply_migration_steps(conn, sa):
     conn.execute(sa.text('DROP TABLE IF EXISTS closed_trade'))
     conn.commit()
 
-    # ── Step 24: rebuild tables with stale or missing FK constraints ─────
+    # ── Step 25: purge dividends without an attributed symbol ────────────
+    # Pre-dates the form requiring symbol; any legacy null/empty rows were
+    # silently dropped from totals by a defensive filter in the calculator.
+    # Step 24 below rebuilds dividend with ``symbol NOT NULL``, so these
+    # rows must be removed first or the rebuild's INSERT...SELECT fails.
+    # (Numbered 25 to keep migration ordering intuitive — runs before 24.)
+    if 'dividend' in tables:
+        conn.execute(sa.text(
+            "DELETE FROM dividend WHERE symbol IS NULL OR symbol = ''"
+        ))
+        conn.commit()
+
+    # ── Step 24: rebuild tables with stale FK constraints / dropped cols ─
     # Older databases were created when the parent table was named
     # ``capital`` (later ``fund`` then ``portfolio``). SQLite RENAME TABLE
     # does not rewrite FK targets in other tables, so the stored CREATE
@@ -424,25 +456,35 @@ def _apply_migration_steps(conn, sa):
     # Each rebuild also adds ``ON DELETE CASCADE`` so deleting a Portfolio
     # (or User) cascades through the entire ownership tree at the database
     # level, not just via SQLAlchemy ORM walks.
-    _rebuild_tables_with_fixed_fks(conn, sa, inspector)
+    #
+    # The ``portfolio`` rebuild also drops the legacy ``net_deposits``
+    # denormalized column — net deposits are now derived on read from the
+    # PortfolioEvent log, so the column is no longer a source of truth.
+    _rebuild_tables(conn, sa, inspector)
 
 
-def _rebuild_tables_with_fixed_fks(conn, sa, inspector):
-    """Rebuild legacy tables whose FK targets reference renamed parents.
+def _rebuild_tables(conn, sa, inspector):
+    """Rebuild legacy tables whose CREATE statements need a fresh schema.
 
-    Idempotent: each table is inspected first; if its current CREATE
-    statement already references the correct parent, the rebuild is
-    skipped. Caller must have FK enforcement disabled.
+    Idempotent: each table is inspected; if the existing schema already
+    matches the desired shape (FKs correct AND no dropped columns still
+    present), the rebuild is skipped. Caller must have FK enforcement
+    disabled.
     """
     tables = set(inspector.get_table_names())
 
-    # Each entry: (table_name, expected_fk_text_in_current_schema_if_correct,
-    #              CREATE statement for replacement, columns to copy,
-    #              list of CREATE INDEX statements to apply afterwards)
+    # Each entry: (table_name,
+    #              must_have_marker      — substring expected in correct CREATE,
+    #              must_not_have_marker  — substring whose presence forces rebuild
+    #                                      (e.g., dropped column name); None to ignore,
+    #              CREATE statement for replacement,
+    #              columns to copy,
+    #              list of CREATE INDEX statements to apply afterwards).
     rebuilds = [
         (
             'transaction',
             'REFERENCES portfolio',
+            None,
             '''
             CREATE TABLE _new_transaction (
                 id               INTEGER NOT NULL PRIMARY KEY,
@@ -469,6 +511,7 @@ def _rebuild_tables_with_fixed_fks(conn, sa, inspector):
         (
             'symbol',
             'REFERENCES portfolio',
+            None,
             '''
             CREATE TABLE _new_symbol (
                 id           INTEGER NOT NULL PRIMARY KEY,
@@ -485,11 +528,12 @@ def _rebuild_tables_with_fixed_fks(conn, sa, inspector):
         (
             'dividend',
             'REFERENCES portfolio',
+            None,
             '''
             CREATE TABLE _new_dividend (
                 id           INTEGER NOT NULL PRIMARY KEY,
                 portfolio_id INTEGER NOT NULL REFERENCES portfolio(id) ON DELETE CASCADE,
-                symbol       VARCHAR(20),
+                symbol       VARCHAR(20) NOT NULL,
                 amount       NUMERIC(20, 10) NOT NULL,
                 date         DATETIME NOT NULL,
                 notes        TEXT,
@@ -503,6 +547,7 @@ def _rebuild_tables_with_fixed_fks(conn, sa, inspector):
         (
             'portfolio_event',
             'ON DELETE CASCADE',
+            None,
             '''
             CREATE TABLE _new_portfolio_event (
                 id           INTEGER NOT NULL PRIMARY KEY,
@@ -519,29 +564,42 @@ def _rebuild_tables_with_fixed_fks(conn, sa, inspector):
         (
             'portfolio',
             'ON DELETE CASCADE',
+            'net_deposits',  # presence in the existing CREATE forces a rebuild
             '''
             CREATE TABLE _new_portfolio (
-                id           INTEGER NOT NULL PRIMARY KEY,
-                user_id      INTEGER NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
-                name         VARCHAR(50) NOT NULL,
-                net_deposits NUMERIC(15, 2) NOT NULL DEFAULT 0,
-                created_at   DATETIME,
-                updated_at   DATETIME
+                id         INTEGER NOT NULL PRIMARY KEY,
+                user_id    INTEGER NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+                name       VARCHAR(50) NOT NULL,
+                created_at DATETIME,
+                updated_at DATETIME
             )
             ''',
-            ['id', 'user_id', 'name', 'net_deposits', 'created_at', 'updated_at'],
+            ['id', 'user_id', 'name', 'created_at', 'updated_at'],
             ['CREATE INDEX ix_portfolio_user_id ON portfolio (user_id)'],
         ),
     ]
 
-    for table, ok_marker, create_sql, columns, indexes in rebuilds:
+    for table, must_have, must_not_have, create_sql, columns, indexes in rebuilds:
         if table not in tables:
             continue
         existing_sql = conn.execute(sa.text(
             "SELECT sql FROM sqlite_master WHERE type='table' AND name=:n"
         ), {'n': table}).scalar() or ''
-        if ok_marker in existing_sql:
-            continue  # already correct — skip
+
+        already_correct = (
+            must_have in existing_sql
+            and (must_not_have is None or must_not_have not in existing_sql)
+        )
+        # dividend.symbol must be NOT NULL — substring matching whitespace
+        # in the CREATE statement is too brittle, so consult PRAGMA directly.
+        # PRAGMA table_info row layout: (cid, name, type, notnull, dflt, pk).
+        if already_correct and table == 'dividend':
+            for r in conn.execute(sa.text(f'PRAGMA table_info("{table}")')).fetchall():
+                if r[1] == 'symbol' and r[3] == 0:
+                    already_correct = False
+                    break
+        if already_correct:
+            continue
 
         # Drop a leftover temp table from a previous interrupted run
         conn.execute(sa.text(f'DROP TABLE IF EXISTS _new_{table}'))

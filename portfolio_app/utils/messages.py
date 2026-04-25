@@ -30,8 +30,8 @@ MESSAGES = {
     'INVALID_AMOUNT':              "Please enter a valid amount greater than zero.",
 
     # Business rules
-    'INSUFFICIENT_AMOUNT':         "Insufficient amount. Your available cash balance is too low for this withdrawal.",
-    'INSUFFICIENT_QUANTITY':       "Insufficient quantity. You don't hold enough of this symbol to complete the sale.",
+    'INSUFFICIENT_AMOUNT':         "Insufficient amount.",
+    'INSUFFICIENT_QUANTITY':       "Insufficient quantity.",
     'FEES_EXCEED_PROCEEDS':        "Fees cannot exceed the sale proceeds.",
     'PORTFOLIO_NAME_TAKEN':        "A portfolio with this name already exists.",
     'SYMBOL_ALREADY_TRACKED':      "'{symbol}' is already being tracked in this portfolio.",

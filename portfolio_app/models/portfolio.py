@@ -1,12 +1,17 @@
 """Portfolio model representing a named portfolio."""
 
 from datetime import datetime, timezone
-from sqlalchemy import Numeric
 from portfolio_app import db
 
 
 class Portfolio(db.Model):
-    """Represents a named portfolio belonging to a user."""
+    """Represents a named portfolio belonging to a user.
+
+    Cash flow (deposits/withdrawals) is stored exclusively in
+    ``PortfolioEvent`` rows; the previous ``net_deposits`` column was a
+    denormalized cache that could drift from the events log and was
+    removed in migration step 25.
+    """
 
     __tablename__ = 'portfolio'
 
@@ -21,7 +26,6 @@ class Portfolio(db.Model):
         index=True,
     )
     name = db.Column(db.String(50), nullable=False)
-    net_deposits = db.Column(Numeric(15, 2), nullable=False, default=0)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
@@ -34,7 +38,6 @@ class Portfolio(db.Model):
         return {
             'id': self.id,
             'name': self.name,
-            'net_deposits': float(self.net_deposits),
             'created_at': self.created_at.strftime('%Y-%m-%d'),
-            'updated_at': self.updated_at.strftime('%Y-%m-%d')
+            'updated_at': self.updated_at.strftime('%Y-%m-%d'),
         }

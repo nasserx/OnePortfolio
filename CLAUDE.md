@@ -41,17 +41,24 @@ svc.transaction_service.add_transaction(...)
 ### Models → Tables
 
 The DB schema has been through several renames (tracked in migrations). Current model names:
-- `Portfolio` (table: `portfolio`, formerly `fund`, formerly `capital`) — cash balance, belongs to User (`user_id` is NOT NULL with `ON DELETE CASCADE`)
-- `PortfolioEvent` (table: `portfolio_event`) — Deposit/Withdrawal/Initial events
-- `Transaction` — Buy/Sell with calculated `net_amount`
-- `Symbol` — tracked ticker per portfolio (table: `symbol`, formerly `asset`)
-- `Dividend` — income per symbol
+- `Portfolio` (table: `portfolio`, formerly `fund`, formerly `capital`) — belongs to User (`user_id` is NOT NULL with `ON DELETE CASCADE`). Cash flow is held entirely in `PortfolioEvent` rows; the legacy `net_deposits` denormalized column was removed.
+- `PortfolioEvent` (table: `portfolio_event`) — Deposit/Withdrawal/Initial events. **Single source of truth** for net deposits and total contributed.
+- `Transaction` — Buy/Sell with calculated `net_amount`.
+- `Symbol` — tracked ticker per portfolio (table: `symbol`, formerly `asset`).
+- `Dividend` — income per symbol; `symbol` is NOT NULL (forms required it but the column was nullable historically).
+- `User` — owns portfolios; ORM `cascade='all, delete-orphan'` on `User.portfolios` plus DB-level `ON DELETE CASCADE` on `Portfolio.user_id` so account deletion fully cleans up the ownership tree.
 
 Realized P&L is **computed dynamically** from `Transaction` rows (average-cost method) — there is no snapshot table. The previous `ClosedTrade` table was removed because its rows orphaned under SQLite's default FK-OFF mode and surfaced as ghost profit after deletions.
 
 ### Migrations
 
-`portfolio_app/__init__.py` → `_run_migrations()` runs on every app startup before `db.create_all()`. All 24+ steps are idempotent (check column/table existence via SQLAlchemy inspector before altering). Never delete migration steps — add new ones at the end. SQLite FK enforcement is disabled for the duration of the migration (some legacy tables had stale FK targets from the `capital → fund → portfolio` rename chain) and re-enabled before the connection returns to the pool. An engine-connect listener (`_enable_sqlite_foreign_keys`) keeps `PRAGMA foreign_keys=ON` for all subsequent connections.
+`portfolio_app/__init__.py` → `_run_migrations()` runs on every app startup before `db.create_all()`. All 25+ steps are idempotent (check column/table existence via SQLAlchemy inspector before altering). Never delete migration steps — add new ones at the end and bump `TARGET_SCHEMA_VERSION` at the top of the file.
+
+Warm boots short-circuit via `PRAGMA user_version`: once a successful migration writes the target version into the SQLite header, subsequent boots exit `_run_migrations` after a single query (no inspector calls). This also collapses the multi-worker race window — the first worker to finish bumps the version and any later arrival takes the fast path.
+
+SQLite FK enforcement is disabled for the duration of the migration (some legacy tables had stale FK targets from the `capital → fund → portfolio` rename chain) and re-enabled before the connection returns to the pool. An engine-connect listener (`_enable_sqlite_foreign_keys`) keeps `PRAGMA foreign_keys=ON` for all subsequent connections.
+
+For schema changes that SQLite's `ALTER TABLE` cannot express (changing FK targets, adding/dropping `ON DELETE CASCADE`, dropping columns, tightening NOT NULL on an existing column), use the table-rebuild helper inside Step 24 (`_rebuild_tables`): add an entry with `(table, must_have_marker, must_not_have_marker, CREATE statement, columns to copy, indexes)`. Idempotent — the rebuild only fires when the existing schema doesn't match.
 
 ### Forms
 
@@ -94,8 +101,9 @@ DEV_AUTO_LOGIN=1                        # dev only — auto-login as first user
 
 ## Key Conventions
 
-- `PortfolioRepository` filters all queries by `user_id`. Other repositories filter by `portfolio_id`; ownership is enforced transitively by services calling `portfolio_repo.get_by_id()` first.
-- `recalculate_all_averages_for_symbol()` updates each transaction's `average_cost` and `net_amount` after add/edit/delete — no snapshot writes
+- All user-data repositories (`PortfolioRepository`, `TransactionRepository`, `SymbolRepository`, `DividendRepository`, `PortfolioEventRepository`) take `user_id` in their constructor and join `Portfolio` to filter by `Portfolio.user_id` in every read path — including `get_by_id`. Cross-tenant access via a forged `portfolio_id`/`transaction_id`/`dividend_id` returns nothing.
+- Net deposits and total contributed are derived on demand from `PortfolioEvent` rows — never read or write a stored cache for these.
+- `recalculate_all_averages_for_symbol()` updates each transaction's `average_cost` and `net_amount` after add/edit/delete — no snapshot writes.
 - Flash messages for full-page forms; `sessionStorage` + page reload for AJAX modal forms
 - `Utils.escapeHtml()` must be used before inserting any user-provided string into the DOM via JS
 - Decimal arithmetic uses Python's `Decimal` type throughout the backend; `decimal_utils.py` has helpers

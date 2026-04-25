@@ -34,10 +34,10 @@ class Services:
 
     def __init__(self, user_id: Optional[int] = None):
         self.portfolio_repo = PortfolioRepository(Portfolio, db, user_id=user_id)
-        self.portfolio_event_repo = PortfolioEventRepository(PortfolioEvent, db)
-        self.transaction_repo = TransactionRepository(Transaction, db)
-        self.symbol_repo = SymbolRepository(Symbol, db)
-        self.dividend_repo = DividendRepository(Dividend, db)
+        self.portfolio_event_repo = PortfolioEventRepository(PortfolioEvent, db, user_id=user_id)
+        self.transaction_repo = TransactionRepository(Transaction, db, user_id=user_id)
+        self.symbol_repo = SymbolRepository(Symbol, db, user_id=user_id)
+        self.dividend_repo = DividendRepository(Dividend, db, user_id=user_id)
         self.user_repo = UserRepository(User, db)
 
         self.portfolio_service = PortfolioService(self.portfolio_repo, self.portfolio_event_repo)

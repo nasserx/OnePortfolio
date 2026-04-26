@@ -1143,12 +1143,51 @@ textarea:-webkit-autofill, select:-webkit-autofill {
 .modal-backdrop { background: rgba(32,33,36,.55); }
 [data-bs-theme="dark"] .modal-backdrop { background: rgba(0,0,0,.70); }
 
-#addTransactionModal .modal-body,  #editTransactionModal .modal-body   { padding: 1.25rem; }
-#addTransactionModal .modal-footer, #editTransactionModal .modal-footer { padding: 0.875rem 1.25rem; }
+#addTransactionModal .modal-body,  #editTransactionModal .modal-body   { padding: 1.25rem 1.25rem 0; }
+#addTransactionModal .modal-footer, #editTransactionModal .modal-footer { padding: 0.25rem 1.25rem 0.875rem; border-top: 0; margin-top: 0; }
+
+/* Tighten the gap between last field and confirm button across all action modals */
+#depositFundsModal .modal-body,
+#withdrawFundsModal .modal-body,
+#editPortfolioEventModal .modal-body,
+#addDividendModal .modal-body,
+#editDividendModal .modal-body { padding: 1rem 1rem 0; }
+#depositFundsModal .modal-footer,
+#withdrawFundsModal .modal-footer,
+#editPortfolioEventModal .modal-footer,
+#addDividendModal .modal-footer,
+#editDividendModal .modal-footer { padding: 0.25rem 1rem 0.875rem; border-top: 0; margin-top: 0; }
+
+#addTransactionModal .modal-body > *:last-child,
+#editTransactionModal .modal-body > *:last-child,
+#depositFundsModal .modal-body > *:last-child,
+#withdrawFundsModal .modal-body > *:last-child,
+#editPortfolioEventModal .modal-body > *:last-child,
+#addDividendModal .modal-body > *:last-child,
+#editDividendModal .modal-body > *:last-child { margin-bottom: 0; }
+
+/* Dividend modals end with a hidden alert; drop the gap below the actual last visible field */
+#addDividendModal .modal-body > .mb-3:nth-last-child(2),
+#editDividendModal .modal-body > .mb-3:nth-last-child(2) { margin-bottom: 0; }
 #addTransactionModal .form-control, #addTransactionModal .form-select,
 #editTransactionModal .form-control, #editTransactionModal .form-select { padding: 0.5rem 0.875rem; }
 #addTransactionModal textarea.form-control,
-#editTransactionModal textarea.form-control { min-height: 80px; }
+#editTransactionModal textarea.form-control,
+#depositFundsModal textarea.form-control,
+#withdrawFundsModal textarea.form-control,
+#editPortfolioEventModal textarea.form-control,
+#addDividendModal textarea.form-control,
+#editDividendModal textarea.form-control { min-height: 60px; resize: vertical; }
+
+.notes-counter {
+    display: block;
+    font-size: 0.6875rem;
+    color: var(--text-3);
+    text-align: right;
+    margin-top: 0.25rem;
+    line-height: 1;
+}
+.notes-counter.is-danger { color: var(--bs-danger); font-weight: 600; }
 #editTransactionModal .form-select:disabled,
 #editTransactionModal .form-control[readonly] {
     background: var(--surface-2) !important; color: var(--text-3) !important; opacity: 1;

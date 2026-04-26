@@ -932,6 +932,41 @@ class NativeValidationDisabler {
 
 
 /**
+ * Live character counter for `.js-notes-input` textareas. Turns red within
+ * 30 chars of (or at) the maxlength cap. Browser enforces the hard stop.
+ */
+class NotesCounterHandler {
+    constructor() {
+        this.DANGER_THRESHOLD = 30;
+        this.init();
+    }
+
+    init() {
+        document.querySelectorAll('.js-notes-input').forEach(el => this.update(el));
+
+        document.addEventListener('input', (e) => {
+            if (e.target.classList && e.target.classList.contains('js-notes-input')) {
+                this.update(e.target);
+            }
+        });
+
+        document.addEventListener('shown.bs.modal', (e) => {
+            e.target.querySelectorAll('.js-notes-input').forEach(el => this.update(el));
+        });
+    }
+
+    update(textarea) {
+        const counter = textarea.nextElementSibling;
+        if (!counter || !counter.classList.contains('notes-counter')) return;
+        const max = parseInt(textarea.getAttribute('maxlength'), 10) || 0;
+        const len = textarea.value.length;
+        counter.textContent = `${len} / ${max}`;
+        counter.classList.toggle('is-danger', max > 0 && (max - len) <= this.DANGER_THRESHOLD);
+    }
+}
+
+
+/**
  * Handle AJAX form submissions for modals to show errors inline
  */
 class ModalAjaxHandler {
@@ -1079,6 +1114,7 @@ class InvestmentPortfolioApp {
         new TransactionFormHandler();
         new ModalManager();
         new ModalAjaxHandler();
+        new NotesCounterHandler();
 
         const navbar = document.querySelector('.app-navbar');
         if (navbar) {

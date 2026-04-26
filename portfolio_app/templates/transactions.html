@@ -39,6 +39,12 @@
     font-weight: 600;
     pointer-events: none;
 }
+.tx-notes-cell {
+    max-width: 160px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
 </style>
 {% endblock %}
 
@@ -200,6 +206,7 @@
                                     <th class="small text-end" style="width: 90px;">Qty</th>
                                     <th class="small text-end" style="width: 90px;">Fees</th>
                                     <th class="small text-end" style="width: 140px;">Total Amount</th>
+                                    <th class="small" style="width: 160px;">Notes</th>
                                     <th class="small text-center" style="width: 100px;">Actions</th>
                                 </tr>
                             </thead>
@@ -219,6 +226,10 @@
                                     <td class="text-end"><small>{{ transaction.quantity|fmt_decimal }}</small></td>
                                     <td class="text-end"><small class="text-danger">{{ transaction.fees|fmt_decimal }}</small></td>
                                     <td class="text-end"><small class="text-primary">{{ transaction.net_amount|fmt_money }}</small></td>
+                                    {% set tx_notes = transaction.notes or '' %}
+                                    <td class="tx-notes-cell"{% if tx_notes %} title="{{ tx_notes }}"{% endif %}>
+                                        <small class="text-muted">{{ tx_notes if tx_notes else '—' }}</small>
+                                    </td>
                                     <td class="text-center">
                                         <div class="btn-group btn-group-sm row-actions" role="group">
                                             <button type="button" class="btn btn-outline-primary btn-icon btn-sm js-edit-transaction-btn"
@@ -263,6 +274,10 @@
                                     <td class="text-end"><small class="text-muted">—</small></td>
                                     <td class="text-end"><small class="text-muted">—</small></td>
                                     <td class="text-end"><small class="text-primary">{{ div.amount|fmt_money }}</small></td>
+                                    {% set div_notes = div.notes or '' %}
+                                    <td class="tx-notes-cell"{% if div_notes %} title="{{ div_notes }}"{% endif %}>
+                                        <small class="text-muted">{{ div_notes if div_notes else '—' }}</small>
+                                    </td>
                                     <td class="text-center">
                                         <div class="btn-group btn-group-sm row-actions" role="group">
                                             <button type="button"
@@ -487,7 +502,8 @@
 
                     <div class="mb-3">
                         <label for="notes" class="form-label">Notes (optional)</label>
-                        <textarea class="form-control" id="notes" name="notes" rows="2"></textarea>
+                        <textarea class="form-control js-notes-input" id="notes" name="notes" rows="2" maxlength="300"></textarea>
+                        <small class="notes-counter">0 / 300</small>
                     </div>
                 </div>
 
@@ -592,7 +608,8 @@
 
                     <div class="mb-3">
                         <label for="edit_notes" class="form-label">Notes (optional)</label>
-                        <textarea class="form-control" id="edit_notes" name="edit_notes" rows="2"></textarea>
+                        <textarea class="form-control js-notes-input" id="edit_notes" name="edit_notes" rows="2" maxlength="300"></textarea>
+                        <small class="notes-counter">0 / 300</small>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -700,7 +717,8 @@
                     </div>
                     <div class="mb-3">
                         <label for="add_div_notes" class="form-label">Notes (optional)</label>
-                        <textarea class="form-control" id="add_div_notes" name="notes" rows="2"></textarea>
+                        <textarea class="form-control js-notes-input" id="add_div_notes" name="notes" rows="2" maxlength="300"></textarea>
+                        <small class="notes-counter">0 / 300</small>
                     </div>
                     <div id="add_div_error" class="alert alert-danger d-none"></div>
                 </div>
@@ -742,7 +760,8 @@
                     </div>
                     <div class="mb-3">
                         <label for="edit_dividend_notes" class="form-label">Notes (optional)</label>
-                        <textarea class="form-control" id="edit_dividend_notes" name="edit_notes" rows="2"></textarea>
+                        <textarea class="form-control js-notes-input" id="edit_dividend_notes" name="edit_notes" rows="2" maxlength="300"></textarea>
+                        <small class="notes-counter">0 / 300</small>
                     </div>
                     <div id="edit_dividend_error" class="alert alert-danger d-none"></div>
                 </div>

@@ -250,9 +250,9 @@
                     </div>
                     <div class="mb-3">
                         <label for="add_funds_notes" class="form-label">Notes (optional)</label>
-                        <input type="text" class="form-control" id="add_funds_notes" name="notes"
-                               maxlength="200" placeholder="e.g., monthly top-up"
-                               value="{{ _dep_vals.get('notes', '') }}">
+                        <textarea class="form-control js-notes-input" id="add_funds_notes" name="notes"
+                                  rows="2" maxlength="300">{{ _dep_vals.get('notes', '') }}</textarea>
+                        <small class="notes-counter">0 / 300</small>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -307,9 +307,9 @@
                     </div>
                     <div class="mb-3">
                         <label for="withdraw_funds_notes" class="form-label">Notes (optional)</label>
-                        <input type="text" class="form-control" id="withdraw_funds_notes" name="notes"
-                               maxlength="200" placeholder="e.g., rebalance / cash out"
-                               value="{{ _with_vals.get('notes', '') }}">
+                        <textarea class="form-control js-notes-input" id="withdraw_funds_notes" name="notes"
+                                  rows="2" maxlength="300">{{ _with_vals.get('notes', '') }}</textarea>
+                        <small class="notes-counter">0 / 300</small>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -425,9 +425,10 @@
                     </div>
                     <div class="mb-3">
                         <label for="edit_cash_event_notes" class="form-label">Notes (optional)</label>
-                        <input type="text" class="form-control"
-                               id="edit_cash_event_notes" name="edit_cash_event_notes"
-                               maxlength="200" placeholder="Optional notes">
+                        <textarea class="form-control js-notes-input"
+                                  id="edit_cash_event_notes" name="edit_cash_event_notes"
+                                  rows="2" maxlength="300"></textarea>
+                        <small class="notes-counter">0 / 300</small>
                     </div>
                 </div>
                 <div class="modal-footer">

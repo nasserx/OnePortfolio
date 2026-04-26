@@ -124,7 +124,7 @@ class BaseForm:
         Returns:
             String value or None
         """
-        value = self.data.get(field_name) or default
+        value = self.data.get(field_name, default)
         if value is None:
             return None
         return value.strip()

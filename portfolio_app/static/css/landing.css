@@ -4,9 +4,9 @@
 
 /* ── Container ── */
 .landing-container {
-    max-width: 1200px;
+    max-width: 1400px;
     margin-inline: auto;
-    padding-inline: clamp(1.25rem, 5vw, 3.5rem);
+    padding-inline: clamp(1.25rem, 4vw, 3rem);
     width: 100%;
 }
 
@@ -15,10 +15,9 @@
 /* ============================================================ */
 .landing-nav {
     position: sticky; top: 0; z-index: 1030;
-    background: var(--surface);
+    background: var(--app-bg);
     height: 64px;
     display: flex; align-items: center;
-    border-bottom: 1px solid var(--border-color);
 }
 
 .landing-nav .landing-container {
@@ -63,14 +62,18 @@
 /* Hero                                                         */
 /* ============================================================ */
 .landing-hero {
-    padding: 80px 0 88px;
+    padding: 80px 0 48px;
     background: var(--app-bg);
 }
 
 .landing-hero .landing-container {
     display: grid;
-    grid-template-columns: 1fr 460px;
-    gap: 64px; align-items: center;
+    /* Right column sized to roughly match two feature cards below
+       (4-col features grid → 2 cards span ≈ half of the usable width).
+       align-items: stretch lets the preview card span from the top of
+       the left badge down to the bottom of the CTA buttons. */
+    grid-template-columns: 1fr 620px;
+    gap: 64px; align-items: stretch;
 }
 
 .landing-hero-content {
@@ -95,7 +98,7 @@
 
 .landing-subtext {
     font-size: 1rem; color: var(--text-2);
-    line-height: 1.8; margin: 0; max-width: 400px;
+    line-height: 1.8; margin: 0; max-width: 560px;
 }
 
 .landing-cta-group {
@@ -133,12 +136,13 @@
 /* ============================================================ */
 .landing-preview-wrap {
     min-width: 0; width: 100%;
-    display: flex; align-items: center; justify-content: center;
+    display: flex; align-items: stretch; justify-content: center;
 }
 
 .landing-preview {
     background: var(--surface);
     padding: 1.25rem; width: 100%;
+    display: flex; flex-direction: column;
     border-radius: var(--radius-lg) !important;
     outline: 1px solid var(--border-color) !important;
     box-shadow: 0 2px 8px rgba(60,64,67,.10), 0 8px 24px rgba(60,64,67,.06) !important;
@@ -179,11 +183,15 @@
 .preview-stat-value.profit { color: var(--color-profit); }
 
 /* Bar chart */
-.preview-chart { display: flex; flex-direction: column; gap: 0.5rem; }
+.preview-chart {
+    display: flex; flex-direction: column; gap: 0.5rem;
+    flex: 1; min-height: 0;
+}
 
 .preview-bars {
     display: flex; align-items: flex-end; gap: 10px;
-    height: 140px; padding: 0.75rem 0.75rem 0;
+    flex: 1; min-height: 140px;
+    padding: 0.75rem 0.75rem 0;
     background: var(--app-bg);
     border-radius: var(--radius-md) !important;
     outline: 1px solid var(--border-color) !important;
@@ -201,14 +209,24 @@
     font-size: 0.6875rem; color: var(--text-3); font-weight: 500;
 }
 
+/* In light mode the inner outlines on the stats strip and the bar chart
+   look noisy against the surface card. Drop them — and the per-stat
+   dividers — so the content reads as one clean block. */
+[data-bs-theme="light"] .preview-stats,
+[data-bs-theme="light"] .preview-bars {
+    outline: none !important;
+}
+[data-bs-theme="light"] .preview-stat + .preview-stat::before {
+    background: transparent;
+}
+
 
 /* ============================================================ */
 /* Features Section                                             */
 /* ============================================================ */
 .landing-features {
-    padding: 88px 0;
-    background: var(--surface);
-    border-top: 1px solid var(--border-color);
+    padding: 32px 0 72px;
+    background: var(--app-bg);
 }
 
 .landing-section-title {
@@ -254,8 +272,7 @@
 /* ============================================================ */
 .landing-footer {
     padding: 1.375rem 0;
-    background: var(--surface);
-    border-top: 1px solid var(--border-color);
+    background: var(--app-bg);
 }
 
 .landing-footer .landing-container {
@@ -274,12 +291,12 @@
 /* ============================================================ */
 /* Responsive                                                   */
 /* ============================================================ */
-@media (max-width: 960px) {
+@media (max-width: 1080px) {
     .landing-hero .landing-container { grid-template-columns: 1fr; gap: 3rem; text-align: center; }
     .landing-badge, .landing-cta-group { margin-left: auto; margin-right: auto; justify-content: center; }
     .landing-subtext { max-width: 100%; margin: 0 auto; }
     .landing-headline { font-size: 2.25rem; }
-    .landing-preview-wrap { max-width: 440px; margin: 0 auto; }
+    .landing-preview-wrap { max-width: 620px; margin: 0 auto; }
     .landing-features-grid { grid-template-columns: repeat(2, 1fr); }
 }
 

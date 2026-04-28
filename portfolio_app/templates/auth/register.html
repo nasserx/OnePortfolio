@@ -46,8 +46,6 @@
             </div>
             {% if form_errors.get('username') %}
                 <div class="invalid-feedback d-block mt-1">{{ form_errors['username'] }}</div>
-            {% else %}
-                <div class="password-hint">Letters and underscores only.</div>
             {% endif %}
         </div>
 
@@ -62,8 +60,6 @@
             </div>
             {% if form_errors.get('email') %}
                 <div class="invalid-feedback d-block mt-1">{{ form_errors['email'] }}</div>
-            {% else %}
-                <div class="password-hint">A verification code will be sent to this address.</div>
             {% endif %}
         </div>
 

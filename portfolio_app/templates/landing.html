@@ -91,11 +91,11 @@
                     <!-- Metric strip -->
                     <div class="preview-stats">
                         <div class="preview-stat">
-                            <span class="preview-stat-label">Total Funds</span>
+                            <span class="preview-stat-label">Total Contributed</span>
                             <span class="preview-stat-value">$77,870</span>
                         </div>
                         <div class="preview-stat">
-                            <span class="preview-stat-label">Portfolio Value</span>
+                            <span class="preview-stat-label">Book Value</span>
                             <span class="preview-stat-value">$84,210</span>
                         </div>
                         <div class="preview-stat">
@@ -204,7 +204,9 @@
 
                 <!-- ── LOGIN PANEL ── -->
                 <div id="panelLogin" class="auth-modal-panel">
-                    <div class="auth-modal-panel-header">
+                    <div class="auth-modal-panel-header text-center">
+                        <img src="{{ url_for('static', filename='icons/favicon.svg') }}"
+                             alt="OnePortfolio logo" class="auth-logo mb-3">
                         <h2 class="auth-title">Welcome back</h2>
                         <p class="auth-subtitle mb-0">Sign in to your portfolio</p>
                     </div>
@@ -273,7 +275,9 @@
 
                 <!-- ── REGISTER PANEL ── -->
                 <div id="panelSignup" class="auth-modal-panel d-none">
-                    <div class="auth-modal-panel-header">
+                    <div class="auth-modal-panel-header text-center">
+                        <img src="{{ url_for('static', filename='icons/favicon.svg') }}"
+                             alt="OnePortfolio logo" class="auth-logo mb-3">
                         <h2 class="auth-title">Create account</h2>
                         <p class="auth-subtitle mb-0">Start tracking your portfolio</p>
                     </div>
@@ -296,7 +300,6 @@
                                        placeholder="Choose a username" required>
                             </div>
                             <div class="auth-field-error d-none mt-1" data-error-for="regUsername"></div>
-                            <div class="password-hint">Letters and underscores only.</div>
                         </div>
 
                         <div class="mb-2">
@@ -308,7 +311,6 @@
                                        placeholder="you@example.com" required>
                             </div>
                             <div class="auth-field-error d-none mt-1" data-error-for="regEmail"></div>
-                            <div class="password-hint">A verification code will be sent to this address.</div>
                         </div>
 
                         <div class="mb-2">
@@ -358,7 +360,6 @@
                 <div id="panelForgot" class="auth-modal-panel d-none">
                     <div class="auth-modal-panel-header">
                         <h2 class="auth-title">Reset your password</h2>
-                        <p class="auth-subtitle mb-0">Enter your email and we'll send a reset link.</p>
                     </div>
 
                     <div id="forgotGeneralError" class="alert alert-danger py-2 mb-3 d-none">

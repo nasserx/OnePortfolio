@@ -5,6 +5,8 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_wtf.csrf import CSRFProtect, CSRFError
 from flask_login import LoginManager
 from flask_mail import Mail
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from sqlalchemy import event
 from sqlalchemy.engine import Engine
 from config import Config
@@ -14,6 +16,13 @@ db = SQLAlchemy()
 csrf = CSRFProtect()
 login_manager = LoginManager()
 mail = Mail()
+# In-memory backend — fine for a single-worker deployment. For multi-worker
+# scale, point ``RATELIMIT_STORAGE_URI`` at a Redis instance.
+limiter = Limiter(
+    key_func=get_remote_address,
+    default_limits=[],
+    storage_uri="memory://",
+)
 
 
 @event.listens_for(Engine, "connect")
@@ -31,7 +40,7 @@ def _enable_sqlite_foreign_keys(dbapi_connection, connection_record):
 # Bumped whenever a new migration step is added below. Stored in the SQLite
 # header (PRAGMA user_version) after a successful migration so subsequent
 # boots can short-circuit the whole inspection pass.
-TARGET_SCHEMA_VERSION = 25
+TARGET_SCHEMA_VERSION = 26
 
 
 def _run_migrations(app):
@@ -445,6 +454,50 @@ def _apply_migration_steps(conn, sa):
         ))
         conn.commit()
 
+    # ── Step 26: auth refactor — pending_registration table + lockout cols ─
+    # Sign-ups now stage in pending_registration until the OTP is confirmed,
+    # so the `user` table no longer holds unverified rows squatting on a
+    # username/email. The lockout columns drive the brute-force protection
+    # in AuthService.authenticate (5 fails → 30-min cooldown).
+    tables = set(inspector.get_table_names())
+    if 'pending_registration' not in tables:
+        conn.execute(sa.text('''
+            CREATE TABLE pending_registration (
+                id                            INTEGER PRIMARY KEY AUTOINCREMENT,
+                token                         VARCHAR(64)  NOT NULL UNIQUE,
+                username                      VARCHAR(80)  NOT NULL UNIQUE,
+                email                         VARCHAR(120) NOT NULL UNIQUE,
+                password_hash                 VARCHAR(255) NOT NULL,
+                verification_code             VARCHAR(6)   NOT NULL,
+                verification_code_expires_at  DATETIME     NOT NULL,
+                created_at                    DATETIME     NOT NULL,
+                expires_at                    DATETIME     NOT NULL
+            )
+        '''))
+        conn.execute(sa.text(
+            'CREATE INDEX ix_pending_registration_token ON pending_registration (token)'
+        ))
+        conn.execute(sa.text(
+            'CREATE INDEX ix_pending_registration_email ON pending_registration (email)'
+        ))
+        conn.execute(sa.text(
+            'CREATE INDEX ix_pending_registration_username ON pending_registration (username)'
+        ))
+        conn.commit()
+
+    if 'user' in tables:
+        user_cols = {c['name'] for c in inspector.get_columns('user')}
+        if 'failed_login_attempts' not in user_cols:
+            conn.execute(sa.text(
+                'ALTER TABLE "user" ADD COLUMN failed_login_attempts INTEGER NOT NULL DEFAULT 0'
+            ))
+            conn.commit()
+        if 'locked_until' not in user_cols:
+            conn.execute(sa.text(
+                'ALTER TABLE "user" ADD COLUMN locked_until DATETIME'
+            ))
+            conn.commit()
+
     # ── Step 24: rebuild tables with stale FK constraints / dropped cols ─
     # Older databases were created when the parent table was named
     # ``capital`` (later ``fund`` then ``portfolio``). SQLite RENAME TABLE
@@ -653,6 +706,11 @@ def create_app(config_class=Config):
     csrf.init_app(app)
     login_manager.init_app(app)
     mail.init_app(app)
+    # Rate limiting is on by default; the test config flips
+    # ``RATELIMIT_ENABLED`` off so the bulk of the suite can run without
+    # bumping into per-IP limits, and re-enables it just for the
+    # rate-limit-specific tests.
+    limiter.init_app(app)
 
     # Flask-Login configuration
     login_manager.login_view = 'auth.login'
@@ -706,6 +764,23 @@ def create_app(config_class=Config):
     @app.errorhandler(500)
     def internal_error(error):
         return {'error': 'Internal Server Error', 'message': MESSAGES['INTERNAL_SERVER_ERROR']}, 500
+
+    @app.errorhandler(429)
+    def _ratelimit_handler(error):
+        from flask import request, jsonify
+        # The error_message set on the @limiter.limit decorator surfaces here.
+        message = getattr(error, 'description', None) or MESSAGES['RATE_LIMIT_SIGNUP']
+        wants_json = (
+            request.form.get('_modal') == '1'
+            or request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+            or request.is_json
+            or request.accept_mimetypes.best == 'application/json'
+        )
+        if wants_json:
+            return jsonify({'ok': False, 'errors': {'__all__': message}}), 429
+        # Plain HTML response with the 429 status preserved. Browsers render
+        # it inline; the test suite asserts on the status code directly.
+        return (f"<p>{message}</p>", 429, {'Content-Type': 'text/html; charset=utf-8'})
 
     # Register blueprints
     from portfolio_app.routes import register_blueprints

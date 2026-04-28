@@ -3,180 +3,281 @@
 import secrets
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Union
 
 from portfolio_app.models.user import User
+from portfolio_app.models.pending_registration import PendingRegistration
 from portfolio_app.repositories.user_repository import UserRepository
+from portfolio_app.repositories.pending_registration_repository import (
+    PendingRegistrationRepository,
+)
 from portfolio_app.utils.messages import MESSAGES
 
 logger = logging.getLogger(__name__)
 
-# Verification code expiry in minutes
+# Verification code expiry in minutes (the 6-digit OTP)
 VERIFICATION_CODE_EXPIRY_MINUTES = 10
+# Hard TTL on a staged pending_registration row (independent of OTP refreshes)
+PENDING_REGISTRATION_TTL_HOURS = 24
+
+# Brute-force protection
+MAX_FAILED_LOGIN_ATTEMPTS = 5
+LOCKOUT_DURATION_MINUTES = 30
 
 
 class AuthService:
-    """Service handling registration, login, and password management."""
+    """Service handling registration, login, and password management.
 
-    def __init__(self, user_repo: UserRepository):
+    Sign-ups are first staged in :class:`PendingRegistration`. The row is
+    promoted into :class:`User` only after the user confirms the OTP, so
+    the live users table never contains unverified records.
+    """
+
+    def __init__(
+        self,
+        user_repo: UserRepository,
+        pending_repo: PendingRegistrationRepository,
+    ):
         self.user_repo = user_repo
+        self.pending_repo = pending_repo
 
     # ------------------------------------------------------------------
-    # Registration
+    # Registration — stages into pending_registration
     # ------------------------------------------------------------------
 
-    def register(self, username: str, email: str, password: str) -> Tuple[User, str]:
-        """Register a new unverified user and generate a 6-digit verification code.
+    def register(self, username: str, email: str, password: str) -> Tuple[PendingRegistration, str]:
+        """Stage a new sign-up and generate a 6-digit verification code.
 
-        The first user to register is automatically granted admin status.
-        The account is inactive (is_verified=False) until the user enters
-        the verification code sent to their email.
+        The account is **not** inserted into the ``user`` table until the
+        OTP is confirmed via :meth:`verify_user`. Any prior pending row for
+        the same email is deleted so its token/OTP can no longer be used.
 
         Args:
             username: Desired username.
-            email: User's email address (stored in lowercase).
-            password: Plain-text password (will be hashed).
+            email: User's email address (stored lowercase).
+            password: Plain-text password (hashed before storing, even in
+                the staging table).
 
         Returns:
-            Tuple of (created User, 6-digit verification code).
+            Tuple of (created PendingRegistration, 6-digit verification code).
 
         Raises:
-            ValueError: If username or email is already taken.
+            ValueError: If username or email is already taken by an existing
+                user, or by a different live pending registration.
         """
-        # Remove stale unverified accounts before checking availability.
-        # This lets users re-register freely if their previous attempt expired.
-        self._purge_expired_unverified()
+        # Tidy stale staged rows so old reservations don't block new sign-ups.
+        self.pending_repo.purge_expired(datetime.now(timezone.utc))
 
+        email_lc = email.lower()
+
+        # Guard against collisions with verified accounts first.
         if self.user_repo.get_by_username(username):
             raise ValueError(MESSAGES['USERNAME_TAKEN'])
-
-        if self.user_repo.get_by_email(email):
+        if self.user_repo.get_by_email(email_lc):
             raise ValueError(MESSAGES['EMAIL_ALREADY_EXISTS'])
 
-        is_first = self.user_repo.count() == 0
-        code = self._make_verification_code()
+        # Same-email sign-up: invalidate any prior staged token for this
+        # email by deleting the pending row outright.
+        self.pending_repo.delete_by_email(email_lc)
+        self.pending_repo.delete_by_username(username)
 
-        user = User(
+        # Cross-row username collision (different email) — block it.
+        if self.pending_repo.get_by_username(username):
+            raise ValueError(MESSAGES['USERNAME_TAKEN'])
+
+        code = self._make_verification_code()
+        token = secrets.token_urlsafe(32)
+        now = datetime.now(timezone.utc)
+
+        # Hash with bcrypt even at the staging layer so plaintext passwords
+        # never sit in the database, even briefly.
+        temp_user = User()
+        temp_user.set_password(password)
+
+        pending = PendingRegistration(
+            token=token,
             username=username,
-            email=email.lower(),
-            is_admin=is_first,
-            is_verified=False,
+            email=email_lc,
+            password_hash=temp_user.password_hash,
             verification_code=code,
-            verification_code_expires_at=datetime.now(timezone.utc) + timedelta(minutes=VERIFICATION_CODE_EXPIRY_MINUTES),
+            verification_code_expires_at=now + timedelta(minutes=VERIFICATION_CODE_EXPIRY_MINUTES),
+            created_at=now,
+            expires_at=now + timedelta(hours=PENDING_REGISTRATION_TTL_HOURS),
         )
-        user.set_password(password)
-        self.user_repo.add(user)
-        self.user_repo.commit()
-        return user, code
+        self.pending_repo.add(pending)
+        self.pending_repo.commit()
+        return pending, code
 
     # ------------------------------------------------------------------
     # Email verification (6-digit OTP)
     # ------------------------------------------------------------------
 
     def verify_user(self, email: str, code: str) -> Tuple[bool, str]:
-        """Verify a user's email using their 6-digit OTP code.
+        """Verify a 6-digit OTP and finalise the account.
 
-        Handles two cases:
-        - Registration: looks up by email (is_verified=False).
-        - Email update: looks up by pending_email (is_verified=True), then
-          promotes pending_email → email and clears the pending field.
+        Three flows funnel into this method:
 
-        Args:
-            email: The email address supplied in the verification URL.
-            code: The 6-digit code entered by the user.
-
-        Returns:
-            Tuple of (success: bool, error_message: str).
-            On success, error_message is an empty string.
+        - **Sign-up**: a row in ``pending_registration`` matches ``email``.
+          On success it is promoted to a ``User`` and the staging row is
+          deleted.
+        - **Email update** for a logged-in user: the new address sits in
+          ``user.pending_email`` until the OTP is confirmed; then it is
+          applied as the new ``user.email``.
+        - **Idempotency**: returning a friendly error if the email is
+          already a verified account or no pending state exists.
         """
-        # Case 1: pending email update for an already-verified account
-        user = self.user_repo.get_by_pending_email(email)
-        if user:
-            if not user.verification_code or not user.verification_code_expires_at:
+        email_lc = email.lower()
+        now = datetime.now(timezone.utc)
+        code = code.strip()
+
+        # ── Case 1: pending email update for an already-verified account ──
+        user_pending_email = self.user_repo.get_by_pending_email(email_lc)
+        if user_pending_email:
+            if (
+                not user_pending_email.verification_code
+                or not user_pending_email.verification_code_expires_at
+            ):
                 return False, MESSAGES['VERIFICATION_CODE_NOT_FOUND']
-            if datetime.now(timezone.utc) > user.verification_code_expires_at:
+            expires_at = self._as_utc(user_pending_email.verification_code_expires_at)
+            if now > expires_at:
                 return False, MESSAGES['VERIFICATION_CODE_EXPIRED']
-            if user.verification_code != code.strip():
+            if user_pending_email.verification_code != code:
                 return False, MESSAGES['VERIFICATION_CODE_MISMATCH']
 
-            # Apply the pending email change
-            user.email = user.pending_email
-            user.pending_email = None
-            user.verification_code = None
-            user.verification_code_expires_at = None
+            user_pending_email.email = user_pending_email.pending_email
+            user_pending_email.pending_email = None
+            user_pending_email.verification_code = None
+            user_pending_email.verification_code_expires_at = None
             self.user_repo.commit()
             return True, ''
 
-        # Case 2: new registration verification
-        user = self.user_repo.get_by_email(email)
-        if not user:
-            return False, MESSAGES['ACCOUNT_NOT_FOUND']
+        # ── Case 2: new sign-up confirmation ──
+        pending = self.pending_repo.get_by_email(email_lc)
+        if pending:
+            expires_at = self._as_utc(pending.verification_code_expires_at)
+            if now > expires_at:
+                return False, MESSAGES['VERIFICATION_CODE_EXPIRED']
+            if pending.verification_code != code:
+                return False, MESSAGES['VERIFICATION_CODE_MISMATCH']
 
-        if user.is_verified:
+            # Re-check live user table for late collisions before promoting.
+            if self.user_repo.get_by_username(pending.username):
+                self.pending_repo.delete(pending)
+                self.pending_repo.commit()
+                return False, MESSAGES['USERNAME_TAKEN']
+            if self.user_repo.get_by_email(pending.email):
+                self.pending_repo.delete(pending)
+                self.pending_repo.commit()
+                return False, MESSAGES['EMAIL_ALREADY_EXISTS']
+
+            is_first = self.user_repo.count() == 0
+            user = User(
+                username=pending.username,
+                email=pending.email,
+                is_admin=is_first,
+                is_verified=True,
+                created_at=datetime.now(timezone.utc),
+            )
+            user.password_hash = pending.password_hash
+            self.user_repo.add(user)
+            self.pending_repo.delete(pending)
+            self.user_repo.commit()
+            return True, ''
+
+        # ── Case 3: no pending state for this email ──
+        existing = self.user_repo.get_by_email(email_lc)
+        if existing and existing.is_verified:
             return False, MESSAGES['ACCOUNT_ALREADY_VERIFIED']
-
-        if not user.verification_code or not user.verification_code_expires_at:
-            return False, MESSAGES['VERIFICATION_CODE_NOT_FOUND']
-
-        if datetime.now(timezone.utc) > user.verification_code_expires_at:
-            return False, MESSAGES['VERIFICATION_CODE_EXPIRED']
-
-        if user.verification_code != code.strip():
-            return False, MESSAGES['VERIFICATION_CODE_MISMATCH']
-
-        user.is_verified = True
-        user.verification_code = None
-        user.verification_code_expires_at = None
-        self.user_repo.commit()
-        return True, ''
+        return False, MESSAGES['ACCOUNT_NOT_FOUND']
 
     def resend_verification_code(self, email: str) -> Optional[str]:
-        """Generate and store a fresh 6-digit code for an unverified user.
+        """Generate a fresh OTP for a pending sign-up or pending email update.
 
-        Args:
-            email: The user's email address.
-
-        Returns:
-            The new code, or None if the user is not found or already verified.
+        Returns the new code, or ``None`` if there is no live pending record
+        for ``email`` (already verified, never registered, or expired).
         """
-        user = self.user_repo.get_by_email(email)
-        if not user or user.is_verified:
-            return None
+        email_lc = email.lower()
+        now = datetime.now(timezone.utc)
 
-        code = self._make_verification_code()
-        user.verification_code = code
-        user.verification_code_expires_at = datetime.now(timezone.utc) + timedelta(minutes=VERIFICATION_CODE_EXPIRY_MINUTES)
-        self.user_repo.commit()
-        return code
+        # Pending sign-up — extend OTP, but not the row's hard TTL.
+        pending = self.pending_repo.get_by_email(email_lc)
+        if pending:
+            if self._as_utc(pending.expires_at) < now:
+                # Hard TTL expired; force the user to re-register.
+                self.pending_repo.delete(pending)
+                self.pending_repo.commit()
+                return None
+            code = self._make_verification_code()
+            pending.verification_code = code
+            pending.verification_code_expires_at = (
+                now + timedelta(minutes=VERIFICATION_CODE_EXPIRY_MINUTES)
+            )
+            self.pending_repo.commit()
+            return code
+
+        # Pending email update for a verified user.
+        user = self.user_repo.get_by_pending_email(email_lc)
+        if user:
+            code = self._make_verification_code()
+            user.verification_code = code
+            user.verification_code_expires_at = (
+                now + timedelta(minutes=VERIFICATION_CODE_EXPIRY_MINUTES)
+            )
+            self.user_repo.commit()
+            return code
+
+        return None
 
     # ------------------------------------------------------------------
     # Login
     # ------------------------------------------------------------------
 
-    def authenticate(self, identifier: str, password: str) -> Optional[User]:
+    def authenticate(self, identifier: str, password: str) -> Union[User, str, None]:
         """Verify credentials and update last_login on success.
 
-        Accepts either a username or an email address as the identifier.
-        Only verified accounts are allowed to log in.
-
-        Args:
-            identifier: Username or email address.
-            password: Plain-text password to verify.
-
         Returns:
-            The authenticated User on success,
-            the string 'unverified' if credentials are correct but account is not verified,
-            or None if credentials are invalid.
+            * The authenticated :class:`User` on success.
+            * ``'locked'`` if the account is currently locked from too many
+              failed attempts.
+            * ``'pending'`` if the identifier matches a staged sign-up that
+              hasn't been verified yet.
+            * ``None`` if the credentials are invalid.
+
+        On a successful login any legacy (non-bcrypt) password hash is
+        transparently rehashed to bcrypt and the failed-attempt counter
+        is reset.
         """
         user = self.user_repo.get_by_username_or_email(identifier)
-        if user and user.check_password(password):
-            if not user.is_verified:
-                # Signal to the route that the account exists but is unverified.
-                # Returning a sentinel string avoids leaking "wrong password".
-                return 'unverified'
-            user.last_login = datetime.now(timezone.utc)
+        if user:
+            if user.is_locked():
+                return 'locked'
+
+            if user.check_password(password):
+                # Transparent upgrade to bcrypt for legacy hashes.
+                if user.needs_rehash():
+                    user.set_password(password)
+                user.failed_login_attempts = 0
+                user.locked_until = None
+                user.last_login = datetime.now(timezone.utc)
+                self.user_repo.commit()
+                return user
+
+            # Wrong password for an existing user — increment counter.
+            user.failed_login_attempts = (user.failed_login_attempts or 0) + 1
+            if user.failed_login_attempts >= MAX_FAILED_LOGIN_ATTEMPTS:
+                user.locked_until = datetime.now(timezone.utc) + timedelta(
+                    minutes=LOCKOUT_DURATION_MINUTES
+                )
             self.user_repo.commit()
-            return user
+            return None
+
+        # No verified user. If a pending sign-up exists, surface it so the
+        # route can prompt the user to finish verification.
+        pending = self.pending_repo.get_by_username(identifier) or \
+            self.pending_repo.get_by_email(identifier.lower())
+        if pending:
+            return 'pending'
+
         return None
 
     # ------------------------------------------------------------------
@@ -184,67 +285,35 @@ class AuthService:
     # ------------------------------------------------------------------
 
     def update_email(self, user: User, new_email: str, password: str) -> str:
-        """Stage a new email address and generate a verification OTP.
-
-        The current email is NOT changed until the user confirms the OTP.
-        The new address is stored in pending_email and only promoted to email
-        after successful verification, so a failed or abandoned flow leaves
-        the account fully intact.
-
-        Args:
-            user: The logged-in user requesting the change.
-            new_email: The desired new email address (stored lowercase).
-            password: Current password for identity confirmation.
-
-        Returns:
-            The 6-digit OTP to be sent to new_email.
-
-        Raises:
-            ValueError: If the password is incorrect.
-        """
+        """Stage a new email address and generate a verification OTP."""
         if not user.check_password(password):
             raise ValueError(MESSAGES['CURRENT_PASSWORD_INCORRECT'])
 
         code = self._make_verification_code()
         user.pending_email = new_email.lower()
         user.verification_code = code
-        user.verification_code_expires_at = datetime.now(timezone.utc) + timedelta(minutes=VERIFICATION_CODE_EXPIRY_MINUTES)
-        # is_verified and email are intentionally left unchanged until confirmation
+        user.verification_code_expires_at = (
+            datetime.now(timezone.utc) + timedelta(minutes=VERIFICATION_CODE_EXPIRY_MINUTES)
+        )
         self.user_repo.commit()
         return code
 
     def change_password(self, user: User, current_password: str, new_password: str) -> None:
-        """Change user password after verifying the current one.
-
-        Args:
-            user: The user changing their password.
-            current_password: Must match the stored hash.
-            new_password: New plain-text password.
-
-        Raises:
-            ValueError: If current_password is wrong.
-        """
+        """Change user password after verifying the current one."""
         if not user.check_password(current_password):
             raise ValueError(MESSAGES['CURRENT_PASSWORD_INCORRECT'])
         user.set_password(new_password)
         self.user_repo.commit()
 
     def reset_password_with_token(self, email: str, new_password: str) -> Optional[User]:
-        """Set a new password for the user identified by their email.
-
-        Called after the reset token has already been validated by the route.
-
-        Args:
-            email: The email address decoded from the reset token.
-            new_password: New plain-text password to hash and store.
-
-        Returns:
-            The updated User, or None if no matching user was found.
-        """
+        """Set a new password for the user identified by their email."""
         user = self.user_repo.get_by_email(email)
         if not user:
             return None
         user.set_password(new_password)
+        # A successful reset implicitly clears any active lockout.
+        user.failed_login_attempts = 0
+        user.locked_until = None
         self.user_repo.commit()
         return user
 
@@ -253,37 +322,19 @@ class AuthService:
     # ------------------------------------------------------------------
 
     def request_account_deletion(self, user: User) -> str:
-        """Generate and store a 6-digit OTP for account deletion confirmation.
-
-        Uses the dedicated deletion_code fields to avoid any conflict with
-        the verification_code used for registration and email updates.
-
-        Args:
-            user: The authenticated user requesting account deletion.
-
-        Returns:
-            The 6-digit confirmation code to be emailed to the user.
-        """
         code = self._make_verification_code()
         user.deletion_code = code
-        user.deletion_code_expires_at = datetime.now(timezone.utc) + timedelta(minutes=VERIFICATION_CODE_EXPIRY_MINUTES)
+        user.deletion_code_expires_at = (
+            datetime.now(timezone.utc) + timedelta(minutes=VERIFICATION_CODE_EXPIRY_MINUTES)
+        )
         self.user_repo.commit()
         return code
 
     def confirm_account_deletion(self, user: User, code: str) -> Tuple[bool, str]:
-        """Verify the deletion OTP and permanently delete the user's account.
-
-        Args:
-            user: The authenticated user confirming deletion.
-            code: The 6-digit OTP entered by the user.
-
-        Returns:
-            Tuple of (success: bool, error_message: str).
-        """
         if (
             not user.deletion_code
             or not user.deletion_code_expires_at
-            or datetime.now(timezone.utc) > user.deletion_code_expires_at
+            or datetime.now(timezone.utc) > self._as_utc(user.deletion_code_expires_at)
             or user.deletion_code != code.strip()
         ):
             return False, MESSAGES['DELETION_INVALID_CODE']
@@ -297,15 +348,6 @@ class AuthService:
     # ------------------------------------------------------------------
 
     def toggle_admin(self, user_id: int, current_user: User) -> User:
-        """Toggle admin status for a user (admin only).
-
-        Args:
-            user_id: Target user ID.
-            current_user: The admin performing the action.
-
-        Raises:
-            ValueError: If user not found or trying to change own status.
-        """
         user = self.user_repo.get_by_id(user_id)
         if not user:
             raise ValueError(MESSAGES['USER_NOT_FOUND'])
@@ -316,15 +358,6 @@ class AuthService:
         return user
 
     def delete_user(self, user_id: int, current_user: User) -> None:
-        """Delete a user account (admin only).
-
-        Args:
-            user_id: Target user ID.
-            current_user: The admin performing the deletion.
-
-        Raises:
-            ValueError: If user not found or trying to delete own account.
-        """
         user = self.user_repo.get_by_id(user_id)
         if not user:
             raise ValueError(MESSAGES['USER_NOT_FOUND'])
@@ -337,20 +370,12 @@ class AuthService:
     # Private helpers
     # ------------------------------------------------------------------
 
-    def _purge_expired_unverified(self) -> None:
-        """Delete unverified accounts whose verification code has expired.
-
-        Called at the start of every registration to keep the database clean
-        and allow users to re-register freely after an expired attempt.
-        """
-        expired = self.user_repo.get_expired_unverified(datetime.now(timezone.utc))
-        for user in expired:
-            logger.info("Purging expired unverified account: %s", user.email)
-            self.user_repo.delete(user)
-        if expired:
-            self.user_repo.commit()
-
     @staticmethod
     def _make_verification_code() -> str:
         """Generate a cryptographically random 6-digit OTP code."""
         return str(secrets.randbelow(900000) + 100000)
+
+    @staticmethod
+    def _as_utc(dt: datetime) -> datetime:
+        """Treat a naive (SQLite-roundtripped) datetime as UTC for comparison."""
+        return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)

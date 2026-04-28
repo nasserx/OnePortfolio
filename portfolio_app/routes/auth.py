@@ -9,6 +9,7 @@ from urllib.parse import urlparse
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import login_user, logout_user, login_required, current_user
 
+from portfolio_app import limiter
 from portfolio_app.services import get_services
 from portfolio_app.utils.constants import DEMO_USERNAME
 from portfolio_app.forms.auth_forms import (
@@ -76,15 +77,26 @@ def login():
             svc = get_services()
             result = svc.auth_service.authenticate(data['username'], data['password'])
 
-            if result == 'unverified':
-                # Redirect to the code entry page so the user can verify immediately
-                user = svc.user_repo.get_by_username_or_email(data['username'])
-                if user and user.email:
-                    verify_url = url_for('auth.verify_code', email=user.email)
+            if result == 'locked':
+                form_errors['__all__'] = MESSAGES['ACCOUNT_LOCKED']
+                form_values = request.form
+            elif result == 'pending':
+                # Sign-up was started but never confirmed — send the user to
+                # the OTP entry page so they can finish the verification.
+                pending = (
+                    svc.pending_registration_repo.get_by_username(data['username']) or
+                    svc.pending_registration_repo.get_by_email(data['username'].lower())
+                )
+                if pending:
+                    verify_url = url_for('auth.verify_code', email=pending.email)
                     if from_modal:
                         return jsonify({'ok': True, 'redirect': verify_url})
                     return redirect(verify_url)
                 form_errors['__all__'] = MESSAGES['ACCOUNT_UNVERIFIED']
+                form_values = request.form
+            elif isinstance(result, str):
+                # Defensive: any other sentinel string is treated as a soft block.
+                form_errors['__all__'] = MESSAGES['INVALID_CREDENTIALS']
                 form_values = request.form
             elif result:
                 remember = request.form.get('remember') == 'on'
@@ -126,8 +138,14 @@ def logout():
 # ---------------------------------------------------------------------------
 
 @auth_bp.route('/register', methods=['GET', 'POST'])
+@limiter.limit("5 per hour", methods=['POST'], error_message=MESSAGES['RATE_LIMIT_SIGNUP'])
 def register():
-    """Register new account. Sends a 6-digit verification code on success."""
+    """Register new account. Sends a 6-digit verification code on success.
+
+    Rate-limited to 5 sign-up attempts per IP per hour. Sign-ups stage in
+    the ``pending_registration`` table; the user record is only created
+    after the OTP is confirmed.
+    """
     if current_user.is_authenticated:
         return redirect(url_for('dashboard.index'))
 
@@ -138,45 +156,46 @@ def register():
         from_modal = bool(request.form.get('_modal'))
         svc = get_services()
 
+        # A username/email taken by either a verified user or by another
+        # live pending record (different email/username) is unavailable.
+        # When the user is re-submitting with the same email, register()
+        # will silently invalidate the prior pending row, so we don't
+        # treat a same-email pending as "taken" at the form-validation
+        # layer.
+        def _username_taken(u: str) -> bool:
+            if svc.user_repo.get_by_username(u):
+                return True
+            pending = svc.pending_registration_repo.get_by_username(u)
+            return pending is not None and pending.email != (request.form.get('email') or '').lower()
+
+        def _email_taken(e: str) -> bool:
+            return svc.user_repo.get_by_email(e) is not None
+
         form = RegisterForm(
             request.form,
-            check_username_taken=lambda u: svc.user_repo.get_by_username(u) is not None,
-            check_email_taken=lambda e: svc.user_repo.get_by_email(e) is not None,
+            check_username_taken=_username_taken,
+            check_email_taken=_email_taken,
         )
 
         if form.validate():
             data = form.get_cleaned_data()
             try:
-                user, code = svc.auth_service.register(
+                pending, code = svc.auth_service.register(
                     data['username'],
                     data['email'],
                     data['password'],
                 )
 
-                email_sent = send_verification_email(user.email, code)
+                email_sent = send_verification_email(pending.email, code)
                 if not email_sent:
-                    logger.error('Verification email failed for %s', user.email)
+                    logger.error('Verification email failed for %s', pending.email)
 
-                verify_url = url_for('auth.verify_code', email=user.email)
+                verify_url = url_for('auth.verify_code', email=pending.email)
                 if from_modal:
                     return jsonify({'ok': True, 'redirect': verify_url})
                 return redirect(verify_url)
 
             except ValueError as e:
-                # If the email belongs to an unverified account, resend a fresh code
-                # instead of blocking the user with an "already taken" error.
-                email = data.get('email', '')
-                if email:
-                    existing = svc.user_repo.get_by_email(email)
-                    if existing and not existing.is_verified:
-                        new_code = svc.auth_service.resend_verification_code(existing.email)
-                        if new_code:
-                            send_verification_email(existing.email, new_code)
-                        verify_url = url_for('auth.verify_code', email=existing.email)
-                        if from_modal:
-                            return jsonify({'ok': True, 'redirect': verify_url})
-                        return redirect(verify_url)
-
                 form_errors['__all__'] = str(e)
                 form_values = request.form
             except Exception:
@@ -239,8 +258,16 @@ def verify_code():
 
 
 @auth_bp.route('/resend-code')
+@limiter.limit(
+    "3 per hour",
+    key_func=lambda: (request.args.get('email', '') or '').lower(),
+    error_message=MESSAGES['RATE_LIMIT_RESEND'],
+)
 def resend_code():
-    """Resend a fresh 6-digit verification code to the user's email."""
+    """Resend a fresh 6-digit verification code to the user's email.
+
+    Rate-limited to 3 requests per email per hour.
+    """
     email = request.args.get('email', '')
 
     if not email:

@@ -14,6 +14,10 @@ from portfolio_app.repositories import (
     DividendRepository,
 )
 from portfolio_app.repositories.user_repository import UserRepository
+from portfolio_app.repositories.pending_registration_repository import (
+    PendingRegistrationRepository,
+)
+from portfolio_app.models.pending_registration import PendingRegistration
 from portfolio_app.services.portfolio_service import PortfolioService
 from portfolio_app.services.transaction_service import TransactionService
 from portfolio_app.services.overview_service import OverviewService
@@ -27,7 +31,7 @@ class Services:
 
     __slots__ = (
         'portfolio_repo', 'portfolio_event_repo', 'transaction_repo', 'symbol_repo',
-        'dividend_repo', 'user_repo',
+        'dividend_repo', 'user_repo', 'pending_registration_repo',
         'portfolio_service', 'transaction_service', 'overview_service',
         'auth_service',
     )
@@ -39,6 +43,7 @@ class Services:
         self.symbol_repo = SymbolRepository(Symbol, db, user_id=user_id)
         self.dividend_repo = DividendRepository(Dividend, db, user_id=user_id)
         self.user_repo = UserRepository(User, db)
+        self.pending_registration_repo = PendingRegistrationRepository(PendingRegistration, db)
 
         self.portfolio_service = PortfolioService(self.portfolio_repo, self.portfolio_event_repo)
         self.transaction_service = TransactionService(
@@ -46,7 +51,7 @@ class Services:
             dividend_repo=self.dividend_repo,
         )
         self.overview_service = OverviewService(self.portfolio_repo, user_id=user_id)
-        self.auth_service = AuthService(self.user_repo)
+        self.auth_service = AuthService(self.user_repo, self.pending_registration_repo)
 
 
 def get_services() -> Services:

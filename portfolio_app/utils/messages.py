@@ -106,7 +106,10 @@ MESSAGES = {
     'ACCOUNT_UNVERIFIED':          "Your account hasn't been verified yet. Please check your email for the verification code.",
     'ACCOUNT_NOT_FOUND':           "No account was found for this email.",
     'ACCOUNT_ALREADY_VERIFIED':    "This account is already verified. Please sign in.",
+    'ACCOUNT_LOCKED':              "Too many failed sign-in attempts. Please try again in a few minutes.",
     'REGISTRATION_FAILED':         "Registration failed. Please try again.",
+    'RATE_LIMIT_SIGNUP':           "Too many sign-up attempts. Please try again later.",
+    'RATE_LIMIT_RESEND':           "Too many resend requests. Please try again later.",
 
     'VERIFICATION_CODE_REQUIRED':  "Verification code is required.",
     'VERIFICATION_CODE_INVALID_FORMAT': "Please enter the 6-digit code sent to your email.",

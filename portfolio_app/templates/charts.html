@@ -2,31 +2,114 @@
 
 {% block title %}Charts - OnePortfolio{% endblock %}
 
+{% block extra_css %}
+<style>
+/* Shared card-section title style (eyebrow above each chart). */
+.charts-eyebrow {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    font-weight: 600;
+}
+
+/* ── Allocation donut card ─────────────────────────────────────── */
+.allocation-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1.75rem;
+    min-width: 0;
+}
+.allocation-canvas-wrap {
+    flex: 0 0 250px;
+    width: 250px;
+    max-width: 100%;
+    transform: translateX(-12px);
+}
+
+/* HTML legend: 3-column grid so percentages right-align across rows. */
+.allocation-legend {
+    list-style: none; padding: 0; margin: 0;
+    display: grid;
+    grid-template-columns: 10px auto auto;
+    align-items: center;
+    column-gap: 0.625rem;
+    row-gap: 0.5rem;
+    font-size: 13.5px;
+    font-weight: 400;
+    color: var(--text-1);
+    flex: 0 1 auto;
+    min-width: 0;
+}
+.allocation-legend li {
+    display: contents;
+}
+.allocation-legend .swatch {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+}
+.allocation-legend .name {
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    margin-right: 0.75rem;
+}
+.allocation-legend .pct {
+    font-variant-numeric: tabular-nums;
+    color: var(--text-1);
+    text-align: right;
+}
+
+/* ── Performance heatmap (treemap) card ────────────────────────── */
+.heatmap-wrap {
+    width: 100%;
+    height: 250px;
+}
+.heatmap-empty {
+    font-size: 0.875rem;
+    padding: 2rem 0;
+    text-align: center;
+}
+
+@media (max-width: 575.98px) {
+    .allocation-wrap { flex-direction: column; }
+    .allocation-legend { width: 100%; }
+}
+</style>
+{% endblock %}
+
 {% block content %}
 
-{% if chart_data.categories %}
+{% if chart_data.donut_categories %}
 <div class="row g-3">
 
     <!-- Allocation Donut -->
     <div class="col-12 col-lg-6">
         <div class="card h-100 page-accent-surface">
             <div class="card-body p-4">
-                <p class="text-muted mb-3" style="font-size:.75rem; text-transform:uppercase; letter-spacing:.4px; font-weight:600;">Portfolio Allocation</p>
-                <div style="width: 100%;">
-                    <canvas id="allocationChart"></canvas>
+                <p class="text-muted charts-eyebrow mb-3">Portfolio Allocation</p>
+                <div class="allocation-wrap">
+                    <div class="allocation-canvas-wrap">
+                        <canvas id="allocationChart"></canvas>
+                    </div>
+                    <ul class="allocation-legend" id="allocationLegend"></ul>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Realized P&L Bar -->
+    <!-- Performance Heatmap -->
     <div class="col-12 col-lg-6">
         <div class="card h-100 page-accent-surface">
             <div class="card-body p-4">
-                <p class="text-muted mb-3" style="font-size:.75rem; text-transform:uppercase; letter-spacing:.4px; font-weight:600;">Realized P&amp;L by Portfolio</p>
-                <div style="width: 100%;">
+                <p class="text-muted charts-eyebrow mb-3">Performance Heatmap</p>
+                {% if chart_data.treemap %}
+                <div class="heatmap-wrap">
                     <canvas id="pnlChart"></canvas>
                 </div>
+                {% else %}
+                <div class="text-muted heatmap-empty">
+                    No realized P&amp;L yet — performance appears after closed trades or recorded dividends.
+                </div>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -43,143 +126,247 @@
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-chart-treemap@3"></script>
 <script>
 (function () {
     const chartData = {{ chart_data | tojson }};
 
-    // Google Material-inspired vibrant palette — assigned by index, never gray
-    const PALETTE = [
-        '#4285F4', // Google Blue
-        '#EA4335', // Google Red
-        '#FBBC04', // Google Yellow
-        '#34A853', // Google Green
-        '#FF6D00', // Deep Orange
-        '#AA00FF', // Deep Purple
-        '#00B0FF', // Light Blue
-        '#00BFA5', // Teal
-        '#F06292', // Pink
-        '#8D6E63', // Brown
-    ];
+    /* ════════════════════════════════════════════════════════════════
+       Constants
+    ════════════════════════════════════════════════════════════════ */
 
-    function paletteColor(index) {
-        return PALETTE[index % PALETTE.length];
+    // Google Material-inspired palette, cycled by category index. Never gray —
+    // gray is reserved for the aggregated "Others" bucket.
+    const PALETTE = [
+        '#4285F4', '#EA4335', '#FBBC04', '#34A853', '#FF6D00',
+        '#AA00FF', '#00B0FF', '#00BFA5', '#F06292', '#8D6E63',
+    ];
+    const OTHERS_LABEL = 'Others';
+    const OTHERS_COLOR = '#9aa0a6';
+
+    // Treemap tile colors — match the brand's profit/loss palette elsewhere.
+    const TILE_GAIN = 'rgba(52, 168, 83, 0.85)';
+    const TILE_LOSS = 'rgba(234, 67, 53, 0.85)';
+
+    const NAME_MAX = 10;  // chars before truncation; tooltip keeps the full name.
+
+    /* ════════════════════════════════════════════════════════════════
+       Helpers — theming, formatting, naming
+    ════════════════════════════════════════════════════════════════ */
+
+    function cssVar(name, fallback) {
+        const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+        return v || fallback;
+    }
+    function textColor() { return cssVar('--text-1', '#202124'); }
+
+    function paletteColor(i) { return PALETTE[i % PALETTE.length]; }
+    function colorFor(name, i) {
+        return name === OTHERS_LABEL ? OTHERS_COLOR : paletteColor(i);
     }
 
-    function isDarkMode() { return document.documentElement.getAttribute('data-bs-theme') === 'dark'; }
-    function textColor()  { return isDarkMode() ? '#dee2e6' : '#212529'; }
-    function gridColor()  { return isDarkMode() ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'; }
+    function truncate(name) {
+        return name.length > NAME_MAX ? name.slice(0, NAME_MAX) + '…' : name;
+    }
 
-    const colors = chartData.categories.map(function(_, i) { return paletteColor(i); });
+    const compactNumber = new Intl.NumberFormat('en-US', {
+        notation: 'compact', maximumFractionDigits: 2,
+    });
+    function fmtRoi(v) {
+        return (v >= 0 ? '+' : '') + v.toFixed(1) + '%';
+    }
+    function fmtSigned(v) {
+        return (v >= 0 ? '+' : '-') + Math.abs(v).toFixed(2);
+    }
 
-    // ── Allocation Donut ──────────────────────────────────────────────
+    Chart.defaults.color = textColor();
+
+    /* ════════════════════════════════════════════════════════════════
+       Donut: center-text plugin
+       Renders a small label above a larger value, both centered in the hole.
+       Pulls its strings from options.plugins.centerText so callers configure
+       it through the standard Chart.js options object.
+    ════════════════════════════════════════════════════════════════ */
+
+    const CENTER_LABEL_FONT = '600 12px Roboto, sans-serif';
+    const CENTER_VALUE_FONT = '700 15px Roboto, sans-serif';
+    const CENTER_LABEL_DY   = -11;
+    const CENTER_VALUE_DY   = 8;
+
+    const centerTextPlugin = {
+        id: 'centerText',
+        afterDraw: function(chart) {
+            if (chart.config.type !== 'doughnut') return;
+            const opts = chart.config.options.plugins.centerText;
+            if (!opts || !opts.value) return;
+
+            const arc = chart.getDatasetMeta(0).data[0];
+            if (!arc) return;
+
+            const ctx = chart.ctx;
+            ctx.save();
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = textColor();
+
+            ctx.globalAlpha = 0.7;
+            ctx.font = CENTER_LABEL_FONT;
+            ctx.fillText(opts.label || 'TOTAL', arc.x, arc.y + CENTER_LABEL_DY);
+
+            ctx.globalAlpha = 1;
+            ctx.font = CENTER_VALUE_FONT;
+            ctx.fillText(opts.value, arc.x, arc.y + CENTER_VALUE_DY);
+
+            ctx.restore();
+        }
+    };
+
+    /* ════════════════════════════════════════════════════════════════
+       Donut chart + custom HTML legend
+       The HTML legend gives perfect column alignment for percentages —
+       Chart.js's canvas legend can't right-align across rows reliably.
+    ════════════════════════════════════════════════════════════════ */
+
+    const donutColors = chartData.donut_categories.map(colorFor);
+
     const allocationChart = new Chart(document.getElementById('allocationChart'), {
         type: 'doughnut',
         data: {
-            labels: chartData.categories,
+            labels: chartData.donut_categories,
             datasets: [{
-                data: chartData.allocations,
-                backgroundColor: colors,
+                data: chartData.donut_allocations,
+                backgroundColor: donutColors,
                 borderWidth: 0,
                 hoverOffset: 8,
             }]
         },
+        plugins: [centerTextPlugin],
         options: {
             responsive: true,
-            aspectRatio: 2,
-            layout: { padding: { top: 10, bottom: 10, left: 0, right: 60 } },
+            aspectRatio: 1,
+            cutout: '64%',
+            layout: { padding: 8 },
             animation: { animateRotate: true, animateScale: true },
             plugins: {
-                legend: {
-                    position: 'right',
-                    afterFit: function(legend) { legend.width = 160; },
-                    labels: {
-                        color: textColor(),
-                        padding: 16,
-                        font: { size: 12 },
-                        boxWidth: 10,
-                        boxHeight: 10,
-                        usePointStyle: true,
-                        pointStyle: 'circle',
-                    }
-                },
+                legend: { display: false },
                 tooltip: {
                     callbacks: {
                         label: function(ctx) {
                             return ' ' + ctx.label + ': ' + ctx.parsed.toFixed(1) + '%';
                         }
                     }
+                },
+                centerText: {
+                    label: 'TOTAL',
+                    value: compactNumber.format(chartData.total_book_value || 0),
                 }
             }
         }
     });
 
-    // ── Realized P&L Bar ─────────────────────────────────────────────
-    const pnlColors = chartData.realized_pnl.map(function(v) {
-        return v >= 0 ? 'rgba(52, 168, 83, 0.85)' : 'rgba(234, 67, 53, 0.85)';
-    });
-    const pnlBorder = chartData.realized_pnl.map(function(v) {
-        return v >= 0 ? '#34A853' : '#EA4335';
-    });
+    function renderAllocationLegend() {
+        const root = document.getElementById('allocationLegend');
+        if (!root) return;
 
-    const pnlChart = new Chart(document.getElementById('pnlChart'), {
-        type: 'bar',
-        data: {
-            labels: chartData.categories,
-            datasets: [{
-                label: 'Realized P&L',
-                data: chartData.realized_pnl,
-                backgroundColor: pnlColors,
-                borderColor: pnlBorder,
-                borderWidth: 1.5,
-                borderRadius: 6,
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    callbacks: {
-                        label: function(ctx) {
-                            const v = ctx.parsed.y;
-                            const sign = v >= 0 ? '+' : '';
-                            return ' ' + sign + v.toFixed(2);
+        const frag = document.createDocumentFragment();
+        chartData.donut_categories.forEach(function(name, i) {
+            const li = document.createElement('li');
+            li.title = name;
+
+            const swatch = document.createElement('span');
+            swatch.className = 'swatch';
+            swatch.style.background = colorFor(name, i);
+
+            const nameEl = document.createElement('span');
+            nameEl.className = 'name';
+            nameEl.textContent = truncate(name);
+
+            const pctEl = document.createElement('span');
+            pctEl.className = 'pct';
+            pctEl.textContent = chartData.donut_allocations[i].toFixed(1) + '%';
+
+            li.append(swatch, nameEl, pctEl);
+            frag.appendChild(li);
+        });
+        root.appendChild(frag);
+    }
+    renderAllocationLegend();
+
+    /* ════════════════════════════════════════════════════════════════
+       Performance heatmap (treemap)
+       Tile size = |realized P&L|, color = sign, label = name + ROI%.
+       Skipped entirely when there's no realized P&L (server filters).
+    ════════════════════════════════════════════════════════════════ */
+
+    function buildTreemapConfig(tree) {
+        return {
+            type: 'treemap',
+            data: {
+                datasets: [{
+                    tree: tree,
+                    key: 'abs_pnl',
+                    spacing: 1,
+                    borderWidth: 0,
+                    backgroundColor: function(ctx) {
+                        if (ctx.type !== 'data') return 'transparent';
+                        return ctx.raw._data.pnl >= 0 ? TILE_GAIN : TILE_LOSS;
+                    },
+                    labels: {
+                        display: true,
+                        align: 'center',
+                        position: 'middle',
+                        color: '#fff',
+                        font: [
+                            { size: 13, weight: 600 },
+                            { size: 13, weight: 400 },
+                        ],
+                        formatter: function(ctx) {
+                            if (ctx.type !== 'data') return '';
+                            const d = ctx.raw._data;
+                            return [truncate(d.name), fmtRoi(d.roi_percent)];
+                        },
+                    },
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        displayColors: false,
+                        callbacks: {
+                            title: function(items) { return items[0].raw._data.name; },
+                            label: function(ctx) {
+                                const d = ctx.raw._data;
+                                return [
+                                    'P&L: ' + fmtSigned(d.pnl),
+                                    'ROI: ' + fmtRoi(d.roi_percent),
+                                ];
+                            }
                         }
                     }
                 }
-            },
-            scales: {
-                x: {
-                    ticks: { color: textColor(), font: { size: 12 } },
-                    grid: { color: gridColor() }
-                },
-                y: {
-                    ticks: {
-                        color: textColor(),
-                        font: { size: 12 },
-                        callback: function(v) {
-                            return (v >= 0 ? '+' : '') + v.toFixed(0);
-                        }
-                    },
-                    grid: { color: gridColor() }
-                }
             }
-        }
-    });
+        };
+    }
 
-    // Update chart colors on theme switch without page reload
+    let pnlChart = null;
+    const pnlEl = document.getElementById('pnlChart');
+    if (pnlEl && chartData.treemap.length > 0) {
+        pnlChart = new Chart(pnlEl, buildTreemapConfig(chartData.treemap));
+    }
+
+    /* ════════════════════════════════════════════════════════════════
+       Theme observer — repaint chart text when --text-1 changes.
+       Treemap tile colors are theme-agnostic; only the donut's center
+       text reads CSS vars at draw time, so it needs an explicit redraw.
+    ════════════════════════════════════════════════════════════════ */
+
     new MutationObserver(function() {
-        const tc = textColor();
-        const gc = gridColor();
-
-        allocationChart.options.plugins.legend.labels.color = tc;
+        Chart.defaults.color = textColor();
         allocationChart.update('none');
-
-        pnlChart.options.scales.x.ticks.color = tc;
-        pnlChart.options.scales.x.grid.color = gc;
-        pnlChart.options.scales.y.ticks.color = tc;
-        pnlChart.options.scales.y.grid.color = gc;
-        pnlChart.update('none');
+        if (pnlChart) pnlChart.update('none');
     }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-bs-theme'] });
 })();
 </script>

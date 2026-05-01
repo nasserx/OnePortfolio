@@ -287,7 +287,7 @@ html { scroll-behavior: smooth; }
 
 .preview-donut {
     position: relative;
-    width: 152px; height: 152px;
+    width: 184px; height: 184px;
     border-radius: 50%;
     /* 40 / 30 / 20 / 10  →  144 / 108 / 72 / 36 deg */
     background: conic-gradient(
@@ -329,7 +329,7 @@ html { scroll-behavior: smooth; }
     grid-template-columns: 10px 1fr auto;
     align-items: center;
     gap: 0.4rem;
-    font-size: 0.75rem; color: var(--text-2); font-weight: 500;
+    font-size: 0.6875rem; color: var(--text-3); font-weight: 500;
 }
 .preview-donut-legend .legend-swatch {
     width: 10px; height: 10px;
@@ -340,9 +340,7 @@ html { scroll-behavior: smooth; }
 .preview-donut-legend .legend-swatch.s-3 { background: var(--donut-3); }
 .preview-donut-legend .legend-swatch.s-4 { background: var(--donut-4); }
 .preview-donut-legend .legend-pct {
-    color: var(--text-1); font-weight: 600;
     font-variant-numeric: tabular-nums;
-    font-size: 0.7rem;
 }
 
 /* In light mode the inner outlines on the stats strip and chart cards

@@ -6,7 +6,7 @@
 <style>
 /* Shared card-section title style (eyebrow above each chart). */
 .charts-eyebrow {
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     text-transform: uppercase;
     letter-spacing: 0.4px;
     font-weight: 600;
@@ -35,9 +35,9 @@
     align-items: center;
     column-gap: 0.625rem;
     row-gap: 0.5rem;
-    font-size: 13.5px;
-    font-weight: 400;
-    color: var(--text-1);
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--text-2);
     flex: 0 1 auto;
     min-width: 0;
 }
@@ -54,7 +54,7 @@
 }
 .allocation-legend .pct {
     font-variant-numeric: tabular-nums;
-    color: var(--text-1);
+    color: var(--text-2);
     text-align: right;
 }
 
@@ -63,11 +63,51 @@
     width: 100%;
     height: 250px;
 }
+.heatmap-wrap-tall {
+    height: 320px;  /* symbol heatmap holds more tiles, deserves more room */
+}
 .heatmap-empty {
     font-size: 0.875rem;
     padding: 2rem 0;
     text-align: center;
 }
+/* Heatmap metric toggle — segmented tab pattern matching .tx-type-tabs
+   (used in the Buy/Sell modal). Material Design 3 tab semantics: flat
+   labels, primary-colored text + 2px underline indicator on the active
+   tab. The underlying control is still a btn-check radio group, only the
+   visual treatment changes. */
+.heatmap-toggle {
+    display: inline-flex;
+    border-bottom: 1px solid var(--border-color);
+    gap: 0;
+}
+.heatmap-toggle-tab {
+    position: relative;
+    padding: 0.25rem 0.65rem;
+    margin-bottom: -1px;             /* overlap the container's bottom border */
+    font-size: 0.65rem;
+    font-weight: 500;
+    line-height: 1.4;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    color: var(--text-2);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: color var(--transition);
+}
+.heatmap-toggle-tab::after {
+    content: '';
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    height: 2px;
+    background: transparent;
+    transition: background var(--transition);
+}
+.heatmap-toggle-tab:hover { color: var(--text-1); }
+.btn-check:checked + .heatmap-toggle-tab          { color: var(--primary); }
+.btn-check:checked + .heatmap-toggle-tab::after   { background: var(--primary); }
+.btn-check:focus-visible + .heatmap-toggle-tab    { color: var(--primary); }
 
 @media (max-width: 575.98px) {
     .allocation-wrap { flex-direction: column; }
@@ -96,14 +136,24 @@
         </div>
     </div>
 
-    <!-- Performance Heatmap -->
+    <!-- Performance Heatmap (portfolios) -->
     <div class="col-12 col-lg-6">
         <div class="card h-100 page-accent-surface">
             <div class="card-body p-4">
-                <p class="text-muted charts-eyebrow mb-3">Performance Heatmap</p>
-                {% if chart_data.treemap %}
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <p class="text-muted charts-eyebrow mb-0">Portfolio Performance Heatmap</p>
+                    {% if chart_data.portfolio_treemap %}
+                    <div class="heatmap-toggle" role="tablist" aria-label="Portfolio heatmap sizing metric">
+                        <input type="radio" class="btn-check" name="portfolio-metric" id="portfolio-pnl" value="abs_pnl" autocomplete="off" checked>
+                        <label class="heatmap-toggle-tab" for="portfolio-pnl">P&amp;L</label>
+                        <input type="radio" class="btn-check" name="portfolio-metric" id="portfolio-roi" value="abs_roi" autocomplete="off">
+                        <label class="heatmap-toggle-tab" for="portfolio-roi">ROI</label>
+                    </div>
+                    {% endif %}
+                </div>
+                {% if chart_data.portfolio_treemap %}
                 <div class="heatmap-wrap">
-                    <canvas id="pnlChart"></canvas>
+                    <canvas id="portfolioHeatmap"></canvas>
                 </div>
                 {% else %}
                 <div class="text-muted heatmap-empty">
@@ -114,6 +164,36 @@
         </div>
     </div>
 
+</div>
+
+<!-- Symbol Performance Heatmap (full width) -->
+<div class="row g-3 mt-0">
+    <div class="col-12">
+        <div class="card page-accent-surface">
+            <div class="card-body p-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <p class="text-muted charts-eyebrow mb-0">Symbol Performance Heatmap</p>
+                    {% if chart_data.symbol_treemap %}
+                    <div class="heatmap-toggle" role="tablist" aria-label="Symbol heatmap sizing metric">
+                        <input type="radio" class="btn-check" name="symbol-metric" id="symbol-pnl" value="abs_pnl" autocomplete="off" checked>
+                        <label class="heatmap-toggle-tab" for="symbol-pnl">P&amp;L</label>
+                        <input type="radio" class="btn-check" name="symbol-metric" id="symbol-roi" value="abs_roi" autocomplete="off">
+                        <label class="heatmap-toggle-tab" for="symbol-roi">ROI</label>
+                    </div>
+                    {% endif %}
+                </div>
+                {% if chart_data.symbol_treemap %}
+                <div class="heatmap-wrap heatmap-wrap-tall">
+                    <canvas id="symbolHeatmap"></canvas>
+                </div>
+                {% else %}
+                <div class="text-muted heatmap-empty">
+                    No realized symbol P&amp;L yet — record sells or dividends to see per-symbol performance.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
 </div>
 
 {% else %}
@@ -189,7 +269,7 @@
     ════════════════════════════════════════════════════════════════ */
 
     const CENTER_LABEL_FONT = '600 12px Roboto, sans-serif';
-    const CENTER_VALUE_FONT = '700 15px Roboto, sans-serif';
+    const CENTER_VALUE_FONT = '700 14px Roboto, sans-serif';
     const CENTER_LABEL_DY   = -11;
     const CENTER_VALUE_DY   = 8;
 
@@ -244,7 +324,7 @@
         options: {
             responsive: true,
             aspectRatio: 1,
-            cutout: '64%',
+            cutout: '62%',
             layout: { padding: 8 },
             animation: { animateRotate: true, animateScale: true },
             plugins: {
@@ -293,12 +373,57 @@
     renderAllocationLegend();
 
     /* ════════════════════════════════════════════════════════════════
-       Performance heatmap (treemap)
-       Tile size = |realized P&L|, color = sign, label = name + ROI%.
-       Skipped entirely when there's no realized P&L (server filters).
+       Performance heatmaps (treemaps)
+       Shared shape for both portfolio and symbol heatmaps:
+         tile size = abs_pnl, color sign = pnl, label = name + ROI%.
+       The tooltipLines callback is the only domain-specific bit.
+       Skipped entirely when the server returns no rows.
     ════════════════════════════════════════════════════════════════ */
 
-    function buildTreemapConfig(tree) {
+    // Tile-label sizing thresholds (in CSS px of the tile's smaller side).
+    // Below LABEL_MIN, labels are hidden entirely (tooltip remains the
+    // fallback). Between LABEL_MIN and LABEL_TWO_LINE only the name shows.
+    // Above LABEL_TWO_LINE both name and ROI fit. Font ramps linearly across
+    // [LABEL_MIN .. LABEL_FONT_MAX] from FONT_MIN_PX to FONT_MAX_PX.
+    const LABEL_MIN        = 22;
+    const LABEL_TWO_LINE   = 38;
+    const LABEL_FONT_MAX   = 70;
+    const FONT_MIN_PX      = 9;
+    const FONT_MAX_PX      = 13;
+
+    function tileMinDim(ctx) {
+        const r = ctx.raw || {};
+        return Math.min(r.w || 0, r.h || 0);
+    }
+
+    function tileFontSize(minDim) {
+        if (minDim <= LABEL_MIN) return FONT_MIN_PX;
+        if (minDim >= LABEL_FONT_MAX) return FONT_MAX_PX;
+        const t = (minDim - LABEL_MIN) / (LABEL_FONT_MAX - LABEL_MIN);
+        return Math.round(FONT_MIN_PX + t * (FONT_MAX_PX - FONT_MIN_PX));
+    }
+
+    function tileLabelFont(ctx) {
+        if (ctx.type !== 'data') return { size: FONT_MAX_PX, weight: 600 };
+        const size = tileFontSize(tileMinDim(ctx));
+        return [
+            { size: size, weight: 600 },
+            { size: size, weight: 400 },
+        ];
+    }
+
+    function tileLabelFormatter(ctx) {
+        if (ctx.type !== 'data') return '';
+        const minDim = tileMinDim(ctx);
+        if (minDim < LABEL_MIN) return '';
+        const d = ctx.raw._data;
+        if (minDim < LABEL_TWO_LINE) return [truncate(d.name)];
+        return [truncate(d.name), fmtRoi(d.roi_percent)];
+    }
+
+    function buildTreemapConfig(opts) {
+        const tree = opts.tree;
+        const tooltipLines = opts.tooltipLines;
         return {
             type: 'treemap',
             data: {
@@ -316,15 +441,13 @@
                         align: 'center',
                         position: 'middle',
                         color: '#fff',
-                        font: [
-                            { size: 13, weight: 600 },
-                            { size: 13, weight: 400 },
-                        ],
-                        formatter: function(ctx) {
-                            if (ctx.type !== 'data') return '';
-                            const d = ctx.raw._data;
-                            return [truncate(d.name), fmtRoi(d.roi_percent)];
-                        },
+                        // Font scales with the tile's smaller dimension so labels
+                        // shrink (instead of overflowing) on cramped tiles.
+                        font: tileLabelFont,
+                        // Formatter drops the ROI line when there's no vertical
+                        // room for two lines, and hides labels entirely when
+                        // even one line wouldn't be legible. Tooltip still works.
+                        formatter: tileLabelFormatter,
                     },
                 }]
             },
@@ -338,11 +461,7 @@
                         callbacks: {
                             title: function(items) { return items[0].raw._data.name; },
                             label: function(ctx) {
-                                const d = ctx.raw._data;
-                                return [
-                                    'P&L: ' + fmtSigned(d.pnl),
-                                    'ROI: ' + fmtRoi(d.roi_percent),
-                                ];
+                                return tooltipLines(ctx.raw._data);
                             }
                         }
                     }
@@ -351,11 +470,48 @@
         };
     }
 
-    let pnlChart = null;
-    const pnlEl = document.getElementById('pnlChart');
-    if (pnlEl && chartData.treemap.length > 0) {
-        pnlChart = new Chart(pnlEl, buildTreemapConfig(chartData.treemap));
+    function pnlTooltipLines(d) {
+        return [
+            'P&L: ' + fmtSigned(d.pnl),
+            'ROI: ' + fmtRoi(d.roi_percent),
+        ];
     }
+
+    function symbolTooltipLines(d) {
+        const lines = pnlTooltipLines(d);
+        if (d.portfolio_name) {
+            lines.push('Portfolio: ' + d.portfolio_name);
+        }
+        return lines;
+    }
+
+    function mountTreemap(canvasId, tree, tooltipLines) {
+        const el = document.getElementById(canvasId);
+        if (!el || !tree || tree.length === 0) return null;
+        return new Chart(el, buildTreemapConfig({
+            tree: tree,
+            tooltipLines: tooltipLines,
+        }));
+    }
+
+    const portfolioHeatmap = mountTreemap('portfolioHeatmap', chartData.portfolio_treemap, pnlTooltipLines);
+    const symbolHeatmap    = mountTreemap('symbolHeatmap',    chartData.symbol_treemap,    symbolTooltipLines);
+
+    /* Sizing metric toggle: switches dataset.key between abs_pnl and abs_roi.
+       Chart.js's treemap controller reads the key per draw, so swapping it
+       and calling update() is enough — no rebuild needed. */
+    function bindHeatmapToggle(groupName, chart) {
+        if (!chart) return;
+        document.querySelectorAll('input[name="' + groupName + '"]').forEach(function(input) {
+            input.addEventListener('change', function() {
+                if (!input.checked) return;
+                chart.data.datasets[0].key = input.value;
+                chart.update();
+            });
+        });
+    }
+    bindHeatmapToggle('portfolio-metric', portfolioHeatmap);
+    bindHeatmapToggle('symbol-metric',    symbolHeatmap);
 
     /* ════════════════════════════════════════════════════════════════
        Theme observer — repaint chart text when --text-1 changes.
@@ -366,7 +522,8 @@
     new MutationObserver(function() {
         Chart.defaults.color = textColor();
         allocationChart.update('none');
-        if (pnlChart) pnlChart.update('none');
+        if (portfolioHeatmap) portfolioHeatmap.update('none');
+        if (symbolHeatmap)    symbolHeatmap.update('none');
     }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-bs-theme'] });
 })();
 </script>

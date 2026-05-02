@@ -24,7 +24,7 @@
     --info-muted:       #e1f0fa;
 
     /* ── Surface scale ── */
-    --app-bg:           #f8f9fa;
+    --app-bg:           #eef0f3;
     --surface:          #ffffff;
     --surface-2:        #f1f3f4;
     --surface-hover:    #f5f6f8;   /* ~8% black state layer — Google neutral hover */
@@ -44,7 +44,7 @@
     /* ── Chrome ── */
     --sidebar-bg:       #ffffff;
     --sidebar-width:    228px;
-    --topbar-height:    56px;
+    --topbar-height:    48px;
 
     /* ── Typography ── */
     --text-1:           #202124;
@@ -125,7 +125,9 @@
     --btn-danger-hover:   #f6aea8;
     --btn-warning-hover:  #fde68a;
 
-    --sidebar-bg:       #202124;
+    /* Lifted one tonal step above --app-bg so the sidebar/topbar stay
+       visible after their dividers were removed. */
+    --sidebar-bg:       #292a2d;
 
     --border-color:     rgba(255,255,255,.12);
     --border:           rgba(255,255,255,.12);
@@ -207,29 +209,12 @@ label, .form-label { color: var(--text-2); font-weight: 500; font-size: 0.875rem
     overflow-y: auto; overflow-x: hidden;
 }
 
-/* Right edge divider */
-.app-sidebar::after {
-    content: '';
-    position: absolute;
-    right: 0; top: 0; bottom: 0;
-    width: 1px;
-    background: var(--border-color);
-}
-
 .sidebar-brand {
     display: flex; align-items: center; gap: 0.625rem;
     padding: 0 1.375rem; height: var(--topbar-height);
     color: var(--text-1); font-size: 0.9375rem; font-weight: 600;
     letter-spacing: -0.25px; flex-shrink: 0; text-decoration: none;
-    position: relative;
     transition: opacity var(--transition);
-}
-.sidebar-brand::after {
-    content: '';
-    position: absolute;
-    bottom: 0; left: 0; right: 0;
-    height: 1px;
-    background: var(--border-color);
 }
 .sidebar-brand:hover { color: var(--text-1); opacity: 0.8; text-decoration: none; }
 .sidebar-brand img { width: 28px; height: 28px; flex-shrink: 0; }
@@ -282,6 +267,10 @@ label, .form-label { color: var(--text-2); font-weight: 500; font-size: 0.875rem
     flex: 1; min-width: 0;
     display: flex; flex-direction: column;
     min-height: 100vh;
+    /* Backdrop for the content area's rounded top-left corner — shows
+       through the curve so the gray content panel appears to "carve into"
+       the white chrome formed by sidebar + topbar. */
+    background: var(--sidebar-bg);
 }
 
 /* ============================================================ */
@@ -292,18 +281,9 @@ label, .form-label { color: var(--text-2); font-weight: 500; font-size: 0.875rem
     background: var(--sidebar-bg);
     display: flex; align-items: center;
     justify-content: space-between;
-    padding: 0 2rem;
+    padding: 0 1.25rem;
     position: sticky; top: 0; z-index: 1030;
     flex-shrink: 0;
-}
-/* Bottom border */
-.app-topbar::after {
-    content: '';
-    position: absolute;
-    bottom: 0; left: 0; right: 0;
-    height: 1px;
-    background: var(--border-color);
-    transition: opacity 0.22s ease;
 }
 
 .topbar-left { display: flex; align-items: center; gap: 1rem; }
@@ -320,55 +300,56 @@ label, .form-label { color: var(--text-2); font-weight: 500; font-size: 0.875rem
     flex-shrink: 0; user-select: none;
 }
 
-/* ── User Menu Trigger — avatar only ── */
-.user-menu-trigger {
-    display: flex; align-items: center; justify-content: center;
+/* ── Sidebar user menu (rectangular trigger pinned to sidebar bottom) ── */
+.sidebar-user-menu {
+    margin: 0.5rem 0.75rem 0.75rem;
+    flex-shrink: 0;
+}
+.sidebar-user-trigger {
+    display: flex; align-items: center; gap: 0.625rem;
+    width: 100%;
+    padding: 0.5rem 0.625rem;
     background: transparent;
-    padding: 3px;
-    border-radius: 50% !important;
+    border: none;
+    border-radius: var(--radius-md) !important;
+    color: var(--text-1);
+    font-size: 0.875rem;
     cursor: pointer;
     transition: background var(--transition);
-    border: none;
-    outline: none !important;
+    text-align: left;
 }
-.user-menu-trigger:focus,
-.user-menu-trigger:focus-visible { outline: none !important; box-shadow: none !important; }
-.user-menu-trigger:hover,
-.user-menu-trigger[aria-expanded="true"] { background: var(--surface-hover); }
-
-/* ── Sidebar user card (legacy — kept for ref) ── */
-.sidebar-user-info {
-    display: flex; flex-direction: column; gap: 1px;
-    min-width: 0; flex: 1;
+.sidebar-user-trigger:focus,
+.sidebar-user-trigger:focus-visible { outline: none !important; box-shadow: none !important; }
+.sidebar-user-trigger:hover,
+.sidebar-user-trigger[aria-expanded="true"] { background: var(--surface-hover); }
+.sidebar-user-trigger .user-avatar {
+    width: 28px; height: 28px; font-size: 0.75rem; flex-shrink: 0;
 }
-.sidebar-user-name-text {
-    font-size: 0.8125rem; font-weight: 500; color: var(--text-1);
+.sidebar-user-name {
+    flex: 1; min-width: 0;
+    color: var(--text-1); font-weight: 500;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    line-height: 1.3;
+}
+.sidebar-user-chevron {
+    font-size: 0.7rem; color: var(--text-2);
+    flex-shrink: 0;
+    transition: transform 0.2s ease;
+}
+.sidebar-user-trigger[aria-expanded="true"] .sidebar-user-chevron {
+    transform: rotate(180deg);
 }
 
-/* ── User Dropdown ── */
-.dropdown { position: relative; }
-.user-dropdown-menu {
-    min-width: 220px;
+/* Dropdown menu opens upward (Bootstrap dropup); width matches the trigger. */
+.sidebar-user-dropdown {
+    min-width: calc(var(--sidebar-width) - 1.5rem);
     padding: 0.375rem;
     background: var(--surface);
-    position: absolute !important;
-    right: 0 !important;
-    z-index: 9999 !important;
     border-radius: var(--radius-md) !important;
     box-shadow: var(--shadow-overlay) !important;
     outline: 1px solid var(--border-color) !important;
+    z-index: 9999 !important;
 }
 
-.nav-dropdown-header {
-    display: flex; align-items: center; gap: 0.5rem;
-    padding: 0.625rem 0.875rem; user-select: none;
-}
-.nav-user-name {
-    font-size: 0.875rem; font-weight: 500; color: var(--text-1);
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
 .nav-admin-badge {
     background: var(--primary-muted); color: var(--primary);
     font-size: 0.625rem; padding: 2px 6px; font-weight: 600; letter-spacing: 0.03em;
@@ -556,7 +537,12 @@ label, .form-label { color: var(--text-2); font-weight: 500; font-size: 0.875rem
 /* ============================================================ */
 /* Page Content                                                 */
 /* ============================================================ */
-.app-content { padding: 1.25rem 2rem 2rem; flex: 1; }
+.app-content {
+    padding: 1.25rem;
+    flex: 1;
+    background: var(--app-bg);
+    border-top-left-radius: var(--radius-md);
+}
 
 .page-header {
     display: flex; align-items: center;
@@ -579,7 +565,6 @@ label, .form-label { color: var(--text-2); font-weight: 500; font-size: 0.875rem
     padding: 1.25rem 1.5rem;
     background: var(--surface);
     border-radius: var(--radius-md) !important;
-    outline: 1px solid var(--border-color) !important;
     cursor: default; position: relative;
     transition: background var(--transition-slow);
 }
@@ -634,7 +619,6 @@ label, .form-label { color: var(--text-2); font-weight: 500; font-size: 0.875rem
 .portfolio-card {
     font-size: 0.875rem; background: var(--surface);
     border-radius: var(--radius-md) !important;
-    outline: 1px solid var(--border-color) !important;
     overflow: hidden;
     transition: background var(--transition-slow);
 }
@@ -694,7 +678,6 @@ label, .form-label { color: var(--text-2); font-weight: 500; font-size: 0.875rem
 .card {
     background: var(--card-bg); overflow: hidden;
     border-radius: var(--radius-md) !important;
-    outline: 1px solid var(--border-color) !important;
 }
 .card-header {
     background: var(--surface);
@@ -783,7 +766,14 @@ tr:hover .row-actions {
     font-weight: 600; font-size: 0.6875rem;
     letter-spacing: 0.06em; text-transform: uppercase;
     color: var(--text-3);
-    background: var(--surface) !important;
+    /* Transparent header — inherits the table surface so it blends visually.
+       The accent-bg/bg overrides neutralize Bootstrap's .table-light gradient
+       which would otherwise paint a gray band on top. */
+    --bs-table-bg: transparent;
+    --bs-table-accent-bg: transparent;
+    background-color: transparent !important;
+    background-image: none !important;
+    border-bottom: 1px solid var(--border-color) !important;
     padding: 0.625rem 0.875rem;
 }
 .table td {
@@ -820,7 +810,12 @@ tr:hover .row-actions {
     --bs-table-striped-bg: var(--surface);
 }
 .transactions-table th {
-    background: var(--surface) !important;
+    /* See .table thead th rule above — same transparent + divider treatment. */
+    --bs-table-bg: transparent;
+    --bs-table-accent-bg: transparent;
+    background-color: transparent !important;
+    background-image: none !important;
+    border-bottom: 1px solid var(--border-color) !important;
     color: var(--text-3) !important;
     padding: 0.5rem 0.875rem;
     font-size: 0.6875rem;
@@ -1452,14 +1447,6 @@ i.bi { vertical-align: middle; }
     outline-color: rgba(255,255,255,.10) !important;
 }
 
-[data-bs-theme="dark"] .user-dropdown-menu {
-    outline: 1px solid rgba(255,255,255,.10) !important;
-}
-
-/* Table headers in dark: use app-bg for depth */
-[data-bs-theme="dark"] .table thead th,
-[data-bs-theme="dark"] .transactions-table th { background: var(--surface) !important; }
-
 /* Avatar in dark: primary background is light, needs dark text */
 [data-bs-theme="dark"] .user-avatar { color: #202124 !important; }
 
@@ -1509,6 +1496,9 @@ i.bi { vertical-align: middle; }
     background: rgba(138,180,248,.28);
     color: #8ab4f8;
 }
+[data-bs-theme="dark"] .sidebar-user-dropdown {
+    outline: 1px solid rgba(255,255,255,.10) !important;
+}
 
 /* Theme toggle in dark */
 [data-bs-theme="dark"] .theme-toggle {
@@ -1548,8 +1538,6 @@ i.bi { vertical-align: middle; }
 }
 
 @media (max-width: 768px) {
-    .app-content  { padding: 1.25rem; }
-    .app-topbar   { padding: 0 1.25rem; }
     .flash-container { padding: 0.75rem 1.25rem 0; }
 
     .stat-cards-row { grid-template-columns: repeat(2, 1fr); }

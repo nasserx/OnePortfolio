@@ -484,6 +484,163 @@ def test_dividends(app):
 
 
 # ---------------------------------------------------------------------------
+# Test 7 – Symbol performance (per-symbol heatmap aggregation)
+# ---------------------------------------------------------------------------
+
+def test_symbol_performance(app):
+    """Verify per-(portfolio, symbol) realized performance for the heatmap.
+
+    Covers:
+      - Symbol with sells: realized P&L and ROI use realized_cost_basis
+      - Symbol with dividends only (held, never sold): ROI base falls
+        back to held cost basis so the row gets a meaningful denominator
+      - Dividend recorded against a symbol with no transaction history
+        still surfaces (rare, but real for transferred-in holdings)
+      - Cross-user isolation: another user sees only their own rows
+      - Zero-P&L rows are dropped from the treemap projection
+    """
+    from portfolio_app.routes.charts import _symbol_treemap, TOP_N_SYMBOLS
+
+    with app.app_context():
+        db.drop_all()
+        db.create_all()
+
+        u1 = _seed_user('alice')
+        u2 = _seed_user('bob')
+        svc1 = Services(user_id=u1)
+        svc2 = Services(user_id=u2)
+
+        # u1: two portfolios, mixed symbols
+        trading = svc1.portfolio_service.create_portfolio('Trading', user_id=u1)
+        long_term = svc1.portfolio_service.create_portfolio('Long-term', user_id=u1)
+        svc1.portfolio_service.deposit_funds(trading.id, _dec(10_000))
+        svc1.portfolio_service.deposit_funds(long_term.id, _dec(10_000))
+
+        # AAPL in Trading: buy 10@100, sell 5@120 → realized P&L = 100, cost basis = 500
+        b1 = Transaction(portfolio_id=trading.id, transaction_type='Buy',
+                         date=datetime(2026, 1, 1), symbol='AAPL',
+                         price=100, quantity=10, fees=0)
+        b1.calculate_net_amount()
+        s1 = Transaction(portfolio_id=trading.id, transaction_type='Sell',
+                         date=datetime(2026, 1, 5), symbol='AAPL',
+                         price=120, quantity=5, fees=0)
+        s1.calculate_net_amount()
+
+        # MSFT in Long-term: buy 10@200, no sell → trading P&L = 0, but
+        # one dividend of 75 → total P&L = 75, ROI base falls back to
+        # held cost basis (2000) → ROI = 3.75%
+        b2 = Transaction(portfolio_id=long_term.id, transaction_type='Buy',
+                         date=datetime(2026, 1, 2), symbol='MSFT',
+                         price=200, quantity=10, fees=0)
+        b2.calculate_net_amount()
+
+        db.session.add_all([b1, s1, b2])
+        db.session.commit()
+        PortfolioCalculator.recalculate_all_averages_for_symbol(trading.id, 'AAPL')
+        PortfolioCalculator.recalculate_all_averages_for_symbol(long_term.id, 'MSFT')
+        db.session.commit()
+
+        svc1.transaction_service.add_dividend(long_term.id, 'MSFT', _dec('75'),
+                                              datetime(2026, 2, 1))
+        # Dividend on a symbol with no transactions — captures transferred-in holdings.
+        svc1.transaction_service.add_dividend(long_term.id, 'TRSF', _dec('20'),
+                                              datetime(2026, 2, 10))
+
+        # u2: completely separate data — no rows should leak across users
+        bob_p = svc2.portfolio_service.create_portfolio('Bob', user_id=u2)
+        svc2.portfolio_service.deposit_funds(bob_p.id, _dec(1_000))
+        bb = Transaction(portfolio_id=bob_p.id, transaction_type='Buy',
+                         date=datetime(2026, 1, 1), symbol='NVDA',
+                         price=50, quantity=10, fees=0)
+        bb.calculate_net_amount()
+        bs = Transaction(portfolio_id=bob_p.id, transaction_type='Sell',
+                         date=datetime(2026, 1, 4), symbol='NVDA',
+                         price=60, quantity=10, fees=0)
+        bs.calculate_net_amount()
+        db.session.add_all([bb, bs])
+        db.session.commit()
+        PortfolioCalculator.recalculate_all_averages_for_symbol(bob_p.id, 'NVDA')
+        db.session.commit()
+
+        print("\n" + "=" * 60)
+        print("TEST 7 – SYMBOL PERFORMANCE")
+        print("=" * 60)
+
+        # ── 7a: u1 sees AAPL/MSFT/TRSF and nothing of u2 ──
+        rows = svc1.overview_service.get_symbol_performance()
+        by_key = {(r['portfolio_name'], r['symbol']): r for r in rows}
+
+        print("\n  7a – row coverage and isolation")
+        assert ('Trading', 'AAPL') in by_key, "Missing Trading/AAPL"
+        assert ('Long-term', 'MSFT') in by_key, "Missing Long-term/MSFT"
+        assert ('Long-term', 'TRSF') in by_key, "Missing Long-term/TRSF (dividend-only)"
+        assert all(r['symbol'] != 'NVDA' for r in rows), "NVDA leaked from u2"
+        print("  PASS  rows cover own symbols and isolate from u2")
+
+        # ── 7b: AAPL realized P&L and ROI ──
+        aapl = by_key[('Trading', 'AAPL')]
+        _assert('AAPL trading P&L',         _dec('100'),  aapl['realized_pnl'])
+        _assert('AAPL dividend total',      _dec('0'),    aapl['dividend_total'])
+        _assert('AAPL total realized P&L',  _dec('100'),  aapl['total_realized_pnl'])
+        _assert('AAPL realized cost basis', _dec('500'),  aapl['realized_cost_basis'])
+        _assert('AAPL ROI%',                _dec('20'),   aapl['roi_percent'])
+
+        # ── 7c: MSFT — dividend only, ROI base falls back to held cost basis ──
+        msft = by_key[('Long-term', 'MSFT')]
+        _assert('MSFT trading P&L',        _dec('0'),    msft['realized_pnl'])
+        _assert('MSFT dividends',          _dec('75'),   msft['dividend_total'])
+        _assert('MSFT total realized P&L', _dec('75'),   msft['total_realized_pnl'])
+        _assert('MSFT held cost basis',    _dec('2000'), msft['held_cost_basis'])
+        _assert('MSFT ROI base',           _dec('2000'), msft['roi_base'])
+        _assert('MSFT ROI%',               _dec('3.75'), msft['roi_percent'])
+
+        # ── 7d: TRSF — dividend with no transactions (no cost basis at all) ──
+        trsf = by_key[('Long-term', 'TRSF')]
+        _assert('TRSF total realized P&L', _dec('20'), trsf['total_realized_pnl'])
+        _assert('TRSF roi_base',           _dec('0'),  trsf['roi_base'])
+        assert trsf['roi_display'] == '—', f"Expected '—', got {trsf['roi_display']!r}"
+        print("  PASS  dividend-only with no cost basis displays '—'")
+
+        # ── 7e: u2 sees only their own rows ──
+        u2_rows = svc2.overview_service.get_symbol_performance()
+        assert len(u2_rows) == 1, f"u2 should have 1 row, got {len(u2_rows)}"
+        assert u2_rows[0]['symbol'] == 'NVDA'
+        _assert('NVDA P&L (u2)', _dec('100'), u2_rows[0]['total_realized_pnl'])
+
+        # ── 7f: treemap projection drops zero-P&L rows ──
+        # Build a synthetic row with zero pnl alongside real ones — should be filtered.
+        zero_row = {
+            'portfolio_id': trading.id, 'portfolio_name': 'Trading', 'symbol': 'ZERO',
+            'realized_pnl': ZERO, 'dividend_total': ZERO, 'total_realized_pnl': ZERO,
+            'realized_cost_basis': ZERO, 'held_cost_basis': ZERO,
+            'roi_base': ZERO, 'roi_percent': ZERO, 'roi_display': '—',
+        }
+        treemap = _symbol_treemap(rows + [zero_row])
+        assert all(t['pnl'] != 0 for t in treemap), 'zero-P&L row leaked into treemap'
+        assert all('abs_pnl' in t and 'name' in t for t in treemap), 'treemap shape broken'
+        print("  PASS  treemap shape and zero-row filtering")
+
+        # ── 7g: top-N + Others aggregation ──
+        # Build a synthetic dataset of N+3 rows so the tail must collapse.
+        synthetic = []
+        for i in range(TOP_N_SYMBOLS + 3):
+            synthetic.append({
+                'portfolio_id': 1, 'portfolio_name': 'P', 'symbol': f'SYM{i}',
+                'realized_pnl': _dec(str(100 - i)), 'dividend_total': ZERO,
+                'total_realized_pnl': _dec(str(100 - i)),
+                'realized_cost_basis': _dec('1000'), 'held_cost_basis': _dec('1000'),
+                'roi_base': _dec('1000'),
+                'roi_percent': _dec(str((100 - i) / 10)), 'roi_display': '',
+            })
+        agg = _symbol_treemap(synthetic)
+        assert len(agg) == TOP_N_SYMBOLS + 1, f"Expected {TOP_N_SYMBOLS + 1} tiles, got {len(agg)}"
+        assert agg[-1]['name'] == 'Others', "Tail must collapse into 'Others'"
+        print(f"  PASS  top-{TOP_N_SYMBOLS} + Others aggregation")
+
+        print("\n  All symbol performance checks passed.")
+
+
+# ---------------------------------------------------------------------------
 # Runner
 # ---------------------------------------------------------------------------
 
@@ -503,6 +660,7 @@ if __name__ == '__main__':
         ('Dashboard Totals',           test_dashboard_totals),
         ('Application Routes',         test_routes),
         ('Dividend Feature',           test_dividends),
+        ('Symbol Performance',         test_symbol_performance),
     ]
 
     for name, fn in tests:

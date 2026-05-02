@@ -300,6 +300,131 @@ class PortfolioCalculator:
         }
 
     # ------------------------------------------------------------------
+    # Symbol-level performance (across a user's portfolios)
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def get_user_symbol_performance(user_id):
+        """Per-(portfolio, symbol) realized performance across a user's portfolios.
+
+        Each row represents a single (portfolio, ticker) pair. A ticker held
+        in multiple portfolios surfaces as multiple rows by design — the
+        unique constraint on Symbol is per-portfolio, not per-user, and the
+        consequence of that duplication belongs to the user.
+
+        ``total_realized_pnl`` combines:
+          * trading P&L from Sells (average-cost method, computed per
+            (portfolio, symbol) so cross-portfolio lots stay independent), and
+          * dividends attributed to the symbol via Dividend.symbol.
+
+        The ROI base falls back from ``realized_cost_basis`` (cost of closed
+        lots) to ``held_cost_basis`` (running cost of the still-open
+        position) so a dividend-only or hold-only position still gets a
+        meaningful denominator instead of '—'.
+
+        Returns a flat list — sorting and Top-N aggregation are caller
+        concerns so this stays composable across views.
+        """
+        if user_id is None:
+            return []
+
+        portfolios = Portfolio.query.filter_by(user_id=user_id).all()
+        if not portfolios:
+            return []
+
+        portfolio_ids = [p.id for p in portfolios]
+        portfolios_by_id = {p.id: p for p in portfolios}
+
+        # One round-trip for all dividends grouped by (portfolio, symbol) —
+        # avoids an N×M lookup inside the symbol loop below.
+        dividend_rows = (
+            db.session.query(
+                Dividend.portfolio_id,
+                Dividend.symbol,
+                func.sum(Dividend.amount).label('total'),
+            )
+            .filter(Dividend.portfolio_id.in_(portfolio_ids))
+            .group_by(Dividend.portfolio_id, Dividend.symbol)
+            .all()
+        )
+        dividend_by_key = {
+            (r.portfolio_id, PortfolioCalculator.normalize_symbol(r.symbol)): _to_decimal(r.total)
+            for r in dividend_rows
+        }
+
+        rows = []
+        seen_keys = set()
+
+        for portfolio in portfolios:
+            symbols = (
+                Transaction.query.with_entities(Transaction.symbol)
+                .filter_by(portfolio_id=portfolio.id)
+                .distinct()
+                .all()
+            )
+            for (sym,) in symbols:
+                sym_norm = PortfolioCalculator.normalize_symbol(sym)
+                if not sym_norm:
+                    continue
+                key = (portfolio.id, sym_norm)
+                seen_keys.add(key)
+
+                summary = PortfolioCalculator.get_symbol_transactions_summary(portfolio.id, sym_norm)
+                rows.append(
+                    PortfolioCalculator._build_symbol_performance_row(
+                        portfolio=portfolio,
+                        symbol=sym_norm,
+                        trading_pnl=_to_decimal(summary['realized_pnl']),
+                        dividends=dividend_by_key.get(key, ZERO),
+                        realized_cost_basis=_to_decimal(summary['realized_cost_basis']),
+                        held_cost_basis=_to_decimal(summary['cost_basis']),
+                    )
+                )
+
+        # Surface dividend-only symbols (Dividend rows with no matching
+        # Transaction history). Rare, but possible for transferred-in
+        # holdings recorded only as income.
+        for (pid, sym_norm), divs in dividend_by_key.items():
+            if (pid, sym_norm) in seen_keys:
+                continue
+            portfolio = portfolios_by_id.get(pid)
+            if portfolio is None:
+                continue
+            rows.append(
+                PortfolioCalculator._build_symbol_performance_row(
+                    portfolio=portfolio,
+                    symbol=sym_norm,
+                    trading_pnl=ZERO,
+                    dividends=divs,
+                    realized_cost_basis=ZERO,
+                    held_cost_basis=ZERO,
+                )
+            )
+
+        return rows
+
+    @staticmethod
+    def _build_symbol_performance_row(*, portfolio, symbol, trading_pnl, dividends,
+                                      realized_cost_basis, held_cost_basis):
+        """Shape a single symbol-performance row with derived ROI fields."""
+        total_pnl = trading_pnl + dividends
+        roi_base = realized_cost_basis if realized_cost_basis != 0 else held_cost_basis
+        roi_percent, roi_display = _roi_display(total_pnl, roi_base)
+        return {
+            'portfolio_id':         portfolio.id,
+            'portfolio_name':       portfolio.name,
+            'symbol':               symbol,
+            'realized_pnl':         trading_pnl,
+            'dividend_total':       dividends,
+            'total_realized_pnl':   total_pnl,
+            'realized_cost_basis':  realized_cost_basis,
+            'held_cost_basis':      held_cost_basis,
+            'roi_base':             roi_base,
+            'roi_percent':          roi_percent,
+            'roi_display':          roi_display,
+        }
+
+    # ------------------------------------------------------------------
     # Transaction summaries
     # ------------------------------------------------------------------
 

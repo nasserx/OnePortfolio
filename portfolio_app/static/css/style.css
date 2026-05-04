@@ -24,11 +24,12 @@
     --info-muted:       #e1f0fa;
 
     /* ── Surface scale ── */
-    --app-bg:           #eef0f3;
-    --surface:          #ffffff;
-    --surface-2:        #f1f3f4;
-    --surface-hover:    #f5f6f8;   /* ~8% black state layer — Google neutral hover */
+    --app-bg:           #ffffff;
+    --surface:          #ffffff;   /* unified: everything sits on white, distinguished by 1px outlines */
+    --surface-2:        #f5f6f8;   /* table headers, badges, disabled — slight tint above white */
+    --surface-hover:    #f5f6f8;   /* hover state layer on white */
     --surface-active:   #e8eaed;
+    --surface-elevated: #ffffff;   /* same as base in this flat scheme; kept for semantic clarity */
 
     /* ── Tonal hover variants (state layer on tonal surfaces) ── */
     --success-hover:    #ceead6;   /* success-muted + 8% darker */
@@ -42,7 +43,8 @@
     --btn-warning-hover:  #92400e;
 
     /* ── Chrome ── */
-    --sidebar-bg:       #ffffff;
+    --sidebar-bg:       #f7f8fa;   /* very subtle tint above --app-bg to set the sidebar apart without a border */
+    --sidebar-hover:    #ebedef;   /* hover tint tuned to read clearly against --sidebar-bg */
     --sidebar-width:    228px;
     --topbar-height:    48px;
 
@@ -53,16 +55,15 @@
     --text-inv:         #ffffff;
 
     /* ── Borders ── */
-    --border-color:     #dadce0;
-    --border:           #dadce0;   /* legacy alias */
+    --border-color:     #e1e2e4;   /* unified: card outlines + topbar/brand divider */
 
     /* ── Inputs ── */
     --input-bg:         #ffffff;
     --input-focus-bg:   #ffffff;
 
     /* ── Cards / Tables ── */
-    --card-bg:          #ffffff;
-    --row-alt:          #f8f9fa;
+    --card-bg:          #ffffff;   /* unified with --app-bg, distinguished by 1px outline */
+    --row-alt:          #f8f9fa;   /* very subtle stripe for row striping on white tables */
 
     /* ── Data colors ── */
     --color-profit:     #1aa34a;
@@ -80,16 +81,9 @@
     --radius-lg:        12px;
     --radius-pill:      20px;
 
-    /* ── Elevation: flat in light, overlay only for floating layers ── */
-    --shadow-card:      none;
-    --shadow-card-hover:none;
+    /* ── Elevation: flat scheme — overlay is the only shadow used,
+       reserved for floating layers (modals, dropdowns, toasts). ── */
     --shadow-overlay:   0 1px 3px rgba(60,64,67,.15), 0 4px 8px rgba(60,64,67,.10);
-
-    /* Legacy aliases */
-    --shadow-sm:        none;
-    --shadow-md:        none;
-    --shadow-lg:        var(--shadow-overlay);
-    --shadow-hover:     none;
 }
 
 /* ============================================================ */
@@ -115,6 +109,7 @@
     --surface-2:        #35363a;
     --surface-hover:    #35373a;   /* ~4% white state layer on dark surfaces */
     --surface-active:   rgba(138,180,248,.15);
+    --surface-elevated: #292a2d;   /* dark equivalent: lifted tone above --app-bg */
 
     --success-hover:    rgba(129,201,149,.30);
     --danger-hover:     rgba(242,139,130,.30);
@@ -125,12 +120,12 @@
     --btn-danger-hover:   #f6aea8;
     --btn-warning-hover:  #fde68a;
 
-    /* Lifted one tonal step above --app-bg so the sidebar/topbar stay
-       visible after their dividers were removed. */
+    /* One tonal step above --app-bg — gives the sidebar visible
+       presence in the dark scheme without needing an explicit border. */
     --sidebar-bg:       #292a2d;
+    --sidebar-hover:    #35373a;   /* matches --surface-hover; readable against --sidebar-bg in dark */
 
     --border-color:     rgba(255,255,255,.12);
-    --border:           rgba(255,255,255,.12);
 
     --text-1:           #f5f6f8;
     --text-2:           #bdc1c6;
@@ -214,9 +209,10 @@ label, .form-label { color: var(--text-2); font-weight: 500; font-size: 0.875rem
     padding: 0 1.375rem; height: var(--topbar-height);
     color: var(--text-1); font-size: 0.9375rem; font-weight: 600;
     letter-spacing: -0.25px; flex-shrink: 0; text-decoration: none;
-    transition: opacity var(--transition);
+    background: var(--app-bg);
+    box-shadow: 0 1px 0 var(--border-color);
 }
-.sidebar-brand:hover { color: var(--text-1); opacity: 0.8; text-decoration: none; }
+.sidebar-brand:hover { color: var(--text-1); text-decoration: none; }
 .sidebar-brand img { width: 28px; height: 28px; flex-shrink: 0; }
 
 .sidebar-nav {
@@ -238,7 +234,7 @@ label, .form-label { color: var(--text-2); font-weight: 500; font-size: 0.875rem
 }
 .sidebar-nav-link:hover {
     color: var(--text-1);
-    background: var(--surface-hover);
+    background: var(--sidebar-hover);
     text-decoration: none;
 }
 .sidebar-nav-link.active {
@@ -267,10 +263,7 @@ label, .form-label { color: var(--text-2); font-weight: 500; font-size: 0.875rem
     flex: 1; min-width: 0;
     display: flex; flex-direction: column;
     min-height: 100vh;
-    /* Backdrop for the content area's rounded top-left corner — shows
-       through the curve so the gray content panel appears to "carve into"
-       the white chrome formed by sidebar + topbar. */
-    background: var(--sidebar-bg);
+    background: var(--app-bg);
 }
 
 /* ============================================================ */
@@ -278,12 +271,13 @@ label, .form-label { color: var(--text-2); font-weight: 500; font-size: 0.875rem
 /* ============================================================ */
 .app-topbar {
     height: var(--topbar-height);
-    background: var(--sidebar-bg);
+    background: var(--app-bg);
     display: flex; align-items: center;
     justify-content: space-between;
     padding: 0 1.25rem;
     position: sticky; top: 0; z-index: 1030;
     flex-shrink: 0;
+    box-shadow: 0 1px 0 var(--border-color);
 }
 
 .topbar-left { display: flex; align-items: center; gap: 1rem; }
@@ -309,7 +303,7 @@ label, .form-label { color: var(--text-2); font-weight: 500; font-size: 0.875rem
     display: flex; align-items: center; gap: 0.625rem;
     width: 100%;
     padding: 0.5rem 0.625rem;
-    background: transparent;
+    background: #ffffff;
     border: none;
     border-radius: var(--radius-md) !important;
     color: var(--text-1);
@@ -318,10 +312,11 @@ label, .form-label { color: var(--text-2); font-weight: 500; font-size: 0.875rem
     transition: background var(--transition);
     text-align: left;
 }
+[data-bs-theme="dark"] .sidebar-user-trigger { background: #33343a; }
 .sidebar-user-trigger:focus,
 .sidebar-user-trigger:focus-visible { outline: none !important; box-shadow: none !important; }
 .sidebar-user-trigger:hover,
-.sidebar-user-trigger[aria-expanded="true"] { background: var(--surface-hover); }
+.sidebar-user-trigger[aria-expanded="true"] { background: var(--sidebar-hover); }
 .sidebar-user-trigger .user-avatar {
     width: 28px; height: 28px; font-size: 0.75rem; flex-shrink: 0;
 }
@@ -343,7 +338,7 @@ label, .form-label { color: var(--text-2); font-weight: 500; font-size: 0.875rem
 .sidebar-user-dropdown {
     min-width: calc(var(--sidebar-width) - 1.5rem);
     padding: 0.375rem;
-    background: var(--surface);
+    background: var(--surface-elevated);
     border-radius: var(--radius-md) !important;
     box-shadow: var(--shadow-overlay) !important;
     outline: 1px solid var(--border-color) !important;
@@ -389,7 +384,7 @@ label, .form-label { color: var(--text-2); font-weight: 500; font-size: 0.875rem
 .filter-dropdown-btn + .dropdown-menu {
     min-width: 170px;
     padding: 0.375rem;
-    background: var(--surface);
+    background: var(--surface-elevated);
     border-radius: var(--radius-md) !important;
     outline: 1px solid var(--border-color) !important;
     box-shadow: var(--shadow-overlay) !important;
@@ -490,7 +485,7 @@ label, .form-label { color: var(--text-2); font-weight: 500; font-size: 0.875rem
     display: flex !important;
     align-items: center; gap: 0.75rem;
     padding: 0.875rem 1rem;
-    background: var(--surface);
+    background: var(--surface-elevated);
     border-radius: var(--radius-md) !important;
     outline: 1px solid var(--border-color) !important;
     box-shadow: var(--shadow-overlay);
@@ -557,7 +552,7 @@ label, .form-label { color: var(--text-2); font-weight: 500; font-size: 0.875rem
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: 1rem;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
 }
 
 .stat-card-item {
@@ -567,6 +562,7 @@ label, .form-label { color: var(--text-2); font-weight: 500; font-size: 0.875rem
     border-radius: var(--radius-md) !important;
     cursor: default; position: relative;
     transition: background var(--transition-slow);
+    outline: 1px solid var(--border-color) !important;
 }
 .stat-card-item:hover { background: var(--surface-hover); }
 
@@ -621,6 +617,7 @@ label, .form-label { color: var(--text-2); font-weight: 500; font-size: 0.875rem
     border-radius: var(--radius-md) !important;
     overflow: hidden;
     transition: background var(--transition-slow);
+    outline: 1px solid var(--border-color) !important;
 }
 .portfolio-card:hover,
 .portfolio-card:hover .card-body { background: var(--surface-hover) !important; }
@@ -678,6 +675,7 @@ label, .form-label { color: var(--text-2); font-weight: 500; font-size: 0.875rem
 .card {
     background: var(--card-bg); overflow: hidden;
     border-radius: var(--radius-md) !important;
+    outline: 1px solid var(--border-color) !important;
 }
 .card-header {
     background: var(--surface);
@@ -994,7 +992,7 @@ textarea:-webkit-autofill, select:-webkit-autofill {
 /* Transaction type tabs (add modal) */
 .tx-type-tabs {
     display: flex;
-    border-bottom: 1px solid var(--border);
+    border-bottom: 1px solid var(--border-color);
     margin-bottom: 0.25rem;
 }
 .tx-type-tab {
@@ -1119,14 +1117,14 @@ textarea:-webkit-autofill, select:-webkit-autofill {
 /* Modals                                                       */
 /* ============================================================ */
 .modal-content {
-    background: var(--card-bg); color: var(--text-1); overflow: hidden;
+    background: var(--surface-elevated); color: var(--text-1); overflow: hidden;
     border-radius: var(--radius-lg) !important;
     box-shadow: var(--shadow-overlay);
     outline: 1px solid var(--border-color) !important;
 }
-.modal-header  { background: var(--surface) !important; color: var(--text-1); padding: 0.875rem 1.25rem; }
-.modal-body    { background: var(--surface) !important; padding: 1.25rem; }
-.modal-footer  { background: var(--surface) !important; padding: 0.875rem 1.25rem; }
+.modal-header  { background: var(--surface-elevated) !important; color: var(--text-1); padding: 0.875rem 1.25rem; }
+.modal-body    { background: var(--surface-elevated) !important; padding: 1.25rem; }
+.modal-footer  { background: var(--surface-elevated) !important; padding: 0.875rem 1.25rem; }
 
 .modal-header .btn-close { opacity: 0.4; }
 .modal-header .btn-close:hover { opacity: 0.7; }
@@ -1229,7 +1227,7 @@ textarea:-webkit-autofill, select:-webkit-autofill {
 .text-secondary { color: var(--text-2) !important; }
 
 .bg-primary { background: var(--primary)   !important; color: #fff !important; }
-.bg-white   { background: var(--surface)   !important; color: var(--text-1) !important; }
+.bg-white   { background: var(--surface-elevated) !important; color: var(--text-1) !important; }
 .bg-light   { background: var(--surface-2) !important; color: var(--text-1) !important; }
 .bg-danger  { background: var(--danger)    !important; color: #fff !important; }
 
@@ -1423,20 +1421,21 @@ i.bi { vertical-align: middle; }
 
 /* ============================================================ */
 /* Dark Mode Overrides                                          */
+/* Most theming flows through tokens automatically; this block  */
+/* is reserved for surfaces that need a different tint shade    */
+/* than what --border-color naturally provides.                 */
 /* ============================================================ */
 
-[data-bs-theme="dark"] .app-sidebar { background: var(--sidebar-bg); }
-
-[data-bs-theme="dark"] .app-sidebar::after,
-[data-bs-theme="dark"] .sidebar-brand::after,
+/* Decorative dividers: lighter tint than --border-color (.12) so
+   they read as faint separators rather than component outlines. */
 [data-bs-theme="dark"] .sidebar-divider,
 [data-bs-theme="dark"] .sidebar-sep,
-[data-bs-theme="dark"] .app-topbar::after,
 [data-bs-theme="dark"] .dropdown-divider {
     background: rgba(255,255,255,.08) !important;
 }
 
-/* Cards: border replaces outline in dark */
+/* Card outlines: slightly subtler than --border-color in dark
+   so dense card layouts don't feel framed-in. */
 [data-bs-theme="dark"] .card,
 [data-bs-theme="dark"] .stat-card-item,
 [data-bs-theme="dark"] .portfolio-card,

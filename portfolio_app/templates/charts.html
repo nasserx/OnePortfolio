@@ -4,11 +4,11 @@
 
 {% block extra_css %}
 <style>
-/* Shared card-section title style (eyebrow above each chart). */
+/* Shared card-section title style (eyebrow above each chart).
+   Title Case capitalisation comes from the HTML; no uppercase
+   transform so labels read as "Portfolio Allocation" etc. */
 .charts-eyebrow {
-    font-size: 0.7rem;
-    text-transform: uppercase;
-    letter-spacing: 0.4px;
+    font-size: 0.75rem;
     font-weight: 600;
 }
 
@@ -59,9 +59,21 @@
 }
 
 /* ── Performance heatmap (treemap) card ────────────────────────── */
+/* Two-layer rounding:
+   - the wrapper carries border-radius + overflow:hidden as the primary
+     clip, matching the app's card radius (var(--radius-md));
+   - the canvas itself also gets the radius so the bitmap edge is
+     anti-aliased smoothly instead of relying purely on the parent
+     clip, which can leave visibly stepped corners on some displays. */
 .heatmap-wrap {
     width: 100%;
     height: 250px;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+}
+.heatmap-wrap canvas {
+    display: block;
+    border-radius: var(--radius-md);
 }
 .heatmap-wrap-tall {
     height: 320px;  /* symbol heatmap holds more tiles, deserves more room */
@@ -71,43 +83,41 @@
     padding: 2rem 0;
     text-align: center;
 }
-/* Heatmap metric toggle — segmented tab pattern matching .tx-type-tabs
-   (used in the Buy/Sell modal). Material Design 3 tab semantics: flat
-   labels, primary-colored text + 2px underline indicator on the active
-   tab. The underlying control is still a btn-check radio group, only the
-   visual treatment changes. */
+/* Heatmap metric toggle — Material 3 segmented button (pill).
+   Single rounded outline wraps both tabs; active tab gets a tonal
+   primary fill so it reads cleanly against the chart card without
+   competing with the heatmap's saturated tile colors. */
 .heatmap-toggle {
     display: inline-flex;
-    border-bottom: 1px solid var(--border-color);
+    outline: 1px solid var(--border-color) !important;
+    border-radius: var(--radius-md) !important;
+    padding: 2px;
     gap: 0;
 }
 .heatmap-toggle-tab {
-    position: relative;
-    padding: 0.25rem 0.65rem;
-    margin-bottom: -1px;             /* overlap the container's bottom border */
-    font-size: 0.65rem;
+    padding: 0.2rem 0.75rem;
+    font-size: 0.7rem;
     font-weight: 500;
     line-height: 1.4;
-    letter-spacing: 0.3px;
-    text-transform: uppercase;
     color: var(--text-2);
     background: transparent;
-    border: none;
     cursor: pointer;
-    transition: color var(--transition);
+    border-radius: var(--radius-md) !important;
+    transition: background var(--transition), color var(--transition);
 }
-.heatmap-toggle-tab::after {
-    content: '';
-    position: absolute;
-    left: 0; right: 0; bottom: 0;
-    height: 2px;
-    background: transparent;
-    transition: background var(--transition);
+.heatmap-toggle-tab:hover {
+    color: var(--text-1);
+    background: var(--surface-hover);
 }
-.heatmap-toggle-tab:hover { color: var(--text-1); }
-.btn-check:checked + .heatmap-toggle-tab          { color: var(--primary); }
-.btn-check:checked + .heatmap-toggle-tab::after   { background: var(--primary); }
-.btn-check:focus-visible + .heatmap-toggle-tab    { color: var(--primary); }
+.btn-check:checked + .heatmap-toggle-tab {
+    background: var(--primary-muted);
+    color: var(--primary);
+    font-weight: 600;
+}
+.btn-check:focus-visible + .heatmap-toggle-tab {
+    background: var(--primary-muted);
+    color: var(--primary);
+}
 
 @media (max-width: 575.98px) {
     .allocation-wrap { flex-direction: column; }
@@ -375,7 +385,8 @@
     /* ════════════════════════════════════════════════════════════════
        Performance heatmaps (treemaps)
        Shared shape for both portfolio and symbol heatmaps:
-         tile size = abs_pnl, color sign = pnl, label = name + ROI%.
+         tile size = selected metric, color sign = pnl,
+         label = name + selected metric value when space allows.
        The tooltipLines callback is the only domain-specific bit.
        Skipped entirely when the server returns no rows.
     ════════════════════════════════════════════════════════════════ */
@@ -418,7 +429,9 @@
         if (minDim < LABEL_MIN) return '';
         const d = ctx.raw._data;
         if (minDim < LABEL_TWO_LINE) return [truncate(d.name)];
-        return [truncate(d.name), fmtRoi(d.roi_percent)];
+        const metricKey = (ctx.dataset && ctx.dataset.key) || 'abs_pnl';
+        const secondary = metricKey === 'abs_roi' ? fmtRoi(d.roi_percent) : fmtSigned(d.pnl);
+        return [truncate(d.name), secondary];
     }
 
     function buildTreemapConfig(opts) {

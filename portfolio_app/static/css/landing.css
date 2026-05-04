@@ -85,7 +85,7 @@ html { scroll-behavior: smooth; }
 
 .landing-hero .landing-container {
     display: grid;
-    grid-template-columns: 1fr 680px;
+    grid-template-columns: 1fr 640px;
     gap: 64px; align-items: stretch;
 }
 
@@ -159,42 +159,52 @@ html { scroll-behavior: smooth; }
 
 .landing-preview {
     background: var(--surface);
-    padding: 1.5rem; width: 100%;
-    display: flex; flex-direction: column; gap: 1rem;
+    padding: 1.25rem; width: 100%;
+    display: flex; flex-direction: column; gap: 0.5rem;
     border-radius: var(--radius-lg) !important;
     outline: 1px solid var(--border-color) !important;
     box-shadow: 0 4px 14px rgba(60,64,67,.08), 0 16px 36px rgba(60,64,67,.08) !important;
     transition: transform var(--transition-slow), box-shadow var(--transition-slow);
 
-    /* Donut palette — Google Material flat colors (light theme). */
-    --donut-1: #1a73e8;   /* Blue 600  — Stocks  */
-    --donut-2: #1aa34a;   /* Green     — ETFs    */
-    --donut-3: #f9ab00;   /* Yellow    — Gold    */
-    --donut-4: #ea4335;   /* Red       — Crypto  */
+    /* Donut palette — matches the Material palette used in /charts
+       (PALETTE constant in charts.html) so the landing preview reads
+       as the same product. */
+    --donut-1: #4285F4;   /* Blue   — Stocks */
+    --donut-2: #34A853;   /* Green  — ETFs   */
+    --donut-3: #FBBC04;   /* Yellow — Gold   */
+    --donut-4: #EA4335;   /* Red    — Crypto */
+
+    /* Heatmap tile palette — Material 3 tonal containers (light surface
+       + on-container text). Saturated white-on-red has a chromatic
+       fringe issue that no text-rendering trick fully fixes; tonal
+       pairs sidestep it with high text contrast on both gain and loss
+       (~7:1) while reading lighter and cleaner than saturated tiles. */
+    --tile-gain-bg:   #d4edda;
+    --tile-gain-text: #1b5e20;
+    --tile-loss-bg:   #fadcdb;
+    --tile-loss-text: #b71c1c;
+    /* Gap between tiles — pure surface so the gaps read crisp white
+       against the pastel tonal tiles. */
+    --tile-gap:       var(--surface);
 }
 .landing-preview:hover {
     transform: translateY(-2px);
     box-shadow: 0 6px 18px rgba(60,64,67,.12), 0 20px 44px rgba(60,64,67,.10) !important;
 }
 
-/* Stat strip */
+/* Stat strip — uses --surface so it stays seamless against the
+   preview shell in both themes (light: same #ffffff; dark: same
+   lifted #292a2d). No outline, no inter-stat dividers. */
 .preview-stats {
     display: grid; grid-template-columns: repeat(4, 1fr);
-    background: var(--app-bg);
+    background: var(--surface);
     border-radius: var(--radius-md) !important;
-    outline: 1px solid var(--border-color) !important;
     overflow: hidden;
 }
 
 .preview-stat {
     padding: 0.875rem 1rem;
-    display: flex; flex-direction: column; gap: 0.4rem;
-    position: relative;
-}
-.preview-stat + .preview-stat::before {
-    content: ''; position: absolute;
-    left: 0; top: 22%; bottom: 22%;
-    width: 1px; background: var(--border-color);
+    display: flex; flex-direction: column; gap: 0.15rem;
 }
 
 .preview-stat-label {
@@ -214,18 +224,20 @@ html { scroll-behavior: smooth; }
 
 
 /* ============================================================ */
-/* Charts row (Bar + Donut)                                     */
+/* Charts row (Donut + Heatmap)                                */
 /* ============================================================ */
+/* Donut column slightly wider so the larger donut still leaves
+   enough room for the right-side legend without truncation. */
 .preview-charts {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1.2fr 1fr;
     gap: 0.875rem;
 }
 
+/* Chart cards — same seamless treatment as the stat strip. */
 .preview-chart-card {
-    background: var(--app-bg);
+    background: var(--surface);
     border-radius: var(--radius-md) !important;
-    outline: 1px solid var(--border-color) !important;
     padding: 0.875rem 1rem;
     display: flex; flex-direction: column;
     min-width: 0;
@@ -233,61 +245,89 @@ html { scroll-behavior: smooth; }
 
 .preview-chart-head {
     display: flex; align-items: center; justify-content: space-between;
-    margin-bottom: 0.625rem;
+    margin-bottom: 0.4rem;
 }
 .preview-chart-title {
-    font-size: 0.75rem; font-weight: 700;
+    font-size: 0.6875rem; font-weight: 600;
     color: var(--text-2);
-    text-transform: uppercase; letter-spacing: 0.08em;
+    letter-spacing: 0;
 }
 
 
-/* ── Bar chart ── */
-.preview-bars {
-    display: flex; align-items: flex-end; gap: 14px;
-    flex: 1; min-height: 160px;
-    /* Subtle gridline texture so bars sit on visible baselines */
-    background-image: linear-gradient(to top,
-        transparent calc(33% - 1px), var(--border-color) calc(33%), transparent calc(33% + 1px)),
-        linear-gradient(to top,
-        transparent calc(66% - 1px), var(--border-color) calc(66%), transparent calc(66% + 1px));
-    background-size: 100% 100%;
-    background-repeat: no-repeat;
-    padding: 0.25rem 0.25rem 0;
-    border-bottom: 1px solid var(--border-color);
+/* ── Symbol performance heatmap (mirrors the /charts treemap) ──
+   3-column × 2-row grid with grid-template-areas. BTC dominates
+   top-left as the largest |P&L| holding; ETH (loss) anchors
+   bottom-left as the second-largest absolute. The remaining four
+   tiles fill the right side and bottom row in descending order.
+   Mix of square/wide rectangles gives proper treemap variety
+   instead of a column-of-bars look. */
+.preview-heatmap {
+    flex: 1; min-height: 200px;   /* visual parity with .preview-donut */
+    display: grid;
+    grid-template-columns: 1.7fr 1.2fr 1fr;
+    grid-template-rows: 1.3fr 1fr;
+    grid-template-areas:
+        "btc  aapl  nvda"
+        "eth  gld   meta";
+    gap: 1.5px;
+    background: var(--tile-gap);
+    border-radius: var(--radius-sm) !important;
+    overflow: hidden;
+}
+.tile-btc  { grid-area: btc; }
+.tile-aapl { grid-area: aapl; }
+.tile-nvda { grid-area: nvda; }
+.tile-eth  { grid-area: eth; }
+.tile-gld  { grid-area: gld; }
+.tile-meta { grid-area: meta; }
+
+.preview-tile {
+    padding: 0.625rem 0.75rem;
+    display: flex; flex-direction: column; justify-content: flex-end;
+    gap: 0.1rem;
+    font-family: 'Roboto', system-ui, sans-serif;
+    overflow: hidden; min-width: 0;
+}
+.preview-tile.gain {
+    background: var(--tile-gain-bg);
+    color: var(--tile-gain-text);
+}
+.preview-tile.loss {
+    background: var(--tile-loss-bg);
+    color: var(--tile-loss-text);
 }
 
-.preview-bar-group {
-    flex: 1; display: flex; align-items: flex-end; justify-content: center;
-    height: 100%;
+.preview-tile .tile-name {
+    font-size: 0.8125rem; font-weight: 700;
+    letter-spacing: -0.1px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.preview-bar-group .preview-bar {
-    width: 100%; max-width: 48px;
-    border-radius: 6px 6px 0 0 !important;
+.preview-tile .tile-val {
+    font-size: 0.6875rem; font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    opacity: 0.85;
 }
-.preview-bar.active {
-    background: var(--primary);
-}
-
-.preview-labels {
-    display: flex; gap: 14px;
-    padding: 0.4rem 0.25rem 0;
-}
-.preview-labels span {
-    flex: 1; text-align: center;
-    font-size: 0.6875rem; color: var(--text-3); font-weight: 500;
-}
+/* BTC dominates the layout — labels scale up to match. */
+.tile-btc .tile-name { font-size: 0.9375rem; }
+.tile-btc .tile-val  { font-size: 0.75rem; }
 
 
-/* ── Donut chart ── */
-.preview-donut-wrap {
-    display: flex; align-items: center; justify-content: center;
-    padding: 0.5rem 0 0.75rem;
+/* ── Donut chart ──
+   Donut sits on the left, legend stacks vertically on the right —
+   mirrors /charts allocation-wrap layout. Donut is sized so the
+   name column on the right has enough room for the longest label
+   ("Crypto") without truncation. */
+.preview-donut-body {
+    flex: 1; min-width: 0;
+    display: flex; align-items: center;
+    gap: 0.875rem;
+    padding: 0.25rem 0 0.5rem;
 }
 
 .preview-donut {
+    flex: 0 0 auto;
     position: relative;
-    width: 184px; height: 184px;
+    width: 180px; height: 180px;
     border-radius: 50%;
     /* 40 / 30 / 20 / 10  →  144 / 108 / 72 / 36 deg */
     background: conic-gradient(
@@ -302,7 +342,7 @@ html { scroll-behavior: smooth; }
 .preview-donut-hole {
     width: 64%; height: 64%;
     border-radius: 50%;
-    background: var(--app-bg);
+    background: var(--surface);   /* seamless with the chart card */
     display: flex; flex-direction: column;
     align-items: center; justify-content: center;
     gap: 0.1rem;
@@ -319,21 +359,29 @@ html { scroll-behavior: smooth; }
     line-height: 1.1;
 }
 
+/* Single shared grid (li uses display:contents) so all percentages
+   line up to the same right edge across every row — same pattern
+   as /charts allocation-legend. Tight column-gap so the name column
+   gets the maximum 1fr space available. */
 .preview-donut-legend {
+    flex: 1; min-width: 0;
     list-style: none; padding: 0; margin: 0;
-    display: grid; grid-template-columns: 1fr 1fr;
-    gap: 0.4rem 0.75rem;
-}
-.preview-donut-legend li {
     display: grid;
-    grid-template-columns: 10px 1fr auto;
+    grid-template-columns: 8px 1fr auto;
     align-items: center;
-    gap: 0.4rem;
+    column-gap: 0.3rem;
+    row-gap: 0.4rem;
     font-size: 0.6875rem; color: var(--text-3); font-weight: 500;
 }
+.preview-donut-legend li {
+    display: contents;
+}
+.preview-donut-legend .legend-name {
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
 .preview-donut-legend .legend-swatch {
-    width: 10px; height: 10px;
-    border-radius: 3px;
+    width: 8px; height: 8px;
+    border-radius: 50%;   /* matches /charts allocation legend dots */
 }
 .preview-donut-legend .legend-swatch.s-1 { background: var(--donut-1); }
 .preview-donut-legend .legend-swatch.s-2 { background: var(--donut-2); }
@@ -341,19 +389,8 @@ html { scroll-behavior: smooth; }
 .preview-donut-legend .legend-swatch.s-4 { background: var(--donut-4); }
 .preview-donut-legend .legend-pct {
     font-variant-numeric: tabular-nums;
+    text-align: right;
 }
-
-/* In light mode the inner outlines on the stats strip and chart cards
-   look noisy against the surface card. Drop them — and the per-stat
-   dividers — so the content reads as one clean block. */
-[data-bs-theme="light"] .preview-stats,
-[data-bs-theme="light"] .preview-chart-card {
-    outline: none !important;
-}
-[data-bs-theme="light"] .preview-stat + .preview-stat::before {
-    background: transparent;
-}
-
 
 /* ============================================================ */
 /* Section heads (eyebrow + title + sub)                        */
@@ -604,11 +641,9 @@ html { scroll-behavior: smooth; }
     .landing-features-grid { grid-template-columns: 1fr; }
 
     .preview-stats { grid-template-columns: repeat(2, 1fr); }
-    .preview-stat + .preview-stat::before { display: none; }
 
     /* Stack the two charts vertically */
     .preview-charts { grid-template-columns: 1fr; }
-    .preview-donut-legend { grid-template-columns: 1fr 1fr; }
 }
 
 @media (max-width: 576px) {
@@ -669,6 +704,16 @@ body.auth-modal-open .landing-footer {
     --donut-2: #81c995;   /* Green  — ETFs    */
     --donut-3: #fdd663;   /* Yellow — Gold    */
     --donut-4: #f28b82;   /* Red    — Crypto  */
+
+    /* Heatmap tonal palette in dark — translucent containers blend with
+       --surface, paired with light on-container text (~4.5:1 contrast). */
+    --tile-gain-bg:   rgba(129, 201, 149, 0.16);
+    --tile-gain-text: #a8d5b5;
+    --tile-loss-bg:   rgba(242, 139, 130, 0.18);
+    --tile-loss-text: #f6aea8;
+    /* Gap in dark uses the lifted tone so it stays visible against the
+       translucent tiles (which otherwise blend with --surface). */
+    --tile-gap:       var(--surface-2);
 }
 [data-bs-theme="dark"] .landing-preview:hover {
     box-shadow: 0 6px 18px rgba(0,0,0,.4), 0 20px 44px rgba(0,0,0,.3) !important;
@@ -676,26 +721,6 @@ body.auth-modal-open .landing-footer {
 [data-bs-theme="dark"] .landing-features { border-top-color: rgba(255,255,255,.08); }
 [data-bs-theme="dark"] .landing-footer   { border-top-color: rgba(255,255,255,.08); }
 [data-bs-theme="dark"] .landing-nav      { border-bottom-color: rgba(255,255,255,.08); }
-
-/* Preview card inner sections: elevate above card surface (Material 3 tonal elevation) */
-[data-bs-theme="dark"] .preview-stats,
-[data-bs-theme="dark"] .preview-chart-card {
-    background: var(--surface-2);
-    outline-color: rgba(255,255,255,.07) !important;
-}
-/* Donut hole matches the inner-section background so it reads as an actual hole */
-[data-bs-theme="dark"] .preview-donut-hole {
-    background: var(--surface-2);
-}
-
-/* Bar-chart gridlines need a subtler tone in dark mode */
-[data-bs-theme="dark"] .preview-bars {
-    background-image: linear-gradient(to top,
-        transparent calc(33% - 1px), rgba(255,255,255,.07) calc(33%), transparent calc(33% + 1px)),
-        linear-gradient(to top,
-        transparent calc(66% - 1px), rgba(255,255,255,.07) calc(66%), transparent calc(66% + 1px));
-    border-bottom-color: rgba(255,255,255,.08);
-}
 
 /* Step + feature cards: elevate above section background */
 [data-bs-theme="dark"] .step-card,

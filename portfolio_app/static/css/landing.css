@@ -148,6 +148,14 @@ html { scroll-behavior: smooth; }
 }
 .btn-cta-secondary:hover { background: var(--primary-hover); color: var(--primary); }
 
+.landing-cta-note {
+    font-size: 0.875rem;
+    color: var(--text-3);
+    line-height: 1.55;
+    margin: -0.75rem 0 0;
+    max-width: 520px;
+}
+
 
 /* ============================================================ */
 /* Dashboard Preview Card                                       */
@@ -392,6 +400,47 @@ html { scroll-behavior: smooth; }
     text-align: right;
 }
 
+
+/* ============================================================ */
+/* Trust Signals                                                */
+/* ============================================================ */
+.landing-trust {
+    padding: 16px 0 56px;
+    background: var(--app-bg);
+}
+
+.landing-trust-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.875rem;
+}
+
+.trust-item {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.875rem 1rem;
+    background: var(--surface);
+    outline: 1px solid var(--border-color) !important;
+    border-radius: var(--radius-md) !important;
+    color: var(--text-2);
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.trust-item i {
+    flex: 0 0 auto;
+    color: var(--primary);
+    font-size: 1rem;
+}
+
+.trust-item span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+
 /* ============================================================ */
 /* Section heads (eyebrow + title + sub)                        */
 /* ============================================================ */
@@ -527,6 +576,62 @@ html { scroll-behavior: smooth; }
 
 
 /* ============================================================ */
+/* Benefits + Product Fit                                       */
+/* ============================================================ */
+.landing-benefits {
+    padding: 80px 0;
+    background: var(--app-bg);
+}
+
+.benefits-list {
+    max-width: 880px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.875rem;
+}
+
+.benefit-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    background: var(--surface);
+    padding: 1rem 1.125rem;
+    outline: 1px solid var(--border-color) !important;
+    border-radius: var(--radius-md) !important;
+    color: var(--text-2);
+    font-size: 0.9375rem;
+    line-height: 1.6;
+}
+
+.benefit-item i {
+    flex: 0 0 auto;
+    color: var(--color-profit);
+    font-size: 1rem;
+    margin-top: 0.2rem;
+}
+
+.landing-fit {
+    padding: 24px 0 80px;
+    background: var(--app-bg);
+}
+
+.fit-panel {
+    max-width: 880px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    text-align: center;
+    padding: 2.5rem 2rem;
+    background: var(--surface);
+    outline: 1px solid var(--border-color) !important;
+    border-radius: var(--radius-lg) !important;
+}
+
+
+/* ============================================================ */
 /* Final CTA                                                    */
 /* ============================================================ */
 .landing-final-cta {
@@ -625,11 +730,13 @@ html { scroll-behavior: smooth; }
     .landing-hero-content { align-items: center; }
     .landing-badge,
     .landing-cta-group { justify-content: center; }
+    .landing-cta-note { max-width: 100%; text-align: center; }
     .landing-subtext { max-width: 100%; margin: 0 auto; }
     .landing-headline { font-size: 2.5rem; }
 
     .landing-preview-wrap { max-width: 680px; margin: 0 auto; }
 
+    .landing-trust-grid { grid-template-columns: repeat(2, 1fr); }
     .landing-steps,
     .landing-features-grid { grid-template-columns: repeat(2, 1fr); }
 
@@ -637,6 +744,8 @@ html { scroll-behavior: smooth; }
 }
 
 @media (max-width: 720px) {
+    .landing-trust-grid,
+    .benefits-list,
     .landing-steps,
     .landing-features-grid { grid-template-columns: 1fr; }
 
@@ -652,7 +761,9 @@ html { scroll-behavior: smooth; }
     .landing-headline { font-size: 2rem; letter-spacing: -0.5px; }
 
     .landing-section-title { font-size: 1.5rem; }
-    .landing-how, .landing-features { padding: 64px 0; }
+    .landing-how, .landing-features, .landing-benefits { padding: 64px 0; }
+    .landing-fit { padding: 8px 0 64px; }
+    .fit-panel { padding: 2rem 1.25rem; }
 
     .final-cta-card { padding: 2.25rem 1.25rem; }
     .final-cta-title { font-size: 1.5rem; }
@@ -666,8 +777,11 @@ html { scroll-behavior: smooth; }
 /* ============================================================ */
 .landing-nav,
 .landing-hero,
+.landing-trust,
 .landing-how,
 .landing-features,
+.landing-benefits,
+.landing-fit,
 .landing-final-cta,
 .landing-footer {
     transition: filter 0.15s ease, opacity 0.15s ease;
@@ -675,8 +789,11 @@ html { scroll-behavior: smooth; }
 
 body.auth-modal-open .landing-nav,
 body.auth-modal-open .landing-hero,
+body.auth-modal-open .landing-trust,
 body.auth-modal-open .landing-how,
 body.auth-modal-open .landing-features,
+body.auth-modal-open .landing-benefits,
+body.auth-modal-open .landing-fit,
 body.auth-modal-open .landing-final-cta,
 body.auth-modal-open .landing-footer {
     filter: blur(4px);
@@ -724,7 +841,10 @@ body.auth-modal-open .landing-footer {
 
 /* Step + feature cards: elevate above section background */
 [data-bs-theme="dark"] .step-card,
-[data-bs-theme="dark"] .feature-card {
+[data-bs-theme="dark"] .feature-card,
+[data-bs-theme="dark"] .trust-item,
+[data-bs-theme="dark"] .benefit-item,
+[data-bs-theme="dark"] .fit-panel {
     background: var(--surface-2);
 }
 [data-bs-theme="dark"] .step-card:hover,

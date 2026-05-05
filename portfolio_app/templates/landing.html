@@ -26,7 +26,7 @@
 
     <!-- Project CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v='20260503-20') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css', v='20260503-32') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css', v='20260505-1') }}">
 </head>
 <body>
 
@@ -42,6 +42,7 @@
             <div class="landing-nav-links" aria-label="Page sections">
                 <a href="#how"      class="nav-link-inline">How it works</a>
                 <a href="#features" class="nav-link-inline">Features</a>
+                <a href="#fit"      class="nav-link-inline">Why manual</a>
             </div>
 
             <div class="landing-nav-end">
@@ -68,23 +69,26 @@
             <div class="landing-hero-content reveal">
                 <span class="landing-badge">Investment Tracker</span>
                 <h1 class="landing-headline">
-                    Track every dollar.<br>
-                    Across every portfolio.
+                    Take control of your investment records.
                 </h1>
                 <p class="landing-subtext">
-                    Organize your capital into named portfolios — Stocks, Gold, ETFs, or anything you choose.
-                    Every buy, sell, dividend, and cash event lives in one clean dashboard, with the math done for you.
+                    Broker apps show accounts. OnePortfolio helps you build your own investment view.
+                    Track portfolios, cash movements, buys, sells, dividends, average cost, realized P&amp;L,
+                    ROI, and allocation manually, with full control over the records behind every number.
                 </p>
                 <div class="landing-cta-group">
                     <button class="btn-cta-primary"
-                            data-bs-toggle="modal" data-bs-target="#authModal" data-tab="register">
-                        Get started free
+                            data-bs-toggle="modal" data-bs-target="#authModal" data-tab="demo">
+                        Try the Demo
                     </button>
                     <button class="btn-cta-secondary"
-                            data-bs-toggle="modal" data-bs-target="#authModal" data-tab="login">
-                        Sign in
+                            data-bs-toggle="modal" data-bs-target="#authModal" data-tab="register">
+                        Start Tracking Free
                     </button>
                 </div>
+                <p class="landing-cta-note">
+                    No broker sync. No automated imports. Just clean, private records you control.
+                </p>
             </div>
 
             <!-- Right: dashboard preview -->
@@ -179,15 +183,40 @@
     </section>
 
 
+    <!-- ══════════════════ TRUST SIGNALS ══════════════════ -->
+    <section class="landing-trust" aria-label="OnePortfolio trust signals">
+        <div class="landing-container">
+            <div class="landing-trust-grid reveal">
+                <div class="trust-item">
+                    <i class="bi bi-pencil-square" aria-hidden="true"></i>
+                    <span>Manual portfolio tracking</span>
+                </div>
+                <div class="trust-item">
+                    <i class="bi bi-link-45deg" aria-hidden="true"></i>
+                    <span>No broker integrations</span>
+                </div>
+                <div class="trust-item">
+                    <i class="bi bi-database-lock" aria-hidden="true"></i>
+                    <span>Self-hostable and privacy-conscious</span>
+                </div>
+                <div class="trust-item">
+                    <i class="bi bi-envelope-check" aria-hidden="true"></i>
+                    <span>Email-verified accounts</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+
     <!-- ══════════════════ HOW IT WORKS ══════════════════ -->
     <section class="landing-how" id="how">
         <div class="landing-container">
 
             <div class="landing-section-head reveal">
                 <span class="landing-eyebrow">How it works</span>
-                <h2 class="landing-section-title">From zero to tracked in 3 steps</h2>
+                <h2 class="landing-section-title">A calmer way to manage your investment records</h2>
                 <p class="landing-section-sub">
-                    Set up once, then just log what happens. The numbers update themselves.
+                    Create your structure, record what happens, and let OnePortfolio calculate the view from your entries.
                 </p>
             </div>
 
@@ -195,28 +224,29 @@
 
                 <article class="step-card reveal">
                     <span class="step-num">01</span>
-                    <h3>Create a portfolio</h3>
+                    <h3>Create your own portfolio structure</h3>
                     <p>
-                        Name it the way you organise your money — <em>Stocks</em>, <em>Gold</em>,
-                        <em>Retirement ETFs</em>. Add as many as you need.
+                        Organize investments by strategy, asset type, goal, or anything that matches how
+                        you think: <em>Stocks</em>, <em>Gold</em>, <em>ETFs</em>, <em>Crypto</em>,
+                        <em>Retirement</em>, or custom portfolios.
                     </p>
                 </article>
 
                 <article class="step-card reveal">
                     <span class="step-num">02</span>
-                    <h3>Log transactions &amp; symbols</h3>
+                    <h3>Record every important movement</h3>
                     <p>
-                        Track tickers inside each portfolio, then record buys, sells, dividends, and cash
-                        events as they happen.
+                        Log deposits, withdrawals, tracked symbols, buy and sell transactions, dividends,
+                        fees, dates, and notes with a clear manual record.
                     </p>
                 </article>
 
                 <article class="step-card reveal">
                     <span class="step-num">03</span>
-                    <h3>Track performance live</h3>
+                    <h3>Let the system calculate the view</h3>
                     <p>
-                        Realized P&amp;L, ROI, allocation, average cost — all derived straight from your
-                        records. No snapshots to drift.
+                        OnePortfolio derives available cash, book value, average cost, dividends,
+                        realized P&amp;L, ROI, and allocation directly from your entries.
                     </p>
                 </article>
 
@@ -224,8 +254,8 @@
 
             <div class="landing-how-cta reveal">
                 <button class="btn-cta-primary"
-                        data-bs-toggle="modal" data-bs-target="#authModal" data-tab="register">
-                    Try it free
+                        data-bs-toggle="modal" data-bs-target="#authModal" data-tab="demo">
+                    Try the Demo
                 </button>
             </div>
 
@@ -239,44 +269,95 @@
 
             <div class="landing-section-head reveal">
                 <span class="landing-eyebrow">Features</span>
-                <h2 class="landing-section-title">Why OnePortfolio?</h2>
+                <h2 class="landing-section-title">Built for investors who want clean records, not black-box summaries</h2>
                 <p class="landing-section-sub">
-                    Everything you need to keep your investments organized, with nothing in the way.
+                    Everything your spreadsheet struggles to keep clean, organized around the way you actually invest.
                 </p>
             </div>
 
             <div class="landing-features-grid">
 
                 <div class="feature-card reveal">
-                    <h3>Multi-portfolio</h3>
-                    <p>Organize holdings into separate named portfolios — one for Stocks, one for Gold, one for whatever fits the way you think.</p>
+                    <h3>Multi-portfolio control</h3>
+                    <p>Create separate portfolios for different strategies, assets, or goals, and keep each one organized on its own terms.</p>
                 </div>
 
                 <div class="feature-card reveal">
-                    <h3>Average Cost Method</h3>
-                    <p>Average cost is recomputed on every buy, so you always know the real basis of each position without lifting a finger.</p>
+                    <h3>Cash movement history</h3>
+                    <p>Track deposits, withdrawals, and initial funding events with dates, notes, and an editable audit trail.</p>
                 </div>
 
                 <div class="feature-card reveal">
-                    <h3>Live realized P&amp;L</h3>
-                    <p>Computed dynamically from your transaction log — no snapshots, no drift, just the numbers as they truly stand.</p>
+                    <h3>Transaction-level tracking</h3>
+                    <p>Record every buy and sell with symbol, price, quantity, fees, date, and optional notes.</p>
                 </div>
 
                 <div class="feature-card reveal">
-                    <h3>Dividend tracking</h3>
-                    <p>Log dividends per symbol and watch them flow into total income and realized return — exactly where they should.</p>
+                    <h3>Average cost clarity</h3>
+                    <p>Keep cost basis consistent with automatic average cost calculations after each buy.</p>
                 </div>
 
                 <div class="feature-card reveal">
-                    <h3>Cash event log</h3>
-                    <p>Every deposit, withdrawal, and initial funding is recorded with a full audit trail you can edit any time.</p>
+                    <h3>Dividend records</h3>
+                    <p>Attribute dividends to specific symbols and include them in realized performance.</p>
                 </div>
 
                 <div class="feature-card reveal">
-                    <h3>Yours, privately</h3>
-                    <p>No third-party trackers, no broker integrations, no shared data. Your records stay in your database.</p>
+                    <h3>Performance visuals</h3>
+                    <p>Review allocation, portfolio performance, and symbol-level realized P&amp;L through clean charts and heatmaps.</p>
                 </div>
 
+            </div>
+        </div>
+    </section>
+
+
+    <!-- ══════════════════ BENEFITS ══════════════════ -->
+    <section class="landing-benefits" id="benefits">
+        <div class="landing-container">
+
+            <div class="landing-section-head reveal">
+                <span class="landing-eyebrow">Benefits</span>
+                <h2 class="landing-section-title">Your private source of truth for investment tracking</h2>
+                <p class="landing-section-sub">
+                    Move beyond spreadsheet maintenance without giving up the manual control that keeps your records trustworthy.
+                </p>
+            </div>
+
+            <div class="benefits-list reveal">
+                <div class="benefit-item">
+                    <i class="bi bi-check2-circle" aria-hidden="true"></i>
+                    <span>See portfolio-level and symbol-level performance from one dashboard.</span>
+                </div>
+                <div class="benefit-item">
+                    <i class="bi bi-check2-circle" aria-hidden="true"></i>
+                    <span>Understand realized gains, losses, dividends, ROI, and cash position from your own records.</span>
+                </div>
+                <div class="benefit-item">
+                    <i class="bi bi-check2-circle" aria-hidden="true"></i>
+                    <span>Organize investments around your strategy instead of a broker's account layout.</span>
+                </div>
+                <div class="benefit-item">
+                    <i class="bi bi-check2-circle" aria-hidden="true"></i>
+                    <span>Keep the data model simple, transparent, and under your control.</span>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+
+    <!-- ══════════════════ PRODUCT FIT ══════════════════ -->
+    <section class="landing-fit" id="fit">
+        <div class="landing-container">
+            <div class="fit-panel reveal">
+                <span class="landing-eyebrow">Manual by design</span>
+                <h2 class="landing-section-title">Designed for deliberate tracking, not automatic broker syncing</h2>
+                <p class="landing-section-sub">
+                    OnePortfolio does not connect to brokers or fetch live prices. It is made for investors
+                    who want a precise manual record, transparent calculations, and a private system they can
+                    trust because they control the data.
+                </p>
             </div>
         </div>
     </section>
@@ -286,16 +367,19 @@
     <section class="landing-final-cta">
         <div class="landing-container">
             <div class="final-cta-card reveal">
-                <h2 class="final-cta-title">Ready to organize your portfolios?</h2>
-                <p class="final-cta-sub">It takes less than a minute to create your first one.</p>
+                <h2 class="final-cta-title">Build a cleaner record of every portfolio you manage.</h2>
+                <p class="final-cta-sub">
+                    Start with one portfolio, add your first cash movement or transaction,
+                    and see a structured view of your investment performance in minutes.
+                </p>
                 <div class="landing-cta-group">
                     <button class="btn-cta-primary"
-                            data-bs-toggle="modal" data-bs-target="#authModal" data-tab="register">
-                        Get started free
+                            data-bs-toggle="modal" data-bs-target="#authModal" data-tab="demo">
+                        Try the Demo
                     </button>
                     <button class="btn-cta-secondary"
-                            data-bs-toggle="modal" data-bs-target="#authModal" data-tab="login">
-                        Sign in
+                            data-bs-toggle="modal" data-bs-target="#authModal" data-tab="register">
+                        Start Tracking Free
                     </button>
                 </div>
             </div>
@@ -310,6 +394,7 @@
             <div class="landing-footer-links">
                 <a href="#how">How it works</a>
                 <a href="#features">Features</a>
+                <a href="#fit">Why manual</a>
                 <a href="{{ url_for('auth.login') }}">Log In</a>
                 <a href="{{ url_for('auth.register') }}">Sign Up</a>
             </div>
@@ -608,6 +693,7 @@
                Auth Modal
             ══════════════════════════════════════════ */
             const authModal = document.getElementById('authModal');
+            let isDemoLoginAttempt = false;
 
             /* Switch visible panel + sync active tab.
                Forgot panels stay under "Log In" tab. */
@@ -627,10 +713,37 @@
                 el.addEventListener('click', () => showPanel(el.dataset.panel));
             });
 
+            function fillDemoCredentials() {
+                const username = document.getElementById('loginUsername');
+                const password = document.getElementById('loginPassword');
+                const remember = document.getElementById('loginRemember');
+                if (username) username.value = 'demo';
+                if (password) password.value = 'demo1234';
+                if (remember) remember.checked = false;
+                isDemoLoginAttempt = true;
+            }
+
+            function submitLoginForm() {
+                const form = document.getElementById('loginForm');
+                if (!form) return;
+                if (typeof form.requestSubmit === 'function') {
+                    form.requestSubmit();
+                    return;
+                }
+                form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+            }
+
             /* Open on correct tab when any navbar/hero trigger is clicked */
             document.querySelectorAll('[data-bs-target="#authModal"]').forEach(trigger => {
                 trigger.addEventListener('click', () => {
-                    showPanel(trigger.dataset.tab === 'register' ? 'panelSignup' : 'panelLogin');
+                    const targetTab = trigger.dataset.tab;
+                    showPanel(targetTab === 'register' ? 'panelSignup' : 'panelLogin');
+                    if (targetTab === 'demo') {
+                        fillDemoCredentials();
+                        window.setTimeout(() => {
+                            submitLoginForm();
+                        }, 120);
+                    }
                 });
             });
 
@@ -765,20 +878,34 @@
                     try {
                         const res  = await fetch(form.action, {
                             method: 'POST',
-                            headers: { 'X-CSRFToken': csrfToken },
+                            headers: {
+                                'X-CSRFToken': csrfToken,
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'Accept': 'application/json',
+                            },
                             body: formData,
                         });
                         const data = await res.json();
 
                         if (data.ok) {
+                            isDemoLoginAttempt = false;
                             if (onSuccess) onSuccess(data);
                             else window.location.href = data.redirect;
                         } else {
-                            showErrors(panelId, data.errors || {});
+                            const errors = data.errors || {};
+                            if (formId === 'loginForm' && isDemoLoginAttempt) {
+                                errors.__all__ = 'Demo login is unavailable right now. You can still create a free account or sign in manually.';
+                                isDemoLoginAttempt = false;
+                            }
+                            showErrors(panelId, errors);
                             setLoading(submitBtn, false, origText);
                         }
                     } catch (_) {
-                        showErrors(panelId, { '__all__': 'Network error. Please try again.' });
+                        const message = (formId === 'loginForm' && isDemoLoginAttempt)
+                            ? 'Demo login could not be completed. Please try again or create a free account.'
+                            : 'Network error. Please try again.';
+                        isDemoLoginAttempt = false;
+                        showErrors(panelId, { '__all__': message });
                         setLoading(submitBtn, false, origText);
                     }
                 });

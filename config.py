@@ -1,4 +1,5 @@
 import os
+import sys
 from datetime import timedelta
 from pathlib import Path
 
@@ -9,9 +10,20 @@ def _require_secret_key() -> str:
     key = os.environ.get('SECRET_KEY')
     if key:
         return key
-    if os.environ.get('FLASK_ENV') == 'production':
-        raise RuntimeError('SECRET_KEY environment variable must be set in production.')
-    return 'dev-only-insecure-key-do-not-use-in-production'
+    # Allow the insecure default ONLY when explicitly running in dev/test.
+    # The previous FLASK_ENV='production' trigger is unreliable because
+    # Flask 2.3+ removed FLASK_ENV, so production deployments that forgot
+    # to set SECRET_KEY were silently falling through to the published
+    # hard-coded dev key.
+    if (
+        os.environ.get('FLASK_DEBUG') in ('1', 'true', 'True')
+        or 'pytest' in sys.modules
+    ):
+        return 'dev-only-insecure-key-do-not-use-in-production'
+    raise RuntimeError(
+        'SECRET_KEY environment variable must be set. '
+        'Generate one with: python -c "import secrets; print(secrets.token_hex(32))"'
+    )
 
 
 class Config:

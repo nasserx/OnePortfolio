@@ -7,6 +7,7 @@ from portfolio_app.models.portfolio_event import PortfolioEvent
 from portfolio_app.repositories.portfolio_repository import PortfolioRepository
 from portfolio_app.repositories.portfolio_event_repository import PortfolioEventRepository
 from portfolio_app.utils.constants import EventType
+from portfolio_app.utils.decimal_utils import ZERO
 from portfolio_app.utils.messages import MESSAGES
 from portfolio_app.calculators.portfolio_calculator import PortfolioCalculator
 
@@ -66,9 +67,22 @@ class PortfolioService:
     # ------------------------------------------------------------------
 
     def update_portfolio_event(self, event_id: int, amount_delta: Decimal, notes: Optional[str] = None, date: Optional[Any] = None) -> PortfolioEvent:
-        """Update a portfolio event. Net deposits are derived on read."""
+        """Update a portfolio event. Net deposits are derived on read.
+
+        Rejects an edit that would push live available cash below zero
+        (e.g. lowering a deposit below what's already been withdrawn or
+        spent on Buys). The create path (``deposit_funds``/``withdraw_funds``)
+        already enforces this; the edit path needs the same guard.
+        """
         event = self._require_event(event_id)
         self._require_portfolio(event.portfolio_id)
+
+        # available_cash already reflects this event at its current amount,
+        # so the post-edit cash equals current + (new − old).
+        current_cash = PortfolioCalculator.get_available_cash_for_portfolio(event.portfolio_id)
+        delta_change = Decimal(str(amount_delta)) - Decimal(str(event.amount_delta))
+        if current_cash + delta_change < ZERO:
+            raise ValueError(MESSAGES['INSUFFICIENT_AMOUNT'])
 
         event.amount_delta = amount_delta
         if notes is not None:
@@ -80,10 +94,21 @@ class PortfolioService:
         return event
 
     def delete_portfolio_event(self, event_id: int) -> int:
-        """Delete a portfolio event. Net deposits are derived on read."""
+        """Delete a portfolio event. Net deposits are derived on read.
+
+        Rejects a delete that would push live available cash below zero —
+        e.g. removing a deposit that already covered later withdrawals or
+        Buys. Sister guard to the one in ``update_portfolio_event``.
+        """
         event = self._require_event(event_id)
         portfolio_id = event.portfolio_id
         self._require_portfolio(portfolio_id)
+
+        # Removing the event subtracts its amount_delta from net deposits,
+        # which in turn subtracts the same value from available cash.
+        current_cash = PortfolioCalculator.get_available_cash_for_portfolio(portfolio_id)
+        if current_cash - Decimal(str(event.amount_delta)) < ZERO:
+            raise ValueError(MESSAGES['INSUFFICIENT_AMOUNT'])
 
         self.portfolio_event_repo.delete(event)
         self.portfolio_repo.commit()

@@ -26,6 +26,25 @@ def _require_secret_key() -> str:
     )
 
 
+def _default_cookie_secure() -> bool:
+    """Default the Secure cookie flag ON in production-like environments.
+
+    The historical default was '0' (off), which meant a production deploy
+    that forgot to set SESSION_COOKIE_SECURE would ship its session cookie
+    over plain HTTP. We only default to '0' in dev/test (FLASK_DEBUG=1 or
+    pytest); everything else is treated as production and defaults to
+    Secure=True. The env variable still wins when explicitly set.
+    """
+    explicit = os.environ.get('SESSION_COOKIE_SECURE')
+    if explicit is not None:
+        return explicit in ('1', 'true', 'True')
+    in_dev = (
+        os.environ.get('FLASK_DEBUG') in ('1', 'true', 'True')
+        or 'pytest' in sys.modules
+    )
+    return not in_dev
+
+
 class Config:
     """Base configuration"""
     SECRET_KEY = _require_secret_key()
@@ -44,13 +63,13 @@ class Config:
     WTF_CSRF_ENABLED = True
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = 'Lax'
-    # If you serve over HTTPS, set this to True (or via env) to harden cookies.
-    SESSION_COOKIE_SECURE = os.environ.get('SESSION_COOKIE_SECURE', '0') in ('1', 'true', 'True')
+    # Secure-by-default in production; opt-out only in dev/test (see helper).
+    SESSION_COOKIE_SECURE = _default_cookie_secure()
 
     # Flask-Login
     REMEMBER_COOKIE_DURATION = timedelta(days=30)
     REMEMBER_COOKIE_HTTPONLY = True
-    REMEMBER_COOKIE_SECURE = os.environ.get('SESSION_COOKIE_SECURE', '0') in ('1', 'true', 'True')
+    REMEMBER_COOKIE_SECURE = _default_cookie_secure()
     
     # Transaction types (Buy/Sell only — Dividend uses a separate model)
     TRANSACTION_TYPES = ['Buy', 'Sell']

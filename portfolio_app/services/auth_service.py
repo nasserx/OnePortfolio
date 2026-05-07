@@ -6,6 +6,9 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Tuple, Union
 
+from sqlalchemy import text
+
+from portfolio_app import db
 from portfolio_app.models.user import User
 from portfolio_app.models.pending_registration import PendingRegistration
 from portfolio_app.repositories.user_repository import UserRepository
@@ -206,11 +209,15 @@ class AuthService:
                 self.pending_repo.commit()
                 return FAIL
 
-            is_first = self.user_repo.count() == 0
+            # Insert the user as a regular account; promote to admin in a
+            # separate atomic UPDATE that only fires when no admin already
+            # exists. This closes the race window where two simultaneous
+            # first-time sign-ups could both observe count() == 0 and both
+            # come up as admins.
             user = User(
                 username=pending.username,
                 email=pending.email,
-                is_admin=is_first,
+                is_admin=False,
                 is_verified=True,
                 created_at=datetime.now(timezone.utc),
             )
@@ -218,6 +225,19 @@ class AuthService:
             self.user_repo.add(user)
             self.pending_repo.delete(pending)
             self.user_repo.commit()
+
+            # Atomic first-admin election. The NOT EXISTS predicate on the
+            # same UPDATE means at most one row is ever flipped to admin.
+            db.session.execute(
+                text(
+                    'UPDATE "user" SET is_admin = 1 '
+                    'WHERE id = :id '
+                    '  AND NOT EXISTS (SELECT 1 FROM "user" WHERE is_admin = 1)'
+                ),
+                {'id': user.id},
+            )
+            db.session.commit()
+            db.session.refresh(user)
             return True, ''
 
         # ── Case 3: no pending state for this email ──

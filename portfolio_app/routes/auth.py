@@ -8,6 +8,7 @@ from functools import wraps
 from urllib.parse import urlparse
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import login_user, logout_user, login_required, current_user
+from flask_limiter.util import get_remote_address
 
 from portfolio_app import limiter
 from portfolio_app.services import get_services
@@ -61,8 +62,22 @@ def inject_demo_flag():
 # ---------------------------------------------------------------------------
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
+@limiter.limit(
+    "10 per 5 minutes",
+    methods=['POST'],
+    key_func=get_remote_address,
+    error_message=MESSAGES['ACCOUNT_LOCKED'],
+)
 def login():
-    """Login page. Blocks unverified accounts."""
+    """Login page. Blocks unverified accounts.
+
+    The per-IP rate limit raises the cost of brute-force sweeps and
+    blunts the lockout-DoS pattern (where any IP that knows a username
+    could trip the per-account lockout in five POSTs). The per-account
+    lockout still applies on top, so a distributed attacker is still
+    rejected — they just can't bring the lockout down on a single user
+    from a single host.
+    """
     if current_user.is_authenticated:
         return redirect(url_for('dashboard.index'))
 

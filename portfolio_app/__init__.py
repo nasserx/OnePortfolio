@@ -811,6 +811,47 @@ def create_app(config_class=Config):
         # it inline; the test suite asserts on the status code directly.
         return (f"<p>{message}</p>", 429, {'Content-Type': 'text/html; charset=utf-8'})
 
+    # ── Security headers ────────────────────────────────────────────────
+    # Defence-in-depth: HSTS (only when serving over HTTPS), clickjacking
+    # protection, MIME sniffing protection, locked-down referrer/permission
+    # policy, and a CSP scoped to the origins this app actually loads from
+    # (Bootstrap + bootstrap-icons via jsdelivr, Roboto via Google Fonts).
+    # ``'unsafe-inline'`` is currently required for the inline <script> /
+    # <style> blocks in base.html and the inline event handlers in admin
+    # templates; tightening that is a separate refactor (move scripts to
+    # external files + nonces).
+    _CSP = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+        "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; "
+        "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; "
+        "img-src 'self' data:; "
+        "connect-src 'self'; "
+        "frame-ancestors 'none'; "
+        "base-uri 'self'; "
+        "form-action 'self'"
+    )
+
+    @app.after_request
+    def _security_headers(resp):
+        resp.headers.setdefault('X-Content-Type-Options', 'nosniff')
+        resp.headers.setdefault('X-Frame-Options', 'DENY')
+        resp.headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
+        resp.headers.setdefault(
+            'Permissions-Policy',
+            'geolocation=(), microphone=(), camera=()',
+        )
+        # HSTS is only meaningful — and only safe — when the app is served
+        # exclusively over HTTPS. Gate on the same flag that locks the
+        # session cookie to HTTPS so we never advertise HSTS over plain HTTP.
+        if app.config.get('SESSION_COOKIE_SECURE'):
+            resp.headers.setdefault(
+                'Strict-Transport-Security',
+                'max-age=31536000; includeSubDomains',
+            )
+        resp.headers.setdefault('Content-Security-Policy', _CSP)
+        return resp
+
     # Register blueprints
     from portfolio_app.routes import register_blueprints
     register_blueprints(app)

@@ -113,8 +113,23 @@ def login():
                 remember = request.form.get('remember') == 'on'
                 login_user(result, remember=remember)
                 next_page = request.args.get('next')
-                if next_page and urlparse(next_page).netloc:
-                    next_page = None  # reject absolute URLs — open redirect prevention
+                # Open-redirect / dangerous-scheme defence. Accept ONLY a
+                # plain relative path: starts with '/', is not protocol-
+                # relative ('//evil.com'), is not backslash-prefixed
+                # ('/\\evil.com' — Windows quirk), and the parsed URL has
+                # no scheme/netloc. The previous netloc-only check let
+                # 'javascript:alert(1)' through (empty netloc) — Safari
+                # historically followed that as a Location header.
+                if next_page:
+                    parsed = urlparse(next_page)
+                    if (
+                        parsed.scheme
+                        or parsed.netloc
+                        or not next_page.startswith('/')
+                        or next_page.startswith('//')
+                        or next_page.startswith('/\\')
+                    ):
+                        next_page = None
                 redirect_url = next_page or url_for('dashboard.index')
                 if from_modal:
                     return jsonify({'ok': True, 'redirect': redirect_url})

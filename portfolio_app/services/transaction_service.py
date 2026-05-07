@@ -98,6 +98,22 @@ class TransactionService:
         if self._has_no_changes(transaction, price, quantity, fees, notes, symbol, date):
             return transaction
 
+        # Validate post-mutation invariants BEFORE applying the change.
+        # Mirrors the Sell-path checks from add_transaction (fees ≤ gross
+        # and oversell vs currently-held), and additionally simulates the
+        # full chronological recomputation to reject edits that would
+        # drive the running quantity below zero at any point — e.g. a
+        # backdated Sell, a Buy whose quantity is reduced below later
+        # Sells, or a symbol change that orphans existing Sells.
+        self._validate_update_invariants(
+            transaction=transaction,
+            price=price,
+            quantity=quantity,
+            fees=fees,
+            symbol=symbol,
+            date=date,
+        )
+
         old_symbol = transaction.symbol
         portfolio_id = transaction.portfolio_id
 
@@ -191,6 +207,113 @@ class TransactionService:
         if date is not None and date != transaction.date:
             return False
         return True
+
+    def _validate_update_invariants(self, *, transaction, price, quantity, fees, symbol, date):
+        """Reject the proposed update if it would violate a financial invariant.
+
+        Mirrors the Sell-path checks performed in :meth:`add_transaction`
+        (fees ≤ gross and quantity ≤ currently-held, both raising
+        :class:`ValidationError` with the same canonical messages), and
+        additionally simulates the chronological recomputation that
+        :meth:`PortfolioCalculator.recalculate_all_averages_for_symbol`
+        performs — rejecting any edit that would drive the running
+        quantity below zero at any point in the timeline.
+        """
+        new_price    = Decimal(str(price))    if price    is not None else Decimal(str(transaction.price))
+        new_quantity = Decimal(str(quantity)) if quantity is not None else Decimal(str(transaction.quantity))
+        new_fees     = Decimal(str(fees))     if fees     is not None else Decimal(str(transaction.fees))
+        new_symbol   = (PortfolioCalculator.normalize_symbol(symbol)
+                        if symbol is not None else (transaction.symbol or ''))
+        new_date     = date if date is not None else transaction.date
+
+        portfolio_id = transaction.portfolio_id
+        old_symbol   = (transaction.symbol or '')
+
+        # Sell-path checks — same exceptions and messages as add_transaction.
+        if transaction.transaction_type == 'Sell':
+            gross = new_price * new_quantity
+            if new_fees > gross:
+                raise ValidationError(MESSAGES['FEES_EXCEED_PROCEEDS'])
+            held = PortfolioCalculator.get_quantity_held_for_symbol(
+                portfolio_id, new_symbol, exclude_transaction_id=transaction.id
+            )
+            if new_quantity > held:
+                raise ValidationError(MESSAGES['INSUFFICIENT_QUANTITY'])
+
+        # Chronological-walk invariant for the new-symbol stream — the
+        # transaction at its proposed values participates in the walk.
+        self._assert_walk_non_negative(
+            portfolio_id=portfolio_id,
+            edit_id=transaction.id,
+            proposed_symbol=new_symbol,
+            proposed_type=transaction.transaction_type,
+            proposed_quantity=new_quantity,
+            proposed_date=new_date,
+        )
+
+        # If the symbol is changing, the old-symbol stream loses this row.
+        # Verify that stream is still self-consistent without it.
+        if new_symbol != old_symbol:
+            self._assert_walk_non_negative(
+                portfolio_id=portfolio_id,
+                edit_id=transaction.id,
+                proposed_symbol=old_symbol,
+                proposed_type=None,
+                proposed_quantity=Decimal('0'),
+                proposed_date=None,
+            )
+
+    def _assert_walk_non_negative(self, *, portfolio_id, edit_id,
+                                  proposed_symbol, proposed_type,
+                                  proposed_quantity, proposed_date):
+        """Simulate the (portfolio, symbol) chronological walk and raise if
+        the running quantity ever goes negative.
+
+        ``proposed_type=None`` means the edited row is excluded entirely
+        from the walk (used for the old-symbol stream when the edit moves
+        the row to a different symbol).
+
+        Ordering matches the SQL ORDER BY in
+        :meth:`PortfolioCalculator.recalculate_all_averages_for_symbol`:
+        ``func.date(date) ASC, buy_first ASC, id ASC``.
+        """
+        rows = (
+            Transaction.query
+            .filter_by(portfolio_id=portfolio_id, symbol=proposed_symbol)
+            .filter(Transaction.id != edit_id)
+            .all()
+        )
+
+        walk = [
+            (r.date, 0 if r.transaction_type == 'Buy' else 1, r.id,
+             r.transaction_type, Decimal(str(r.quantity)))
+            for r in rows
+        ]
+
+        if proposed_type is not None:
+            walk.append((
+                proposed_date,
+                0 if proposed_type == 'Buy' else 1,
+                edit_id,
+                proposed_type,
+                proposed_quantity,
+            ))
+
+        def _key(item):
+            d = item[0]
+            d_only = d.date() if d is not None else datetime.min.date()
+            return (d_only, item[1], item[2])
+
+        walk.sort(key=_key)
+
+        running = Decimal('0')
+        for _, _, _, ttype, qty in walk:
+            if ttype == 'Buy':
+                running += qty
+            else:
+                running -= qty
+                if running < 0:
+                    raise ValidationError(MESSAGES['INSUFFICIENT_QUANTITY'])
 
     # ------------------------------------------------------------------
     # Dividend operations

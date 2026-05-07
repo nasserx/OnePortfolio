@@ -157,7 +157,7 @@ def transaction_add():
         form = TransactionAddForm(request.form, portfolios)
         if not form.validate():
             if is_ajax_request():
-                return json_response(False, error=get_first_form_error(form.errors))
+                return json_response(False, errors=form.errors)
 
             ctx = _get_transactions_page_context()
             return render_template(
@@ -188,7 +188,7 @@ def transaction_add():
 
     except (ValueError, ValidationError) as e:
         if is_ajax_request():
-            return json_response(False, error=get_error_message(e))
+            return json_response(False, errors={'__all__': get_error_message(e)})
         flash(get_error_message(e), 'error')
         return redirect(url_for('transactions.transaction_list'))
 
@@ -196,7 +196,7 @@ def transaction_add():
         logger.exception('Failed to add transaction')
         db.session.rollback()
         if is_ajax_request():
-            return json_response(False, error=MESSAGES['OPERATION_FAILED'])
+            return json_response(False, errors={'__all__': MESSAGES['OPERATION_FAILED']})
         flash(MESSAGES['OPERATION_FAILED'], 'error')
         return redirect(url_for('transactions.transaction_list'))
 
@@ -211,14 +211,14 @@ def transaction_edit(transaction_id):
         transaction = svc.transaction_repo.get_by_id(transaction_id)
         if not transaction:
             if is_ajax_request():
-                return json_response(False, error=MESSAGES['TRANSACTION_NOT_FOUND'])
+                return json_response(False, errors={'__all__': MESSAGES['TRANSACTION_NOT_FOUND']})
             flash(MESSAGES['TRANSACTION_NOT_FOUND'], 'error')
             return redirect(url_for('transactions.transaction_list'))
 
         form = TransactionEditForm(request.form, transaction_id, transaction.transaction_type)
         if not form.validate():
             if is_ajax_request():
-                return json_response(False, error=get_first_form_error(form.errors))
+                return json_response(False, errors=form.errors)
 
             ctx = _get_transactions_page_context()
             return render_template(
@@ -248,7 +248,7 @@ def transaction_edit(transaction_id):
 
     except (ValueError, ValidationError) as e:
         if is_ajax_request():
-            return json_response(False, error=get_error_message(e))
+            return json_response(False, errors={'__all__': get_error_message(e)})
         flash(get_error_message(e), 'error')
         return redirect(url_for('transactions.transaction_list'))
 
@@ -256,7 +256,7 @@ def transaction_edit(transaction_id):
         logger.exception('Failed to edit transaction %s', transaction_id)
         db.session.rollback()
         if is_ajax_request():
-            return json_response(False, error=MESSAGES['OPERATION_FAILED'])
+            return json_response(False, errors={'__all__': MESSAGES['OPERATION_FAILED']})
         flash(MESSAGES['OPERATION_FAILED'], 'error')
         return redirect(url_for('transactions.transaction_list'))
 
@@ -275,14 +275,14 @@ def transaction_delete(transaction_id):
 
     except ValueError as e:
         if is_ajax_request():
-            return json_response(False, error=get_error_message(e))
+            return json_response(False, errors={'__all__': get_error_message(e)})
         flash(get_error_message(e), 'error')
 
     except Exception:
         logger.exception('Failed to delete transaction %s', transaction_id)
         db.session.rollback()
         if is_ajax_request():
-            return json_response(False, error=MESSAGES['OPERATION_FAILED'])
+            return json_response(False, errors={'__all__': MESSAGES['OPERATION_FAILED']})
         flash(MESSAGES['OPERATION_FAILED'], 'error')
 
     return redirect(url_for('transactions.transaction_list'))
@@ -299,7 +299,7 @@ def dividend_add():
         form = DividendAddForm(request.form, portfolios)
         if not form.validate():
             if is_ajax_request():
-                return json_response(False, error=get_first_form_error(form.errors))
+                return json_response(False, errors=form.errors)
 
             ctx = _get_transactions_page_context()
             return render_template(
@@ -327,7 +327,7 @@ def dividend_add():
 
     except (ValueError, ValidationError) as e:
         if is_ajax_request():
-            return json_response(False, error=get_error_message(e))
+            return json_response(False, errors={'__all__': get_error_message(e)})
         flash(get_error_message(e), 'error')
         return redirect(url_for('transactions.transaction_list'))
 
@@ -335,7 +335,7 @@ def dividend_add():
         logger.exception('Failed to add dividend')
         db.session.rollback()
         if is_ajax_request():
-            return json_response(False, error=MESSAGES['OPERATION_FAILED'])
+            return json_response(False, errors={'__all__': MESSAGES['OPERATION_FAILED']})
         flash(MESSAGES['OPERATION_FAILED'], 'error')
         return redirect(url_for('transactions.transaction_list'))
 
@@ -350,16 +350,26 @@ def dividend_edit(dividend_id):
         dividend = svc.dividend_repo.get_by_id(dividend_id)
         if not dividend:
             if is_ajax_request():
-                return json_response(False, error=MESSAGES['DIVIDEND_NOT_FOUND'])
+                return json_response(False, errors={'__all__': MESSAGES['DIVIDEND_NOT_FOUND']})
             flash(MESSAGES['DIVIDEND_NOT_FOUND'], 'error')
             return redirect(url_for('transactions.transaction_list'))
 
         form = DividendEditForm(request.form, dividend_id)
         if not form.validate():
             if is_ajax_request():
-                return json_response(False, error=get_first_form_error(form.errors))
-            flash(get_first_form_error(form.errors), 'error')
-            return redirect(url_for('transactions.transaction_list'))
+                return json_response(False, errors=form.errors)
+            # Non-AJAX fallback: re-render with errors instead of the
+            # old flash+redirect, which surfaced a toast for a per-field
+            # validation problem and lost the modal's open state.
+            ctx = _get_transactions_page_context()
+            return render_template(
+                'transactions.html',
+                **ctx,
+                form_errors={'dividend_edit': form.errors},
+                form_values={'dividend_edit': request.form},
+                active_modal='editDividendModal',
+                modal_data={'dividend_id': dividend_id},
+            ), 400
 
         data = form.get_cleaned_data()
         svc.transaction_service.update_dividend(
@@ -377,7 +387,7 @@ def dividend_edit(dividend_id):
 
     except (ValueError, ValidationError) as e:
         if is_ajax_request():
-            return json_response(False, error=get_error_message(e))
+            return json_response(False, errors={'__all__': get_error_message(e)})
         flash(get_error_message(e), 'error')
         return redirect(url_for('transactions.transaction_list'))
 
@@ -385,7 +395,7 @@ def dividend_edit(dividend_id):
         logger.exception('Failed to edit dividend %s', dividend_id)
         db.session.rollback()
         if is_ajax_request():
-            return json_response(False, error=MESSAGES['OPERATION_FAILED'])
+            return json_response(False, errors={'__all__': MESSAGES['OPERATION_FAILED']})
         flash(MESSAGES['OPERATION_FAILED'], 'error')
         return redirect(url_for('transactions.transaction_list'))
 
@@ -404,14 +414,14 @@ def dividend_delete(dividend_id):
 
     except ValueError as e:
         if is_ajax_request():
-            return json_response(False, error=get_error_message(e))
+            return json_response(False, errors={'__all__': get_error_message(e)})
         flash(get_error_message(e), 'error')
 
     except Exception:
         logger.exception('Failed to delete dividend %s', dividend_id)
         db.session.rollback()
         if is_ajax_request():
-            return json_response(False, error=MESSAGES['OPERATION_FAILED'])
+            return json_response(False, errors={'__all__': MESSAGES['OPERATION_FAILED']})
         flash(MESSAGES['OPERATION_FAILED'], 'error')
 
     return redirect(url_for('transactions.transaction_list'))
@@ -465,7 +475,7 @@ def symbol_delete():
         form = SymbolDeleteForm(request.form)
         if not form.validate():
             if is_ajax_request():
-                return json_response(False, error=MESSAGES['INVALID_REQUEST'])
+                return json_response(False, errors={'__all__': MESSAGES['INVALID_REQUEST']})
             flash(MESSAGES['INVALID_REQUEST'], 'error')
             return redirect(url_for('transactions.transaction_list'))
 
@@ -481,14 +491,14 @@ def symbol_delete():
 
     except ValueError as e:
         if is_ajax_request():
-            return json_response(False, error=get_error_message(e))
+            return json_response(False, errors={'__all__': get_error_message(e)})
         flash(get_error_message(e), 'error')
 
     except Exception:
         logger.exception('Failed to stop tracking symbol')
         db.session.rollback()
         if is_ajax_request():
-            return json_response(False, error=MESSAGES['OPERATION_FAILED'])
+            return json_response(False, errors={'__all__': MESSAGES['OPERATION_FAILED']})
         flash(MESSAGES['OPERATION_FAILED'], 'error')
 
     return redirect(url_for('transactions.transaction_list'))

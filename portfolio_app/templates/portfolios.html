@@ -388,6 +388,7 @@
 </div>
 
 <!-- ── Edit Portfolio Event Modal ─────────────────────────────────── -->
+{% set _ev_errs = (form_errors.get('portfolio_event_edit', {}) if form_errors else {}) %}
 <div class="modal fade" id="editPortfolioEventModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -398,6 +399,11 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
+                    {% if _ev_errs.get('__all__') %}
+                    <div class="alert alert-danger d-flex align-items-center mb-3">
+                        <i class="bi bi-exclamation-circle me-2"></i>{{ _ev_errs.get('__all__') }}
+                    </div>
+                    {% endif %}
                     <div class="mb-3">
                         <label class="form-label">Type</label>
                         <input type="text" class="form-control" id="edit_event_type_display" readonly>
@@ -408,27 +414,36 @@
                             <div class="mb-3">
                                 <label for="edit_cash_event_amount" class="form-label">Amount</label>
                                 <input type="text" inputmode="decimal"
-                                       class="form-control"
+                                       class="form-control {% if _ev_errs.get('edit_cash_event_amount') %}is-invalid{% endif %}"
                                        id="edit_cash_event_amount" name="edit_cash_event_amount"
                                        placeholder="0.00">
+                                {% if _ev_errs.get('edit_cash_event_amount') %}
+                                <div class="invalid-feedback">{{ _ev_errs.get('edit_cash_event_amount') }}</div>
+                                {% endif %}
                             </div>
                         </div>
                         <div class="col-6">
                             <div class="mb-3">
                                 <label for="edit_event_date" class="form-label">Date</label>
                                 <input type="text"
-                                       class="form-control"
+                                       class="form-control {% if _ev_errs.get('date') %}is-invalid{% endif %}"
                                        id="edit_event_date" name="date"
                                        placeholder="YYYY-MM-DD">
+                                {% if _ev_errs.get('date') %}
+                                <div class="invalid-feedback d-block">{{ _ev_errs.get('date') }}</div>
+                                {% endif %}
                             </div>
                         </div>
                     </div>
                     <div class="mb-3">
                         <label for="edit_cash_event_notes" class="form-label">Notes (optional)</label>
-                        <textarea class="form-control js-notes-input"
+                        <textarea class="form-control js-notes-input {% if _ev_errs.get('edit_cash_event_notes') %}is-invalid{% endif %}"
                                   id="edit_cash_event_notes" name="edit_cash_event_notes"
                                   rows="2" maxlength="300"></textarea>
                         <small class="notes-counter">0 / 300</small>
+                        {% if _ev_errs.get('edit_cash_event_notes') %}
+                        <div class="invalid-feedback">{{ _ev_errs.get('edit_cash_event_notes') }}</div>
+                        {% endif %}
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -732,6 +747,16 @@ function deletePortfolioEvent(id, type) {
             }
             if (which === 'newPortfolioModal') {
                 new bootstrap.Modal(document.getElementById('newPortfolioModal')).show();
+            }
+            if (which === 'editPortfolioEventModal') {
+                // Form action gets set when the user clicks "Edit"; on a
+                // server-side re-render the modal_data carries the event id
+                // so the form can target the right route again.
+                if (payload && payload.event_id) {
+                    document.getElementById('editPortfolioEventForm').action =
+                        '/portfolios/events/edit/' + payload.event_id;
+                }
+                new bootstrap.Modal(document.getElementById('editPortfolioEventModal')).show();
             }
         } catch (e) {}
     });

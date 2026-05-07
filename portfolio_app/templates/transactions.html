@@ -527,6 +527,11 @@
                 </div>
                 <div class="modal-body">
                     {% set _tx_edit_errs = (form_errors.get('transaction_edit', {}) if form_errors else {}) %}
+                    {% if _tx_edit_errs.get('__all__') %}
+                    <div class="alert alert-danger d-flex align-items-center mb-3">
+                        <i class="bi bi-exclamation-circle me-2"></i>{{ _tx_edit_errs.get('__all__') }}
+                    </div>
+                    {% endif %}
                     <div class="row g-2">
                         <div class="col-6">
                             <div class="mb-3">
@@ -608,8 +613,12 @@
 
                     <div class="mb-3">
                         <label for="edit_notes" class="form-label">Notes (optional)</label>
-                        <textarea class="form-control js-notes-input" id="edit_notes" name="edit_notes" rows="2" maxlength="300"></textarea>
+                        <textarea class="form-control js-notes-input {% if _tx_edit_errs.get('edit_notes') %}is-invalid{% endif %}"
+                                  id="edit_notes" name="edit_notes" rows="2" maxlength="300"></textarea>
                         <small class="notes-counter">0 / 300</small>
+                        {% if _tx_edit_errs.get('edit_notes') %}
+                        <div class="invalid-feedback">{{ _tx_edit_errs.get('edit_notes') }}</div>
+                        {% endif %}
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -731,6 +740,7 @@
 </div>
 
 <!-- Edit Dividend Modal -->
+{% set _div_edit_errs = (form_errors.get('dividend_edit', {}) if form_errors else {}) %}
 <div class="modal fade" id="editDividendModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-scrollable">
         <div class="modal-content">
@@ -741,29 +751,48 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
+                    {% if _div_edit_errs.get('__all__') %}
+                    <div class="alert alert-danger d-flex align-items-center mb-3">
+                        <i class="bi bi-exclamation-circle me-2"></i>{{ _div_edit_errs.get('__all__') }}
+                    </div>
+                    {% endif %}
                     <div class="row g-2">
                         <div class="col-6">
                             <div class="mb-3">
                                 <label for="edit_amount" class="form-label">Amount</label>
                                 <input type="text" inputmode="decimal" autocomplete="off"
-                                       class="form-control" id="edit_amount" name="edit_amount" placeholder="0.00">
+                                       class="form-control {% if _div_edit_errs.get('edit_amount') %}is-invalid{% endif %}"
+                                       id="edit_amount" name="edit_amount" placeholder="0.00">
+                                {% if _div_edit_errs.get('edit_amount') %}
+                                <div class="invalid-feedback">{{ _div_edit_errs.get('edit_amount') }}</div>
+                                {% else %}
                                 <div id="edit_amount_error" class="invalid-feedback"></div>
+                                {% endif %}
                             </div>
                         </div>
                         <div class="col-6">
                             <div class="mb-3">
                                 <label for="edit_dividend_date" class="form-label">Date</label>
-                                <input type="text" class="form-control" id="edit_dividend_date" name="edit_date" placeholder="YYYY-MM-DD">
+                                <input type="text"
+                                       class="form-control {% if _div_edit_errs.get('edit_date') %}is-invalid{% endif %}"
+                                       id="edit_dividend_date" name="edit_date" placeholder="YYYY-MM-DD">
+                                {% if _div_edit_errs.get('edit_date') %}
+                                <div class="invalid-feedback">{{ _div_edit_errs.get('edit_date') }}</div>
+                                {% else %}
                                 <div id="edit_dividend_date_error" class="invalid-feedback"></div>
+                                {% endif %}
                             </div>
                         </div>
                     </div>
                     <div class="mb-3">
                         <label for="edit_dividend_notes" class="form-label">Notes (optional)</label>
-                        <textarea class="form-control js-notes-input" id="edit_dividend_notes" name="edit_notes" rows="2" maxlength="300"></textarea>
+                        <textarea class="form-control js-notes-input {% if _div_edit_errs.get('edit_notes') %}is-invalid{% endif %}"
+                                  id="edit_dividend_notes" name="edit_notes" rows="2" maxlength="300"></textarea>
                         <small class="notes-counter">0 / 300</small>
+                        {% if _div_edit_errs.get('edit_notes') %}
+                        <div class="invalid-feedback">{{ _div_edit_errs.get('edit_notes') }}</div>
+                        {% endif %}
                     </div>
-                    <div id="edit_dividend_error" class="alert alert-danger d-none"></div>
                 </div>
                 <div class="modal-footer">
                     <button type="submit" class="btn btn-primary">Save</button>

@@ -967,7 +967,13 @@ class NotesCounterHandler {
 
 
 /**
- * Handle AJAX form submissions for modals to show errors inline
+ * Handle AJAX form submissions for modals.
+ *
+ * Server replies use one of two shapes:
+ *   {success: true, message: "..."}  → success toast + reload
+ *   {success: false, errors: {field: "msg", ..., __all__: "msg"}}
+ *                                    → per-field inline errors + modal banner
+ *   {success: false, error: "..."}    → legacy single-string fallback
  */
 class ModalAjaxHandler {
     constructor() {
@@ -975,15 +981,19 @@ class ModalAjaxHandler {
     }
 
     init() {
-        // Forms to handle with AJAX (in modals)
-        // Map modal IDs to their forms
+        // Every modal that has a form goes through here. Adding a new
+        // modal? List it here and the AJAX path is wired automatically;
+        // no need to write per-form JS.
         const modalForms = [
             // Add Transaction handles both buy/sell AND dividend (action changes dynamically)
-            { modalId: 'addTransactionModal', formSelector: '#addTransactionModal form' },
-            { modalId: 'editTransactionModal', formSelector: '#editTransactionForm' },
-            { modalId: 'newPortfolioModal', formSelector: 'form[action$="/portfolios/add"]' },
-            { modalId: 'depositFundsModal', formSelector: '#depositFundsForm' },
-            { modalId: 'withdrawFundsModal', formSelector: '#withdrawFundsForm' }
+            { modalId: 'addTransactionModal',     formSelector: '#addTransactionModal form' },
+            { modalId: 'editTransactionModal',    formSelector: '#editTransactionForm' },
+            { modalId: 'editDividendModal',       formSelector: '#editDividendForm' },
+            { modalId: 'newPortfolioModal',       formSelector: 'form[action$="/portfolios/add"]' },
+            { modalId: 'depositFundsModal',       formSelector: '#depositFundsForm' },
+            { modalId: 'withdrawFundsModal',      formSelector: '#withdrawFundsForm' },
+            { modalId: 'editPortfolioEventModal', formSelector: '#editPortfolioEventForm' },
+            { modalId: 'addSymbolModal',          formSelector: 'form[action$="/symbols/add"]' },
         ];
 
         modalForms.forEach(({ modalId, formSelector }) => {
@@ -1010,82 +1020,107 @@ class ModalAjaxHandler {
                 submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Processing...';
             }
 
-            // Get form data
             const formData = new FormData(form);
 
             try {
                 const response = await fetch(form.action, {
                     method: 'POST',
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest'
-                    },
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
                     body: formData
                 });
 
                 const data = await response.json();
 
                 if (data.success) {
-                    // Store message for display after reload
                     sessionStorage.setItem('flashMessage', data.message || 'Success');
                     sessionStorage.setItem('flashType', 'success');
-
-                    // Reload immediately - message shows on fresh page
                     window.location.reload();
+                    return;
+                }
+
+                // Restore button before showing errors
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalText;
+                }
+
+                if (data.errors && typeof data.errors === 'object') {
+                    this.applyFieldErrors(modal, data.errors);
                 } else {
-                    // Restore button
-                    if (submitBtn) {
-                        submitBtn.disabled = false;
-                        submitBtn.innerHTML = originalText;
-                    }
-                    // Show error in modal
-                    this.showModalError(modal, data.error || 'Operation failed');
+                    // Legacy single-string error → just put it in the banner.
+                    this.showModalBanner(modal, data.error || 'Operation failed');
                 }
             } catch (error) {
-                // Restore button
                 if (submitBtn) {
                     submitBtn.disabled = false;
                     submitBtn.innerHTML = originalText;
                 }
                 console.error('Form submission error:', error);
-                this.showModalError(modal, 'Network error');
+                this.showModalBanner(modal, 'Network error');
             }
         });
     }
 
-    showModalError(modal, message) {
-        // Show error as inline field validation on the relevant field
-        const msg = (message || '').toLowerCase();
-        let targetField = null;
-
-        if (msg.includes('amount')) {
-            targetField = modal.querySelector('#add_funds_amount, #withdraw_funds_amount, #edit_cash_event_amount, #add_div_amount, #edit_amount');
-        } else if (msg.includes('quantity')) {
-            targetField = modal.querySelector('#edit_quantity, #quantity');
-        } else if (msg.includes('fund') || msg.includes('cash')) {
-            const preview = modal.querySelector('#total_cost_preview, #edit_total_cost_preview');
-            if (preview) {
-                preview.innerHTML = `<span class="text-danger">${Utils.escapeHtml(message)}</span>`;
-                return;
+    /**
+     * Apply per-field errors inline. The `__all__` key (if present) goes
+     * into a modal-level banner instead of any single field.
+     */
+    applyFieldErrors(modal, errors) {
+        let unrecognized = [];
+        for (const [field, msg] of Object.entries(errors)) {
+            if (field === '__all__') continue;
+            const input = this.findFieldInput(modal, field);
+            if (input) {
+                input.classList.add('is-invalid');
+                const feedback = Utils.ensureFeedbackElement(input);
+                if (feedback) {
+                    feedback.textContent = msg;
+                    feedback.style.display = 'block';
+                }
+            } else {
+                // No matching input — collect for the banner so the user
+                // still sees the message somewhere.
+                unrecognized.push(msg);
             }
-            targetField = modal.querySelector('#edit_price, #price');
-        } else if (msg.includes('price')) {
-            targetField = modal.querySelector('#edit_price, #price');
-        } else if (msg.includes('date')) {
-            targetField = modal.querySelector('#edit_date, #add_tx_date, #add_div_date, #edit_dividend_date, #edit_event_date, #deposit_date, #withdraw_date');
         }
-
-        // Fallback: first visible input (not hidden/disabled/readonly)
-        if (!targetField) {
-            targetField = modal.querySelector('.modal-body input:not([type="hidden"]):not([disabled]):not([readonly])');
+        const bannerMsg = errors.__all__ || (unrecognized.length ? unrecognized.join(' ') : '');
+        if (bannerMsg) {
+            this.showModalBanner(modal, bannerMsg);
         }
+    }
 
-        if (targetField) {
-            targetField.classList.add('is-invalid');
-            const feedback = Utils.ensureFeedbackElement(targetField);
-            if (feedback) {
-                feedback.textContent = message;
-                feedback.style.display = 'block';
-            }
+    /**
+     * Resolve the input element for a server-side field name. Tries:
+     *   1. exact ``name="..."`` match
+     *   2. exact ``id="..."`` match
+     *   3. ``name="<field>"`` after prefixing with common edit/add naming
+     *      conventions used in this codebase (edit_, add_, ...).
+     */
+    findFieldInput(modal, fieldName) {
+        const escapeAttr = (s) => (window.CSS && CSS.escape ? CSS.escape(s) : s.replace(/"/g, '\\"'));
+        return (
+            modal.querySelector(`[name="${escapeAttr(fieldName)}"]`)
+            || modal.querySelector(`#${escapeAttr(fieldName)}`)
+            || null
+        );
+    }
+
+    showModalBanner(modal, message) {
+        const existing = modal.querySelector('.js-modal-banner');
+        if (existing) existing.remove();
+        const banner = document.createElement('div');
+        banner.className = 'alert alert-danger js-modal-banner d-flex align-items-center mb-3';
+        banner.setAttribute('role', 'alert');
+        const icon = document.createElement('i');
+        icon.className = 'bi bi-exclamation-circle me-2';
+        icon.setAttribute('aria-hidden', 'true');
+        const text = document.createElement('span');
+        text.textContent = message;
+        banner.appendChild(icon);
+        banner.appendChild(text);
+        const body = modal.querySelector('.modal-body');
+        if (body) {
+            body.insertBefore(banner, body.firstChild);
         }
     }
 
@@ -1096,6 +1131,8 @@ class ModalAjaxHandler {
             el.style.display = 'none';
         });
         modal.querySelectorAll('.tx-preview .text-danger').forEach(el => el.remove());
+        const banner = modal.querySelector('.js-modal-banner');
+        if (banner) banner.remove();
     }
 }
 

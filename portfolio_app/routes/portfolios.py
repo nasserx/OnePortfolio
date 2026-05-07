@@ -92,7 +92,7 @@ def portfolios_add():
         form = PortfolioAddForm(request.form, existing_names)
         if not form.validate():
             if is_ajax_request():
-                return json_response(False, error=get_first_form_error(form.errors))
+                return json_response(False, errors=form.errors)
 
             ctx = _get_portfolios_page_context()
             return render_template(
@@ -114,7 +114,7 @@ def portfolios_add():
 
     except ValueError as e:
         if is_ajax_request():
-            return json_response(False, error=get_error_message(e))
+            return json_response(False, errors={'__all__': get_error_message(e)})
 
         ctx = _get_portfolios_page_context()
         return render_template(
@@ -130,7 +130,7 @@ def portfolios_add():
         db.session.rollback()
 
         if is_ajax_request():
-            return json_response(False, error=MESSAGES['OPERATION_FAILED'])
+            return json_response(False, errors={'__all__': MESSAGES['OPERATION_FAILED']})
 
         ctx = _get_portfolios_page_context()
         return render_template(
@@ -172,7 +172,7 @@ def portfolios_deposit(portfolio_id):
         form = PortfolioDepositForm(request.form, portfolio_id)
         if not form.validate():
             if is_ajax_request():
-                return json_response(False, error=get_first_form_error(form.errors))
+                return json_response(False, errors=form.errors)
 
             ctx = _get_portfolios_page_context()
             return render_template(
@@ -200,7 +200,7 @@ def portfolios_deposit(portfolio_id):
 
     except ValueError as e:
         if is_ajax_request():
-            return json_response(False, error=get_error_message(e))
+            return json_response(False, errors={'__all__': get_error_message(e)})
 
         flash(get_error_message(e), 'error')
         return redirect(url_for('portfolios.portfolios_list'))
@@ -210,7 +210,7 @@ def portfolios_deposit(portfolio_id):
         db.session.rollback()
 
         if is_ajax_request():
-            return json_response(False, error=MESSAGES['OPERATION_FAILED'])
+            return json_response(False, errors={'__all__': MESSAGES['OPERATION_FAILED']})
 
         flash(MESSAGES['OPERATION_FAILED'], 'error')
         return redirect(url_for('portfolios.portfolios_list'))
@@ -226,7 +226,7 @@ def portfolios_withdraw(portfolio_id):
         form = PortfolioWithdrawForm(request.form, portfolio_id)
         if not form.validate():
             if is_ajax_request():
-                return json_response(False, error=get_first_form_error(form.errors))
+                return json_response(False, errors=form.errors)
 
             ctx = _get_portfolios_page_context()
             return render_template(
@@ -254,7 +254,7 @@ def portfolios_withdraw(portfolio_id):
 
     except ValueError as e:
         if is_ajax_request():
-            return json_response(False, error=get_error_message(e))
+            return json_response(False, errors={'__all__': get_error_message(e)})
 
         flash(get_error_message(e), 'error')
         return redirect(url_for('portfolios.portfolios_list'))
@@ -264,7 +264,7 @@ def portfolios_withdraw(portfolio_id):
         db.session.rollback()
 
         if is_ajax_request():
-            return json_response(False, error=MESSAGES['OPERATION_FAILED'])
+            return json_response(False, errors={'__all__': MESSAGES['OPERATION_FAILED']})
 
         flash(MESSAGES['OPERATION_FAILED'], 'error')
         return redirect(url_for('portfolios.portfolios_list'))
@@ -279,11 +279,18 @@ def portfolios_event_edit(event_id):
 
         event = svc.portfolio_event_repo.get_by_id(event_id)
         if not event:
+            if is_ajax_request():
+                return json_response(
+                    False, errors={'__all__': MESSAGES['CASH_EVENT_NOT_FOUND']},
+                )
             flash(MESSAGES['CASH_EVENT_NOT_FOUND'], 'error')
             return redirect(url_for('portfolios.portfolios_list'))
 
         form = PortfolioEventEditForm(request.form, event_id, event.event_type)
         if not form.validate():
+            if is_ajax_request():
+                return json_response(False, errors=form.errors)
+
             ctx = _get_portfolios_page_context()
             return render_template(
                 'portfolios.html',
@@ -306,14 +313,22 @@ def portfolios_event_edit(event_id):
             date=data.get('date')
         )
 
+        if is_ajax_request():
+            return json_response(True, message=MESSAGES['TRANSACTION_UPDATED'])
+
         flash(MESSAGES['TRANSACTION_UPDATED'], 'success')
+        return redirect(url_for('portfolios.portfolios_list'))
 
     except ValueError as e:
+        if is_ajax_request():
+            return json_response(False, errors={'__all__': get_error_message(e)})
         flash(get_error_message(e), 'error')
 
     except Exception:
         logger.exception('Failed to edit event %s', event_id)
         db.session.rollback()
+        if is_ajax_request():
+            return json_response(False, errors={'__all__': MESSAGES['OPERATION_FAILED']})
         flash(MESSAGES['OPERATION_FAILED'], 'error')
 
     return redirect(url_for('portfolios.portfolios_list'))

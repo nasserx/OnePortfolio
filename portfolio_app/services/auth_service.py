@@ -1,5 +1,6 @@
 """Authentication service for user management."""
 
+import hmac
 import secrets
 import logging
 from datetime import datetime, timedelta, timezone
@@ -23,6 +24,11 @@ PENDING_REGISTRATION_TTL_HOURS = 24
 # Brute-force protection
 MAX_FAILED_LOGIN_ATTEMPTS = 5
 LOCKOUT_DURATION_MINUTES = 30
+
+# OTP brute-force defence: after this many bad codes we wipe the OTP so
+# the user has to request a fresh one. Combined with the per-email rate
+# limit on /verify-code, this closes the 900K-code brute-force window.
+MAX_OTP_ATTEMPTS = 5
 
 
 class AuthService:
@@ -141,13 +147,25 @@ class AuthService:
             expires_at = self._as_utc(user_pending_email.verification_code_expires_at)
             if now > expires_at:
                 return False, MESSAGES['VERIFICATION_CODE_EXPIRED']
-            if user_pending_email.verification_code != code:
+            if not hmac.compare_digest(user_pending_email.verification_code, code):
+                # Burn an attempt; wipe the code (and the staged email) once
+                # the cap is hit so the user must request a fresh OTP.
+                user_pending_email.verification_code_failed_attempts = (
+                    (user_pending_email.verification_code_failed_attempts or 0) + 1
+                )
+                if user_pending_email.verification_code_failed_attempts >= MAX_OTP_ATTEMPTS:
+                    user_pending_email.verification_code = None
+                    user_pending_email.verification_code_expires_at = None
+                    user_pending_email.pending_email = None
+                    user_pending_email.verification_code_failed_attempts = 0
+                self.user_repo.commit()
                 return False, MESSAGES['VERIFICATION_CODE_MISMATCH']
 
             user_pending_email.email = user_pending_email.pending_email
             user_pending_email.pending_email = None
             user_pending_email.verification_code = None
             user_pending_email.verification_code_expires_at = None
+            user_pending_email.verification_code_failed_attempts = 0
             self.user_repo.commit()
             return True, ''
 
@@ -157,7 +175,16 @@ class AuthService:
             expires_at = self._as_utc(pending.verification_code_expires_at)
             if now > expires_at:
                 return False, MESSAGES['VERIFICATION_CODE_EXPIRED']
-            if pending.verification_code != code:
+            if not hmac.compare_digest(pending.verification_code, code):
+                # Same per-OTP lockout as Case 1, but the staged-registration
+                # columns (verification_code / expires_at) are NOT NULL, so
+                # we burn the entire pending row instead of nulling fields.
+                # The user must re-register from scratch — the strictest
+                # behaviour is the right default for a financial app.
+                pending.failed_otp_attempts = (pending.failed_otp_attempts or 0) + 1
+                if pending.failed_otp_attempts >= MAX_OTP_ATTEMPTS:
+                    self.pending_repo.delete(pending)
+                self.pending_repo.commit()
                 return False, MESSAGES['VERIFICATION_CODE_MISMATCH']
 
             # Re-check live user table for late collisions before promoting.
@@ -212,6 +239,8 @@ class AuthService:
             pending.verification_code_expires_at = (
                 now + timedelta(minutes=VERIFICATION_CODE_EXPIRY_MINUTES)
             )
+            # Fresh code, fresh attempt counter.
+            pending.failed_otp_attempts = 0
             self.pending_repo.commit()
             return code
 
@@ -223,6 +252,7 @@ class AuthService:
             user.verification_code_expires_at = (
                 now + timedelta(minutes=VERIFICATION_CODE_EXPIRY_MINUTES)
             )
+            user.verification_code_failed_attempts = 0
             self.user_repo.commit()
             return code
 
@@ -295,6 +325,7 @@ class AuthService:
         user.verification_code_expires_at = (
             datetime.now(timezone.utc) + timedelta(minutes=VERIFICATION_CODE_EXPIRY_MINUTES)
         )
+        user.verification_code_failed_attempts = 0
         self.user_repo.commit()
         return code
 
@@ -327,16 +358,30 @@ class AuthService:
         user.deletion_code_expires_at = (
             datetime.now(timezone.utc) + timedelta(minutes=VERIFICATION_CODE_EXPIRY_MINUTES)
         )
+        user.deletion_code_failed_attempts = 0
         self.user_repo.commit()
         return code
 
     def confirm_account_deletion(self, user: User, code: str) -> Tuple[bool, str]:
+        # Reject upfront if the code was never set or has expired — the same
+        # generic message hides whether the user is in the deletion flow.
         if (
             not user.deletion_code
             or not user.deletion_code_expires_at
             or datetime.now(timezone.utc) > self._as_utc(user.deletion_code_expires_at)
-            or user.deletion_code != code.strip()
         ):
+            return False, MESSAGES['DELETION_INVALID_CODE']
+
+        if not hmac.compare_digest(user.deletion_code, code.strip()):
+            user.deletion_code_failed_attempts = (
+                (user.deletion_code_failed_attempts or 0) + 1
+            )
+            if user.deletion_code_failed_attempts >= MAX_OTP_ATTEMPTS:
+                # Burn the code so the attacker can't keep guessing.
+                user.deletion_code = None
+                user.deletion_code_expires_at = None
+                user.deletion_code_failed_attempts = 0
+            self.user_repo.commit()
             return False, MESSAGES['DELETION_INVALID_CODE']
 
         self.user_repo.delete(user)

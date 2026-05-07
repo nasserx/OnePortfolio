@@ -29,6 +29,10 @@ class PendingRegistration(db.Model):
 
     verification_code = db.Column(db.String(6), nullable=False)
     verification_code_expires_at = db.Column(db.DateTime, nullable=False)
+    # Consecutive bad-OTP attempts on this pending registration. After
+    # MAX_OTP_ATTEMPTS failures the code is wiped and the user has to
+    # request a new one via /resend-code.
+    failed_otp_attempts = db.Column(db.Integer, default=0, nullable=False)
 
     created_at = db.Column(
         db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False,

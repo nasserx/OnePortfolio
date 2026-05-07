@@ -40,7 +40,7 @@ def _enable_sqlite_foreign_keys(dbapi_connection, connection_record):
 # Bumped whenever a new migration step is added below. Stored in the SQLite
 # header (PRAGMA user_version) after a successful migration so subsequent
 # boots can short-circuit the whole inspection pass.
-TARGET_SCHEMA_VERSION = 26
+TARGET_SCHEMA_VERSION = 27
 
 
 def _run_migrations(app):
@@ -495,6 +495,35 @@ def _apply_migration_steps(conn, sa):
         if 'locked_until' not in user_cols:
             conn.execute(sa.text(
                 'ALTER TABLE "user" ADD COLUMN locked_until DATETIME'
+            ))
+            conn.commit()
+
+    # ── Step 27: per-OTP failure counters (Fix #3 — brute-force defence) ──
+    # Adds the columns that AuthService increments on each bad code and
+    # clears on success. After MAX_OTP_ATTEMPTS failures the code itself is
+    # wiped so the user must request a fresh one via /resend-code, closing
+    # the brute-force window even within the OTP's 10-minute validity.
+    if 'pending_registration' in tables:
+        pr_cols = {c['name'] for c in inspector.get_columns('pending_registration')}
+        if 'failed_otp_attempts' not in pr_cols:
+            conn.execute(sa.text(
+                'ALTER TABLE pending_registration '
+                'ADD COLUMN failed_otp_attempts INTEGER NOT NULL DEFAULT 0'
+            ))
+            conn.commit()
+
+    if 'user' in tables:
+        user_cols = {c['name'] for c in inspector.get_columns('user')}
+        if 'verification_code_failed_attempts' not in user_cols:
+            conn.execute(sa.text(
+                'ALTER TABLE "user" '
+                'ADD COLUMN verification_code_failed_attempts INTEGER NOT NULL DEFAULT 0'
+            ))
+            conn.commit()
+        if 'deletion_code_failed_attempts' not in user_cols:
+            conn.execute(sa.text(
+                'ALTER TABLE "user" '
+                'ADD COLUMN deletion_code_failed_attempts INTEGER NOT NULL DEFAULT 0'
             ))
             conn.commit()
 

@@ -217,6 +217,12 @@ def register():
 
 
 @auth_bp.route('/verify-code', methods=['GET', 'POST'])
+@limiter.limit(
+    "5 per 15 minutes",
+    methods=['POST'],
+    key_func=lambda: (request.args.get('email', '') or request.form.get('email', '') or '').lower(),
+    error_message=MESSAGES['ACCOUNT_LOCKED'],
+)
 def verify_code():
     """Page where the user enters the 6-digit verification code."""
     email = request.args.get('email', '')
@@ -522,6 +528,11 @@ def delete_account_request():
 @auth_bp.route('/settings/delete/confirm', methods=['POST'])
 @login_required
 @demo_restricted
+@limiter.limit(
+    "5 per 15 minutes",
+    key_func=lambda: f"deletion:{current_user.get_id() or ''}",
+    error_message=MESSAGES['ACCOUNT_LOCKED'],
+)
 def delete_account_confirm():
     """Verify the OTP and permanently delete the authenticated user's account."""
     form = ConfirmDeletionForm(request.form)

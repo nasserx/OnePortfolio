@@ -33,11 +33,17 @@ class User(UserMixin, db.Model):
 
     verification_code = db.Column(db.String(6), nullable=True)
     verification_code_expires_at = db.Column(db.DateTime, nullable=True)
+    # Number of consecutive bad-OTP attempts on the pending-email-update flow.
+    # Reset on success or when a new code is generated; the code is wiped
+    # after MAX_OTP_ATTEMPTS failures so the user must request a fresh one.
+    verification_code_failed_attempts = db.Column(db.Integer, default=0, nullable=False)
 
     pending_email = db.Column(db.String(120), nullable=True)
 
     deletion_code = db.Column(db.String(6), nullable=True)
     deletion_code_expires_at = db.Column(db.DateTime, nullable=True)
+    # Same lockout idea for the account-deletion OTP.
+    deletion_code_failed_attempts = db.Column(db.Integer, default=0, nullable=False)
 
     # Brute-force protection: tracks consecutive failed login attempts and
     # the wall-clock time until which the account is locked. Reset on any

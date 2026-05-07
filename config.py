@@ -66,6 +66,11 @@ class Config:
     # Secure-by-default in production; opt-out only in dev/test (see helper).
     SESSION_COOKIE_SECURE = _default_cookie_secure()
 
+    # Cap request body size to blunt cheap DoS via huge multipart/form
+    # uploads or oversized JSON. 1 MB is well above any legitimate form
+    # in this app (notes are capped at 300 chars, no file uploads).
+    MAX_CONTENT_LENGTH = 1 * 1024 * 1024
+
     # Flask-Login
     REMEMBER_COOKIE_DURATION = timedelta(days=30)
     REMEMBER_COOKIE_HTTPONLY = True

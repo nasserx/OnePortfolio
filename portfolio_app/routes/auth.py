@@ -457,7 +457,11 @@ def forgot_password():
             # needed.
             generated_token = generate_reset_token(data['email'])
             if user:
-                token = generate_reset_token(user.email)
+                # Stamp a single-use jti on the user, embed it in the
+                # signed link, and email it out. Any prior reset link
+                # for this account is invalidated by the overwrite.
+                jti = svc.auth_service.begin_password_reset(user)
+                token = generate_reset_token(user.email, jti)
                 send_reset_email(user.email, token)
             del generated_token
 
@@ -490,11 +494,15 @@ def reset_password(token):
     if current_user.is_authenticated:
         return redirect(url_for('dashboard.index'))
 
-    # Validate the token up front so expired links show an error immediately
-    email = verify_reset_token(token)
-    if not email:
+    # Validate the token up front so expired/tampered links show an error
+    # immediately. We don't pre-check the jti against the user here — the
+    # service does that under a single transaction so an attacker can't
+    # race two redemptions of the same link.
+    payload = verify_reset_token(token)
+    if not payload:
         flash(MESSAGES['PASSWORD_RESET_LINK_INVALID'], 'danger')
         return redirect(url_for('auth.forgot_password'))
+    email, jti = payload
 
     form_errors = {}
     form_values = {}
@@ -504,10 +512,15 @@ def reset_password(token):
         if form.validate():
             data = form.get_cleaned_data()
             svc = get_services()
-            user = svc.auth_service.reset_password_with_token(email, data['password'])
+            user = svc.auth_service.reset_password_with_token(
+                email, jti, data['password']
+            )
 
             if not user:
-                flash(MESSAGES['PASSWORD_RESET_ACCOUNT_NOT_FOUND'], 'danger')
+                # Either the user is gone or the jti has already been
+                # consumed (or never matched). Either way: same generic
+                # invalid-link message — no oracle.
+                flash(MESSAGES['PASSWORD_RESET_LINK_INVALID'], 'danger')
                 return redirect(url_for('auth.forgot_password'))
 
             flash(MESSAGES['PASSWORD_RESET_SUCCESS'], 'success')

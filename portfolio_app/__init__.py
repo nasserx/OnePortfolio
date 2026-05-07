@@ -40,7 +40,7 @@ def _enable_sqlite_foreign_keys(dbapi_connection, connection_record):
 # Bumped whenever a new migration step is added below. Stored in the SQLite
 # header (PRAGMA user_version) after a successful migration so subsequent
 # boots can short-circuit the whole inspection pass.
-TARGET_SCHEMA_VERSION = 27
+TARGET_SCHEMA_VERSION = 28
 
 
 def _run_migrations(app):
@@ -524,6 +524,20 @@ def _apply_migration_steps(conn, sa):
             conn.execute(sa.text(
                 'ALTER TABLE "user" '
                 'ADD COLUMN deletion_code_failed_attempts INTEGER NOT NULL DEFAULT 0'
+            ))
+            conn.commit()
+
+    # ── Step 28: single-use password-reset tokens (Fix MED-A6) ────────────
+    # Adds the column AuthService writes to when issuing a reset link and
+    # clears on success. itsdangerous tokens are time-signed but stateless;
+    # without this column, a leaked link could be replayed within the
+    # 1-hour validity window. The DB is now the single source of truth
+    # for "is this token still live".
+    if 'user' in tables:
+        user_cols = {c['name'] for c in inspector.get_columns('user')}
+        if 'password_reset_jti' not in user_cols:
+            conn.execute(sa.text(
+                'ALTER TABLE "user" ADD COLUMN password_reset_jti VARCHAR(32)'
             ))
             conn.commit()
 

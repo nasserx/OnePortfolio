@@ -61,6 +61,12 @@ class User(UserMixin, db.Model):
     failed_login_attempts = db.Column(db.Integer, default=0, nullable=False)
     locked_until = db.Column(db.DateTime, nullable=True)
 
+    # Single-use password-reset token id. Set by ``begin_password_reset``,
+    # included inside the signed reset URL, and cleared on a successful
+    # reset so the same link can never be used twice — even within the
+    # itsdangerous 1-hour window.
+    password_reset_jti = db.Column(db.String(32), nullable=True)
+
     portfolios = db.relationship(
         'Portfolio',
         backref='owner',

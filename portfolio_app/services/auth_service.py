@@ -364,12 +364,39 @@ class AuthService:
         user.set_password(new_password)
         self.user_repo.commit()
 
-    def reset_password_with_token(self, email: str, new_password: str) -> Optional[User]:
-        """Set a new password for the user identified by their email."""
+    def begin_password_reset(self, user: User) -> str:
+        """Stamp ``user`` with a fresh single-use reset jti and return it.
+
+        Persisting the jti turns the otherwise-stateless itsdangerous token
+        into a one-shot credential: the matching call site
+        (``reset_password_with_token``) refuses any redemption whose jti
+        doesn't match the stored value, and clears the jti on success.
+        """
+        jti = secrets.token_hex(16)  # 32 hex chars, fits the column
+        user.password_reset_jti = jti
+        self.user_repo.commit()
+        return jti
+
+    def reset_password_with_token(
+        self, email: str, jti: str, new_password: str
+    ) -> Optional[User]:
+        """Set a new password if ``(email, jti)`` matches the live user.
+
+        Returns ``None`` for any of: unknown email, no live jti, jti
+        mismatch (token already used or never issued for this user). On
+        success the jti is cleared, lockouts are reset, and the password
+        is rehashed under the current scheme.
+        """
         user = self.user_repo.get_by_email(email)
         if not user:
             return None
+        # The jti must be both present and identical — empty/None on
+        # either side means the link has already been consumed.
+        stored = user.password_reset_jti or ''
+        if not stored or not jti or not hmac.compare_digest(stored, jti):
+            return None
         user.set_password(new_password)
+        user.password_reset_jti = None  # one-shot — done
         # A successful reset implicitly clears any active lockout.
         user.failed_login_attempts = 0
         user.locked_until = None

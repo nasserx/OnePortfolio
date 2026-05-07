@@ -50,7 +50,10 @@ def send_reset(user_id):
             flash(MESSAGES['ADMIN_NO_EMAIL_ON_FILE_USERNAME'].format(username=user.username), 'warning')
             return redirect(url_for('admin.users'))
 
-        token = generate_reset_token(user.email)
+        # Stamp a single-use jti so this admin-issued link, like any
+        # user-initiated one, can only be redeemed once.
+        jti = svc.auth_service.begin_password_reset(user)
+        token = generate_reset_token(user.email, jti)
         email_sent = send_reset_email(user.email, token)
 
         if email_sent:

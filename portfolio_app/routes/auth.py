@@ -343,8 +343,13 @@ def change_password():
                     data['current_password'],
                     data['new_password'],
                 )
+                # Rotate the session: invalidate the current cookie and
+                # require the user to sign in again with the new password.
+                # Without this, a stolen session cookie would survive a
+                # password change — which is exactly the recovery action.
+                logout_user()
                 flash(MESSAGES['PASSWORD_CHANGED'], 'success')
-                return redirect(url_for('dashboard.index'))
+                return redirect(url_for('auth.login'))
             except ValueError as e:
                 form_errors['current_password'] = str(e)
                 form_values = request.form

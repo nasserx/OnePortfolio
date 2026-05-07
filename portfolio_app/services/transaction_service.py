@@ -1,6 +1,6 @@
 """Transaction service for transaction-related business logic."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Optional, Any
 from portfolio_app.models.transaction import Transaction
@@ -57,6 +57,22 @@ class TransactionService:
             held = PortfolioCalculator.get_quantity_held_for_symbol(portfolio_id, symbol)
             if quantity > held:
                 raise ValidationError(MESSAGES['INSUFFICIENT_QUANTITY'])
+
+        # Chronological-walk invariant — same logic that update_transaction
+        # uses. The plain ``quantity > held`` check above is date-blind:
+        # a Sell dated *before* an existing Buy passes it because total
+        # holdings still cover the sell, even though the position didn't
+        # exist on the sell date. Simulating the post-add timeline catches
+        # that (running_quantity would dip below zero) and also covers any
+        # Buy whose date predates earlier Sells of the same symbol.
+        self._assert_walk_non_negative(
+            portfolio_id=portfolio_id,
+            edit_id=None,
+            proposed_symbol=PortfolioCalculator.normalize_symbol(symbol),
+            proposed_type=transaction_type,
+            proposed_quantity=Decimal(str(quantity)),
+            proposed_date=date if date is not None else datetime.now(timezone.utc),
+        )
 
         transaction = TransactionManager.create_transaction(
             portfolio_id=portfolio_id,
@@ -269,20 +285,23 @@ class TransactionService:
         """Simulate the (portfolio, symbol) chronological walk and raise if
         the running quantity ever goes negative.
 
-        ``proposed_type=None`` means the edited row is excluded entirely
-        from the walk (used for the old-symbol stream when the edit moves
-        the row to a different symbol).
+        ``proposed_type=None`` means the proposed row is excluded entirely
+        from the walk (used for the old-symbol stream when an edit moves
+        the row to a different symbol). ``edit_id=None`` is the add path:
+        no existing row to exclude, and the proposed row has no id yet, so
+        it sorts after any same-date/same-type peer (matches the post-
+        commit ordering it would have once auto-incremented).
 
         Ordering matches the SQL ORDER BY in
         :meth:`PortfolioCalculator.recalculate_all_averages_for_symbol`:
         ``func.date(date) ASC, buy_first ASC, id ASC``.
         """
-        rows = (
-            Transaction.query
-            .filter_by(portfolio_id=portfolio_id, symbol=proposed_symbol)
-            .filter(Transaction.id != edit_id)
-            .all()
+        query = Transaction.query.filter_by(
+            portfolio_id=portfolio_id, symbol=proposed_symbol,
         )
+        if edit_id is not None:
+            query = query.filter(Transaction.id != edit_id)
+        rows = query.all()
 
         walk = [
             (r.date, 0 if r.transaction_type == 'Buy' else 1, r.id,
@@ -291,10 +310,14 @@ class TransactionService:
         ]
 
         if proposed_type is not None:
+            # New rows have no id yet — slot them after any existing
+            # same-date/same-type peer so the simulation matches what
+            # ``recalculate_all_averages_for_symbol`` will do post-commit.
+            sort_id = edit_id if edit_id is not None else 2**63
             walk.append((
                 proposed_date,
                 0 if proposed_type == 'Buy' else 1,
-                edit_id,
+                sort_id,
                 proposed_type,
                 proposed_quantity,
             ))

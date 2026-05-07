@@ -54,7 +54,9 @@ class TransactionService:
             gross = price * quantity
             if fees > gross:
                 raise ValidationError(MESSAGES['FEES_EXCEED_PROCEEDS'])
-            held = PortfolioCalculator.get_quantity_held_for_symbol(portfolio_id, symbol)
+            held = PortfolioCalculator.get_quantity_held_for_symbol(
+                portfolio_id, symbol, user_id=self.portfolio_repo.user_id,
+            )
             if quantity > held:
                 raise ValidationError(MESSAGES['INSUFFICIENT_QUANTITY'])
 
@@ -88,7 +90,9 @@ class TransactionService:
         self.transaction_repo.add(transaction)
         self.transaction_repo.flush()
 
-        PortfolioCalculator.recalculate_all_averages_for_symbol(portfolio_id, symbol)
+        PortfolioCalculator.recalculate_all_averages_for_symbol(
+            portfolio_id, symbol, user_id=self.portfolio_repo.user_id,
+        )
 
         self.transaction_repo.commit()
         return transaction
@@ -145,11 +149,12 @@ class TransactionService:
 
         self.transaction_repo.flush()
 
+        uid = self.portfolio_repo.user_id
         if symbol and old_symbol != transaction.symbol:
-            PortfolioCalculator.recalculate_all_averages_for_symbol(portfolio_id, old_symbol)
-            PortfolioCalculator.recalculate_all_averages_for_symbol(portfolio_id, transaction.symbol)
+            PortfolioCalculator.recalculate_all_averages_for_symbol(portfolio_id, old_symbol, user_id=uid)
+            PortfolioCalculator.recalculate_all_averages_for_symbol(portfolio_id, transaction.symbol, user_id=uid)
         else:
-            PortfolioCalculator.recalculate_all_averages_for_symbol(portfolio_id, transaction.symbol)
+            PortfolioCalculator.recalculate_all_averages_for_symbol(portfolio_id, transaction.symbol, user_id=uid)
 
         self.transaction_repo.commit()
         return transaction
@@ -169,7 +174,9 @@ class TransactionService:
         self.transaction_repo.delete(transaction)
         self.transaction_repo.flush()
 
-        PortfolioCalculator.recalculate_all_averages_for_symbol(portfolio_id, symbol)
+        PortfolioCalculator.recalculate_all_averages_for_symbol(
+            portfolio_id, symbol, user_id=self.portfolio_repo.user_id,
+        )
 
         self.transaction_repo.commit()
         return portfolio_id
@@ -251,7 +258,9 @@ class TransactionService:
             if new_fees > gross:
                 raise ValidationError(MESSAGES['FEES_EXCEED_PROCEEDS'])
             held = PortfolioCalculator.get_quantity_held_for_symbol(
-                portfolio_id, new_symbol, exclude_transaction_id=transaction.id
+                portfolio_id, new_symbol,
+                user_id=self.portfolio_repo.user_id,
+                exclude_transaction_id=transaction.id,
             )
             if new_quantity > held:
                 raise ValidationError(MESSAGES['INSUFFICIENT_QUANTITY'])
@@ -295,9 +304,16 @@ class TransactionService:
         Ordering matches the SQL ORDER BY in
         :meth:`PortfolioCalculator.recalculate_all_averages_for_symbol`:
         ``func.date(date) ASC, buy_first ASC, id ASC``.
+
+        The query is scoped by the repo's user_id so a forged portfolio_id
+        from another user simulates an empty existing-row set rather than
+        leaking that user's transactions into the walk.
         """
         query = Transaction.query.filter_by(
             portfolio_id=portfolio_id, symbol=proposed_symbol,
+        )
+        query = PortfolioCalculator._scope_to_user(
+            query, Transaction, self.portfolio_repo.user_id,
         )
         if edit_id is not None:
             query = query.filter(Transaction.id != edit_id)

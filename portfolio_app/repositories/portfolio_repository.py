@@ -12,6 +12,13 @@ class PortfolioRepository(BaseRepository[Portfolio]):
         super().__init__(model, db)
         self._user_id = user_id
 
+    @property
+    def user_id(self) -> Optional[int]:
+        """The user this repository is scoped to. Exposed so callers
+        (services, calculators) can pass it through the calculator
+        layer for defence-in-depth filtering."""
+        return self._user_id
+
     def _base_query(self):
         q = self.model.query
         if self._user_id is not None:

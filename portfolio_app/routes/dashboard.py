@@ -83,7 +83,9 @@ def api_holdings() -> Response:
         if not portfolio:
             return jsonify({'error': MESSAGES['PORTFOLIO_NOT_FOUND']}), 404
 
-        held_qty = PortfolioCalculator.get_quantity_held_for_symbol(portfolio_id, symbol)
+        held_qty = PortfolioCalculator.get_quantity_held_for_symbol(
+            portfolio_id, symbol, user_id=svc.portfolio_repo.user_id,
+        )
 
         held_qty_str = str(held_qty)
 

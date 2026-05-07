@@ -25,9 +25,35 @@ def _roi_display(pnl: Decimal, base: Decimal) -> tuple:
 
 
 class PortfolioCalculator:
-    """Utility class for portfolio calculations."""
+    """Utility class for portfolio calculations.
+
+    Most read methods accept an optional keyword-only ``user_id`` argument.
+    When provided, the underlying SQL query joins ``Portfolio`` and filters
+    by ``Portfolio.user_id`` — defence-in-depth against a caller that
+    accidentally passes a portfolio_id that doesn't belong to the current
+    user. Callers in the service layer thread the value through from the
+    repository's ``user_id`` property so the calculator never trusts the
+    caller blindly.
+
+    The argument is *optional* (default ``None``) for backwards
+    compatibility with internal recursive calls and tests; treat omitting
+    it as a deliberate choice, not a free pass.
+    """
 
     _to_decimal = staticmethod(_to_decimal)
+
+    @staticmethod
+    def _scope_to_user(query, model_cls, user_id):
+        """Add a Portfolio JOIN + user_id filter when ``user_id`` is given.
+
+        Returns the query unchanged if ``user_id`` is None, so the helper
+        is a no-op for legacy unscoped call sites. Models passed in must
+        carry a ``portfolio_id`` column (Transaction, Dividend, PortfolioEvent).
+        """
+        if user_id is not None:
+            query = query.join(Portfolio, model_cls.portfolio_id == Portfolio.id) \
+                         .filter(Portfolio.user_id == user_id)
+        return query
 
     @staticmethod
     def normalize_symbol(symbol) -> str:
@@ -40,11 +66,12 @@ class PortfolioCalculator:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def get_quantity_held_for_symbol(portfolio_id, symbol, exclude_transaction_id=None):
+    def get_quantity_held_for_symbol(portfolio_id, symbol, *, user_id=None, exclude_transaction_id=None):
         """Return current quantity held for a specific symbol inside a portfolio."""
         normalized = PortfolioCalculator.normalize_symbol(symbol)
 
         query = Transaction.query.filter_by(portfolio_id=portfolio_id, symbol=normalized)
+        query = PortfolioCalculator._scope_to_user(query, Transaction, user_id)
         if exclude_transaction_id is not None:
             query = query.filter(Transaction.id != exclude_transaction_id)
         transactions = query.order_by(Transaction.date.asc()).all()
@@ -72,30 +99,31 @@ class PortfolioCalculator:
         portfolios = q.all()
         total = ZERO
         for p in portfolios:
-            cash = PortfolioCalculator.get_available_cash_for_portfolio(p.id)
-            tx_summary = PortfolioCalculator.get_portfolio_transactions_summary(p.id)
+            cash = PortfolioCalculator.get_available_cash_for_portfolio(p.id, user_id=user_id)
+            tx_summary = PortfolioCalculator.get_portfolio_transactions_summary(p.id, user_id=user_id)
             invested = _to_decimal(tx_summary['cost_basis'] or 0)
             total += invested + cash
         return total
 
     @staticmethod
-    def get_total_deposits_for_portfolio(portfolio_id) -> Decimal:
+    def get_total_deposits_for_portfolio(portfolio_id, *, user_id=None) -> Decimal:
         """Total deposits = sum of Initial + Deposit events only.
 
         Withdrawals are excluded so this represents gross capital ever allocated.
         """
-        result = (
+        query = (
             db.session.query(func.sum(PortfolioEvent.amount_delta))
             .filter(
                 PortfolioEvent.portfolio_id == portfolio_id,
                 PortfolioEvent.event_type.in_(['Initial', 'Deposit']),
             )
-            .scalar()
         )
+        query = PortfolioCalculator._scope_to_user(query, PortfolioEvent, user_id)
+        result = query.scalar()
         return _to_decimal(result) if result is not None else ZERO
 
     @staticmethod
-    def get_net_deposits_for_portfolio(portfolio_id) -> Decimal:
+    def get_net_deposits_for_portfolio(portfolio_id, *, user_id=None) -> Decimal:
         """Net deposits = signed sum of all PortfolioEvent rows.
 
         ``amount_delta`` is positive for Initial/Deposit and negative for
@@ -103,18 +131,20 @@ class PortfolioCalculator:
         replaces the denormalized ``portfolio.net_deposits`` column whose
         value could drift if the events log was edited outside the service.
         """
-        result = (
+        query = (
             db.session.query(func.sum(PortfolioEvent.amount_delta))
             .filter(PortfolioEvent.portfolio_id == portfolio_id)
-            .scalar()
         )
+        query = PortfolioCalculator._scope_to_user(query, PortfolioEvent, user_id)
+        result = query.scalar()
         return _to_decimal(result) if result is not None else ZERO
 
     @staticmethod
-    def get_available_cash_for_portfolio(portfolio_id, exclude_transaction_id=None) -> Decimal:
+    def get_available_cash_for_portfolio(portfolio_id, *, user_id=None, exclude_transaction_id=None) -> Decimal:
         """Available cash: net deposits − buy_outflows + sell_inflows + dividends."""
-        cash = PortfolioCalculator.get_net_deposits_for_portfolio(portfolio_id)
+        cash = PortfolioCalculator.get_net_deposits_for_portfolio(portfolio_id, user_id=user_id)
         query = Transaction.query.filter_by(portfolio_id=portfolio_id)
+        query = PortfolioCalculator._scope_to_user(query, Transaction, user_id)
         if exclude_transaction_id is not None:
             query = query.filter(Transaction.id != exclude_transaction_id)
         transactions = query.order_by(Transaction.date.asc()).all()
@@ -130,7 +160,7 @@ class PortfolioCalculator:
             elif t.transaction_type == 'Sell':
                 cash += gross - fees
 
-        cash += PortfolioCalculator.get_dividend_total_for_portfolio(portfolio_id)
+        cash += PortfolioCalculator.get_dividend_total_for_portfolio(portfolio_id, user_id=user_id)
         return cash
 
     # ------------------------------------------------------------------
@@ -148,16 +178,16 @@ class PortfolioCalculator:
         portfolio_rows = []
         total_portfolio_value = ZERO
         for portfolio in portfolios:
-            total_contributed = PortfolioCalculator.get_total_deposits_for_portfolio(portfolio.id)
+            total_contributed = PortfolioCalculator.get_total_deposits_for_portfolio(portfolio.id, user_id=user_id)
 
-            realized_perf = PortfolioCalculator.get_realized_performance_for_portfolio(portfolio.id)
+            realized_perf = PortfolioCalculator.get_realized_performance_for_portfolio(portfolio.id, user_id=user_id)
             realized_pnl = realized_perf['realized_pnl']
             total_dividends = realized_perf['total_dividends']
 
-            transactions_summary = PortfolioCalculator.get_portfolio_transactions_summary(portfolio.id)
+            transactions_summary = PortfolioCalculator.get_portfolio_transactions_summary(portfolio.id, user_id=user_id)
             cost_basis = _to_decimal(transactions_summary['cost_basis'] or 0)
 
-            cash = PortfolioCalculator.get_available_cash_for_portfolio(portfolio.id)
+            cash = PortfolioCalculator.get_available_cash_for_portfolio(portfolio.id, user_id=user_id)
             book_value = cost_basis + cash
             total_portfolio_value += book_value
 
@@ -201,14 +231,15 @@ class PortfolioCalculator:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def get_dividend_total_for_portfolio(portfolio_id) -> Decimal:
+    def get_dividend_total_for_portfolio(portfolio_id, *, user_id=None) -> Decimal:
         """Return the sum of dividend income for a portfolio."""
-        result = (
+        query = (
             Dividend.query
             .with_entities(func.sum(Dividend.amount))
             .filter(Dividend.portfolio_id == portfolio_id)
-            .scalar()
         )
+        query = PortfolioCalculator._scope_to_user(query, Dividend, user_id)
+        result = query.scalar()
         return _to_decimal(result) if result else ZERO
 
     # ------------------------------------------------------------------
@@ -216,19 +247,19 @@ class PortfolioCalculator:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def get_realized_performance_for_portfolio(portfolio_id):
+    def get_realized_performance_for_portfolio(portfolio_id, *, user_id=None):
         """Return realized P&L (including dividends), cost basis, and proceeds for a portfolio.
 
         Computed by walking the transactions table per symbol with the
         average-cost method — no snapshot table involved, so deleting a
         sell removes its contribution immediately.
         """
-        symbols = (
+        sym_query = (
             Transaction.query.with_entities(Transaction.symbol)
             .filter_by(portfolio_id=portfolio_id)
-            .distinct()
-            .all()
         )
+        sym_query = PortfolioCalculator._scope_to_user(sym_query, Transaction, user_id)
+        symbols = sym_query.distinct().all()
 
         realized_pnl        = ZERO
         realized_cost_basis = ZERO
@@ -238,12 +269,12 @@ class PortfolioCalculator:
             sym_norm = PortfolioCalculator.normalize_symbol(sym)
             if not sym_norm:
                 continue
-            s = PortfolioCalculator.get_symbol_transactions_summary(portfolio_id, sym_norm)
+            s = PortfolioCalculator.get_symbol_transactions_summary(portfolio_id, sym_norm, user_id=user_id)
             realized_pnl        += _to_decimal(s['realized_pnl'])
             realized_cost_basis += _to_decimal(s['realized_cost_basis'])
             realized_proceeds   += _to_decimal(s['realized_proceeds'])
 
-        dividends = PortfolioCalculator.get_dividend_total_for_portfolio(portfolio_id)
+        dividends = PortfolioCalculator.get_dividend_total_for_portfolio(portfolio_id, user_id=user_id)
         realized_pnl += dividends
 
         return {
@@ -273,13 +304,13 @@ class PortfolioCalculator:
         total_dividends = ZERO
 
         for portfolio in portfolios:
-            total_contributed += PortfolioCalculator.get_total_deposits_for_portfolio(portfolio.id)
-            total_cash += PortfolioCalculator.get_available_cash_for_portfolio(portfolio.id)
+            total_contributed += PortfolioCalculator.get_total_deposits_for_portfolio(portfolio.id, user_id=user_id)
+            total_cash += PortfolioCalculator.get_available_cash_for_portfolio(portfolio.id, user_id=user_id)
 
-            tx_summary = PortfolioCalculator.get_portfolio_transactions_summary(portfolio.id)
+            tx_summary = PortfolioCalculator.get_portfolio_transactions_summary(portfolio.id, user_id=user_id)
             total_cost_basis += _to_decimal(tx_summary['cost_basis'] or 0)
 
-            realized_perf = PortfolioCalculator.get_realized_performance_for_portfolio(portfolio.id)
+            realized_perf = PortfolioCalculator.get_realized_performance_for_portfolio(portfolio.id, user_id=user_id)
             total_realized_pnl += realized_perf['realized_pnl']
             total_realized_cost_basis += realized_perf['realized_cost_basis']
             total_dividends += realized_perf['total_dividends']
@@ -356,12 +387,12 @@ class PortfolioCalculator:
         seen_keys = set()
 
         for portfolio in portfolios:
-            symbols = (
+            sym_query = (
                 Transaction.query.with_entities(Transaction.symbol)
                 .filter_by(portfolio_id=portfolio.id)
-                .distinct()
-                .all()
             )
+            sym_query = PortfolioCalculator._scope_to_user(sym_query, Transaction, user_id)
+            symbols = sym_query.distinct().all()
             for (sym,) in symbols:
                 sym_norm = PortfolioCalculator.normalize_symbol(sym)
                 if not sym_norm:
@@ -369,7 +400,7 @@ class PortfolioCalculator:
                 key = (portfolio.id, sym_norm)
                 seen_keys.add(key)
 
-                summary = PortfolioCalculator.get_symbol_transactions_summary(portfolio.id, sym_norm)
+                summary = PortfolioCalculator.get_symbol_transactions_summary(portfolio.id, sym_norm, user_id=user_id)
                 rows.append(
                     PortfolioCalculator._build_symbol_performance_row(
                         portfolio=portfolio,
@@ -429,14 +460,14 @@ class PortfolioCalculator:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def get_portfolio_transactions_summary(portfolio_id):
+    def get_portfolio_transactions_summary(portfolio_id, *, user_id=None):
         """Get aggregated transaction summary for a portfolio (all symbols combined)."""
-        symbols = (
+        sym_query = (
             Transaction.query.with_entities(Transaction.symbol)
             .filter_by(portfolio_id=portfolio_id)
-            .distinct()
-            .all()
         )
+        sym_query = PortfolioCalculator._scope_to_user(sym_query, Transaction, user_id)
+        symbols = sym_query.distinct().all()
 
         totals = {
             'total_buy_cost': ZERO,
@@ -455,7 +486,7 @@ class PortfolioCalculator:
             sym_norm = PortfolioCalculator.normalize_symbol(sym)
             if not sym_norm:
                 continue
-            summary = PortfolioCalculator.get_symbol_transactions_summary(portfolio_id, sym_norm)
+            summary = PortfolioCalculator.get_symbol_transactions_summary(portfolio_id, sym_norm, user_id=user_id)
             for key in totals:
                 if key == 'transaction_count':
                     totals[key] += int(summary[key])
@@ -469,20 +500,21 @@ class PortfolioCalculator:
                 sym_norm = PortfolioCalculator.normalize_symbol(sym)
                 if not sym_norm:
                     continue
-                s = PortfolioCalculator.get_symbol_transactions_summary(portfolio_id, sym_norm)
+                s = PortfolioCalculator.get_symbol_transactions_summary(portfolio_id, sym_norm, user_id=user_id)
                 weighted_cost += _to_decimal(s['average_cost']) * _to_decimal(s['total_quantity_held'])
             avg_cost = weighted_cost / totals['total_quantity_held']
 
         return {**totals, 'average_cost': avg_cost}
 
     @staticmethod
-    def get_symbol_transactions_summary(portfolio_id, symbol):
+    def get_symbol_transactions_summary(portfolio_id, symbol, *, user_id=None):
         """Get aggregated transaction summary for a specific symbol."""
         symbol = PortfolioCalculator.normalize_symbol(symbol)
         buy_first = case((Transaction.transaction_type == 'Buy', 0), else_=1)
+        query = Transaction.query.filter_by(portfolio_id=portfolio_id, symbol=symbol)
+        query = PortfolioCalculator._scope_to_user(query, Transaction, user_id)
         transactions = (
-            Transaction.query.filter_by(portfolio_id=portfolio_id, symbol=symbol)
-            .order_by(func.date(Transaction.date).asc(), buy_first, Transaction.id.asc())
+            query.order_by(func.date(Transaction.date).asc(), buy_first, Transaction.id.asc())
             .all()
         )
         return PortfolioCalculator.get_symbol_transactions_summary_from_list(transactions)
@@ -555,34 +587,35 @@ class PortfolioCalculator:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def recalculate_all_averages_for_portfolio(portfolio_id):
+    def recalculate_all_averages_for_portfolio(portfolio_id, *, user_id=None):
         """Recalculate average costs for all transactions of a portfolio."""
-        symbols = (
+        sym_query = (
             Transaction.query.with_entities(Transaction.symbol)
             .filter_by(portfolio_id=portfolio_id)
-            .distinct()
-            .all()
         )
+        sym_query = PortfolioCalculator._scope_to_user(sym_query, Transaction, user_id)
+        symbols = sym_query.distinct().all()
 
         updated = []
         for (sym,) in symbols:
             sym_norm = PortfolioCalculator.normalize_symbol(sym)
             if not sym_norm:
                 continue
-            updated.extend(PortfolioCalculator.recalculate_all_averages_for_symbol(portfolio_id, sym_norm))
+            updated.extend(PortfolioCalculator.recalculate_all_averages_for_symbol(portfolio_id, sym_norm, user_id=user_id))
 
         return updated
 
     @staticmethod
-    def recalculate_all_averages_for_symbol(portfolio_id, symbol):
+    def recalculate_all_averages_for_symbol(portfolio_id, symbol, *, user_id=None):
         """Recalculate average costs and net_amount for all transactions of a
         (portfolio, symbol) pair. The caller is responsible for committing.
         """
         symbol = PortfolioCalculator.normalize_symbol(symbol)
         buy_first = case((Transaction.transaction_type == 'Buy', 0), else_=1)
+        query = Transaction.query.filter_by(portfolio_id=portfolio_id, symbol=symbol)
+        query = PortfolioCalculator._scope_to_user(query, Transaction, user_id)
         transactions = (
-            Transaction.query.filter_by(portfolio_id=portfolio_id, symbol=symbol)
-            .order_by(func.date(Transaction.date).asc(), buy_first, Transaction.id.asc())
+            query.order_by(func.date(Transaction.date).asc(), buy_first, Transaction.id.asc())
             .all()
         )
 

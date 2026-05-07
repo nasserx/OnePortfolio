@@ -55,7 +55,9 @@ class PortfolioService:
     def withdraw_funds(self, portfolio_id: int, amount_delta: Decimal, notes: Optional[str] = None, date: Optional[Any] = None) -> Portfolio:
         """Withdraw funds from a portfolio (amount_delta is positive)."""
         portfolio = self._require_portfolio(portfolio_id)
-        available_cash = PortfolioCalculator.get_available_cash_for_portfolio(portfolio_id)
+        available_cash = PortfolioCalculator.get_available_cash_for_portfolio(
+            portfolio_id, user_id=self.portfolio_repo.user_id,
+        )
         if amount_delta > available_cash:
             raise ValueError(MESSAGES['INSUFFICIENT_AMOUNT'])
         self._create_event(portfolio_id, EventType.WITHDRAWAL, -amount_delta, notes, date)
@@ -79,7 +81,9 @@ class PortfolioService:
 
         # available_cash already reflects this event at its current amount,
         # so the post-edit cash equals current + (new − old).
-        current_cash = PortfolioCalculator.get_available_cash_for_portfolio(event.portfolio_id)
+        current_cash = PortfolioCalculator.get_available_cash_for_portfolio(
+            event.portfolio_id, user_id=self.portfolio_repo.user_id,
+        )
         delta_change = Decimal(str(amount_delta)) - Decimal(str(event.amount_delta))
         if current_cash + delta_change < ZERO:
             raise ValueError(MESSAGES['INSUFFICIENT_AMOUNT'])
@@ -106,7 +110,9 @@ class PortfolioService:
 
         # Removing the event subtracts its amount_delta from net deposits,
         # which in turn subtracts the same value from available cash.
-        current_cash = PortfolioCalculator.get_available_cash_for_portfolio(portfolio_id)
+        current_cash = PortfolioCalculator.get_available_cash_for_portfolio(
+            portfolio_id, user_id=self.portfolio_repo.user_id,
+        )
         if current_cash - Decimal(str(event.amount_delta)) < ZERO:
             raise ValueError(MESSAGES['INSUFFICIENT_AMOUNT'])
 

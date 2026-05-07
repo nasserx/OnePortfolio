@@ -25,19 +25,20 @@ def _get_portfolios_page_context():
     """Build context data for the portfolios page."""
     svc = get_services()
     portfolios = svc.portfolio_repo.get_all()
+    uid = svc.portfolio_repo.user_id
 
     portfolio_details = []
     for portfolio in portfolios:
         events = svc.portfolio_event_repo.get_by_portfolio_id(portfolio.id)
 
-        cash = PortfolioCalculator.get_available_cash_for_portfolio(portfolio.id)
-        tx_summary = PortfolioCalculator.get_portfolio_transactions_summary(portfolio.id)
+        cash = PortfolioCalculator.get_available_cash_for_portfolio(portfolio.id, user_id=uid)
+        tx_summary = PortfolioCalculator.get_portfolio_transactions_summary(portfolio.id, user_id=uid)
         cost_basis = tx_summary['cost_basis']
         book_value = cash + cost_basis
 
-        total_contributed = PortfolioCalculator.get_total_deposits_for_portfolio(portfolio.id)
+        total_contributed = PortfolioCalculator.get_total_deposits_for_portfolio(portfolio.id, user_id=uid)
 
-        realized_perf = PortfolioCalculator.get_realized_performance_for_portfolio(portfolio.id)
+        realized_perf = PortfolioCalculator.get_realized_performance_for_portfolio(portfolio.id, user_id=uid)
         realized_pnl = realized_perf['realized_pnl']
         realized_cost_basis = realized_perf['realized_cost_basis']
 

@@ -350,17 +350,25 @@ class TestLogin:
         assert 'invalid' in body
         assert 'no account' not in body
 
-    def test_unverified_email_redirects_to_verify(self, app, client, email_log):
+    def test_unverified_login_returns_generic_error_no_redirect(self, app, client, email_log):
         # Sign up but don't verify — no User row yet, only a pending record.
+        # We deliberately do NOT redirect to /verify-code here: that would
+        # leak that the email exists in pending state (account enumeration).
         _register(client)
         resp = client.post(
             '/login',
             data={'username': 'alice', 'password': 'CorrectHorse9'},
             follow_redirects=False,
         )
-        # Should redirect into the OTP entry page.
-        assert resp.status_code in (302, 303)
-        assert 'verify-code' in resp.headers['Location']
+        # Same shape as test_nonexistent_user_returns_same_error: the
+        # response is the form with the generic "invalid credentials"
+        # message — no Location header to verify-code.
+        assert resp.status_code == 200
+        body = resp.get_data(as_text=True).lower()
+        assert 'invalid' in body
+        assert 'verify-code' not in body
+        # Header must not redirect into the OTP page either.
+        assert 'Location' not in resp.headers
 
     def test_lockout_after_five_failed_attempts(self, app, client, email_log):
         _signup_and_verify(app, client, email_log)

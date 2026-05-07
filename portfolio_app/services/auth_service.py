@@ -136,6 +136,12 @@ class AuthService:
         now = datetime.now(timezone.utc)
         code = code.strip()
 
+        # All failure paths return the same generic message so the response
+        # can't be used to distinguish "email is registered" from "wrong
+        # code" from "expired" from "no pending state at all". Success
+        # paths still return the empty string + ok=True.
+        FAIL = (False, MESSAGES['VERIFICATION_CODE_INVALID_OR_EXPIRED'])
+
         # ── Case 1: pending email update for an already-verified account ──
         user_pending_email = self.user_repo.get_by_pending_email(email_lc)
         if user_pending_email:
@@ -143,10 +149,10 @@ class AuthService:
                 not user_pending_email.verification_code
                 or not user_pending_email.verification_code_expires_at
             ):
-                return False, MESSAGES['VERIFICATION_CODE_NOT_FOUND']
+                return FAIL
             expires_at = self._as_utc(user_pending_email.verification_code_expires_at)
             if now > expires_at:
-                return False, MESSAGES['VERIFICATION_CODE_EXPIRED']
+                return FAIL
             if not hmac.compare_digest(user_pending_email.verification_code, code):
                 # Burn an attempt; wipe the code (and the staged email) once
                 # the cap is hit so the user must request a fresh OTP.
@@ -159,7 +165,7 @@ class AuthService:
                     user_pending_email.pending_email = None
                     user_pending_email.verification_code_failed_attempts = 0
                 self.user_repo.commit()
-                return False, MESSAGES['VERIFICATION_CODE_MISMATCH']
+                return FAIL
 
             user_pending_email.email = user_pending_email.pending_email
             user_pending_email.pending_email = None
@@ -174,7 +180,7 @@ class AuthService:
         if pending:
             expires_at = self._as_utc(pending.verification_code_expires_at)
             if now > expires_at:
-                return False, MESSAGES['VERIFICATION_CODE_EXPIRED']
+                return FAIL
             if not hmac.compare_digest(pending.verification_code, code):
                 # Same per-OTP lockout as Case 1, but the staged-registration
                 # columns (verification_code / expires_at) are NOT NULL, so
@@ -185,17 +191,20 @@ class AuthService:
                 if pending.failed_otp_attempts >= MAX_OTP_ATTEMPTS:
                     self.pending_repo.delete(pending)
                 self.pending_repo.commit()
-                return False, MESSAGES['VERIFICATION_CODE_MISMATCH']
+                return FAIL
 
             # Re-check live user table for late collisions before promoting.
+            # These race-window failures also collapse into the generic
+            # message — the legitimate user retries and succeeds in the
+            # normal sign-up flow; the attacker learns nothing extra.
             if self.user_repo.get_by_username(pending.username):
                 self.pending_repo.delete(pending)
                 self.pending_repo.commit()
-                return False, MESSAGES['USERNAME_TAKEN']
+                return FAIL
             if self.user_repo.get_by_email(pending.email):
                 self.pending_repo.delete(pending)
                 self.pending_repo.commit()
-                return False, MESSAGES['EMAIL_ALREADY_EXISTS']
+                return FAIL
 
             is_first = self.user_repo.count() == 0
             user = User(
@@ -212,10 +221,9 @@ class AuthService:
             return True, ''
 
         # ── Case 3: no pending state for this email ──
-        existing = self.user_repo.get_by_email(email_lc)
-        if existing and existing.is_verified:
-            return False, MESSAGES['ACCOUNT_ALREADY_VERIFIED']
-        return False, MESSAGES['ACCOUNT_NOT_FOUND']
+        # Was previously two distinct messages (already-verified vs
+        # not-found). Collapsing them removes the enumeration oracle.
+        return FAIL
 
     def resend_verification_code(self, email: str) -> Optional[str]:
         """Generate a fresh OTP for a pending sign-up or pending email update.

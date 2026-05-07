@@ -96,18 +96,14 @@ def login():
                 form_errors['__all__'] = MESSAGES['ACCOUNT_LOCKED']
                 form_values = request.form
             elif result == 'pending':
-                # Sign-up was started but never confirmed — send the user to
-                # the OTP entry page so they can finish the verification.
-                pending = (
-                    svc.pending_registration_repo.get_by_username(data['username']) or
-                    svc.pending_registration_repo.get_by_email(data['username'].lower())
-                )
-                if pending:
-                    verify_url = url_for('auth.verify_code', email=pending.email)
-                    if from_modal:
-                        return jsonify({'ok': True, 'redirect': verify_url})
-                    return redirect(verify_url)
-                form_errors['__all__'] = MESSAGES['ACCOUNT_UNVERIFIED']
+                # The identifier matches a staged sign-up that was never
+                # confirmed. The previous behaviour redirected to
+                # /verify-code?email=..., which leaked that the email
+                # exists in pending state — a clean enumeration oracle.
+                # Collapse this into the same generic invalid-credentials
+                # response; the legitimate user already received the OTP
+                # by email when they signed up and can navigate there.
+                form_errors['__all__'] = MESSAGES['INVALID_CREDENTIALS']
                 form_values = request.form
             elif isinstance(result, str):
                 # Defensive: any other sentinel string is treated as a soft block.
@@ -433,10 +429,17 @@ def forgot_password():
             user = svc.user_repo.get_by_email(data['email'])
 
             # Always respond the same way regardless of whether the email is
-            # registered, to avoid leaking account existence.
+            # registered, to avoid leaking account existence. We also burn
+            # equivalent CPU work for unknown emails (token generation runs
+            # either way) so simple wall-clock probes can't tell the
+            # difference. The SMTP send is still skipped for non-users —
+            # use a Redis-backed async queue if perfect timing parity is
+            # needed.
+            generated_token = generate_reset_token(data['email'])
             if user:
                 token = generate_reset_token(user.email)
                 send_reset_email(user.email, token)
+            del generated_token
 
             if from_modal:
                 return jsonify({'ok': True})

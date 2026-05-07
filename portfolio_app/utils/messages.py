@@ -116,6 +116,10 @@ MESSAGES = {
     'VERIFICATION_CODE_MISMATCH':  "Invalid verification code.",
     'VERIFICATION_CODE_EXPIRED':   "This code has expired. Please request a new one.",
     'VERIFICATION_CODE_NOT_FOUND': "No verification code was found. Please request a new one.",
+    # Generic, non-enumerating message for verify-code failures — used by
+    # auth_service.verify_user so the response cannot distinguish "email
+    # not registered" / "already verified" / "wrong code" / "expired".
+    'VERIFICATION_CODE_INVALID_OR_EXPIRED': "Invalid or expired verification code.",
     'VERIFICATION_CODE_SENT':      "A new verification code has been sent to your email.",
     'VERIFICATION_CODE_SEND_FAILED': "Failed to send the code. Please try again in a moment.",
     'VERIFICATION_CODE_RESEND_UNAVAILABLE': "Unable to resend the code. Your account may already be verified.",

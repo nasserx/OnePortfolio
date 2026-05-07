@@ -125,7 +125,7 @@ MESSAGES = {
     'VERIFICATION_CODE_INVALID_OR_EXPIRED': "Invalid or expired verification code.",
     'VERIFICATION_CODE_SENT':      "A new verification code has been sent to your email.",
     'VERIFICATION_CODE_SEND_FAILED': "Failed to send the code. Please try again in a moment.",
-    'VERIFICATION_CODE_RESEND_UNAVAILABLE': "Unable to resend the code. Your account may already be verified.",
+    'VERIFICATION_CODE_RESEND_UNAVAILABLE': "This verification request is no longer active. Please sign in if your account is already verified, or register again to start over.",
 
     'EMAIL_UPDATED':               "Email address updated successfully.",
     'PASSWORD_CHANGED':            "Password changed successfully.",

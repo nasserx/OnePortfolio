@@ -7,7 +7,7 @@ from portfolio_app.utils.messages import (
     get_first_form_error,
     get_field_positive_message,
 )
-from portfolio_app.utils.http import is_ajax_request, json_response
+from portfolio_app.utils.http import is_ajax_request, json_response, field_error_response
 from portfolio_app.utils.constants import EventType, safe_html_id
 
 __all__ = [
@@ -19,6 +19,7 @@ __all__ = [
     'get_field_positive_message',
     'is_ajax_request',
     'json_response',
+    'field_error_response',
     'EventType',
     'safe_html_id',
 ]

@@ -12,7 +12,22 @@ from portfolio_app.forms import (
     TransactionAddForm, TransactionEditForm, SymbolAddForm, SymbolDeleteForm,
     DividendAddForm, DividendEditForm,
 )
-from portfolio_app.utils import get_error_message, get_first_form_error, MESSAGES, is_ajax_request, json_response
+from portfolio_app.utils import (
+    get_error_message, get_first_form_error, MESSAGES,
+    is_ajax_request, json_response, field_error_response,
+)
+
+
+# Service-layer exceptions on the *add* path map to inputs of the form
+# the user just submitted from. The edit path uses ``edit_*`` ids.
+_TX_ADD_FIELD_MAP = {
+    MESSAGES['INSUFFICIENT_QUANTITY']: 'quantity',
+    MESSAGES['FEES_EXCEED_PROCEEDS']: 'fees',
+}
+_TX_EDIT_FIELD_MAP = {
+    MESSAGES['INSUFFICIENT_QUANTITY']: 'edit_quantity',
+    MESSAGES['FEES_EXCEED_PROCEEDS']: 'edit_fees',
+}
 from portfolio_app.utils.constants import safe_html_id
 from portfolio_app.utils.decimal_utils import ZERO
 from config import Config
@@ -188,7 +203,7 @@ def transaction_add():
 
     except (ValueError, ValidationError) as e:
         if is_ajax_request():
-            return json_response(False, errors={'__all__': get_error_message(e)})
+            return field_error_response(get_error_message(e), _TX_ADD_FIELD_MAP)
         flash(get_error_message(e), 'error')
         return redirect(url_for('transactions.transaction_list'))
 
@@ -248,7 +263,7 @@ def transaction_edit(transaction_id):
 
     except (ValueError, ValidationError) as e:
         if is_ajax_request():
-            return json_response(False, errors={'__all__': get_error_message(e)})
+            return field_error_response(get_error_message(e), _TX_EDIT_FIELD_MAP)
         flash(get_error_message(e), 'error')
         return redirect(url_for('transactions.transaction_list'))
 

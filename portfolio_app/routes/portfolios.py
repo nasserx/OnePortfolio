@@ -14,7 +14,10 @@ from portfolio_app.forms import (
 )
 from portfolio_app.calculators.portfolio_calculator import PortfolioCalculator
 from portfolio_app.utils.decimal_utils import ZERO
-from portfolio_app.utils import get_error_message, get_first_form_error, MESSAGES, is_ajax_request, json_response
+from portfolio_app.utils import (
+    get_error_message, get_first_form_error, MESSAGES,
+    is_ajax_request, json_response, field_error_response,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -254,7 +257,13 @@ def portfolios_withdraw(portfolio_id):
 
     except ValueError as e:
         if is_ajax_request():
-            return json_response(False, errors={'__all__': get_error_message(e)})
+            # "Insufficient amount." comes from the service when the
+            # withdrawal exceeds available cash — surface it under the
+            # amount input rather than as a modal banner.
+            return field_error_response(
+                get_error_message(e),
+                {MESSAGES['INSUFFICIENT_AMOUNT']: 'amount_delta'},
+            )
 
         flash(get_error_message(e), 'error')
         return redirect(url_for('portfolios.portfolios_list'))
@@ -321,7 +330,12 @@ def portfolios_event_edit(event_id):
 
     except ValueError as e:
         if is_ajax_request():
-            return json_response(False, errors={'__all__': get_error_message(e)})
+            # Event-edit's input is named ``edit_cash_event_amount`` —
+            # surface "Insufficient amount." under it.
+            return field_error_response(
+                get_error_message(e),
+                {MESSAGES['INSUFFICIENT_AMOUNT']: 'edit_cash_event_amount'},
+            )
         flash(get_error_message(e), 'error')
 
     except Exception:

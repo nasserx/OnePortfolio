@@ -1,6 +1,6 @@
 """Base form class for common validation functionality."""
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Dict, Any, Optional
 from portfolio_app.forms.validators import validate_positive_decimal
@@ -173,10 +173,14 @@ class BaseForm:
         except ValueError:
             self.errors[error_field_name] = MESSAGES['INVALID_DATE_FORMAT']
             return None
-        # Compare date-only against today in UTC. Future-dated rows would
-        # corrupt the chronological recompute (financial integrity) and
-        # have no legitimate business meaning here.
-        if parsed.date() > datetime.now(timezone.utc).date():
+        # Compare against UTC + 24h grace. The server clock is UTC but the
+        # user is in their local timezone; at e.g. 2 AM in UTC+3 the user
+        # legitimately reports "today" as one calendar day ahead of the
+        # server's UTC date. A 24h ceiling covers any timezone up to
+        # UTC+12 without permitting genuinely future dates (which would
+        # corrupt the chronological recompute downstream).
+        max_allowed = datetime.now(timezone.utc).date() + timedelta(days=1)
+        if parsed.date() > max_allowed:
             self.errors[error_field_name] = MESSAGES['DATE_IN_FUTURE']
             return None
         return parsed

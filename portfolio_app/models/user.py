@@ -1,5 +1,6 @@
 """User model for authentication."""
 
+import hashlib
 from datetime import datetime, timezone
 import bcrypt
 from flask_login import UserMixin
@@ -10,6 +11,15 @@ from portfolio_app import db
 # bcrypt cost factor. 12 ≈ ~250ms/hash on commodity hardware (2026).
 # Spec requires a minimum of 10.
 _BCRYPT_ROUNDS = 12
+
+
+def _prehash(password: str) -> bytes:
+    """SHA-256 the password before bcrypt so passwords > 72 bytes don't get
+    silently truncated by bcrypt's 72-byte input cap.
+
+    Returned as raw bytes (32 bytes), well within bcrypt's limit.
+    """
+    return hashlib.sha256(password.encode('utf-8')).digest()
 
 
 class User(UserMixin, db.Model):
@@ -59,9 +69,9 @@ class User(UserMixin, db.Model):
     )
 
     def set_password(self, password: str) -> None:
-        """Hash and store ``password`` using bcrypt."""
+        """Hash and store ``password`` using bcrypt over a SHA-256 prehash."""
         salted = bcrypt.hashpw(
-            password.encode('utf-8'),
+            _prehash(password),
             bcrypt.gensalt(rounds=_BCRYPT_ROUNDS),
         )
         self.password_hash = salted.decode('utf-8')
@@ -69,28 +79,52 @@ class User(UserMixin, db.Model):
     def check_password(self, password: str) -> bool:
         """Verify ``password`` against the stored hash.
 
-        Accepts both bcrypt hashes (current scheme) and legacy werkzeug
-        PBKDF2 hashes (previous scheme), so existing accounts keep working
-        across the upgrade. Use :meth:`needs_rehash` after a successful
-        check to decide whether to upgrade the stored hash.
+        Accepts three formats so accounts keep working across upgrades:
+          * bcrypt over SHA-256 prehash (current scheme — no truncation).
+          * bcrypt over the raw password (pre-prehash bcrypt hashes).
+          * werkzeug PBKDF2 (oldest legacy hashes).
+
+        After a successful match against either legacy format,
+        :meth:`needs_rehash` returns True so the caller can transparently
+        upgrade the stored hash to the prehashed scheme on next login.
         """
+        # Marker consumed by needs_rehash() — set inside this method only.
+        self._needs_rehash_after_check = False
+
         if not self.password_hash:
             return False
         stored = self.password_hash
+
         if stored.startswith('$2'):
+            # Try the prehashed format first (current scheme).
             try:
-                return bcrypt.checkpw(password.encode('utf-8'), stored.encode('utf-8'))
+                if bcrypt.checkpw(_prehash(password), stored.encode('utf-8')):
+                    return True
+            except ValueError:
+                pass
+            # Fall back to legacy plain-bcrypt — match means we should
+            # transparently upgrade to prehashed on the next set_password.
+            try:
+                if bcrypt.checkpw(password.encode('utf-8'), stored.encode('utf-8')):
+                    self._needs_rehash_after_check = True
+                    return True
             except ValueError:
                 return False
-        # Legacy werkzeug hash: pbkdf2:..., scrypt:..., etc.
+            return False
+
+        # Werkzeug PBKDF2 hash (oldest legacy).
         try:
-            return check_password_hash(stored, password)
+            if check_password_hash(stored, password):
+                self._needs_rehash_after_check = True
+                return True
+            return False
         except Exception:
             return False
 
     def needs_rehash(self) -> bool:
-        """Return True if the stored hash should be upgraded to bcrypt."""
-        return not (self.password_hash or '').startswith('$2')
+        """Return True if the most recent successful :meth:`check_password`
+        matched a legacy hash format and the stored hash should be upgraded."""
+        return getattr(self, '_needs_rehash_after_check', False)
 
     def is_locked(self, now: datetime = None) -> bool:
         """Return True if the account is currently locked out from logging in."""

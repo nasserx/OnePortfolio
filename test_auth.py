@@ -197,7 +197,7 @@ class TestSignup:
         # before any DB write happens for the new attempt.
         resp = _register(
             client, username='alice2', email='alice@example.com',
-            password='AnotherPw99', confirm_password='AnotherPw99',
+            password='AnotherPw9999', confirm_password='AnotherPw9999',
         )
         assert resp.status_code == 200  # form re-rendered with error
         with app.app_context():
@@ -213,7 +213,7 @@ class TestSignup:
 
         resp = _register(
             client, username='alice', email='different@example.com',
-            password='AnotherPw99', confirm_password='AnotherPw99',
+            password='AnotherPw9999', confirm_password='AnotherPw9999',
         )
         assert resp.status_code == 200
         with app.app_context():

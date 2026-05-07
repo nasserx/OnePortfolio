@@ -94,13 +94,13 @@ MESSAGES = {
 
     # Form validation — passwords
     'PASSWORD_REQUIRED':           "Password is required.",
-    'PASSWORD_TOO_SHORT':          "Password must be at least 8 characters long.",
+    'PASSWORD_TOO_SHORT':          "Password must be at least 12 characters long.",
     'PASSWORD_CONFIRM_REQUIRED':   "Please confirm your password.",
     'PASSWORDS_NO_MATCH':          "Passwords don't match. Please try again.",
     'CURRENT_PASSWORD_REQUIRED':   "Please enter your current password.",
     'CURRENT_PASSWORD_INCORRECT':  "Current password is incorrect.",
     'NEW_PASSWORD_REQUIRED':       "New password is required.",
-    'NEW_PASSWORD_TOO_SHORT':      "New password must be at least 8 characters long.",
+    'NEW_PASSWORD_TOO_SHORT':      "New password must be at least 12 characters long.",
     'NEW_PASSWORD_CONFIRM_REQUIRED': "Please confirm your new password.",
     'EMAIL_PASSWORD_CONFIRM_REQUIRED': "Please enter your current password to confirm this change.",
 

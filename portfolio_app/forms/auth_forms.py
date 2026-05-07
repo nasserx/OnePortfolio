@@ -70,7 +70,7 @@ class RegisterForm(BaseForm):
         # --- Password ---
         password = self._validate_required_string('password', MESSAGES['PASSWORD_REQUIRED'])
         if password:
-            if len(password) < 8:
+            if len(password) < 12:
                 self.errors['password'] = MESSAGES['PASSWORD_TOO_SHORT']
             else:
                 self.cleaned_data['password'] = password
@@ -96,7 +96,7 @@ class ChangePasswordForm(BaseForm):
 
         new_password = self._validate_required_string('new_password', MESSAGES['NEW_PASSWORD_REQUIRED'])
         if new_password:
-            if len(new_password) < 8:
+            if len(new_password) < 12:
                 self.errors['new_password'] = MESSAGES['NEW_PASSWORD_TOO_SHORT']
             else:
                 self.cleaned_data['new_password'] = new_password
@@ -132,7 +132,7 @@ class ResetPasswordForm(BaseForm):
     def validate(self) -> bool:
         password = self._validate_required_string('password', MESSAGES['PASSWORD_REQUIRED'])
         if password:
-            if len(password) < 8:
+            if len(password) < 12:
                 self.errors['password'] = MESSAGES['PASSWORD_TOO_SHORT']
             else:
                 self.cleaned_data['password'] = password

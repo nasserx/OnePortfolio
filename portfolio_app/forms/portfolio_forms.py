@@ -1,7 +1,7 @@
 """Forms for portfolio-related operations."""
 
 from typing import List
-from portfolio_app.forms.base_form import BaseForm
+from portfolio_app.forms.base_form import BaseForm, NOTES_MAX_LENGTH
 from portfolio_app.utils.messages import MESSAGES
 
 
@@ -38,7 +38,9 @@ class PortfolioDepositForm(BaseForm):
             self.cleaned_data['amount_delta'] = amount_delta
             self.cleaned_data['portfolio_id'] = self.portfolio_id
 
-        self.cleaned_data['notes'] = self._get_string('notes', default='')
+        notes = self._get_string('notes', default='')
+        if self._validate_max_length('notes', notes, NOTES_MAX_LENGTH, MESSAGES['NOTES_TOO_LONG']):
+            self.cleaned_data['notes'] = notes
 
         date_str = self._get_string('deposit_date', default='')
         if not date_str:
@@ -66,7 +68,9 @@ class PortfolioWithdrawForm(BaseForm):
             self.cleaned_data['amount_delta'] = amount_delta
             self.cleaned_data['portfolio_id'] = self.portfolio_id
 
-        self.cleaned_data['notes'] = self._get_string('notes', default='')
+        notes = self._get_string('notes', default='')
+        if self._validate_max_length('notes', notes, NOTES_MAX_LENGTH, MESSAGES['NOTES_TOO_LONG']):
+            self.cleaned_data['notes'] = notes
 
         date_str = self._get_string('withdraw_date', default='')
         if not date_str:
@@ -94,7 +98,11 @@ class PortfolioEventEditForm(BaseForm):
             self.cleaned_data['amount_delta'] = amount_delta
             self.cleaned_data['event_id'] = self.event_id
 
-        self.cleaned_data['notes'] = self._get_string('edit_cash_event_notes', default='')
+        notes = self._get_string('edit_cash_event_notes', default='')
+        if self._validate_max_length(
+            'edit_cash_event_notes', notes, NOTES_MAX_LENGTH, MESSAGES['NOTES_TOO_LONG']
+        ):
+            self.cleaned_data['notes'] = notes
 
         date_str = self._get_string('date', default='')
         if date_str:

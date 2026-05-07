@@ -2,7 +2,7 @@
 
 from decimal import Decimal
 from typing import List
-from portfolio_app.forms.base_form import BaseForm
+from portfolio_app.forms.base_form import BaseForm, NOTES_MAX_LENGTH, SYMBOL_MAX_LENGTH
 from portfolio_app.models.portfolio import Portfolio
 from portfolio_app.utils.messages import MESSAGES
 from config import Config
@@ -37,7 +37,10 @@ class TransactionAddForm(BaseForm):
 
         symbol = self._validate_required_string('symbol', MESSAGES['SYMBOL_REQUIRED'])
         if symbol:
-            self.cleaned_data['symbol'] = symbol.upper()
+            if self._validate_max_length(
+                'symbol', symbol, SYMBOL_MAX_LENGTH, MESSAGES['SYMBOL_TOO_LONG']
+            ):
+                self.cleaned_data['symbol'] = symbol.upper()
 
         price = self._validate_decimal('price', allow_zero=False)
         if price is not None:
@@ -53,7 +56,9 @@ class TransactionAddForm(BaseForm):
         elif 'fees' not in self.errors:
             self.cleaned_data['fees'] = Decimal('0')
 
-        self.cleaned_data['notes'] = self._get_string('notes', default='')
+        notes = self._get_string('notes', default='')
+        if self._validate_max_length('notes', notes, NOTES_MAX_LENGTH, MESSAGES['NOTES_TOO_LONG']):
+            self.cleaned_data['notes'] = notes
 
         date_str = self._get_string('date', default='')
         if not date_str:
@@ -81,7 +86,10 @@ class TransactionEditForm(BaseForm):
 
         symbol = self._get_string('edit_symbol', default='')
         if symbol:
-            self.cleaned_data['symbol'] = symbol.upper()
+            if self._validate_max_length(
+                'edit_symbol', symbol, SYMBOL_MAX_LENGTH, MESSAGES['SYMBOL_TOO_LONG']
+            ):
+                self.cleaned_data['symbol'] = symbol.upper()
 
         price_str = self._get_string('edit_price', default='')
         if price_str:
@@ -103,7 +111,10 @@ class TransactionEditForm(BaseForm):
 
         notes = self._get_string('edit_notes', default=None)
         if notes is not None:
-            self.cleaned_data['notes'] = notes
+            if self._validate_max_length(
+                'edit_notes', notes, NOTES_MAX_LENGTH, MESSAGES['NOTES_TOO_LONG']
+            ):
+                self.cleaned_data['notes'] = notes
 
         date_str = self._get_string('edit_date', default='')
         if date_str:
@@ -141,7 +152,9 @@ class DividendAddForm(BaseForm):
         symbol = (self.data.get('div_symbol') or '').strip().upper()
         if not symbol:
             self.errors['div_symbol'] = MESSAGES['SYMBOL_REQUIRED']
-        else:
+        elif self._validate_max_length(
+            'div_symbol', symbol, SYMBOL_MAX_LENGTH, MESSAGES['SYMBOL_TOO_LONG']
+        ):
             self.cleaned_data['symbol'] = symbol
 
         amount_str = (self.data.get('amount') or '').strip()
@@ -157,7 +170,9 @@ class DividendAddForm(BaseForm):
             except Exception:
                 self.errors['amount'] = MESSAGES['INVALID_NUMBER']
 
-        self.cleaned_data['notes'] = self._get_string('notes', default='')
+        notes = self._get_string('notes', default='')
+        if self._validate_max_length('notes', notes, NOTES_MAX_LENGTH, MESSAGES['NOTES_TOO_LONG']):
+            self.cleaned_data['notes'] = notes
 
         date_str = self._get_string('date', default='')
         if not date_str:
@@ -197,7 +212,10 @@ class DividendEditForm(BaseForm):
 
         notes = self._get_string('edit_notes', default=None)
         if notes is not None:
-            self.cleaned_data['notes'] = notes
+            if self._validate_max_length(
+                'edit_notes', notes, NOTES_MAX_LENGTH, MESSAGES['NOTES_TOO_LONG']
+            ):
+                self.cleaned_data['notes'] = notes
 
         date_str = self._get_string('edit_date', default='')
         if not date_str:
@@ -236,7 +254,10 @@ class SymbolAddForm(BaseForm):
 
         symbol = self._validate_required_string('symbol_ticker', MESSAGES['SYMBOL_REQUIRED'])
         if symbol:
-            self.cleaned_data['symbol'] = symbol.upper()
+            if self._validate_max_length(
+                'symbol_ticker', symbol, SYMBOL_MAX_LENGTH, MESSAGES['SYMBOL_TOO_LONG']
+            ):
+                self.cleaned_data['symbol'] = symbol.upper()
 
         return not self.has_errors()
 
@@ -260,6 +281,9 @@ class SymbolDeleteForm(BaseForm):
 
         symbol = self._validate_required_string('delete_symbol_ticker', MESSAGES['SYMBOL_REQUIRED'])
         if symbol:
-            self.cleaned_data['symbol'] = symbol.upper()
+            if self._validate_max_length(
+                'delete_symbol_ticker', symbol, SYMBOL_MAX_LENGTH, MESSAGES['SYMBOL_TOO_LONG']
+            ):
+                self.cleaned_data['symbol'] = symbol.upper()
 
         return not self.has_errors()

@@ -68,6 +68,8 @@ MESSAGES = {
     'VALUE_NON_NEGATIVE':          "Please enter zero or a positive number.",
     'INVALID_DATE_FORMAT':         "Invalid date. Please use YYYY-MM-DD format (e.g., 2025-04-18).",
     'NAME_TOO_LONG':               "Name must be 50 characters or less.",
+    'NOTES_TOO_LONG':              "Notes must be 300 characters or less.",
+    'SYMBOL_TOO_LONG':             "Symbol must be 20 characters or less.",
 
     # Form validation — portfolio / symbol selectors
     'PORTFOLIO_SELECT_REQUIRED':   "Please select a portfolio.",

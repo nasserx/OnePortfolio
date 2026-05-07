@@ -6,6 +6,12 @@ from portfolio_app.forms.validators import validate_positive_decimal
 from portfolio_app.utils.messages import MESSAGES, get_field_positive_message
 
 
+# Hard caps applied at the form layer. The DB columns and HTML maxlength
+# attributes back these up, but the only authoritative check is here.
+NOTES_MAX_LENGTH  = 300
+SYMBOL_MAX_LENGTH = 20
+
+
 class BaseForm:
     """Base form class with common validation methods."""
 
@@ -128,3 +134,20 @@ class BaseForm:
         if value is None:
             return None
         return value.strip()
+
+    def _validate_max_length(
+        self,
+        field_name: str,
+        value: Optional[str],
+        max_len: int,
+        error_msg: str,
+    ) -> bool:
+        """Reject if ``value`` exceeds ``max_len`` characters.
+
+        Returns True when the value is within bounds (including None/empty);
+        adds an entry to ``self.errors`` and returns False otherwise.
+        """
+        if value is not None and len(value) > max_len:
+            self.errors[field_name] = error_msg
+            return False
+        return True

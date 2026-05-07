@@ -63,10 +63,16 @@
                 <td class="text-end">
                     <div class="d-flex gap-2 justify-content-end">
 
+                        {# Confirmation prompts use single-quoted onsubmit
+                           attributes so the JSON-quoted username (which
+                           uses double quotes) doesn't accidentally close
+                           the HTML attribute. ``|tojson`` already escapes
+                           anything dangerous inside the JS string. #}
+
                         <!-- Send Password Reset Email -->
                         <form method="post"
                               action="{{ url_for('admin.send_reset', user_id=user.id) }}"
-                              onsubmit="return confirm('Send a password reset email to {{ user.username }}?')">
+                              onsubmit='return confirm("Send a password reset email to " + {{ user.username | tojson }} + "?")'>
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button type="submit" class="btn btn-sm btn-outline-secondary"
                                     title="Send Password Reset Email"
@@ -77,9 +83,10 @@
 
                         <!-- Toggle Admin (cannot change own) -->
                         {% if user.id != current_user.id %}
+                        {% set _toggle_verb = 'Revoke' if user.is_admin else 'Grant' %}
                         <form method="post"
                               action="{{ url_for('admin.toggle_admin', user_id=user.id) }}"
-                              onsubmit="return confirm('{{ 'Revoke' if user.is_admin else 'Grant' }} admin access for {{ user.username }}?')">
+                              onsubmit='return confirm({{ _toggle_verb | tojson }} + " admin access for " + {{ user.username | tojson }} + "?")'>
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button type="submit"
                                     class="btn btn-sm {{ 'btn-outline-danger' if user.is_admin else 'btn-outline-primary' }}"
@@ -91,7 +98,7 @@
                         <!-- Delete user -->
                         <form method="post"
                               action="{{ url_for('admin.delete_user', user_id=user.id) }}"
-                              onsubmit="return confirm('Remove user ' + {{ user.username | tojson }} + '? This cannot be undone.')">
+                              onsubmit='return confirm("Remove user " + {{ user.username | tojson }} + "? This cannot be undone.")'>
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove User">
                                 <i class="bi bi-trash" aria-hidden="true"></i>

@@ -61,14 +61,9 @@ class TransactionAddForm(BaseForm):
             self.cleaned_data['notes'] = notes
 
         date_str = self._get_string('date', default='')
-        if not date_str:
-            self.errors['date'] = MESSAGES['FIELD_REQUIRED']
-        else:
-            from datetime import datetime
-            try:
-                self.cleaned_data['date'] = datetime.strptime(date_str, '%Y-%m-%d')
-            except ValueError:
-                self.errors['date'] = MESSAGES['INVALID_DATE_FORMAT']
+        parsed = self._parse_date_not_future(date_str, 'date')
+        if parsed is not None:
+            self.cleaned_data['date'] = parsed
 
         return not self.has_errors()
 
@@ -116,13 +111,12 @@ class TransactionEditForm(BaseForm):
             ):
                 self.cleaned_data['notes'] = notes
 
+        # Date is optional on edit; only validate when provided.
         date_str = self._get_string('edit_date', default='')
         if date_str:
-            from datetime import datetime
-            try:
-                self.cleaned_data['date'] = datetime.strptime(date_str, '%Y-%m-%d')
-            except ValueError:
-                self.errors['edit_date'] = MESSAGES['INVALID_DATE_FORMAT']
+            parsed = self._parse_date_not_future(date_str, 'edit_date')
+            if parsed is not None:
+                self.cleaned_data['date'] = parsed
 
         return not self.has_errors()
 
@@ -175,14 +169,9 @@ class DividendAddForm(BaseForm):
             self.cleaned_data['notes'] = notes
 
         date_str = self._get_string('date', default='')
-        if not date_str:
-            self.errors['date'] = MESSAGES['FIELD_REQUIRED']
-        else:
-            from datetime import datetime
-            try:
-                self.cleaned_data['date'] = datetime.strptime(date_str, '%Y-%m-%d')
-            except ValueError:
-                self.errors['date'] = MESSAGES['INVALID_DATE_FORMAT']
+        parsed = self._parse_date_not_future(date_str, 'date')
+        if parsed is not None:
+            self.cleaned_data['date'] = parsed
 
         return not self.has_errors()
 
@@ -218,14 +207,9 @@ class DividendEditForm(BaseForm):
                 self.cleaned_data['notes'] = notes
 
         date_str = self._get_string('edit_date', default='')
-        if not date_str:
-            self.errors['edit_date'] = MESSAGES['FIELD_REQUIRED']
-        else:
-            from datetime import datetime
-            try:
-                self.cleaned_data['date'] = datetime.strptime(date_str, '%Y-%m-%d')
-            except ValueError:
-                self.errors['edit_date'] = MESSAGES['INVALID_DATE_FORMAT']
+        parsed = self._parse_date_not_future(date_str, 'edit_date')
+        if parsed is not None:
+            self.cleaned_data['date'] = parsed
 
         return not self.has_errors()
 

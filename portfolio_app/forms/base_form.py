@@ -1,5 +1,6 @@
 """Base form class for common validation functionality."""
 
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Dict, Any, Optional
 from portfolio_app.forms.validators import validate_positive_decimal
@@ -151,3 +152,31 @@ class BaseForm:
             self.errors[field_name] = error_msg
             return False
         return True
+
+    def _parse_date_not_future(
+        self,
+        date_str: str,
+        error_field_name: str,
+    ) -> Optional[datetime]:
+        """Parse ``YYYY-MM-DD`` and reject blanks, bad format, or future dates.
+
+        On failure adds the appropriate message to ``self.errors`` keyed by
+        ``error_field_name`` and returns None. On success returns the parsed
+        :class:`datetime` (naive, midnight) so callers don't need to repeat
+        the parse-and-validate dance.
+        """
+        if not date_str:
+            self.errors[error_field_name] = MESSAGES['FIELD_REQUIRED']
+            return None
+        try:
+            parsed = datetime.strptime(date_str, '%Y-%m-%d')
+        except ValueError:
+            self.errors[error_field_name] = MESSAGES['INVALID_DATE_FORMAT']
+            return None
+        # Compare date-only against today in UTC. Future-dated rows would
+        # corrupt the chronological recompute (financial integrity) and
+        # have no legitimate business meaning here.
+        if parsed.date() > datetime.now(timezone.utc).date():
+            self.errors[error_field_name] = MESSAGES['DATE_IN_FUTURE']
+            return None
+        return parsed

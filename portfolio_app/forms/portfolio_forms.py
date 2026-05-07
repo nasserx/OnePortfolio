@@ -43,14 +43,9 @@ class PortfolioDepositForm(BaseForm):
             self.cleaned_data['notes'] = notes
 
         date_str = self._get_string('deposit_date', default='')
-        if not date_str:
-            self.errors['deposit_date'] = MESSAGES['FIELD_REQUIRED']
-        else:
-            from datetime import datetime
-            try:
-                self.cleaned_data['date'] = datetime.strptime(date_str, '%Y-%m-%d')
-            except ValueError:
-                self.errors['deposit_date'] = MESSAGES['INVALID_DATE_FORMAT']
+        parsed = self._parse_date_not_future(date_str, 'deposit_date')
+        if parsed is not None:
+            self.cleaned_data['date'] = parsed
 
         return not self.has_errors()
 
@@ -73,14 +68,9 @@ class PortfolioWithdrawForm(BaseForm):
             self.cleaned_data['notes'] = notes
 
         date_str = self._get_string('withdraw_date', default='')
-        if not date_str:
-            self.errors['withdraw_date'] = MESSAGES['FIELD_REQUIRED']
-        else:
-            from datetime import datetime
-            try:
-                self.cleaned_data['date'] = datetime.strptime(date_str, '%Y-%m-%d')
-            except ValueError:
-                self.errors['withdraw_date'] = MESSAGES['INVALID_DATE_FORMAT']
+        parsed = self._parse_date_not_future(date_str, 'withdraw_date')
+        if parsed is not None:
+            self.cleaned_data['date'] = parsed
 
         return not self.has_errors()
 
@@ -104,13 +94,12 @@ class PortfolioEventEditForm(BaseForm):
         ):
             self.cleaned_data['notes'] = notes
 
+        # Date is optional on edit; only validate when provided.
         date_str = self._get_string('date', default='')
         if date_str:
-            from datetime import datetime
-            try:
-                self.cleaned_data['date'] = datetime.strptime(date_str, '%Y-%m-%d')
-            except ValueError:
-                self.errors['date'] = MESSAGES['INVALID_DATE_FORMAT']
+            parsed = self._parse_date_not_future(date_str, 'date')
+            if parsed is not None:
+                self.cleaned_data['date'] = parsed
 
         return not self.has_errors()
 

@@ -810,7 +810,7 @@ def create_app(config_class=Config):
 
     @app.errorhandler(429)
     def _ratelimit_handler(error):
-        from flask import request, jsonify
+        from flask import request, jsonify, render_template, flash, redirect, url_for
         # The error_message set on the @limiter.limit decorator surfaces here.
         message = getattr(error, 'description', None) or MESSAGES['RATE_LIMIT_SIGNUP']
         wants_json = (
@@ -821,9 +821,51 @@ def create_app(config_class=Config):
         )
         if wants_json:
             return jsonify({'ok': False, 'errors': {'__all__': message}}), 429
-        # Plain HTML response with the 429 status preserved. Browsers render
-        # it inline; the test suite asserts on the status code directly.
-        return (f"<p>{message}</p>", 429, {'Content-Type': 'text/html; charset=utf-8'})
+
+        # Route-aware re-render: the user landed here from a specific form,
+        # so put the rate-limit message inline on that form instead of
+        # serving a bare standalone page. Falls back to a wrapped page for
+        # any other rate-limited endpoint.
+        endpoint = request.endpoint or ''
+
+        if endpoint == 'auth.verify_code':
+            email = request.args.get('email', '') or request.form.get('email', '')
+            return render_template(
+                'auth/verify_code.html',
+                email=email,
+                form_errors={'__all__': message},
+            ), 429
+
+        if endpoint == 'auth.login':
+            return render_template(
+                'auth/login.html',
+                form_errors={'__all__': message},
+                form_values=request.form,
+            ), 429
+
+        if endpoint == 'auth.register':
+            return render_template(
+                'auth/register.html',
+                form_errors={'__all__': message},
+                form_values=request.form,
+            ), 429
+
+        if endpoint == 'auth.resend_code':
+            # GET-only endpoint — flash + bounce the user back to the page
+            # they came from (the verify-code screen).
+            flash(message, 'warning')
+            email = request.args.get('email', '')
+            if email:
+                return redirect(url_for('auth.verify_code', email=email))
+            return redirect(url_for('auth.login'))
+
+        if endpoint == 'auth.delete_account_confirm':
+            flash(message, 'warning')
+            return redirect(url_for('auth.settings', tab='account'))
+
+        # Generic fallback — keep the message inside a real page so the
+        # user still sees navigation, branding, and a way out.
+        return render_template('errors/rate_limit.html', message=message), 429
 
     # ── Security headers ────────────────────────────────────────────────
     # Defence-in-depth: HSTS (only when serving over HTTPS), clickjacking

@@ -500,12 +500,24 @@ class TestRateLimits:
                 'confirm_password': 'CorrectHorse9',
             },
         )
+        # 1 verification email was sent during registration.
+        emails_for_bob_before = sum(1 for row in email_log if row[0] == 'bob@example.com')
 
         # Three resends are allowed.
         for i in range(3):
             resp = rate_limited_client.get('/resend-code?email=bob@example.com')
             assert resp.status_code in (200, 302, 303), f"resend {i}: {resp.status_code}"
 
-        # The 4th is rate-limited.
-        resp = rate_limited_client.get('/resend-code?email=bob@example.com')
-        assert resp.status_code == 429
+        # The 4th is rate-limited. The 429 handler is route-aware: for
+        # /resend-code (a GET-only endpoint) it flashes a warning and
+        # redirects back to /verify-code instead of returning a bare 429
+        # page, so the user lands on a real screen with feedback.
+        resp = rate_limited_client.get(
+            '/resend-code?email=bob@example.com', follow_redirects=False,
+        )
+        assert resp.status_code in (302, 303)
+        assert '/verify-code' in resp.headers.get('Location', '')
+
+        # And the rate-limited 4th attempt did NOT actually send a 4th code.
+        emails_for_bob_after = sum(1 for row in email_log if row[0] == 'bob@example.com')
+        assert emails_for_bob_after - emails_for_bob_before == 3

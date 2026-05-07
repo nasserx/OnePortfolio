@@ -99,5 +99,9 @@ def api_holdings() -> Response:
             'held_quantity': held_qty_str,
         })
 
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    except Exception:
+        # Don't leak the raw exception text to the client — it surfaced
+        # SQLAlchemy / Decimal internals on errors and was a stable
+        # info-disclosure surface for any logged-in user.
+        logger.exception('api_holdings failed')
+        return jsonify({'error': MESSAGES['INTERNAL_SERVER_ERROR']}), 500

@@ -25,9 +25,13 @@ MESSAGES = {
     # Input validation
     'INVALID_PORTFOLIO_ID':        "Invalid portfolio ID.",
     'INVALID_SYMBOL':              "Please enter a valid symbol (e.g., AAPL, BTC).",
-    'INVALID_QUANTITY':            "Please enter a valid quantity greater than zero.",
-    'INVALID_PRICE':               "Please enter a valid price greater than zero.",
-    'INVALID_AMOUNT':              "Please enter a valid amount greater than zero.",
+    # Single canonical wording for "value must be > 0", shared by every
+    # numeric field (price/quantity/amount/etc.) and matched verbatim by
+    # the client-side validator so the server reply doesn't replace the
+    # already-shown inline message with a different one.
+    'INVALID_QUANTITY':            "Must be more than 0.",
+    'INVALID_PRICE':               "Must be more than 0.",
+    'INVALID_AMOUNT':              "Must be more than 0.",
 
     # Business rules
     'INSUFFICIENT_AMOUNT':         "Insufficient amount.",
@@ -64,11 +68,11 @@ MESSAGES = {
     # Form validation — generic
     'FIELD_REQUIRED':              "This field is required.",
     'INVALID_NUMBER':              "Please enter a valid number.",
-    'VALUE_POSITIVE':              "Must be greater than zero.",
+    'VALUE_POSITIVE':              "Must be more than 0.",
     'VALUE_NON_NEGATIVE':          "Please enter zero or a positive number.",
     'INVALID_DATE_FORMAT':         "Invalid date. Please use YYYY-MM-DD format (e.g., 2025-04-18).",
     'DATE_IN_FUTURE':              "Date cannot be in the future.",
-    'NAME_TOO_LONG':               "Name must be 50 characters or less.",
+    'NAME_TOO_LONG':               "Name must be 20 characters or less.",
     'NOTES_TOO_LONG':              "Notes must be 300 characters or less.",
     'SYMBOL_TOO_LONG':             "Symbol must be 20 characters or less.",
 

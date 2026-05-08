@@ -697,6 +697,7 @@
 
 <!-- Add Dividend Modal (standalone — opened from the $ button on each symbol row) -->
 <div class="modal fade" id="addDividendModal" tabindex="-1">
+    {% set _div_add_errs = (form_errors.get('dividend_add', {}) if form_errors else {}) %}
     <div class="modal-dialog">
         <div class="modal-content">
             <form method="POST" action="{{ url_for('transactions.dividend_add') }}" autocomplete="off" novalidate>
@@ -708,28 +709,46 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
+                    {% if _div_add_errs.get('__all__') %}
+                    <div class="alert alert-danger d-flex align-items-center mb-3">
+                        <i class="bi bi-exclamation-circle me-2"></i>{{ _div_add_errs.get('__all__') }}
+                    </div>
+                    {% endif %}
                     <div class="row g-2">
                         <div class="col-6">
                             <div class="mb-3">
                                 <label for="add_div_amount" class="form-label">Amount</label>
                                 <input type="text" inputmode="decimal" autocomplete="off"
-                                       class="form-control" id="add_div_amount" name="amount" placeholder="0.00">
+                                       class="form-control {% if _div_add_errs.get('amount') %}is-invalid{% endif %}"
+                                       id="add_div_amount" name="amount" placeholder="0.00">
+                                {% if _div_add_errs.get('amount') %}
+                                <div class="invalid-feedback">{{ _div_add_errs.get('amount') }}</div>
+                                {% else %}
                                 <div id="add_div_amount_error" class="invalid-feedback"></div>
+                                {% endif %}
                             </div>
                         </div>
                         <div class="col-6">
                             <div class="mb-3">
                                 <label for="add_div_date" class="form-label">Date</label>
-                                <input type="text" class="form-control" id="add_div_date" name="date" placeholder="YYYY-MM-DD">
+                                <input type="text"
+                                       class="form-control {% if _div_add_errs.get('date') %}is-invalid{% endif %}"
+                                       id="add_div_date" name="date" placeholder="YYYY-MM-DD">
+                                {% if _div_add_errs.get('date') %}
+                                <div class="invalid-feedback d-block">{{ _div_add_errs.get('date') }}</div>
+                                {% endif %}
                             </div>
                         </div>
                     </div>
                     <div class="mb-3">
                         <label for="add_div_notes" class="form-label">Notes (optional)</label>
-                        <textarea class="form-control js-notes-input" id="add_div_notes" name="notes" rows="2" maxlength="300"></textarea>
+                        <textarea class="form-control js-notes-input {% if _div_add_errs.get('notes') %}is-invalid{% endif %}"
+                                  id="add_div_notes" name="notes" rows="2" maxlength="300"></textarea>
                         <small class="notes-counter">0 / 300</small>
+                        {% if _div_add_errs.get('notes') %}
+                        <div class="invalid-feedback">{{ _div_add_errs.get('notes') }}</div>
+                        {% endif %}
                     </div>
-                    <div id="add_div_error" class="alert alert-danger d-none"></div>
                 </div>
                 <div class="modal-footer">
                     <button type="submit" class="btn btn-primary" id="add_div_submit_btn">Add Dividend</button>
@@ -1602,100 +1621,31 @@ function editTransaction(id, portfolioId, type, symbol, price, quantity, fees, n
 // Standalone Add Dividend Modal (opened from the $ button on symbol rows)
 // -----------------------------------------------------------------------
 function openStandaloneDividendModal(portfolioId, symbol) {
-    const portfolioInput   = document.getElementById('add_div_portfolio_id');
-    const symInput    = document.getElementById('add_div_symbol');
+    // Pre-fill the modal and reset any leftover validation state, then
+    // open it. Submission itself is handled by ModalAjaxHandler.
+    const portfolioInput = document.getElementById('add_div_portfolio_id');
+    const symInput       = document.getElementById('add_div_symbol');
+    const amountEl       = document.getElementById('add_div_amount');
+    const dateEl         = document.getElementById('add_div_date');
+    const notesEl        = document.getElementById('add_div_notes');
+    const submitBtn      = document.getElementById('add_div_submit_btn');
 
-    const amountEl    = document.getElementById('add_div_amount');
-    const dateEl      = document.getElementById('add_div_date');
-    const notesEl     = document.getElementById('add_div_notes');
-    const errEl       = document.getElementById('add_div_error');
-    const amountErr   = document.getElementById('add_div_amount_error');
-    const submitBtn   = document.getElementById('add_div_submit_btn');
-
-    if (portfolioInput)  portfolioInput.value  = portfolioId ? String(portfolioId) : '';
-    if (symInput)   symInput.value   = (symbol || '').toUpperCase();
-    if (amountEl)   { amountEl.value = ''; amountEl.classList.remove('is-invalid'); }
-    if (amountErr)  { amountErr.textContent = ''; amountErr.style.display = 'none'; }
-    if (dateEl)     dateEl.value = todayStr();
-    if (notesEl)    notesEl.value = '';
-    if (errEl)      { errEl.textContent = ''; errEl.classList.add('d-none'); }
-    if (submitBtn)  submitBtn.disabled = false;
+    if (portfolioInput) portfolioInput.value = portfolioId ? String(portfolioId) : '';
+    if (symInput)       symInput.value       = (symbol || '').toUpperCase();
+    if (amountEl)       { amountEl.value = ''; amountEl.classList.remove('is-invalid'); }
+    if (dateEl)         dateEl.value = todayStr();
+    if (notesEl)        notesEl.value = '';
+    if (submitBtn)      submitBtn.disabled = false;
 
     initFlatpickr('add_div_date');
     bootstrap.Modal.getOrCreateInstance(document.getElementById('addDividendModal')).show();
 }
 
-(function setupStandaloneDividendModal() {
-    const modalEl   = document.getElementById('addDividendModal');
-    const form      = modalEl ? modalEl.querySelector('form') : null;
-    const amountEl  = document.getElementById('add_div_amount');
-    const amountErr = document.getElementById('add_div_amount_error');
-    const errEl     = document.getElementById('add_div_error');
-    const submitBtn = document.getElementById('add_div_submit_btn');
-    if (!form) return;
-
-    function validateAmount() {
-        const val = String(amountEl ? amountEl.value || '' : '').trim();
-        const n   = parseFloat(val);
-        if (!val || !isFinite(n) || n <= 0) {
-            if (amountEl)  amountEl.classList.add('is-invalid');
-            if (amountErr) { amountErr.textContent = 'Must be more than 0.'; amountErr.style.display = 'block'; }
-            return false;
-        }
-        if (amountEl)  amountEl.classList.remove('is-invalid');
-        if (amountErr) { amountErr.textContent = ''; amountErr.style.display = 'none'; }
-        return true;
-    }
-
-    if (amountEl) {
-        amountEl.addEventListener('blur',  validateAmount);
-        amountEl.addEventListener('input', function() {
-            if (amountEl.classList.contains('is-invalid')) validateAmount();
-        });
-    }
-
-    if (modalEl) {
-        modalEl.addEventListener('hidden.bs.modal', function() {
-            if (amountEl)  amountEl.classList.remove('is-invalid');
-            if (amountErr) { amountErr.textContent = ''; amountErr.style.display = 'none'; }
-            if (errEl)     { errEl.textContent = ''; errEl.classList.add('d-none'); }
-        });
-    }
-
-    form.addEventListener('submit', function(e) {
-        e.preventDefault();
-        if (!validateAmount()) return;
-        if (submitBtn && submitBtn.disabled) return;
-        if (submitBtn) submitBtn.disabled = true;
-        if (errEl) { errEl.textContent = ''; errEl.classList.add('d-none'); }
-
-        var xhr = new XMLHttpRequest();
-        xhr.open('POST', form.action, true);
-        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-        xhr.onload = function() {
-            if (submitBtn) submitBtn.disabled = false;
-            try {
-                var data = JSON.parse(xhr.responseText);
-                if (data.success) {
-                    sessionStorage.setItem('flashMessage', data.message || 'Dividend added');
-                    sessionStorage.setItem('flashType', 'success');
-                    var modal = bootstrap.Modal.getInstance(modalEl);
-                    if (modal) modal.hide();
-                    location.reload();
-                } else {
-                    if (errEl) { errEl.textContent = data.error || 'Operation failed'; errEl.classList.remove('d-none'); }
-                }
-            } catch (ex) {
-                if (errEl) { errEl.textContent = 'Operation failed'; errEl.classList.remove('d-none'); }
-            }
-        };
-        xhr.onerror = function() {
-            if (submitBtn) submitBtn.disabled = false;
-            if (errEl) { errEl.textContent = 'Network error'; errEl.classList.remove('d-none'); }
-        };
-        xhr.send(new FormData(form));
-    });
-})();
+// addDividendModal submission is wired by the central ModalAjaxHandler
+// (see static/js/main.js). The earlier per-form XMLHttpRequest handler
+// here was a duplicate — having both attached caused every dividend to
+// be POSTed twice, which the user reported as "operation duplicated"
+// (added 100, total showed 200).
 
 
 // -----------------------------------------------------------------------

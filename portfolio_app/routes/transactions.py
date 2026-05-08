@@ -13,7 +13,7 @@ from portfolio_app.forms import (
     DividendAddForm, DividendEditForm,
 )
 from portfolio_app.utils import (
-    get_error_message, get_first_form_error, MESSAGES,
+    get_error_message, MESSAGES,
     is_ajax_request, json_response, field_error_response,
 )
 
@@ -27,6 +27,12 @@ _TX_ADD_FIELD_MAP = {
 _TX_EDIT_FIELD_MAP = {
     MESSAGES['INSUFFICIENT_QUANTITY']: 'edit_quantity',
     MESSAGES['FEES_EXCEED_PROCEEDS']: 'edit_fees',
+    # Cash drift on edit usually traces back to quantity or price, but
+    # with no further info point the user at the most likely culprit.
+    MESSAGES['INSUFFICIENT_AMOUNT']: 'edit_quantity',
+}
+_DIV_EDIT_FIELD_MAP = {
+    MESSAGES['INSUFFICIENT_AMOUNT']: 'edit_amount',
 }
 from portfolio_app.utils.constants import safe_html_id
 from portfolio_app.utils.decimal_utils import ZERO
@@ -288,7 +294,7 @@ def transaction_delete(transaction_id):
             return json_response(True, message=MESSAGES['TRANSACTION_REMOVED'])
         flash(MESSAGES['TRANSACTION_REMOVED'], 'success')
 
-    except ValueError as e:
+    except (ValueError, ValidationError) as e:
         if is_ajax_request():
             return json_response(False, errors={'__all__': get_error_message(e)})
         flash(get_error_message(e), 'error')
@@ -322,7 +328,7 @@ def dividend_add():
                 **ctx,
                 form_errors={'dividend_add': form.errors},
                 form_values={'dividend_add': request.form},
-                active_modal='addTransactionModal',
+                active_modal='addDividendModal',
             ), 400
 
         data = form.get_cleaned_data()
@@ -402,7 +408,7 @@ def dividend_edit(dividend_id):
 
     except (ValueError, ValidationError) as e:
         if is_ajax_request():
-            return json_response(False, errors={'__all__': get_error_message(e)})
+            return field_error_response(get_error_message(e), _DIV_EDIT_FIELD_MAP)
         flash(get_error_message(e), 'error')
         return redirect(url_for('transactions.transaction_list'))
 
@@ -452,6 +458,8 @@ def symbol_add():
 
         form = SymbolAddForm(request.form, portfolios)
         if not form.validate():
+            if is_ajax_request():
+                return json_response(False, errors=form.errors)
             ctx = _get_transactions_page_context()
             return render_template(
                 'transactions.html',
@@ -467,17 +475,25 @@ def symbol_add():
             symbol=data['symbol']
         )
 
-        flash(MESSAGES['SYMBOL_ADDED'].format(symbol=data['symbol']), 'success')
+        msg = MESSAGES['SYMBOL_ADDED'].format(symbol=data['symbol'])
+        if is_ajax_request():
+            return json_response(True, message=msg)
+        flash(msg, 'success')
+        return redirect(url_for('transactions.transaction_list'))
 
     except ValueError as e:
+        if is_ajax_request():
+            return json_response(False, errors={'__all__': get_error_message(e)})
         flash(get_error_message(e), 'error')
+        return redirect(url_for('transactions.transaction_list'))
 
     except Exception:
         logger.exception('Failed to track symbol')
         db.session.rollback()
+        if is_ajax_request():
+            return json_response(False, errors={'__all__': MESSAGES['OPERATION_FAILED']})
         flash(MESSAGES['OPERATION_FAILED'], 'error')
-
-    return redirect(url_for('transactions.transaction_list'))
+        return redirect(url_for('transactions.transaction_list'))
 
 
 @transactions_bp.route('/symbols/delete', methods=['POST'])

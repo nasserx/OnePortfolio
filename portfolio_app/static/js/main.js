@@ -899,6 +899,20 @@ class FormValidatorsInitializer {
             { ...ValidationRules.fees, selector: '#edit_fees' },
             { ...ValidationRules.date, selector: '#edit_date' }
         ]);
+
+        // Standalone Add Dividend modal (separate from addTransactionModal).
+        // Without this, the amount field had no client-side rule and zero
+        // entries only got caught at the server with a different message.
+        this.initValidator('form[action$="/dividends/add"]', [
+            { ...ValidationRules.fundsAmount, selector: '#add_div_amount', name: 'amount' },
+            { ...ValidationRules.date, selector: '#add_div_date' }
+        ]);
+
+        // Edit Dividend modal
+        this.initValidator('#editDividendForm', [
+            { ...ValidationRules.fundsAmount, selector: '#edit_amount', name: 'edit_amount' },
+            { ...ValidationRules.date, selector: '#edit_dividend_date', name: 'edit_date' }
+        ]);
     }
 
     initValidator(formSelector, rules) {
@@ -985,9 +999,9 @@ class ModalAjaxHandler {
         // modal? List it here and the AJAX path is wired automatically;
         // no need to write per-form JS.
         const modalForms = [
-            // Add Transaction handles both buy/sell AND dividend (action changes dynamically)
             { modalId: 'addTransactionModal',     formSelector: '#addTransactionModal form' },
             { modalId: 'editTransactionModal',    formSelector: '#editTransactionForm' },
+            { modalId: 'addDividendModal',        formSelector: 'form[action$="/dividends/add"]' },
             { modalId: 'editDividendModal',       formSelector: '#editDividendForm' },
             { modalId: 'newPortfolioModal',       formSelector: 'form[action$="/portfolios/add"]' },
             { modalId: 'depositFundsModal',       formSelector: '#depositFundsForm' },

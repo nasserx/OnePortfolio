@@ -12,6 +12,7 @@ from portfolio_app.repositories.portfolio_repository import PortfolioRepository
 from portfolio_app.repositories.dividend_repository import DividendRepository
 from portfolio_app.calculators.portfolio_calculator import PortfolioCalculator
 from portfolio_app.calculators.transaction_manager import TransactionManager
+from portfolio_app.utils.decimal_utils import ZERO
 from portfolio_app.utils.messages import MESSAGES
 
 
@@ -51,13 +52,17 @@ class TransactionService:
             raise ValueError(MESSAGES['PORTFOLIO_NOT_FOUND'])
 
         if transaction_type == 'Sell':
-            gross = price * quantity
-            if fees > gross:
+            gross = Decimal(str(price)) * Decimal(str(quantity))
+            if Decimal(str(fees)) > gross:
                 raise ValidationError(MESSAGES['FEES_EXCEED_PROCEEDS'])
             held = PortfolioCalculator.get_quantity_held_for_symbol(
                 portfolio_id, symbol, user_id=self.portfolio_repo.user_id,
             )
-            if quantity > held:
+            # Safety: refuse to compound an already-corrupt state. If a
+            # previous bug ever drove holdings below zero (or held is
+            # otherwise non-numeric), a Sell of any size would breach
+            # ``quantity > held`` against a negative number — block it.
+            if held <= ZERO or Decimal(str(quantity)) > held:
                 raise ValidationError(MESSAGES['INSUFFICIENT_QUANTITY'])
 
         # Chronological-walk invariant — same logic that update_transaction
@@ -134,6 +139,18 @@ class TransactionService:
             date=date,
         )
 
+        # Reject the edit if it would push available cash below zero —
+        # e.g. raising a Buy's quantity past current cash, lowering a
+        # Sell's proceeds below what's already been withdrawn.
+        new_price    = price    if price    is not None else transaction.price
+        new_quantity = quantity if quantity is not None else transaction.quantity
+        new_fees     = fees     if fees     is not None else transaction.fees
+        old_effect = self._cash_effect(transaction)
+        new_effect = self._proposed_cash_effect(
+            transaction.transaction_type, new_price, new_quantity, new_fees,
+        )
+        self._assert_cash_after_delta(transaction.portfolio_id, new_effect - old_effect)
+
         old_symbol = transaction.symbol
         portfolio_id = transaction.portfolio_id
 
@@ -170,6 +187,25 @@ class TransactionService:
 
         portfolio_id = transaction.portfolio_id
         symbol = transaction.symbol
+
+        # Reject the delete if removing this row would leave the
+        # remaining transactions in an impossible chronological state —
+        # e.g. deleting a Buy that is the only cover for a later Sell.
+        # Walk the remaining (portfolio, symbol) timeline excluding this
+        # row; reject if running quantity would dip below zero.
+        self._assert_walk_non_negative(
+            portfolio_id=portfolio_id,
+            edit_id=transaction.id,
+            proposed_symbol=PortfolioCalculator.normalize_symbol(symbol),
+            proposed_type=None,            # exclude this row, add nothing
+            proposed_quantity=Decimal('0'),
+            proposed_date=None,
+        )
+
+        # Removing the row reverses its cash effect — deleting a Sell
+        # claws back inflow and may push cash below zero if the user
+        # has already withdrawn or spent it.
+        self._assert_cash_after_delta(portfolio_id, -self._cash_effect(transaction))
 
         self.transaction_repo.delete(transaction)
         self.transaction_repo.flush()
@@ -214,6 +250,46 @@ class TransactionService:
 
         self.symbol_repo.delete(tracked)
         self.symbol_repo.commit()
+
+    def _cash_effect(self, transaction):
+        """Signed contribution this transaction makes to available cash.
+
+        Buy → negative (price*qty + fees outflow).
+        Sell → positive (price*qty - fees inflow).
+        Removing a transaction reverses its effect; replacing it with a
+        new shape is ``new_effect - old_effect``.
+        """
+        price = Decimal(str(transaction.price))
+        quantity = Decimal(str(transaction.quantity))
+        fees = Decimal(str(transaction.fees))
+        gross = price * quantity
+        if transaction.transaction_type == 'Sell':
+            return gross - fees
+        return -(gross + fees)
+
+    @staticmethod
+    def _proposed_cash_effect(transaction_type, price, quantity, fees):
+        """Same as :meth:`_cash_effect` but for a hypothetical row before
+        it is persisted (used by update_transaction to compute the delta
+        between the old and new shape)."""
+        gross = Decimal(str(price)) * Decimal(str(quantity))
+        f = Decimal(str(fees))
+        if transaction_type == 'Sell':
+            return gross - f
+        return -(gross + f)
+
+    def _assert_cash_after_delta(self, portfolio_id, delta_change):
+        """Reject the in-progress mutation if it would push available cash
+        below zero. ``delta_change`` is the signed change to the
+        portfolio's cash position the mutation would cause; if it raises
+        cash (≥ 0) the check is a no-op and saves a query."""
+        if delta_change >= ZERO:
+            return
+        current_cash = PortfolioCalculator.get_available_cash_for_portfolio(
+            portfolio_id, user_id=self.portfolio_repo.user_id,
+        )
+        if current_cash + delta_change < ZERO:
+            raise ValueError(MESSAGES['INSUFFICIENT_AMOUNT'])
 
     def _has_no_changes(self, transaction, price, quantity, fees, notes, symbol, date):
         """Check if the new values are identical to the existing transaction."""
@@ -398,7 +474,11 @@ class TransactionService:
         if not dividend or not self.portfolio_repo.get_by_id(dividend.portfolio_id):
             raise ValueError(MESSAGES['DIVIDEND_NOT_FOUND'])
 
+        # Lowering the amount reduces available cash; reject if the user
+        # has already spent the difference on Buys or withdrawn it.
         if amount is not None:
+            delta = Decimal(str(amount)) - Decimal(str(dividend.amount))
+            self._assert_cash_after_delta(dividend.portfolio_id, delta)
             dividend.amount = amount
         if date is not None:
             dividend.date = date
@@ -413,6 +493,13 @@ class TransactionService:
         dividend = self.dividend_repo.get_by_id(dividend_id)
         if not dividend or not self.portfolio_repo.get_by_id(dividend.portfolio_id):
             raise ValueError(MESSAGES['DIVIDEND_NOT_FOUND'])
+
+        # Removing the dividend reverses the cash inflow it represented.
+        # If a Buy or Withdrawal already consumed that money, refuse the
+        # delete rather than letting available cash go negative.
+        self._assert_cash_after_delta(
+            dividend.portfolio_id, -Decimal(str(dividend.amount)),
+        )
 
         self.dividend_repo.delete(dividend)
         self.dividend_repo.commit()

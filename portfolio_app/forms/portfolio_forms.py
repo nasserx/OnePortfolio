@@ -15,7 +15,7 @@ class PortfolioAddForm(BaseForm):
     def validate(self) -> bool:
         name = self._validate_required_string('name', MESSAGES['FIELD_REQUIRED'])
         if name:
-            if len(name) > 50:
+            if len(name) > 20:
                 self.errors['name'] = MESSAGES['NAME_TOO_LONG']
             elif name.lower() in self._existing_lower:
                 self.errors['name'] = MESSAGES['PORTFOLIO_NAME_TAKEN']

@@ -44,6 +44,29 @@
 .allocation-legend li {
     display: contents;
 }
+.allocation-legend .swatch,
+.allocation-legend .name,
+.allocation-legend .pct {
+    cursor: pointer;
+    user-select: none;
+    transition: opacity 0.15s ease;
+}
+.allocation-legend li:hover .swatch,
+.allocation-legend li:hover .name,
+.allocation-legend li:hover .pct {
+    opacity: 0.75;
+}
+/* Hidden state — clicking a row toggles its slice off the chart and
+   strikes through the legend label so the user sees what's excluded. */
+.allocation-legend li.is-hidden .swatch {
+    opacity: 0.3;
+}
+.allocation-legend li.is-hidden .name,
+.allocation-legend li.is-hidden .pct {
+    text-decoration: line-through;
+    color: var(--text-3, var(--text-2));
+    opacity: 0.6;
+}
 .allocation-legend .swatch {
     width: 10px; height: 10px;
     border-radius: 50%;
@@ -362,6 +385,10 @@
         chartData.donut_categories.forEach(function(name, i) {
             const li = document.createElement('li');
             li.title = name;
+            li.dataset.idx = String(i);
+            li.setAttribute('role', 'button');
+            li.setAttribute('tabindex', '0');
+            li.setAttribute('aria-pressed', 'false');
 
             const swatch = document.createElement('span');
             swatch.className = 'swatch';
@@ -379,6 +406,32 @@
             frag.appendChild(li);
         });
         root.appendChild(frag);
+
+        // Click any of a row's three grid cells (swatch / name / pct) to
+        // toggle that slice on or off the donut. We listen on the <ul>
+        // and walk up to the <li> via the data-idx marker because the
+        // <li> itself has ``display: contents`` and isn't an event target.
+        function toggleRow(li) {
+            const idx = parseInt(li.dataset.idx, 10);
+            if (Number.isNaN(idx)) return;
+            const nowHidden = !li.classList.contains('is-hidden');
+            li.classList.toggle('is-hidden', nowHidden);
+            li.setAttribute('aria-pressed', nowHidden ? 'true' : 'false');
+            allocationChart.toggleDataVisibility(idx);
+            allocationChart.update();
+        }
+        root.addEventListener('click', function(ev) {
+            const target = ev.target.closest && ev.target.closest('[data-idx]');
+            if (target && root.contains(target)) toggleRow(target);
+        });
+        root.addEventListener('keydown', function(ev) {
+            if (ev.key !== 'Enter' && ev.key !== ' ') return;
+            const target = ev.target.closest && ev.target.closest('[data-idx]');
+            if (target && root.contains(target)) {
+                ev.preventDefault();
+                toggleRow(target);
+            }
+        });
     }
     renderAllocationLegend();
 

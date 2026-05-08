@@ -68,7 +68,7 @@ def send_reset(user_id):
 
     except Exception:
         logger.exception('Admin send reset email failed for user %s', user_id)
-        flash(MESSAGES['OPERATION_FAILED'], 'error')
+        flash(MESSAGES['ADMIN_RESET_EMAIL_FAILED'], 'error')
 
     return redirect(url_for('admin.users'))
 
@@ -87,7 +87,7 @@ def toggle_admin(user_id):
         flash(str(e), 'error')
     except Exception:
         logger.exception('Toggle admin failed for user %s', user_id)
-        flash(MESSAGES['OPERATION_FAILED'], 'error')
+        flash(MESSAGES['ADMIN_TOGGLE_ADMIN_FAILED'], 'error')
 
     return redirect(url_for('admin.users'))
 
@@ -105,7 +105,7 @@ def delete_user(user_id):
         flash(str(e), 'error')
     except Exception:
         logger.exception('Admin delete user failed for user %s', user_id)
-        flash(MESSAGES['OPERATION_FAILED'], 'error')
+        flash(MESSAGES['ADMIN_DELETE_USER_FAILED'], 'error')
 
     return redirect(url_for('admin.users'))
 

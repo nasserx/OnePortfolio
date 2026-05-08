@@ -185,6 +185,33 @@ const Utils = {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    },
+
+    /**
+     * Extract a user-facing error message from a JSON failure response.
+     *
+     * The server can answer with either of two shapes — the inline
+     * AJAX handlers were previously only checking the legacy one and
+     * silently fell back to "Operation failed" whenever a real
+     * service-layer message arrived under ``errors.__all__``:
+     *
+     *     { success: false, errors: { __all__: "...", field: "..." } }   ← modern
+     *     { success: false, error:  "..." }                              ← legacy
+     *
+     * Resolution order:
+     *   1. ``errors.__all__``           — modal-level banner message
+     *   2. first non-empty field error  — so the user sees *something*
+     *   3. ``error`` (legacy single)
+     *   4. caller's ``fallback``        — only when nothing usable arrived
+     */
+    extractAjaxError(data, fallback) {
+        if (data && data.errors && typeof data.errors === 'object') {
+            if (data.errors.__all__) return data.errors.__all__;
+            for (const k in data.errors) {
+                if (data.errors[k]) return data.errors[k];
+            }
+        }
+        return (data && data.error) || fallback;
     }
 };
 
@@ -999,15 +1026,27 @@ class ModalAjaxHandler {
         // modal? List it here and the AJAX path is wired automatically;
         // no need to write per-form JS.
         const modalForms = [
-            { modalId: 'addTransactionModal',     formSelector: '#addTransactionModal form' },
-            { modalId: 'editTransactionModal',    formSelector: '#editTransactionForm' },
-            { modalId: 'addDividendModal',        formSelector: 'form[action$="/dividends/add"]' },
-            { modalId: 'editDividendModal',       formSelector: '#editDividendForm' },
-            { modalId: 'newPortfolioModal',       formSelector: 'form[action$="/portfolios/add"]' },
-            { modalId: 'depositFundsModal',       formSelector: '#depositFundsForm' },
-            { modalId: 'withdrawFundsModal',      formSelector: '#withdrawFundsForm' },
-            { modalId: 'editPortfolioEventModal', formSelector: '#editPortfolioEventForm' },
-            { modalId: 'addSymbolModal',          formSelector: 'form[action$="/symbols/add"]' },
+            { modalId: 'addTransactionModal',       formSelector: '#addTransactionModal form' },
+            { modalId: 'editTransactionModal',      formSelector: '#editTransactionForm' },
+            { modalId: 'addDividendModal',          formSelector: 'form[action$="/dividends/add"]' },
+            { modalId: 'editDividendModal',         formSelector: '#editDividendForm' },
+            { modalId: 'newPortfolioModal',         formSelector: 'form[action$="/portfolios/add"]' },
+            { modalId: 'depositFundsModal',         formSelector: '#depositFundsForm' },
+            { modalId: 'withdrawFundsModal',        formSelector: '#withdrawFundsForm' },
+            { modalId: 'editPortfolioEventModal',   formSelector: '#editPortfolioEventForm' },
+            { modalId: 'addSymbolModal',            formSelector: 'form[action$="/symbols/add"]' },
+            // Delete-confirm dialogs — every delete modal in the app
+            // funnels through here so they all render errors the same
+            // way (alert-danger banner injected at the top of
+            // .modal-body via showModalBanner). Previously the three
+            // transactions-side delete modals had bespoke inline
+            // handlers that wrote to a static <div> at the *bottom* of
+            // the body, which left the UX inconsistent across the app.
+            { modalId: 'deletePortfolioEventModal', formSelector: '#deletePortfolioEventForm' },
+            { modalId: 'deletePortfolioModal',      formSelector: '#deletePortfolioForm' },
+            { modalId: 'deleteTransactionModal',    formSelector: '#deleteTransactionForm' },
+            { modalId: 'deleteSymbolModal',         formSelector: '#deleteSymbolForm' },
+            { modalId: 'deleteDividendModal',       formSelector: '#deleteDividendForm' },
         ];
 
         modalForms.forEach(({ modalId, formSelector }) => {
@@ -1015,6 +1054,11 @@ class ModalAjaxHandler {
             const modal = document.getElementById(modalId);
             if (form && modal) {
                 this.handleForm(form, modal);
+                // Wipe any leftover banner / inline error markers when
+                // the user closes the modal — otherwise reopening it
+                // (or opening it for a different row) shows the last
+                // attempt's red state until the next submit clears it.
+                modal.addEventListener('hidden.bs.modal', () => this.clearErrors(modal));
             }
         });
     }
@@ -1062,7 +1106,10 @@ class ModalAjaxHandler {
                     this.applyFieldErrors(modal, data.errors);
                 } else {
                     // Legacy single-string error → just put it in the banner.
-                    this.showModalBanner(modal, data.error || 'Operation failed');
+                    this.showModalBanner(
+                        modal,
+                        data.error || 'We couldn\'t save your changes. Please try again.'
+                    );
                 }
             } catch (error) {
                 if (submitBtn) {

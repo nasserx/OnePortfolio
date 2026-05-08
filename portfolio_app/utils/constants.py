@@ -8,8 +8,13 @@ DEMO_USERNAME = 'demo'
 
 
 class EventType:
-    """Portfolio event types."""
-    INITIAL = 'Initial'
+    """Portfolio event types.
+
+    ``Initial`` is also a valid stored value (legacy backfill in migration
+    Step 9, queried as a string in the calculator) but no Python code
+    constructs Initial events any more, so only Deposit/Withdrawal are
+    exposed here.
+    """
     DEPOSIT = 'Deposit'
     WITHDRAWAL = 'Withdrawal'
 

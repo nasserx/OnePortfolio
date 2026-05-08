@@ -4,8 +4,6 @@ from typing import List, Optional
 from portfolio_app.repositories.base import BaseRepository
 from portfolio_app.models.dividend import Dividend
 from portfolio_app.models.portfolio import Portfolio
-from portfolio_app.utils.decimal_utils import ZERO
-from decimal import Decimal
 
 
 class DividendRepository(BaseRepository[Dividend]):
@@ -35,28 +33,3 @@ class DividendRepository(BaseRepository[Dividend]):
         return self._scoped(
             self.model.query.filter(Dividend.portfolio_id == portfolio_id)
         ).order_by(Dividend.date.desc()).all()
-
-    def get_by_portfolio_and_symbol(self, portfolio_id: int, symbol: str) -> List[Dividend]:
-        return self._scoped(
-            self.model.query.filter(
-                Dividend.portfolio_id == portfolio_id,
-                Dividend.symbol == symbol.upper(),
-            )
-        ).order_by(Dividend.date.desc()).all()
-
-    def get_by_id_for_portfolio(self, dividend_id: int, portfolio_id: int) -> Optional[Dividend]:
-        return self._scoped(
-            self.model.query.filter(
-                Dividend.id == dividend_id,
-                Dividend.portfolio_id == portfolio_id,
-            )
-        ).first()
-
-    def get_total_for_portfolio(self, portfolio_id: int) -> Decimal:
-        from sqlalchemy import func
-        result = self._scoped(
-            self.model.query
-            .with_entities(func.sum(Dividend.amount))
-            .filter(Dividend.portfolio_id == portfolio_id)
-        ).scalar()
-        return Decimal(str(result)) if result else ZERO

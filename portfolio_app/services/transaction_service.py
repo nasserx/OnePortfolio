@@ -149,7 +149,21 @@ class TransactionService:
         new_effect = self._proposed_cash_effect(
             transaction.transaction_type, new_price, new_quantity, new_fees,
         )
-        self._assert_cash_after_delta(transaction.portfolio_id, new_effect - old_effect)
+        # Sell-lowered = clawing back proceeds the user has already spent
+        # ("Insufficient amount." reads as if the *new* value is wrong,
+        # which it isn't — that's why the message diverges by type).
+        # Buy-raised = genuinely asking the portfolio to spend more than
+        # it has, so the existing INSUFFICIENT_AMOUNT wording fits.
+        cash_msg = (
+            MESSAGES['CASH_ALREADY_SPENT']
+            if transaction.transaction_type == 'Sell'
+            else MESSAGES['INSUFFICIENT_AMOUNT']
+        )
+        self._assert_cash_after_delta(
+            transaction.portfolio_id,
+            new_effect - old_effect,
+            error_message=cash_msg,
+        )
 
         old_symbol = transaction.symbol
         portfolio_id = transaction.portfolio_id
@@ -204,8 +218,13 @@ class TransactionService:
 
         # Removing the row reverses its cash effect — deleting a Sell
         # claws back inflow and may push cash below zero if the user
-        # has already withdrawn or spent it.
-        self._assert_cash_after_delta(portfolio_id, -self._cash_effect(transaction))
+        # has already withdrawn or spent it. (Deleting a Buy returns
+        # cash, so this check is a no-op for Buys.)
+        self._assert_cash_after_delta(
+            portfolio_id,
+            -self._cash_effect(transaction),
+            error_message=MESSAGES['CASH_ALREADY_SPENT'],
+        )
 
         self.transaction_repo.delete(transaction)
         self.transaction_repo.flush()
@@ -278,18 +297,25 @@ class TransactionService:
             return gross - f
         return -(gross + f)
 
-    def _assert_cash_after_delta(self, portfolio_id, delta_change):
+    def _assert_cash_after_delta(self, portfolio_id, delta_change, *, error_message=None):
         """Reject the in-progress mutation if it would push available cash
         below zero. ``delta_change`` is the signed change to the
         portfolio's cash position the mutation would cause; if it raises
-        cash (≥ 0) the check is a no-op and saves a query."""
+        cash (≥ 0) the check is a no-op and saves a query.
+
+        ``error_message`` lets the caller pick the wording that fits its
+        context: ``CASH_ALREADY_SPENT`` for clawback paths (delete a Sell,
+        lower a Dividend), ``INSUFFICIENT_AMOUNT`` for over-spend paths
+        (raise a Buy). Default falls back to the generic over-spend
+        message so existing callers stay correct.
+        """
         if delta_change >= ZERO:
             return
         current_cash = PortfolioCalculator.get_available_cash_for_portfolio(
             portfolio_id, user_id=self.portfolio_repo.user_id,
         )
         if current_cash + delta_change < ZERO:
-            raise ValueError(MESSAGES['INSUFFICIENT_AMOUNT'])
+            raise ValueError(error_message or MESSAGES['INSUFFICIENT_AMOUNT'])
 
     def _has_no_changes(self, transaction, price, quantity, fees, notes, symbol, date):
         """Check if the new values are identical to the existing transaction."""
@@ -421,14 +447,28 @@ class TransactionService:
 
         walk.sort(key=_key)
 
+        # Identify the proposed row (if present) so we can distinguish two
+        # very different dip causes:
+        #   * dip lands on the proposed Sell itself  → the user's Sell
+        #     can't fit at its date (truly "insufficient quantity")
+        #   * dip lands on an existing later Sell    → the proposed
+        #     change/delete leaves that Sell uncovered (a much clearer
+        #     message: "a later Sell depends on this Buy")
+        if proposed_type is not None:
+            proposed_id = edit_id if edit_id is not None else 2**63
+        else:
+            proposed_id = None  # delete, or old-stream check after symbol change
+
         running = Decimal('0')
-        for _, _, _, ttype, qty in walk:
+        for _date, _b, tid, ttype, qty in walk:
             if ttype == 'Buy':
                 running += qty
             else:
                 running -= qty
                 if running < 0:
-                    raise ValidationError(MESSAGES['INSUFFICIENT_QUANTITY'])
+                    if proposed_id is not None and tid == proposed_id:
+                        raise ValidationError(MESSAGES['INSUFFICIENT_QUANTITY'])
+                    raise ValidationError(MESSAGES['LATER_SELL_NEEDS_BUY'])
 
     # ------------------------------------------------------------------
     # Dividend operations
@@ -478,7 +518,10 @@ class TransactionService:
         # has already spent the difference on Buys or withdrawn it.
         if amount is not None:
             delta = Decimal(str(amount)) - Decimal(str(dividend.amount))
-            self._assert_cash_after_delta(dividend.portfolio_id, delta)
+            self._assert_cash_after_delta(
+                dividend.portfolio_id, delta,
+                error_message=MESSAGES['CASH_ALREADY_SPENT'],
+            )
             dividend.amount = amount
         if date is not None:
             dividend.date = date
@@ -499,6 +542,7 @@ class TransactionService:
         # delete rather than letting available cash go negative.
         self._assert_cash_after_delta(
             dividend.portfolio_id, -Decimal(str(dividend.amount)),
+            error_message=MESSAGES['CASH_ALREADY_SPENT'],
         )
 
         self.dividend_repo.delete(dividend)

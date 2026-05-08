@@ -6,7 +6,9 @@ strings elsewhere. Dynamic messages use ``str.format`` placeholders.
 
 
 MESSAGES = {
-    # Generic errors
+    # Generic errors. ``OPERATION_FAILED`` is a last-resort fallback only;
+    # every interactive route should use one of the action-specific
+    # ``*_FAILED`` keys below so users see what actually went wrong.
     'OPERATION_FAILED':            "Something went wrong. Please try again.",
     'INVALID_INPUT':               "Invalid input.",
     'INVALID_REQUEST':             "Invalid request. Please refresh the page and try again.",
@@ -14,6 +16,29 @@ MESSAGES = {
     'CSRF_CHECK_FAILED':           "Security check failed. Please refresh the page and try again.",
     'NOT_FOUND':                   "The requested resource was not found.",
     'INTERNAL_SERVER_ERROR':       "An unexpected error occurred.",
+
+    # Action-specific failure messages — used on the unexpected-exception
+    # branch of each CRUD route so the user sees what they were trying to
+    # do, not a generic banner.
+    'PORTFOLIO_ADD_FAILED':        "We couldn't create the portfolio. Please try again in a moment.",
+    'PORTFOLIO_DELETE_FAILED':     "We couldn't remove the portfolio. Please try again in a moment.",
+    'DEPOSIT_FAILED':              "We couldn't record your deposit. Please try again in a moment.",
+    'WITHDRAWAL_FAILED':           "We couldn't process your withdrawal. Please try again in a moment.",
+    'CASH_EVENT_UPDATE_FAILED':    "We couldn't update this transaction. Please try again in a moment.",
+    'CASH_EVENT_DELETE_FAILED':    "We couldn't remove this transaction. Please try again in a moment.",
+    'TRANSACTION_ADD_FAILED':      "We couldn't add the transaction. Please try again in a moment.",
+    'TRANSACTION_UPDATE_FAILED':   "We couldn't update the transaction. Please try again in a moment.",
+    'TRANSACTION_DELETE_FAILED':   "We couldn't remove the transaction. Please try again in a moment.",
+    'DIVIDEND_ADD_FAILED':         "We couldn't add the dividend. Please try again in a moment.",
+    'DIVIDEND_UPDATE_FAILED':      "We couldn't update the dividend. Please try again in a moment.",
+    'DIVIDEND_DELETE_FAILED':      "We couldn't remove the dividend. Please try again in a moment.",
+    'SYMBOL_ADD_FAILED':           "We couldn't track this symbol. Please try again in a moment.",
+    'SYMBOL_DELETE_FAILED':        "We couldn't stop tracking this symbol. Please try again in a moment.",
+    'PASSWORD_CHANGE_FAILED':      "We couldn't change your password. Please try again in a moment.",
+    'EMAIL_UPDATE_FAILED':         "We couldn't update your email. Please try again in a moment.",
+    'ADMIN_TOGGLE_ADMIN_FAILED':   "We couldn't update admin access. Please try again in a moment.",
+    'ADMIN_DELETE_USER_FAILED':    "We couldn't remove this user. Please try again in a moment.",
+    'ADMIN_RESET_EMAIL_FAILED':    "We couldn't send the reset email. Please try again in a moment.",
 
     # Not-found errors
     'PORTFOLIO_NOT_FOUND':         "This portfolio no longer exists.",
@@ -36,6 +61,17 @@ MESSAGES = {
     # Business rules
     'INSUFFICIENT_AMOUNT':         "Insufficient amount.",
     'INSUFFICIENT_QUANTITY':       "Insufficient quantity.",
+    # Surfaces when a delete/edit/symbol-change would leave a previously
+    # covered Sell without enough holdings on its date — distinct from
+    # INSUFFICIENT_QUANTITY (which means the proposed Sell itself is too
+    # large at its date).
+    'LATER_SELL_NEEDS_BUY':        "A later Sell depends on this Buy. Remove that Sell first.",
+    # Clawback case — the user is removing or shrinking an *inflow*
+    # (a Deposit, a Sell, a Dividend) that's already been spent on a
+    # later Buy/Withdrawal. Different from INSUFFICIENT_AMOUNT, which
+    # means the user is asking the portfolio to *spend* more than it
+    # has (raise a Buy, raise a Withdrawal).
+    'CASH_ALREADY_SPENT':          "Cash already spent. Reverse a later transaction first.",
     'FEES_EXCEED_PROCEEDS':        "Fees cannot exceed the sale proceeds.",
     'PORTFOLIO_NAME_TAKEN':        "A portfolio with this name already exists.",
     'SYMBOL_ALREADY_TRACKED':      "'{symbol}' is already being tracked in this portfolio.",
@@ -110,9 +146,6 @@ MESSAGES = {
 
     # Auth — login, registration, verification
     'INVALID_CREDENTIALS':         "Invalid username or password.",
-    'ACCOUNT_UNVERIFIED':          "Your account hasn't been verified yet. Please check your email for the verification code.",
-    'ACCOUNT_NOT_FOUND':           "No account was found for this email.",
-    'ACCOUNT_ALREADY_VERIFIED':    "This account is already verified. Please sign in.",
     'ACCOUNT_LOCKED':              "Too many failed sign-in attempts. Please try again in a few minutes.",
     'REGISTRATION_FAILED':         "Registration failed. Please try again.",
     'RATE_LIMIT_SIGNUP':           "Too many sign-up attempts. Please try again later.",
@@ -120,9 +153,6 @@ MESSAGES = {
 
     'VERIFICATION_CODE_REQUIRED':  "Verification code is required.",
     'VERIFICATION_CODE_INVALID_FORMAT': "Please enter the 6-digit code sent to your email.",
-    'VERIFICATION_CODE_MISMATCH':  "Invalid verification code.",
-    'VERIFICATION_CODE_EXPIRED':   "This code has expired. Please request a new one.",
-    'VERIFICATION_CODE_NOT_FOUND': "No verification code was found. Please request a new one.",
     # Generic, non-enumerating message for verify-code failures — used by
     # auth_service.verify_user so the response cannot distinguish "email
     # not registered" / "already verified" / "wrong code" / "expired".
@@ -135,7 +165,6 @@ MESSAGES = {
     'PASSWORD_CHANGED':            "Password changed successfully.",
     'PASSWORD_RESET_SUCCESS':      "Your password has been reset. You can now sign in.",
     'PASSWORD_RESET_LINK_INVALID': "This password reset link is invalid or has expired.",
-    'PASSWORD_RESET_ACCOUNT_NOT_FOUND': "No account was found for this reset link.",
 
     # Account self-service
     'DEMO_ACTION_DISABLED':        "This feature is disabled in demo mode.",

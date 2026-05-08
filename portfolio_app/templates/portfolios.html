@@ -331,6 +331,11 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
+                    {% if _add_errs.get('__all__') %}
+                    <div class="alert alert-danger d-flex align-items-center mb-3">
+                        <i class="bi bi-exclamation-circle me-2"></i>{{ _add_errs.get('__all__') }}
+                    </div>
+                    {% endif %}
                     <div class="mb-3">
                         <label for="portfolio_name" class="form-label">Portfolio Name</label>
                         <input type="text"
@@ -342,9 +347,6 @@
                                autofocus>
                         {% if _add_errs.get('name') %}
                         <div class="invalid-feedback">{{ _add_errs.get('name') }}</div>
-                        {% endif %}
-                        {% if _add_errs.get('__all__') %}
-                        <div class="invalid-feedback d-block">{{ _add_errs.get('__all__') }}</div>
                         {% endif %}
                     </div>
                 </div>

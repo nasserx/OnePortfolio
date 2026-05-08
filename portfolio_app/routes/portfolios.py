@@ -133,13 +133,13 @@ def portfolios_add():
         db.session.rollback()
 
         if is_ajax_request():
-            return json_response(False, errors={'__all__': MESSAGES['OPERATION_FAILED']})
+            return json_response(False, errors={'__all__': MESSAGES['PORTFOLIO_ADD_FAILED']})
 
         ctx = _get_portfolios_page_context()
         return render_template(
             'portfolios.html',
             **ctx,
-            form_errors={'portfolios_add': {'__all__': MESSAGES['OPERATION_FAILED']}},
+            form_errors={'portfolios_add': {'__all__': MESSAGES['PORTFOLIO_ADD_FAILED']}},
             form_values={'portfolios_add': request.form},
             active_modal='newPortfolioModal',
         ), 400
@@ -148,19 +148,29 @@ def portfolios_add():
 @portfolios_bp.route('/delete/<int:portfolio_id>', methods=['POST'])
 @login_required
 def portfolios_delete(portfolio_id):
-    """Delete portfolio."""
+    """Delete portfolio. Returns JSON for AJAX so the Confirm Remove
+    modal can surface failures inline (matching the behaviour of every
+    other delete dialog in the app)."""
     try:
         svc = get_services()
         svc.portfolio_service.delete_portfolio(portfolio_id)
+        if is_ajax_request():
+            return json_response(True, message=MESSAGES['PORTFOLIO_REMOVED'])
         flash(MESSAGES['PORTFOLIO_REMOVED'], 'success')
 
     except ValueError as e:
+        if is_ajax_request():
+            return json_response(False, errors={'__all__': get_error_message(e)})
         flash(get_error_message(e), 'error')
 
     except Exception:
         logger.exception('Failed to delete portfolio %s', portfolio_id)
         db.session.rollback()
-        flash(MESSAGES['OPERATION_FAILED'], 'error')
+        if is_ajax_request():
+            return json_response(
+                False, errors={'__all__': MESSAGES['PORTFOLIO_DELETE_FAILED']},
+            )
+        flash(MESSAGES['PORTFOLIO_DELETE_FAILED'], 'error')
 
     return redirect(url_for('portfolios.portfolios_list'))
 
@@ -213,9 +223,9 @@ def portfolios_deposit(portfolio_id):
         db.session.rollback()
 
         if is_ajax_request():
-            return json_response(False, errors={'__all__': MESSAGES['OPERATION_FAILED']})
+            return json_response(False, errors={'__all__': MESSAGES['DEPOSIT_FAILED']})
 
-        flash(MESSAGES['OPERATION_FAILED'], 'error')
+        flash(MESSAGES['DEPOSIT_FAILED'], 'error')
         return redirect(url_for('portfolios.portfolios_list'))
 
 
@@ -262,7 +272,10 @@ def portfolios_withdraw(portfolio_id):
             # amount input rather than as a modal banner.
             return field_error_response(
                 get_error_message(e),
-                {MESSAGES['INSUFFICIENT_AMOUNT']: 'amount_delta'},
+                {
+                    MESSAGES['INSUFFICIENT_AMOUNT']: 'amount_delta',
+                    MESSAGES['CASH_ALREADY_SPENT']:  'amount_delta',
+                },
             )
 
         flash(get_error_message(e), 'error')
@@ -273,9 +286,9 @@ def portfolios_withdraw(portfolio_id):
         db.session.rollback()
 
         if is_ajax_request():
-            return json_response(False, errors={'__all__': MESSAGES['OPERATION_FAILED']})
+            return json_response(False, errors={'__all__': MESSAGES['WITHDRAWAL_FAILED']})
 
-        flash(MESSAGES['OPERATION_FAILED'], 'error')
+        flash(MESSAGES['WITHDRAWAL_FAILED'], 'error')
         return redirect(url_for('portfolios.portfolios_list'))
 
 
@@ -331,10 +344,13 @@ def portfolios_event_edit(event_id):
     except ValueError as e:
         if is_ajax_request():
             # Event-edit's input is named ``edit_cash_event_amount`` —
-            # surface "Insufficient amount." under it.
+            # surface insufficient/clawback messages under it.
             return field_error_response(
                 get_error_message(e),
-                {MESSAGES['INSUFFICIENT_AMOUNT']: 'edit_cash_event_amount'},
+                {
+                    MESSAGES['INSUFFICIENT_AMOUNT']: 'edit_cash_event_amount',
+                    MESSAGES['CASH_ALREADY_SPENT']:  'edit_cash_event_amount',
+                },
             )
         flash(get_error_message(e), 'error')
 
@@ -342,8 +358,8 @@ def portfolios_event_edit(event_id):
         logger.exception('Failed to edit event %s', event_id)
         db.session.rollback()
         if is_ajax_request():
-            return json_response(False, errors={'__all__': MESSAGES['OPERATION_FAILED']})
-        flash(MESSAGES['OPERATION_FAILED'], 'error')
+            return json_response(False, errors={'__all__': MESSAGES['CASH_EVENT_UPDATE_FAILED']})
+        flash(MESSAGES['CASH_EVENT_UPDATE_FAILED'], 'error')
 
     return redirect(url_for('portfolios.portfolios_list'))
 
@@ -351,31 +367,53 @@ def portfolios_event_edit(event_id):
 @portfolios_bp.route('/events/delete/<int:event_id>', methods=['POST'])
 @login_required
 def portfolios_event_delete(event_id):
-    """Delete portfolio event."""
+    """Delete portfolio event.
+
+    Returns JSON for AJAX modal submissions so the confirm-remove dialog
+    can surface ``CASH_ALREADY_SPENT`` (and other ValueError messages)
+    inline as a banner — without this branch the user got a full-page
+    redirect with a flash message instead, hiding the reason behind a
+    page reload.
+    """
     try:
         svc = get_services()
 
         event = svc.portfolio_event_repo.get_by_id(event_id)
         if not event:
+            if is_ajax_request():
+                return json_response(
+                    False, errors={'__all__': MESSAGES['CASH_EVENT_NOT_FOUND']},
+                )
             flash(MESSAGES['CASH_EVENT_NOT_FOUND'], 'error')
             return redirect(url_for('portfolios.portfolios_list'))
 
         event_type = event.event_type
         form = PortfolioEventDeleteForm(request.form, event_id, event_type)
         if not form.validate():
-            flash(get_first_form_error(form.errors), 'error')
+            first_err = get_first_form_error(form.errors)
+            if is_ajax_request():
+                return json_response(False, errors={'__all__': first_err})
+            flash(first_err, 'error')
             return redirect(url_for('portfolios.portfolios_list'))
 
         svc.portfolio_service.delete_portfolio_event(event_id)
 
+        if is_ajax_request():
+            return json_response(True, message=MESSAGES['TRANSACTION_REMOVED'])
         flash(MESSAGES['TRANSACTION_REMOVED'], 'success')
 
     except ValueError as e:
+        if is_ajax_request():
+            return json_response(False, errors={'__all__': get_error_message(e)})
         flash(get_error_message(e), 'error')
 
     except Exception:
         logger.exception('Failed to delete event %s', event_id)
         db.session.rollback()
-        flash(MESSAGES['OPERATION_FAILED'], 'error')
+        if is_ajax_request():
+            return json_response(
+                False, errors={'__all__': MESSAGES['CASH_EVENT_DELETE_FAILED']},
+            )
+        flash(MESSAGES['CASH_EVENT_DELETE_FAILED'], 'error')
 
     return redirect(url_for('portfolios.portfolios_list'))

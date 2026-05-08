@@ -30,9 +30,11 @@ _TX_EDIT_FIELD_MAP = {
     # Cash drift on edit usually traces back to quantity or price, but
     # with no further info point the user at the most likely culprit.
     MESSAGES['INSUFFICIENT_AMOUNT']: 'edit_quantity',
+    MESSAGES['CASH_ALREADY_SPENT']:  'edit_quantity',
 }
 _DIV_EDIT_FIELD_MAP = {
     MESSAGES['INSUFFICIENT_AMOUNT']: 'edit_amount',
+    MESSAGES['CASH_ALREADY_SPENT']:  'edit_amount',
 }
 from portfolio_app.utils.constants import safe_html_id
 from portfolio_app.utils.decimal_utils import ZERO
@@ -217,8 +219,8 @@ def transaction_add():
         logger.exception('Failed to add transaction')
         db.session.rollback()
         if is_ajax_request():
-            return json_response(False, errors={'__all__': MESSAGES['OPERATION_FAILED']})
-        flash(MESSAGES['OPERATION_FAILED'], 'error')
+            return json_response(False, errors={'__all__': MESSAGES['TRANSACTION_ADD_FAILED']})
+        flash(MESSAGES['TRANSACTION_ADD_FAILED'], 'error')
         return redirect(url_for('transactions.transaction_list'))
 
 
@@ -277,8 +279,8 @@ def transaction_edit(transaction_id):
         logger.exception('Failed to edit transaction %s', transaction_id)
         db.session.rollback()
         if is_ajax_request():
-            return json_response(False, errors={'__all__': MESSAGES['OPERATION_FAILED']})
-        flash(MESSAGES['OPERATION_FAILED'], 'error')
+            return json_response(False, errors={'__all__': MESSAGES['TRANSACTION_UPDATE_FAILED']})
+        flash(MESSAGES['TRANSACTION_UPDATE_FAILED'], 'error')
         return redirect(url_for('transactions.transaction_list'))
 
 
@@ -303,8 +305,8 @@ def transaction_delete(transaction_id):
         logger.exception('Failed to delete transaction %s', transaction_id)
         db.session.rollback()
         if is_ajax_request():
-            return json_response(False, errors={'__all__': MESSAGES['OPERATION_FAILED']})
-        flash(MESSAGES['OPERATION_FAILED'], 'error')
+            return json_response(False, errors={'__all__': MESSAGES['TRANSACTION_DELETE_FAILED']})
+        flash(MESSAGES['TRANSACTION_DELETE_FAILED'], 'error')
 
     return redirect(url_for('transactions.transaction_list'))
 
@@ -356,8 +358,8 @@ def dividend_add():
         logger.exception('Failed to add dividend')
         db.session.rollback()
         if is_ajax_request():
-            return json_response(False, errors={'__all__': MESSAGES['OPERATION_FAILED']})
-        flash(MESSAGES['OPERATION_FAILED'], 'error')
+            return json_response(False, errors={'__all__': MESSAGES['DIVIDEND_ADD_FAILED']})
+        flash(MESSAGES['DIVIDEND_ADD_FAILED'], 'error')
         return redirect(url_for('transactions.transaction_list'))
 
 
@@ -416,8 +418,8 @@ def dividend_edit(dividend_id):
         logger.exception('Failed to edit dividend %s', dividend_id)
         db.session.rollback()
         if is_ajax_request():
-            return json_response(False, errors={'__all__': MESSAGES['OPERATION_FAILED']})
-        flash(MESSAGES['OPERATION_FAILED'], 'error')
+            return json_response(False, errors={'__all__': MESSAGES['DIVIDEND_UPDATE_FAILED']})
+        flash(MESSAGES['DIVIDEND_UPDATE_FAILED'], 'error')
         return redirect(url_for('transactions.transaction_list'))
 
 
@@ -442,8 +444,8 @@ def dividend_delete(dividend_id):
         logger.exception('Failed to delete dividend %s', dividend_id)
         db.session.rollback()
         if is_ajax_request():
-            return json_response(False, errors={'__all__': MESSAGES['OPERATION_FAILED']})
-        flash(MESSAGES['OPERATION_FAILED'], 'error')
+            return json_response(False, errors={'__all__': MESSAGES['DIVIDEND_DELETE_FAILED']})
+        flash(MESSAGES['DIVIDEND_DELETE_FAILED'], 'error')
 
     return redirect(url_for('transactions.transaction_list'))
 
@@ -491,8 +493,8 @@ def symbol_add():
         logger.exception('Failed to track symbol')
         db.session.rollback()
         if is_ajax_request():
-            return json_response(False, errors={'__all__': MESSAGES['OPERATION_FAILED']})
-        flash(MESSAGES['OPERATION_FAILED'], 'error')
+            return json_response(False, errors={'__all__': MESSAGES['SYMBOL_ADD_FAILED']})
+        flash(MESSAGES['SYMBOL_ADD_FAILED'], 'error')
         return redirect(url_for('transactions.transaction_list'))
 
 
@@ -529,7 +531,7 @@ def symbol_delete():
         logger.exception('Failed to stop tracking symbol')
         db.session.rollback()
         if is_ajax_request():
-            return json_response(False, errors={'__all__': MESSAGES['OPERATION_FAILED']})
-        flash(MESSAGES['OPERATION_FAILED'], 'error')
+            return json_response(False, errors={'__all__': MESSAGES['SYMBOL_DELETE_FAILED']})
+        flash(MESSAGES['SYMBOL_DELETE_FAILED'], 'error')
 
     return redirect(url_for('transactions.transaction_list'))

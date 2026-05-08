@@ -86,6 +86,13 @@ class PortfolioService:
         )
         delta_change = Decimal(str(amount_delta)) - Decimal(str(event.amount_delta))
         if current_cash + delta_change < ZERO:
+            # Lowering a Deposit/Initial = clawback (money's been spent on
+            # later transactions). Raising a Withdrawal = genuine
+            # over-spend. The two scenarios call for different wording so
+            # the user knows whether to undo a *later* action or change
+            # the value they just typed.
+            if event.event_type in ('Deposit', 'Initial'):
+                raise ValueError(MESSAGES['CASH_ALREADY_SPENT'])
             raise ValueError(MESSAGES['INSUFFICIENT_AMOUNT'])
 
         event.amount_delta = amount_delta
@@ -110,11 +117,14 @@ class PortfolioService:
 
         # Removing the event subtracts its amount_delta from net deposits,
         # which in turn subtracts the same value from available cash.
+        # Only triggers for Deposit/Initial deletions (Withdrawals have
+        # negative amount_delta, so removing them *raises* cash and the
+        # check passes trivially).
         current_cash = PortfolioCalculator.get_available_cash_for_portfolio(
             portfolio_id, user_id=self.portfolio_repo.user_id,
         )
         if current_cash - Decimal(str(event.amount_delta)) < ZERO:
-            raise ValueError(MESSAGES['INSUFFICIENT_AMOUNT'])
+            raise ValueError(MESSAGES['CASH_ALREADY_SPENT'])
 
         self.portfolio_event_repo.delete(event)
         self.portfolio_repo.commit()

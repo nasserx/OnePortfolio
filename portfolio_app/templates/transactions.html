@@ -648,7 +648,6 @@
                         <i class="bi bi-exclamation-triangle"></i>
                         This will recalculate average costs for this symbol.
                     </div>
-                    <div id="delete_tx_error" class="alert alert-danger d-none"></div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -682,7 +681,6 @@
                         <i class="bi bi-exclamation-triangle-fill me-1"></i>
                         <span id="delete_symbol_warning_text"></span>
                     </div>
-                    <div id="delete_symbol_error" class="alert alert-danger d-none"></div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -836,7 +834,6 @@
                 </div>
                 <div class="modal-body">
                     <p>{{ MESSAGES['CONFIRM_REMOVE_DIVIDEND'] }}</p>
-                    <div id="delete_dividend_error" class="alert alert-danger d-none"></div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -1276,141 +1273,42 @@ function editTransaction(id, portfolioId, type, symbol, price, quantity, fees, n
     new bootstrap.Modal(document.getElementById('editTransactionModal')).show();
 }
 
-// Setup delete transaction AJAX handler once
-(function setupDeleteTransaction() {
+// Submit handling for #deleteTransactionForm is wired by ModalAjaxHandler
+// (main.js) so the error banner renders identically to every other
+// delete modal in the app — alert-danger banner with the warning icon,
+// injected at the top of .modal-body. This wrapper just sets the form
+// action for the row the user clicked and shows the modal.
+window.deleteTransaction = function(id) {
     var form = document.getElementById('deleteTransactionForm');
-    var errorDiv = document.getElementById('delete_tx_error');
-    var submitBtn = form.querySelector('button[type="submit"]');
-    var modalEl = document.getElementById('deleteTransactionModal');
+    form.action = '/transactions/delete/' + id;
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('deleteTransactionModal')).show();
+};
 
-    function showError(msg) {
-        errorDiv.textContent = msg || 'Operation failed';
-        errorDiv.classList.remove('d-none');
-    }
-
-    function hideError() {
-        errorDiv.textContent = '';
-        errorDiv.classList.add('d-none');
-    }
-
-    form.addEventListener('submit', function(e) {
-        e.preventDefault();
-        if (submitBtn.disabled) return;
-
-        submitBtn.disabled = true;
-        hideError();
-
-        var xhr = new XMLHttpRequest();
-        xhr.open('POST', form.action, true);
-        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-        xhr.onload = function() {
-            submitBtn.disabled = false;
-            try {
-                var data = JSON.parse(xhr.responseText);
-                if (data.success) {
-                    sessionStorage.setItem('flashMessage', data.message || 'Transaction removed');
-                    sessionStorage.setItem('flashType', 'success');
-                    var modal = bootstrap.Modal.getInstance(modalEl);
-                    if (modal) modal.hide();
-                    location.reload();
-                } else {
-                    showError(data.error);
-                }
-            } catch (ex) {
-                showError('Operation failed');
-            }
-        };
-        xhr.onerror = function() {
-            submitBtn.disabled = false;
-            showError('Network error');
-        };
-        xhr.send(new FormData(form));
-    });
-
-    window.deleteTransaction = function(id) {
-        form.action = '/transactions/delete/' + id;
-        hideError();
-        submitBtn.disabled = false;
-        bootstrap.Modal.getOrCreateInstance(modalEl).show();
-    };
-})();
-
-// Setup delete symbol AJAX handler once
-(function setupDeleteSymbol() {
-    var form = document.getElementById('deleteSymbolForm');
-    var errorDiv = document.getElementById('delete_symbol_error');
-    var submitBtn = form.querySelector('button[type="submit"]');
-    var modalEl = document.getElementById('deleteSymbolModal');
+// Submit handling for #deleteSymbolForm is wired by ModalAjaxHandler
+// (main.js). This wrapper just primes the hidden inputs + warning copy
+// for the row the user clicked, then opens the modal.
+window.openDeleteSymbolModal = function(portfolioId, portfolioName, symbol, txCount) {
     var portfolioInput = document.getElementById('delete_symbol_portfolio_id');
     var symbolInput = document.getElementById('delete_symbol_ticker');
+    if (portfolioInput) portfolioInput.value = portfolioId ? String(portfolioId) : '';
+    if (symbolInput) symbolInput.value = (symbol || '').toUpperCase();
 
-    function showError(msg) {
-        errorDiv.textContent = msg || 'Operation failed';
-        errorDiv.classList.remove('d-none');
+    var symbolName = document.getElementById('delete_symbol_name');
+    var warningDiv = document.getElementById('delete_symbol_warning');
+    var warningText = document.getElementById('delete_symbol_warning_text');
+
+    if (symbolName) symbolName.textContent = (symbol || '').toUpperCase();
+
+    if (txCount > 0 && warningDiv && warningText) {
+        warningText.textContent = 'This will also permanently remove ' + txCount +
+            ' transaction' + (txCount !== 1 ? 's' : '') + ' for this symbol.';
+        warningDiv.classList.remove('d-none');
+    } else if (warningDiv) {
+        warningDiv.classList.add('d-none');
     }
 
-    function hideError() {
-        errorDiv.textContent = '';
-        errorDiv.classList.add('d-none');
-    }
-
-    form.addEventListener('submit', function(e) {
-        e.preventDefault();
-        if (submitBtn.disabled) return;
-
-        submitBtn.disabled = true;
-        hideError();
-
-        var xhr = new XMLHttpRequest();
-        xhr.open('POST', form.action, true);
-        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-        xhr.onload = function() {
-            submitBtn.disabled = false;
-            try {
-                var data = JSON.parse(xhr.responseText);
-                if (data.success) {
-                    sessionStorage.setItem('flashMessage', data.message || 'Symbol removed');
-                    sessionStorage.setItem('flashType', 'success');
-                    var modal = bootstrap.Modal.getInstance(modalEl);
-                    if (modal) modal.hide();
-                    location.reload();
-                } else {
-                    showError(data.error);
-                }
-            } catch (ex) {
-                showError('Operation failed');
-            }
-        };
-        xhr.onerror = function() {
-            submitBtn.disabled = false;
-            showError('Network error');
-        };
-        xhr.send(new FormData(form));
-    });
-
-    window.openDeleteSymbolModal = function(portfolioId, portfolioName, symbol, txCount) {
-        if (portfolioInput) portfolioInput.value = portfolioId ? String(portfolioId) : '';
-        if (symbolInput) symbolInput.value = (symbol || '').toUpperCase();
-
-        var symbolName = document.getElementById('delete_symbol_name');
-        var warningDiv = document.getElementById('delete_symbol_warning');
-        var warningText = document.getElementById('delete_symbol_warning_text');
-
-        if (symbolName) symbolName.textContent = (symbol || '').toUpperCase();
-
-        if (txCount > 0 && warningDiv && warningText) {
-            warningText.textContent = 'This will also permanently remove ' + txCount +
-                ' transaction' + (txCount !== 1 ? 's' : '') + ' for this symbol.';
-            warningDiv.classList.remove('d-none');
-        } else if (warningDiv) {
-            warningDiv.classList.add('d-none');
-        }
-
-        hideError();
-        submitBtn.disabled = false;
-        bootstrap.Modal.getOrCreateInstance(modalEl).show();
-    };
-})();
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('deleteSymbolModal')).show();
+};
 
 (function setupAddSellMax() {
     const modalEl = document.getElementById('addTransactionModal');
@@ -1738,10 +1636,11 @@ function openEditDividendModal(id, amount, dateShort, notes) {
                     if (modal) modal.hide();
                     location.reload();
                 } else {
-                    if (errEl) { errEl.textContent = data.error || 'Operation failed'; errEl.classList.remove('d-none'); }
+                    var msg = Utils.extractAjaxError(data, 'Could not update the dividend. Please try again.');
+                    if (errEl) { errEl.textContent = msg; errEl.classList.remove('d-none'); }
                 }
             } catch (ex) {
-                if (errEl) { errEl.textContent = 'Operation failed'; errEl.classList.remove('d-none'); }
+                if (errEl) { errEl.textContent = 'Could not update the dividend. Please try again.'; errEl.classList.remove('d-none'); }
             }
         };
         xhr.onerror = function() {
@@ -1752,53 +1651,14 @@ function openEditDividendModal(id, amount, dateShort, notes) {
     });
 })();
 
-// Setup Delete Dividend AJAX
-(function setupDeleteDividend() {
-    var form     = document.getElementById('deleteDividendForm');
-    var errEl    = document.getElementById('delete_dividend_error');
-    var submitBtn = form ? form.querySelector('button[type="submit"]') : null;
-    var modalEl  = document.getElementById('deleteDividendModal');
+// Submit handling for #deleteDividendForm is wired by ModalAjaxHandler
+// (main.js). This wrapper just sets the form action for the row the
+// user clicked and shows the modal.
+window.deleteDividend = function(id) {
+    var form = document.getElementById('deleteDividendForm');
     if (!form) return;
-
-    form.addEventListener('submit', function(e) {
-        e.preventDefault();
-        if (submitBtn && submitBtn.disabled) return;
-        if (submitBtn) submitBtn.disabled = true;
-        if (errEl) { errEl.textContent = ''; errEl.classList.add('d-none'); }
-
-        var xhr = new XMLHttpRequest();
-        xhr.open('POST', form.action, true);
-        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-        xhr.onload = function() {
-            if (submitBtn) submitBtn.disabled = false;
-            try {
-                var data = JSON.parse(xhr.responseText);
-                if (data.success) {
-                    sessionStorage.setItem('flashMessage', data.message || 'Dividend removed');
-                    sessionStorage.setItem('flashType', 'success');
-                    var modal = bootstrap.Modal.getInstance(modalEl);
-                    if (modal) modal.hide();
-                    location.reload();
-                } else {
-                    if (errEl) { errEl.textContent = data.error || 'Operation failed'; errEl.classList.remove('d-none'); }
-                }
-            } catch (ex) {
-                if (errEl) { errEl.textContent = 'Operation failed'; errEl.classList.remove('d-none'); }
-            }
-        };
-        xhr.onerror = function() {
-            if (submitBtn) submitBtn.disabled = false;
-            if (errEl) { errEl.textContent = 'Network error'; errEl.classList.remove('d-none'); }
-        };
-        xhr.send(new FormData(form));
-    });
-
-    window.deleteDividend = function(id) {
-        form.action = '/transactions/dividends/delete/' + id;
-        if (errEl) { errEl.textContent = ''; errEl.classList.add('d-none'); }
-        if (submitBtn) submitBtn.disabled = false;
-        bootstrap.Modal.getOrCreateInstance(modalEl).show();
-    };
-})();
+    form.action = '/transactions/dividends/delete/' + id;
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('deleteDividendModal')).show();
+};
 </script>
 {% endblock %}

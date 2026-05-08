@@ -355,7 +355,7 @@ def change_password():
                 form_values = request.form
             except Exception:
                 logger.exception('Password change failed')
-                form_errors['__all__'] = MESSAGES['OPERATION_FAILED']
+                form_errors['__all__'] = MESSAGES['PASSWORD_CHANGE_FAILED']
                 form_values = request.form
         else:
             form_errors = form.errors
@@ -413,7 +413,7 @@ def update_email():
                 form_values = request.form
             except Exception:
                 logger.exception('Email update failed')
-                form_errors['__all__'] = MESSAGES['OPERATION_FAILED']
+                form_errors['__all__'] = MESSAGES['EMAIL_UPDATE_FAILED']
                 form_values = request.form
         else:
             form_errors = form.errors

@@ -91,21 +91,6 @@ class PortfolioCalculator:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def get_total_portfolio_value(user_id=None):
-        """Total portfolio value (invested + cash across all portfolios)."""
-        q = Portfolio.query
-        if user_id is not None:
-            q = q.filter_by(user_id=user_id)
-        portfolios = q.all()
-        total = ZERO
-        for p in portfolios:
-            cash = PortfolioCalculator.get_available_cash_for_portfolio(p.id, user_id=user_id)
-            tx_summary = PortfolioCalculator.get_portfolio_transactions_summary(p.id, user_id=user_id)
-            invested = _to_decimal(tx_summary['cost_basis'] or 0)
-            total += invested + cash
-        return total
-
-    @staticmethod
     def get_total_deposits_for_portfolio(portfolio_id, *, user_id=None) -> Decimal:
         """Total deposits = sum of Initial + Deposit events only.
 
@@ -585,25 +570,6 @@ class PortfolioCalculator:
     # ------------------------------------------------------------------
     # Recalculation (after add/edit/delete transaction)
     # ------------------------------------------------------------------
-
-    @staticmethod
-    def recalculate_all_averages_for_portfolio(portfolio_id, *, user_id=None):
-        """Recalculate average costs for all transactions of a portfolio."""
-        sym_query = (
-            Transaction.query.with_entities(Transaction.symbol)
-            .filter_by(portfolio_id=portfolio_id)
-        )
-        sym_query = PortfolioCalculator._scope_to_user(sym_query, Transaction, user_id)
-        symbols = sym_query.distinct().all()
-
-        updated = []
-        for (sym,) in symbols:
-            sym_norm = PortfolioCalculator.normalize_symbol(sym)
-            if not sym_norm:
-                continue
-            updated.extend(PortfolioCalculator.recalculate_all_averages_for_symbol(portfolio_id, sym_norm, user_id=user_id))
-
-        return updated
 
     @staticmethod
     def recalculate_all_averages_for_symbol(portfolio_id, symbol, *, user_id=None):

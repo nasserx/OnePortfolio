@@ -58,10 +58,6 @@ class BaseRepository(Generic[T]):
         """Commit the current transaction."""
         self.db.session.commit()
 
-    def rollback(self) -> None:
-        """Rollback the current transaction."""
-        self.db.session.rollback()
-
     def flush(self) -> None:
         """Flush the current session."""
         self.db.session.flush()

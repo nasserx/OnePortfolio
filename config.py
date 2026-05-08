@@ -78,7 +78,6 @@ class Config:
     
     # Transaction types (Buy/Sell only — Dividend uses a separate model)
     TRANSACTION_TYPES = ['Buy', 'Sell']
-    DIVIDEND_TYPE = 'Dividend'
 
     # Flask-Mail — Gmail SMTP configuration
     MAIL_SERVER = 'smtp.gmail.com'
@@ -92,6 +91,6 @@ class Config:
     # Public base URL used in email links (no trailing slash)
     APP_BASE_URL = os.environ.get('APP_BASE_URL', '')
 
-    # Token expiry (seconds)
-    EMAIL_VERIFICATION_EXPIRY = 60 * 60 * 24   # 24 hours
+    # Token expiry (seconds). Email-verification uses a 6-digit OTP whose
+    # 10-minute lifetime is enforced in AuthService — no Config knob needed.
     PASSWORD_RESET_EXPIRY     = 60 * 60         # 1 hour

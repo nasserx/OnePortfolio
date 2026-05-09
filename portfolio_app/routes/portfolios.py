@@ -54,6 +54,7 @@ def _get_portfolios_page_context():
             'portfolio': portfolio,
             'events': events,
             'total_contributed': total_contributed,
+            'withdrawable_cash': cash,
             'book_value': book_value,
             'realized_pnl': realized_pnl,
             'roi_percent': roi_percent,
@@ -63,6 +64,24 @@ def _get_portfolios_page_context():
     return {
         'portfolios': portfolios,
         'portfolio_details': portfolio_details,
+    }
+
+
+def _portfolio_modal_data(portfolio_id):
+    svc = get_services()
+    portfolio = svc.portfolio_repo.get_by_id(portfolio_id)
+    if not portfolio:
+        return {'portfolio_id': portfolio_id}
+
+    withdrawable_cash = PortfolioCalculator.get_available_cash_for_portfolio(
+        portfolio.id, user_id=svc.portfolio_repo.user_id,
+    )
+    withdrawable_cash_display = f"{withdrawable_cash:,.2f}"
+    return {
+        'portfolio_id': portfolio.id,
+        'name': portfolio.name,
+        'withdrawable_cash': withdrawable_cash_display,
+        'withdrawable_cash_input': withdrawable_cash_display,
     }
 
 
@@ -245,7 +264,7 @@ def portfolios_withdraw(portfolio_id):
                 form_errors={'portfolios_withdraw': form.errors},
                 form_values={'portfolios_withdraw': request.form},
                 active_modal='withdrawFundsModal',
-                modal_data={'portfolio_id': portfolio_id},
+                modal_data=_portfolio_modal_data(portfolio_id),
             ), 400
 
         data = form.get_cleaned_data()
@@ -264,13 +283,13 @@ def portfolios_withdraw(portfolio_id):
 
     except ValueError as e:
         if is_ajax_request():
-            # "Insufficient amount." comes from the service when the
-            # withdrawal exceeds available cash — surface it under the
-            # amount input rather than as a modal banner.
+            # Withdrawal business-rule errors belong under Amount rather
+            # than as a modal-level banner.
             return field_error_response(
                 get_error_message(e),
                 {
                     MESSAGES['INSUFFICIENT_AMOUNT']: 'amount_delta',
+                    MESSAGES['WITHDRAWAL_EXCEEDS_CASH']: 'amount_delta',
                     MESSAGES['CASH_ALREADY_SPENT']:  'amount_delta',
                 },
             )

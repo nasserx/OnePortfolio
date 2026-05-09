@@ -106,6 +106,8 @@
                                         class="btn btn-outline-danger btn-icon js-withdraw-funds-btn"
                                         data-portfolio-id="{{ item.portfolio.id }}"
                                         data-name="{{ item.portfolio.name|e }}"
+                                        data-withdrawable-cash="{{ item.withdrawable_cash|fmt_money }}"
+                                        data-withdrawable-cash-input="{{ item.withdrawable_cash|fmt_money }}"
                                         title="Withdraw"
                                         data-bs-toggle="tooltip" data-bs-placement="top">
                                     <i class="bi bi-arrow-up-circle"></i>
@@ -282,14 +284,20 @@
                         <div class="col-6">
                             <div class="mb-3">
                                 <label for="withdraw_funds_amount" class="form-label">Amount</label>
-                                <input type="text" inputmode="decimal"
-                                       class="form-control {% if _with_errs.get('amount_delta') %}is-invalid{% endif %}"
-                                       id="withdraw_funds_amount" name="amount_delta"
-                                       placeholder="0.00"
-                                       value="{{ _with_vals.get('amount_delta', '') }}">
+                                <div class="position-relative">
+                                    <input type="text" inputmode="decimal"
+                                           class="form-control {% if _with_errs.get('amount_delta') %}is-invalid{% endif %} pe-5"
+                                           id="withdraw_funds_amount" name="amount_delta"
+                                           placeholder="0.00"
+                                           value="{{ _with_vals.get('amount_delta', '') }}">
+                                    <span class="sell-max-inline">
+                                        <button type="button" class="btn btn-link btn-sm p-0 sell-max-btn" id="withdraw_max_btn">Max</button>
+                                    </span>
+                                </div>
                                 {% if _with_errs.get('amount_delta') %}
                                 <div class="invalid-feedback">{{ _with_errs.get('amount_delta') }}</div>
                                 {% endif %}
+                                <small class="text-muted withdraw-available-hint">Available to withdraw: <span id="withdraw_available_cash">0.00</span></small>
                             </div>
                         </div>
                         <div class="col-6">
@@ -693,12 +701,27 @@ function withdrawFunds(id, name, opts) {
     opts = opts || {};
     document.getElementById('withdrawFundsForm').action = `/portfolios/withdraw/${id}`;
     document.getElementById('withdraw_portfolio_name').value = name || '';
+    document.getElementById('withdraw_available_cash').textContent = opts.withdrawableCash || '0.00';
+    document.getElementById('withdraw_max_btn').dataset.maxAmount = opts.withdrawableCashInput || '';
     document.getElementById('withdraw_funds_amount').value = (opts.amount != null ? String(opts.amount) : '');
     document.getElementById('withdraw_date').value = (opts.date || todayStr());
     document.getElementById('withdraw_funds_notes').value = (opts.notes || '');
     initFlatpickr('withdraw_date');
     new bootstrap.Modal(document.getElementById('withdrawFundsModal')).show();
 }
+
+(function setupWithdrawMax() {
+    const btn = document.getElementById('withdraw_max_btn');
+    const amountInput = document.getElementById('withdraw_funds_amount');
+    if (!btn || !amountInput) return;
+
+    btn.addEventListener('click', function() {
+        const maxAmount = btn.dataset.maxAmount || '';
+        if (!maxAmount) return;
+        amountInput.value = maxAmount;
+        amountInput.dispatchEvent(new Event('input'));
+    });
+})();
 
 function deletePortfolio(id, name) {
     document.getElementById('deletePortfolioForm').action = `/portfolios/delete/${id}`;
@@ -745,6 +768,8 @@ function deletePortfolioEvent(id, type) {
                     amount: {{ (_with_vals.get('amount_delta', '') if form_values and form_values.get('portfolios_withdraw') else '') | tojson }},
                     date:   {{ (_with_vals.get('withdraw_date', '') if form_values and form_values.get('portfolios_withdraw') else '') | tojson }},
                     notes:  {{ (_with_vals.get('notes', '') if form_values and form_values.get('portfolios_withdraw') else '') | tojson }},
+                    withdrawableCash: payload.withdrawable_cash || '0.00',
+                    withdrawableCashInput: payload.withdrawable_cash_input || '',
                 });
             }
             if (which === 'newPortfolioModal') {
@@ -784,7 +809,12 @@ function deletePortfolioEvent(id, type) {
             ev.preventDefault(); ev.stopPropagation(); ev.stopImmediatePropagation();
             const id = parseInt(withBtn.getAttribute('data-portfolio-id') || '0', 10);
             const name = withBtn.getAttribute('data-name') || '';
-            if (id) withdrawFunds(id, name);
+            const withdrawableCash = withBtn.getAttribute('data-withdrawable-cash') || '0.00';
+            const withdrawableCashInput = withBtn.getAttribute('data-withdrawable-cash-input') || '';
+            if (id) withdrawFunds(id, name, {
+                withdrawableCash: withdrawableCash,
+                withdrawableCashInput: withdrawableCashInput,
+            });
             return;
         }
 

@@ -261,10 +261,8 @@ def test_delete_dividend_after_spent_uses_cash_already_spent(app):
         assert str(excinfo.value) == MESSAGES['CASH_ALREADY_SPENT']
 
 
-def test_withdraw_more_than_available_keeps_insufficient_amount(app):
-    """Genuine over-withdrawal (the user is asking for more than the
-    portfolio has) keeps the INSUFFICIENT_AMOUNT wording — that's the
-    one case where 'Insufficient amount.' is accurate."""
+def test_withdraw_more_than_available_uses_available_cash_message(app):
+    """Genuine over-withdrawal clearly says it exceeds available cash."""
     with app.app_context():
         uid = _seed_user()
         svc = Services(user_id=uid)
@@ -273,7 +271,60 @@ def test_withdraw_more_than_available_keeps_insufficient_amount(app):
 
         with pytest.raises(ValueError) as excinfo:
             svc.portfolio_service.withdraw_funds(p.id, _dec(500))
-        assert str(excinfo.value) == MESSAGES['INSUFFICIENT_AMOUNT']
+        assert str(excinfo.value) == MESSAGES['WITHDRAWAL_EXCEEDS_CASH']
+
+
+def test_withdraw_route_returns_available_cash_error_for_ajax(app):
+    """The Withdraw modal should place over-withdrawal under Amount with
+    clear wording about available cash, not a generic banner."""
+    with app.app_context():
+        uid = _seed_user('withdraw_ajaxer')
+        svc = Services(user_id=uid)
+        p = svc.portfolio_service.create_portfolio('P', user_id=uid)
+        svc.portfolio_service.deposit_funds(p.id, _dec(100))
+        portfolio_id = p.id
+
+    client = app.test_client()
+    with client.session_transaction() as sess:
+        sess['_user_id'] = str(uid)
+        sess['_fresh'] = True
+
+    resp = client.post(
+        f'/portfolios/withdraw/{portfolio_id}',
+        data={'amount_delta': '500', 'withdraw_date': '2026-01-01'},
+        headers={'X-Requested-With': 'XMLHttpRequest'},
+    )
+
+    assert resp.status_code == 400
+    assert resp.is_json
+    body = resp.get_json()
+    assert body['success'] is False
+    assert body['errors']['amount_delta'] == MESSAGES['WITHDRAWAL_EXCEEDS_CASH']
+
+
+def test_withdraw_route_accepts_grouped_amount_for_ajax(app):
+    """Withdraw accepts the same thousands separators the UI Max button writes."""
+    with app.app_context():
+        uid = _seed_user('withdraw_grouped')
+        svc = Services(user_id=uid)
+        p = svc.portfolio_service.create_portfolio('P', user_id=uid)
+        svc.portfolio_service.deposit_funds(p.id, _dec(1000))
+        portfolio_id = p.id
+
+    client = app.test_client()
+    with client.session_transaction() as sess:
+        sess['_user_id'] = str(uid)
+        sess['_fresh'] = True
+
+    resp = client.post(
+        f'/portfolios/withdraw/{portfolio_id}',
+        data={'amount_delta': '1,000.00', 'withdraw_date': '2026-01-01'},
+        headers={'X-Requested-With': 'XMLHttpRequest'},
+    )
+
+    assert resp.status_code == 200
+    assert resp.is_json
+    assert resp.get_json()['success'] is True
 
 
 # ---------------------------------------------------------------------------

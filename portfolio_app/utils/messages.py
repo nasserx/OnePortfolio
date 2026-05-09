@@ -60,6 +60,7 @@ MESSAGES = {
 
     # Business rules
     'INSUFFICIENT_AMOUNT':         "Insufficient amount.",
+    'WITHDRAWAL_EXCEEDS_CASH':     "Amount exceeds available cash.",
     'INSUFFICIENT_QUANTITY':       "Insufficient quantity.",
     # Surfaces when a delete/edit/symbol-change would leave a previously
     # covered Sell without enough holdings on its date — distinct from

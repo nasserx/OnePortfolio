@@ -59,7 +59,7 @@ class PortfolioService:
             portfolio_id, user_id=self.portfolio_repo.user_id,
         )
         if amount_delta > available_cash:
-            raise ValueError(MESSAGES['INSUFFICIENT_AMOUNT'])
+            raise ValueError(MESSAGES['WITHDRAWAL_EXCEEDS_CASH'])
         self._create_event(portfolio_id, EventType.WITHDRAWAL, -amount_delta, notes, date)
         self.portfolio_repo.commit()
         return portfolio

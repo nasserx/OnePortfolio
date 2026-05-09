@@ -20,6 +20,7 @@ def parse_decimal_field(
     v = (value or '').strip()
     if v == '':
         return (None, None) if allow_blank else (None, MESSAGES['FIELD_REQUIRED'])
+    v = v.replace(',', '')
     try:
         return Decimal(v), None
     except (InvalidOperation, ValueError, TypeError):

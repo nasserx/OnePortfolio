@@ -850,11 +850,10 @@ tr:hover .row-actions {
 .transactions-table tbody td small.loss   { color: var(--color-loss)   !important; }
 .transactions-table .tx-type-label {
     display: inline-block;
-    min-width: 4.75rem;
     font-size: 0.8125rem;
     font-weight: 500;
     letter-spacing: 0.02em;
-    text-align: center;
+    text-align: left;
 }
 .transactions-table .tx-type-buy { color: var(--success); }
 .transactions-table .tx-type-sell { color: var(--danger); }
@@ -1195,8 +1194,14 @@ textarea:-webkit-autofill, select:-webkit-autofill {
 #editTransactionModal .form-control[readonly] {
     background: var(--surface-2) !important; color: var(--text-3) !important; opacity: 1;
 }
-#addTransactionModal .sell-max-inline {
+#addTransactionModal .sell-max-inline,
+#withdrawFundsModal .sell-max-inline {
     position: absolute; right: 0.875rem; top: 50%; transform: translateY(-50%);
+}
+.withdraw-available-hint {
+    display: block;
+    font-size: 0.6875rem;
+    margin-top: 0.25rem;
 }
 
 /* Compact font sizing for action modals — match inner-table small text. */

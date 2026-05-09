@@ -69,7 +69,7 @@ Custom form base class in `portfolio_app/forms/base_form.py` (not Flask-WTF). `v
 `PortfolioCalculator` (static methods) handles:
 - Average cost method (ACM) on buys
 - Cash balance = deposits − withdrawals − buys + sells + dividends
-- Realized P&L computed on demand by walking the transactions table per symbol (no snapshot)
+- Realized P&L computed on demand by walking the transactions table per symbol (no snapshot); overview ROI uses Total Contributed, while transaction summary ROI uses Total Spent (buy outflows including fees)
 - Category/asset-class summary for dashboard cards
 
 `TransactionManager` creates `Transaction` objects with computed `net_amount`.

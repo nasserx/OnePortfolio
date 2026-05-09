@@ -144,9 +144,9 @@
                                     <td><small class="text-muted">{{ event.date_short }}</small></td>
                                     <td>
                                         {% if event.event_type in ('Deposit', 'Initial') %}
-                                            <span class="badge badge-buy">{{ event.event_type }}</span>
+                                            <span class="tx-type-label tx-type-buy">{{ event.event_type }}</span>
                                         {% else %}
-                                            <span class="badge badge-sell">{{ event.event_type }}</span>
+                                            <span class="tx-type-label tx-type-sell">{{ event.event_type }}</span>
                                         {% endif %}
                                     </td>
                                     <td class="text-end">

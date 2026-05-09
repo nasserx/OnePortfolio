@@ -15,6 +15,7 @@ from portfolio_app import create_app, db
 from portfolio_app.models import Portfolio, Transaction, PortfolioEvent
 from portfolio_app.models.user import User
 from portfolio_app.calculators import PortfolioCalculator
+from portfolio_app.routes.transactions import _apply_summary_roi
 from portfolio_app.services.factory import Services
 from datetime import datetime
 from decimal import Decimal
@@ -149,6 +150,12 @@ def test_transaction_calculations(app):
         # ETHA: buy 10@10, sell 5@12 (-1 fee), buy 5@10
         etha = PortfolioCalculator.get_symbol_transactions_summary(etfs.id, 'ETHA')
         _assert('ETHA realized P&L', 9.0, etha['realized_pnl'])   # (12-10)*5 - 1 fee
+        _assert('ETHA sell row Net P&L', 9.0, e2.net_pnl)
+        _assert('ETHA sell row Net P&L %', 18.0, e2.net_pnl_percent)
+        assert e1.net_pnl is None
+        assert e1.net_pnl_percent is None
+        _apply_summary_roi(etha)
+        _assert('ETHA transaction summary ROI uses Total Spent', 6.0, etha['roi_percent'])
         # Buy 10@10 → sell 5 (remaining cost=50) → buy 5@10 → total=100/10 = 10.0
         _assert('ETHA average cost', 10.0, etha['average_cost'])
 
@@ -307,9 +314,9 @@ def test_category_summary(app):
         _assert('Book Value = cash + cost_basis', _dec('2500.50'), cat['book_value'])
         _assert('Realized P&L', _dec('2498.50'), cat['realized_pnl'])
 
-        # ROI = 2498.50 / 11000 * 100
+        # Overview ROI = net realized P&L / Total Contributed * 100.
         expected_roi = _dec('2498.50') / _dec('11000') * 100
-        _assert('Realized ROI % (base=deposits)', round(expected_roi, 2), cat['realized_roi_percent'])
+        _assert('Realized ROI % (base=total contributed)', round(expected_roi, 2), cat['realized_roi_percent'])
 
         print("  All category summary checks passed.")
 
@@ -340,6 +347,19 @@ def test_dashboard_totals(app):
         svc.portfolio_service.deposit_funds(fb.id, _dec(10_000))
         svc.portfolio_service.deposit_funds(fb.id, _dec(2_000))
 
+        buy = Transaction(portfolio_id=fb.id, transaction_type='Buy',
+                          date=datetime(2026, 1, 1), symbol='AAPL',
+                          price=100, quantity=10, fees=10)
+        buy.calculate_net_amount()
+        sell = Transaction(portfolio_id=fb.id, transaction_type='Sell',
+                           date=datetime(2026, 1, 2), symbol='AAPL',
+                           price=120, quantity=5, fees=5)
+        sell.calculate_net_amount()
+        db.session.add_all([buy, sell])
+        db.session.commit()
+        PortfolioCalculator.recalculate_all_averages_for_symbol(fb.id, 'AAPL')
+        db.session.commit()
+
         totals = PortfolioCalculator.get_portfolio_dashboard_totals(user_id=uid)
 
         print("\n" + "=" * 60)
@@ -349,11 +369,13 @@ def test_dashboard_totals(app):
         # Total Contributed = 20,000 + 12,000 = 32,000 (deposits only)
         _assert('Total Contributed (sum of deposits)', 32_000, totals['total_contributed'])
 
-        # Cash: net_deposits(A)=15,000 + net_deposits(B)=12,000 = 27,000 (no transactions)
-        _assert('Total Cash (no transactions)', 27_000, totals['total_cash'])
+        # Cash: net_deposits(A)=15,000 + net_deposits(B)=12,000 - buy(1,010) + sell(595)
+        _assert('Total Cash (after transactions)', 26_585, totals['total_cash'])
 
-        # Total Value = cash + invested = 27,000 + 0 = 27,000
-        _assert('Total Value', 27_000, totals['total_value'])
+        # Total Value = cash + invested = 26,585 + remaining cost basis 505
+        _assert('Total Value', 27_090, totals['total_value'])
+        # Realized P&L = (120 - 101) * 5 - 5 = 90; Overview ROI = 90 / 32,000 * 100.
+        _assert('Dashboard realized ROI % (base=total contributed)', _dec('0.28'), totals['realized_roi_percent'])
 
         print("  All dashboard totals checks passed.")
 

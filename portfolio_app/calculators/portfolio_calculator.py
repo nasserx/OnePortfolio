@@ -176,8 +176,7 @@ class PortfolioCalculator:
             book_value = cost_basis + cash
             total_portfolio_value += book_value
 
-            roi_base = total_contributed if total_contributed != 0 else realized_perf['realized_cost_basis']
-            realized_roi_percent, realized_roi_display = _roi_display(realized_pnl, roi_base)
+            realized_roi_percent, realized_roi_display = _roi_display(realized_pnl, total_contributed)
 
             portfolio_rows.append({
                 'portfolio': portfolio,
@@ -285,7 +284,6 @@ class PortfolioCalculator:
         total_cash = ZERO
         total_cost_basis = ZERO
         total_realized_pnl = ZERO
-        total_realized_cost_basis = ZERO
         total_dividends = ZERO
 
         for portfolio in portfolios:
@@ -297,13 +295,11 @@ class PortfolioCalculator:
 
             realized_perf = PortfolioCalculator.get_realized_performance_for_portfolio(portfolio.id, user_id=user_id)
             total_realized_pnl += realized_perf['realized_pnl']
-            total_realized_cost_basis += realized_perf['realized_cost_basis']
             total_dividends += realized_perf['total_dividends']
 
         total_value = total_cost_basis + total_cash
 
-        roi_base = total_contributed if total_contributed != 0 else total_realized_cost_basis
-        realized_roi_percent, realized_roi_display = _roi_display(total_realized_pnl, roi_base)
+        realized_roi_percent, realized_roi_display = _roi_display(total_realized_pnl, total_contributed)
 
         return {
             'total_contributed': total_contributed,

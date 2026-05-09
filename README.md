@@ -42,7 +42,8 @@ From those four record types the app derives every number on the dashboard:
 - **Average cost** per symbol = recomputed via the Average Cost Method (ACM) on every buy
 - **Realized P&L** = computed on the fly per symbol from the transaction log (Σ (sell price − avg cost) × qty − fees, plus dividends), with no snapshot table to drift
 - **Book value** = cost basis of open holdings + available cash
-- **ROI** = realized P&L ÷ realized cost basis
+- **Overview ROI** = realized P&L ÷ Total Contributed
+- **Transaction summary ROI** = realized P&L ÷ Total Spent (buy outflows including fees)
 
 ## ✨ Features
 

@@ -37,7 +37,7 @@ _DIV_EDIT_FIELD_MAP = {
     MESSAGES['CASH_ALREADY_SPENT']:  'edit_amount',
 }
 from portfolio_app.utils.constants import safe_html_id
-from portfolio_app.utils.decimal_utils import ZERO
+from portfolio_app.utils.decimal_utils import ZERO, safe_divide
 from config import Config
 
 logger = logging.getLogger(__name__)
@@ -56,6 +56,22 @@ def _decimal_places(value) -> int:
         return 0
     fractional = s.split('.', 1)[1].rstrip('0')
     return len(fractional)
+
+
+def _apply_summary_roi(summary):
+    """Attach transaction-summary ROI fields using Total Spent as the base."""
+    realized_pnl = Decimal(str(summary.get('realized_pnl', 0) or 0))
+    total_spent = Decimal(str(summary.get('total_buy_cost', 0) or 0))
+
+    if total_spent == ZERO:
+        summary['roi_percent'] = None
+        summary['roi_percent_display'] = '—'
+        return summary
+
+    roi = safe_divide(realized_pnl, total_spent) * Decimal('100')
+    summary['roi_percent'] = roi
+    summary['roi_percent_display'] = f"{roi:+,.2f}%"
+    return summary
 
 
 def _get_transactions_page_context(portfolio_filter=''):
@@ -102,21 +118,7 @@ def _get_transactions_page_context(portfolio_filter=''):
 
             avg_cost_decimal_places = max(2, price_decimal_places)
             summary = PortfolioCalculator.get_symbol_transactions_summary_from_list(transactions)
-
-            try:
-                realized_pnl = Decimal(str(summary.get('realized_pnl', 0) or 0))
-                cost_basis = Decimal(str(summary.get('realized_cost_basis', 0) or 0))
-
-                if cost_basis != 0:
-                    roi = (realized_pnl / abs(cost_basis)) * Decimal('100')
-                    summary['roi_percent'] = float(roi)
-                    summary['roi_percent_display'] = f"{roi:+,.2f}%"
-                else:
-                    summary['roi_percent'] = None
-                    summary['roi_percent_display'] = '—'
-            except Exception:
-                summary['roi_percent'] = None
-                summary['roi_percent_display'] = '—'
+            _apply_summary_roi(summary)
 
             html_group_id = safe_html_id(portfolio.id, sym_norm)
             tracked = tracked_by_ticker.get(sym_norm)

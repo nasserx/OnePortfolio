@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from sqlalchemy import Numeric, CheckConstraint
 from portfolio_app import db
+from portfolio_app.utils.decimal_utils import ZERO, safe_divide
 
 
 class Transaction(db.Model):
@@ -60,18 +61,45 @@ class Transaction(db.Model):
         else:  # Buy
             self.net_amount = gross + fees
 
+    @property
+    def net_pnl(self):
+        """Fee-adjusted realized P&L for a Sell row; blank for Buys."""
+        if self.transaction_type != 'Sell':
+            return None
+
+        price = Decimal(str(self.price))
+        quantity = Decimal(str(self.quantity))
+        fees = Decimal(str(self.fees))
+        average_cost = Decimal(str(self.average_cost))
+        return ((price - average_cost) * quantity) - fees
+
+    @property
+    def net_pnl_percent(self):
+        """Fee-adjusted realized return for a Sell row; blank for Buys."""
+        if self.transaction_type != 'Sell':
+            return None
+
+        quantity = Decimal(str(self.quantity))
+        average_cost = Decimal(str(self.average_cost))
+        base = average_cost * quantity
+        return safe_divide(self.net_pnl, base) * Decimal('100') if base != ZERO else None
+
     def to_dict(self):
+        net_pnl = self.net_pnl
+        net_pnl_percent = self.net_pnl_percent
         return {
             'id': self.id,
             'portfolio_id': self.portfolio_id,
             'portfolio_name': self.portfolio.name,
             'transaction_type': self.transaction_type,
             'symbol': (self.symbol or '').upper(),
-            'price': float(self.price),
-            'quantity': float(self.quantity),
-            'fees': float(self.fees),
-            'net_amount': float(self.net_amount),
-            'average_cost': float(self.average_cost),
+            'price': str(self.price),
+            'quantity': str(self.quantity),
+            'fees': str(self.fees),
+            'net_amount': str(self.net_amount),
+            'average_cost': str(self.average_cost),
+            'net_pnl': str(net_pnl) if net_pnl is not None else None,
+            'net_pnl_percent': str(net_pnl_percent) if net_pnl_percent is not None else None,
             'date': self.date.strftime('%Y-%m-%d %H:%M'),
             'date_short': self.date.strftime('%b %d, %Y'),
             'date_full': self.date.strftime('%B %d, %Y at %H:%M'),

@@ -807,7 +807,7 @@ tr:hover .row-actions {
     --bs-table-bg: var(--surface);
     --bs-table-striped-bg: var(--surface);
 }
-.transactions-table th {
+.transactions-table thead th {
     /* See .table thead th rule above — same transparent + divider treatment. */
     --bs-table-bg: transparent;
     --bs-table-accent-bg: transparent;
@@ -816,9 +816,9 @@ tr:hover .row-actions {
     border-bottom: 1px solid var(--border-color) !important;
     color: var(--text-3) !important;
     padding: 0.5rem 0.875rem;
-    font-size: 0.6875rem;
+    font-size: 0.6rem;
     font-weight: 600;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.07em;
     text-transform: uppercase;
 }
 .transactions-table td {
@@ -848,6 +848,16 @@ tr:hover .row-actions {
 .transactions-table tbody td small.text-danger { color: var(--danger) !important; }
 .transactions-table tbody td small.profit { color: var(--color-profit) !important; }
 .transactions-table tbody td small.loss   { color: var(--color-loss)   !important; }
+.transactions-table .tx-type-label {
+    display: inline-block;
+    min-width: 4.75rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    text-align: center;
+}
+.transactions-table .tx-type-buy { color: var(--success); }
+.transactions-table .tx-type-sell { color: var(--danger); }
 .transactions-table .badge { font-size: 0.7rem; padding: 0.22em 0.55em; }
 .transactions-table .btn-sm { padding: 0.2rem 0.45rem; }
 .transactions-table .btn-group.btn-group-sm { gap: 4px; }
@@ -1495,6 +1505,8 @@ i.bi { vertical-align: middle; }
     background: rgba(138,180,248,.28);
     color: #8ab4f8;
 }
+[data-bs-theme="dark"] .transactions-table .tx-type-buy { color: #81c995; }
+[data-bs-theme="dark"] .transactions-table .tx-type-sell { color: #f28b82; }
 [data-bs-theme="dark"] .sidebar-user-dropdown {
     outline: 1px solid rgba(255,255,255,.10) !important;
 }

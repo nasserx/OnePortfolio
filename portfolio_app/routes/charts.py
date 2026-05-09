@@ -10,12 +10,14 @@ plus ROI%. The shared aggregation helpers below collapse a long tail into a
 single 'Others' bucket so the chart stays readable as the dataset grows.
 """
 
+from decimal import Decimal
 from typing import Any, Callable, Dict, List
 
 from flask import Blueprint, render_template
 from flask_login import login_required
 
 from portfolio_app.services import get_services
+from portfolio_app.utils.decimal_utils import ZERO, safe_divide
 
 charts_bp = Blueprint('charts', __name__)
 
@@ -73,15 +75,15 @@ def _portfolio_others(tail: List[Dict[str, Any]]) -> Dict[str, Any]:
     ROI is recomputed from the totals (sum of P&L over sum of contributions),
     not averaged — averaging ROIs across different-sized portfolios is meaningless.
     """
-    pnl         = sum(float(p['realized_pnl']) for p in tail)
-    contributed = sum(float(p['total_contributed']) for p in tail)
-    roi         = (pnl / contributed * 100) if contributed else 0.0
+    pnl = sum((Decimal(str(p['realized_pnl'])) for p in tail), ZERO)
+    contributed = sum((Decimal(str(p['total_contributed'])) for p in tail), ZERO)
+    roi = safe_divide(pnl, contributed) * Decimal('100') if contributed != ZERO else ZERO
     return {
         'name':        OTHERS_LABEL,
-        'allocation':  sum(float(p['allocation']) for p in tail),
-        'pnl':         pnl,
-        'contributed': contributed,
-        'roi_percent': roi,
+        'allocation':  float(sum((Decimal(str(p['allocation'])) for p in tail), ZERO)),
+        'pnl':         float(pnl),
+        'contributed': float(contributed),
+        'roi_percent': float(roi),
     }
 
 
@@ -147,14 +149,14 @@ def _symbol_others(tail: List[Dict[str, Any]]) -> Dict[str, Any]:
     realized cost basis or held cost basis depending on the row) — averaging
     ROIs across positions of different sizes would be misleading.
     """
-    pnl  = sum(float(item['total_realized_pnl']) for item in tail)
-    base = sum(float(item['roi_base']) for item in tail)
-    roi  = (pnl / base * 100) if base else 0.0
+    pnl = sum((Decimal(str(item['total_realized_pnl'])) for item in tail), ZERO)
+    base = sum((Decimal(str(item['roi_base'])) for item in tail), ZERO)
+    roi = safe_divide(pnl, base) * Decimal('100') if base != ZERO else ZERO
     return _symbol_tile(
         name           = OTHERS_LABEL,
         portfolio_name = '',
-        pnl            = pnl,
-        roi_percent    = roi,
+        pnl            = float(pnl),
+        roi_percent    = float(roi),
     )
 
 
@@ -162,7 +164,7 @@ def _symbol_treemap(symbol_performance: List[Dict[str, Any]]) -> List[Dict[str, 
     """Sort symbols by |total realized P&L|, collapse the tail, drop zero-P&L rows."""
     tiles = _aggregate_with_others(
         symbol_performance,
-        sort_key=lambda r: abs(float(r['total_realized_pnl'])),
+        sort_key=lambda r: abs(Decimal(str(r['total_realized_pnl']))),
         project=_symbol_row,
         build_others=_symbol_others,
         top_n=TOP_N_SYMBOLS,

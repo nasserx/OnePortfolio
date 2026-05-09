@@ -43,10 +43,8 @@ def _get_portfolios_page_context():
 
         realized_perf = PortfolioCalculator.get_realized_performance_for_portfolio(portfolio.id, user_id=uid)
         realized_pnl = realized_perf['realized_pnl']
-        realized_cost_basis = realized_perf['realized_cost_basis']
-
-        if realized_cost_basis != ZERO:
-            roi_percent = (realized_pnl / abs(realized_cost_basis)) * 100
+        if total_contributed != ZERO:
+            roi_percent = (realized_pnl / total_contributed) * 100
             roi_display = f"{roi_percent:+,.2f}%"
         else:
             roi_percent = ZERO
@@ -58,7 +56,6 @@ def _get_portfolios_page_context():
             'total_contributed': total_contributed,
             'book_value': book_value,
             'realized_pnl': realized_pnl,
-            'realized_cost_basis': realized_cost_basis,
             'roi_percent': roi_percent,
             'roi_display': roi_display,
         })

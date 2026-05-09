@@ -850,9 +850,9 @@ tr:hover .row-actions {
 .transactions-table tbody td small.loss   { color: var(--color-loss)   !important; }
 .transactions-table .tx-type-label {
     display: inline-block;
-    font-size: 0.8125rem;
-    font-weight: 500;
-    letter-spacing: 0.02em;
+    font-size: 0.875em;
+    font-weight: 400;
+    letter-spacing: 0;
     text-align: left;
 }
 .transactions-table .tx-type-buy { color: var(--success); }

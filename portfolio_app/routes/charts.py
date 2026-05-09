@@ -117,14 +117,15 @@ def _portfolio_treemap(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 
 
 # ──────────────────────────────────────────────────────────────────────
-# Symbol heatmap: tile size = |(portfolio, symbol) realized P&L + dividends|
+# Symbol heatmap: tile size = |symbol realized P&L + dividends|
 # ──────────────────────────────────────────────────────────────────────
 
-def _symbol_tile(*, name: str, portfolio_name: str, pnl: float, roi_percent: float) -> Dict[str, Any]:
-    """Final treemap-tile shape for a (portfolio, symbol) row."""
+def _symbol_tile(*, name: str, portfolio_names: List[str], pnl: float, roi_percent: float) -> Dict[str, Any]:
+    """Final treemap-tile shape for a user-level symbol row."""
     return {
         'name':           name,
-        'portfolio_name': portfolio_name,
+        'portfolio_names': portfolio_names,
+        'portfolio_count': len(portfolio_names),
         'abs_pnl':        abs(pnl),
         'abs_roi':        abs(roi_percent),
         'pnl':            pnl,
@@ -132,11 +133,54 @@ def _symbol_tile(*, name: str, portfolio_name: str, pnl: float, roi_percent: flo
     }
 
 
+def _symbol_rows(symbol_performance: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Aggregate per-(portfolio, symbol) rows into one row per symbol.
+
+    ROI is recomputed from summed P&L and summed total buy cost. We intentionally
+    do not average per-portfolio ROI values because that overweights small
+    positions and understates large ones.
+    """
+    grouped: Dict[str, Dict[str, Any]] = {}
+
+    for item in symbol_performance:
+        symbol = item['symbol']
+        row = grouped.setdefault(symbol, {
+            'symbol': symbol,
+            'total_realized_pnl': ZERO,
+            'total_buy_cost': ZERO,
+            'portfolio_names': [],
+            '_portfolio_ids': set(),
+        })
+
+        row['total_realized_pnl'] += Decimal(str(item['total_realized_pnl']))
+        row['total_buy_cost'] += Decimal(str(item['total_buy_cost']))
+
+        portfolio_id = item.get('portfolio_id')
+        if portfolio_id not in row['_portfolio_ids']:
+            row['_portfolio_ids'].add(portfolio_id)
+            row['portfolio_names'].append(item['portfolio_name'])
+
+    rows = []
+    for row in grouped.values():
+        roi = (
+            safe_divide(row['total_realized_pnl'], row['total_buy_cost']) * Decimal('100')
+            if row['total_buy_cost'] != ZERO else ZERO
+        )
+        rows.append({
+            'symbol': row['symbol'],
+            'total_realized_pnl': row['total_realized_pnl'],
+            'total_buy_cost': row['total_buy_cost'],
+            'roi_percent': roi,
+            'portfolio_names': row['portfolio_names'],
+        })
+    return rows
+
+
 def _symbol_row(item: Dict[str, Any]) -> Dict[str, Any]:
-    """Project a get_user_symbol_performance row to the final tile shape."""
+    """Project an aggregated symbol-performance row to the final tile shape."""
     return _symbol_tile(
         name           = item['symbol'],
-        portfolio_name = item['portfolio_name'],
+        portfolio_names= item['portfolio_names'],
         pnl            = float(item['total_realized_pnl']),
         roi_percent    = float(item['roi_percent'] or 0),
     )
@@ -145,25 +189,25 @@ def _symbol_row(item: Dict[str, Any]) -> Dict[str, Any]:
 def _symbol_others(tail: List[Dict[str, Any]]) -> Dict[str, Any]:
     """Aggregate a tail of (portfolio, symbol) rows into 'Others'.
 
-    ROI is recomputed from the totals using ``roi_base`` (which may be
-    realized cost basis or held cost basis depending on the row) — averaging
-    ROIs across positions of different sizes would be misleading.
+    ROI is recomputed from total P&L over total buy cost. Averaging ROIs
+    across positions of different sizes would be misleading.
     """
     pnl = sum((Decimal(str(item['total_realized_pnl'])) for item in tail), ZERO)
-    base = sum((Decimal(str(item['roi_base'])) for item in tail), ZERO)
+    base = sum((Decimal(str(item['total_buy_cost'])) for item in tail), ZERO)
     roi = safe_divide(pnl, base) * Decimal('100') if base != ZERO else ZERO
     return _symbol_tile(
         name           = OTHERS_LABEL,
-        portfolio_name = '',
+        portfolio_names= [],
         pnl            = float(pnl),
         roi_percent    = float(roi),
     )
 
 
 def _symbol_treemap(symbol_performance: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Sort symbols by |total realized P&L|, collapse the tail, drop zero-P&L rows."""
+    """Sort user-level symbols by |total P&L|, collapse the tail, drop zero-P&L rows."""
+    symbol_rows = _symbol_rows(symbol_performance)
     tiles = _aggregate_with_others(
-        symbol_performance,
+        symbol_rows,
         sort_key=lambda r: abs(Decimal(str(r['total_realized_pnl']))),
         project=_symbol_row,
         build_others=_symbol_others,

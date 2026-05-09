@@ -545,8 +545,11 @@
 
     function symbolTooltipLines(d) {
         const lines = pnlTooltipLines(d);
-        if (d.portfolio_name) {
-            lines.push('Portfolio: ' + d.portfolio_name);
+        const portfolioNames = Array.isArray(d.portfolio_names) ? d.portfolio_names : [];
+        if (portfolioNames.length === 1) {
+            lines.push('Portfolio: ' + portfolioNames[0]);
+        } else if (portfolioNames.length > 1) {
+            lines.push('Portfolios: ' + portfolioNames.join(', '));
         }
         return lines;
     }

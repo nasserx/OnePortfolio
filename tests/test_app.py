@@ -17,10 +17,12 @@ from portfolio_app.models.user import User
 from portfolio_app.calculators import PortfolioCalculator
 from portfolio_app.routes.transactions import _apply_summary_roi
 from portfolio_app.services.factory import Services
+from portfolio_app.utils.messages import MESSAGES
 from datetime import datetime
 from decimal import Decimal
 from config import Config
 from pathlib import Path
+import pytest
 
 ZERO = Decimal('0')
 
@@ -261,6 +263,49 @@ def test_fund_events(app):
         _assert('Realized P&L', _dec('2498.50'), realized_c['realized_pnl'])
 
         print("  All fund event checks passed.")
+
+
+def test_initial_event_remains_accounting_deposit(app):
+    """Legacy Initial rows are display-renamed only; accounting treats them
+    exactly like deposits for totals, cash, and clawback guards."""
+    with app.app_context():
+        db.drop_all()
+        db.create_all()
+
+        uid = _seed_user()
+        svc = Services(user_id=uid)
+        fund = svc.portfolio_service.create_portfolio('Legacy Initial', user_id=uid)
+
+        initial = PortfolioEvent(
+            portfolio_id=fund.id,
+            event_type='Initial',
+            amount_delta=_dec(1000),
+            date=datetime(2026, 1, 1),
+        )
+        db.session.add(initial)
+        db.session.commit()
+        svc.portfolio_service.deposit_funds(fund.id, _dec(500), date=datetime(2026, 1, 2))
+        svc.portfolio_service.withdraw_funds(fund.id, _dec(300), date=datetime(2026, 1, 3))
+        svc.transaction_service.add_transaction(
+            portfolio_id=fund.id,
+            transaction_type='Buy',
+            symbol='AAPL',
+            price=_dec(100),
+            quantity=_dec(10),
+            fees=ZERO,
+            date=datetime(2026, 1, 4),
+        )
+
+        _assert('Initial included in total deposits', 1500,
+                PortfolioCalculator.get_total_deposits_for_portfolio(fund.id))
+        _assert('Initial included in net deposits', 1200,
+                PortfolioCalculator.get_net_deposits_for_portfolio(fund.id))
+        _assert('Initial included in available cash after buy', 200,
+                PortfolioCalculator.get_available_cash_for_portfolio(fund.id))
+
+        with pytest.raises(ValueError) as excinfo:
+            svc.portfolio_service.delete_portfolio_event(initial.id)
+        assert str(excinfo.value) == MESSAGES['CASH_ALREADY_SPENT']
 
 
 # ---------------------------------------------------------------------------
@@ -513,9 +558,10 @@ def test_symbol_performance(app):
     """Verify per-(portfolio, symbol) realized performance for the heatmap.
 
     Covers:
-      - Symbol with sells: realized P&L and ROI use realized_cost_basis
-      - Symbol with dividends only (held, never sold): ROI base falls
-        back to held cost basis so the row gets a meaningful denominator
+      - Symbol with sells: realized P&L and ROI use total buy cost so the
+        percentage matches the Transactions section symbol summary
+      - Symbol with dividends only (held, never sold): ROI uses total buy
+        cost so dividends are measured against the whole symbol position
       - Dividend recorded against a symbol with no transaction history
         still surfaces (rare, but real for transferred-in holdings)
       - Cross-user isolation: another user sees only their own rows
@@ -538,7 +584,9 @@ def test_symbol_performance(app):
         svc1.portfolio_service.deposit_funds(trading.id, _dec(10_000))
         svc1.portfolio_service.deposit_funds(long_term.id, _dec(10_000))
 
-        # AAPL in Trading: buy 10@100, sell 5@120 → realized P&L = 100, cost basis = 500
+        # AAPL in Trading: buy 10@100, sell 5@120 → realized P&L = 100,
+        # realized cost basis = 500, total buy cost = 1000. The heatmap
+        # and Transactions summary should use 100/1000 = 10%, not 100/500 = 20%.
         b1 = Transaction(portfolio_id=trading.id, transaction_type='Buy',
                          date=datetime(2026, 1, 1), symbol='AAPL',
                          price=100, quantity=10, fees=0)
@@ -548,17 +596,30 @@ def test_symbol_performance(app):
                          price=120, quantity=5, fees=0)
         s1.calculate_net_amount()
 
+        # AAPL in Long-term: same ticker, different portfolio and ROI.
+        # buy 100@10, sell 10@11 → realized P&L = 10, total buy cost = 1000.
+        # The charts heatmap must combine this with Trading/AAPL as one
+        # user-level AAPL tile and recompute ROI from total P&L / total buy cost.
+        b1_lt = Transaction(portfolio_id=long_term.id, transaction_type='Buy',
+                            date=datetime(2026, 1, 1), symbol='AAPL',
+                            price=10, quantity=100, fees=0)
+        b1_lt.calculate_net_amount()
+        s1_lt = Transaction(portfolio_id=long_term.id, transaction_type='Sell',
+                            date=datetime(2026, 1, 6), symbol='AAPL',
+                            price=11, quantity=10, fees=0)
+        s1_lt.calculate_net_amount()
+
         # MSFT in Long-term: buy 10@200, no sell → trading P&L = 0, but
-        # one dividend of 75 → total P&L = 75, ROI base falls back to
-        # held cost basis (2000) → ROI = 3.75%
+        # one dividend of 75 → total P&L = 75, total buy cost = 2000 → ROI = 3.75%
         b2 = Transaction(portfolio_id=long_term.id, transaction_type='Buy',
                          date=datetime(2026, 1, 2), symbol='MSFT',
                          price=200, quantity=10, fees=0)
         b2.calculate_net_amount()
 
-        db.session.add_all([b1, s1, b2])
+        db.session.add_all([b1, s1, b1_lt, s1_lt, b2])
         db.session.commit()
         PortfolioCalculator.recalculate_all_averages_for_symbol(trading.id, 'AAPL')
+        PortfolioCalculator.recalculate_all_averages_for_symbol(long_term.id, 'AAPL')
         PortfolioCalculator.recalculate_all_averages_for_symbol(long_term.id, 'MSFT')
         db.session.commit()
 
@@ -594,6 +655,7 @@ def test_symbol_performance(app):
 
         print("\n  7a – row coverage and isolation")
         assert ('Trading', 'AAPL') in by_key, "Missing Trading/AAPL"
+        assert ('Long-term', 'AAPL') in by_key, "Missing Long-term/AAPL"
         assert ('Long-term', 'MSFT') in by_key, "Missing Long-term/MSFT"
         assert ('Long-term', 'TRSF') in by_key, "Missing Long-term/TRSF (dividend-only)"
         assert all(r['symbol'] != 'NVDA' for r in rows), "NVDA leaked from u2"
@@ -604,14 +666,22 @@ def test_symbol_performance(app):
         _assert('AAPL trading P&L',         _dec('100'),  aapl['realized_pnl'])
         _assert('AAPL dividend total',      _dec('0'),    aapl['dividend_total'])
         _assert('AAPL total realized P&L',  _dec('100'),  aapl['total_realized_pnl'])
+        _assert('AAPL total buy cost',      _dec('1000'), aapl['total_buy_cost'])
         _assert('AAPL realized cost basis', _dec('500'),  aapl['realized_cost_basis'])
-        _assert('AAPL ROI%',                _dec('20'),   aapl['roi_percent'])
+        _assert('AAPL ROI% uses total buy cost', _dec('10'), aapl['roi_percent'])
 
-        # ── 7c: MSFT — dividend only, ROI base falls back to held cost basis ──
+        aapl_lt = by_key[('Long-term', 'AAPL')]
+        _assert('Long-term AAPL trading P&L',         _dec('10'),  aapl_lt['realized_pnl'])
+        _assert('Long-term AAPL total buy cost',      _dec('1000'), aapl_lt['total_buy_cost'])
+        _assert('Long-term AAPL realized cost basis', _dec('100'), aapl_lt['realized_cost_basis'])
+        _assert('Long-term AAPL ROI% uses total buy cost', _dec('1'), aapl_lt['roi_percent'])
+
+        # ── 7c: MSFT — dividend only, ROI uses total buy cost ──
         msft = by_key[('Long-term', 'MSFT')]
         _assert('MSFT trading P&L',        _dec('0'),    msft['realized_pnl'])
         _assert('MSFT dividends',          _dec('75'),   msft['dividend_total'])
         _assert('MSFT total realized P&L', _dec('75'),   msft['total_realized_pnl'])
+        _assert('MSFT total buy cost',     _dec('2000'), msft['total_buy_cost'])
         _assert('MSFT held cost basis',    _dec('2000'), msft['held_cost_basis'])
         _assert('MSFT ROI base',           _dec('2000'), msft['roi_base'])
         _assert('MSFT ROI%',               _dec('3.75'), msft['roi_percent'])
@@ -634,12 +704,19 @@ def test_symbol_performance(app):
         zero_row = {
             'portfolio_id': trading.id, 'portfolio_name': 'Trading', 'symbol': 'ZERO',
             'realized_pnl': ZERO, 'dividend_total': ZERO, 'total_realized_pnl': ZERO,
+            'total_buy_cost': ZERO,
             'realized_cost_basis': ZERO, 'held_cost_basis': ZERO,
             'roi_base': ZERO, 'roi_percent': ZERO, 'roi_display': '—',
         }
         treemap = _symbol_treemap(rows + [zero_row])
         assert all(t['pnl'] != 0 for t in treemap), 'zero-P&L row leaked into treemap'
         assert all('abs_pnl' in t and 'name' in t for t in treemap), 'treemap shape broken'
+        aapl_tile = next(t for t in treemap if t['name'] == 'AAPL')
+        _assert('AAPL heatmap aggregates P&L across portfolios', _dec('110'), _dec(str(aapl_tile['pnl'])))
+        _assert('AAPL heatmap recomputes ROI from aggregate total buy cost', _dec('5.5'),
+                _dec(str(aapl_tile['roi_percent'])))
+        assert aapl_tile['portfolio_count'] == 2
+        assert aapl_tile['portfolio_names'] == ['Trading', 'Long-term']
         print("  PASS  treemap shape and zero-row filtering")
 
         # ── 7g: top-N + Others aggregation ──
@@ -650,6 +727,7 @@ def test_symbol_performance(app):
                 'portfolio_id': 1, 'portfolio_name': 'P', 'symbol': f'SYM{i}',
                 'realized_pnl': _dec(str(100 - i)), 'dividend_total': ZERO,
                 'total_realized_pnl': _dec(str(100 - i)),
+                'total_buy_cost': _dec('1000'),
                 'realized_cost_basis': _dec('1000'), 'held_cost_basis': _dec('1000'),
                 'roi_base': _dec('1000'),
                 'roi_percent': _dec(str((100 - i) / 10)), 'roi_display': '',
@@ -678,6 +756,7 @@ if __name__ == '__main__':
     tests = [
         ('Transaction Calculations',  test_transaction_calculations),
         ('Fund Events Logic',          test_fund_events),
+        ('Initial Event Regression',   test_initial_event_remains_accounting_deposit),
         ('Category Summary',           test_category_summary),
         ('Dashboard Totals',           test_dashboard_totals),
         ('Application Routes',         test_routes),

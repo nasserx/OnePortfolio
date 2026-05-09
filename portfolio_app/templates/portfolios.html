@@ -146,7 +146,7 @@
                                     <td><small class="text-muted">{{ event.date_short }}</small></td>
                                     <td>
                                         {% if event.event_type in ('Deposit', 'Initial') %}
-                                            <span class="tx-type-label tx-type-buy">{{ event.event_type }}</span>
+                                            <span class="tx-type-label tx-type-buy">{{ 'Deposit' if event.event_type == 'Initial' else event.event_type }}</span>
                                         {% else %}
                                             <span class="tx-type-label tx-type-sell">{{ event.event_type }}</span>
                                         {% endif %}
@@ -730,9 +730,13 @@ function deletePortfolio(id, name) {
 }
 
 // ── Edit / Delete Portfolio Event ─────────────────────────────────
+function portfolioEventTypeLabel(type) {
+    return type === 'Initial' ? 'Deposit' : (type || '');
+}
+
 function editPortfolioEvent(id, type, amount, notes, date) {
     document.getElementById('editPortfolioEventForm').action = `/portfolios/events/edit/${id}`;
-    document.getElementById('edit_event_type_display').value = type || '';
+    document.getElementById('edit_event_type_display').value = portfolioEventTypeLabel(type);
     document.getElementById('edit_event_type_hidden').value = type || '';
     document.getElementById('edit_cash_event_amount').value = amount || '';
     document.getElementById('edit_cash_event_notes').value = notes || '';
@@ -743,7 +747,7 @@ function editPortfolioEvent(id, type, amount, notes, date) {
 
 function deletePortfolioEvent(id, type) {
     document.getElementById('deletePortfolioEventForm').action = `/portfolios/events/delete/${id}`;
-    document.getElementById('delete_event_type_name').textContent = type || 'portfolio';
+    document.getElementById('delete_event_type_name').textContent = portfolioEventTypeLabel(type) || 'portfolio';
     new bootstrap.Modal(document.getElementById('deletePortfolioEventModal')).show();
 }
 

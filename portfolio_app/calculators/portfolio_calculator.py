@@ -329,10 +329,9 @@ class PortfolioCalculator:
             (portfolio, symbol) so cross-portfolio lots stay independent), and
           * dividends attributed to the symbol via Dividend.symbol.
 
-        The ROI base falls back from ``realized_cost_basis`` (cost of closed
-        lots) to ``held_cost_basis`` (running cost of the still-open
-        position) so a dividend-only or hold-only position still gets a
-        meaningful denominator instead of '—'.
+        ROI uses ``total_buy_cost`` so symbol heatmaps match the Transactions
+        section summary and represent the whole symbol position, not only
+        the cost basis of closed lots.
 
         Returns a flat list — sorting and Top-N aggregation are caller
         concerns so this stays composable across views.
@@ -388,6 +387,7 @@ class PortfolioCalculator:
                         symbol=sym_norm,
                         trading_pnl=_to_decimal(summary['realized_pnl']),
                         dividends=dividend_by_key.get(key, ZERO),
+                        total_buy_cost=_to_decimal(summary['total_buy_cost']),
                         realized_cost_basis=_to_decimal(summary['realized_cost_basis']),
                         held_cost_basis=_to_decimal(summary['cost_basis']),
                     )
@@ -408,6 +408,7 @@ class PortfolioCalculator:
                     symbol=sym_norm,
                     trading_pnl=ZERO,
                     dividends=divs,
+                    total_buy_cost=ZERO,
                     realized_cost_basis=ZERO,
                     held_cost_basis=ZERO,
                 )
@@ -417,10 +418,10 @@ class PortfolioCalculator:
 
     @staticmethod
     def _build_symbol_performance_row(*, portfolio, symbol, trading_pnl, dividends,
-                                      realized_cost_basis, held_cost_basis):
+                                      total_buy_cost, realized_cost_basis, held_cost_basis):
         """Shape a single symbol-performance row with derived ROI fields."""
         total_pnl = trading_pnl + dividends
-        roi_base = realized_cost_basis if realized_cost_basis != 0 else held_cost_basis
+        roi_base = total_buy_cost
         roi_percent, roi_display = _roi_display(total_pnl, roi_base)
         return {
             'portfolio_id':         portfolio.id,
@@ -429,6 +430,7 @@ class PortfolioCalculator:
             'realized_pnl':         trading_pnl,
             'dividend_total':       dividends,
             'total_realized_pnl':   total_pnl,
+            'total_buy_cost':       total_buy_cost,
             'realized_cost_basis':  realized_cost_basis,
             'held_cost_basis':      held_cost_basis,
             'roi_base':             roi_base,

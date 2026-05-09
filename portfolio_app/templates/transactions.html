@@ -201,14 +201,13 @@
                                 <tr>
                                     <th class="small" style="width: 110px;">Date</th>
                                     <th class="small" style="width: 90px;">Type</th>
-                                    <th class="small" style="width: 90px;">Symbol</th>
-                                    <th class="small text-end" style="width: 120px;">Price</th>
-                                    <th class="small text-end" style="width: 90px;">Qty</th>
-                                    <th class="small text-end" style="width: 90px;">Fees</th>
-                                    <th class="small text-end" style="width: 140px;">Total Amount</th>
-                                    <th class="small text-end" style="width: 120px;">P&amp;L</th>
-                                    <th class="small text-end" style="width: 100px;">P&amp;L%</th>
-                                    <th class="small" style="width: 160px;">Notes</th>
+                                    <th class="small text-end" style="width: 130px;">Price</th>
+                                    <th class="small text-end" style="width: 100px;">Qty</th>
+                                    <th class="small text-end" style="width: 100px;">Fees</th>
+                                    <th class="small text-end" style="width: 150px;">Total Amount</th>
+                                    <th class="small text-end" style="width: 130px;">P&amp;L</th>
+                                    <th class="small text-end" style="width: 110px;">P&amp;L%</th>
+                                    <th class="small" style="width: 180px;">Notes</th>
                                     <th class="small text-center" style="width: 100px;">Actions</th>
                                 </tr>
                             </thead>
@@ -223,7 +222,6 @@
                                             <span class="tx-type-label tx-type-sell">Sell</span>
                                         {% endif %}
                                     </td>
-                                    <td><small class="text-uppercase">{{ transaction.symbol or '-' }}</small></td>
                                     <td class="text-end"><small>{{ transaction.price|fmt_money(item.price_decimal_places) }}</small></td>
                                     <td class="text-end"><small>{{ transaction.quantity|fmt_decimal }}</small></td>
                                     <td class="text-end"><small class="text-danger">{{ transaction.fees|fmt_decimal }}</small></td>
@@ -288,7 +286,6 @@
                                     <td>
                                         <span class="badge badge-dividend">Dividend</span>
                                     </td>
-                                    <td><small class="text-uppercase">{{ div.symbol or '—' }}</small></td>
                                     <td class="text-end"><small class="text-muted">—</small></td>
                                     <td class="text-end"><small class="text-muted">—</small></td>
                                     <td class="text-end"><small class="text-muted">—</small></td>

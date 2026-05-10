@@ -214,6 +214,7 @@
         <div class="modal-content">
             <form method="POST" id="depositFundsForm" autocomplete="off" novalidate>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="user_timezone" value="">
                 <div class="modal-header">
                     <h5 class="modal-title">Deposit</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -271,6 +272,7 @@
         <div class="modal-content">
             <form method="POST" id="withdrawFundsForm" autocomplete="off" novalidate>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="user_timezone" value="">
                 <div class="modal-header">
                     <h5 class="modal-title">Withdraw</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -404,6 +406,7 @@
         <div class="modal-content">
             <form method="POST" id="editPortfolioEventForm" autocomplete="off" novalidate>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="user_timezone" value="">
                 <div class="modal-header">
                     <h5 class="modal-title">Edit Transaction</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>

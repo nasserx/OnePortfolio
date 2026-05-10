@@ -409,6 +409,7 @@
         <div class="modal-content">
             <form method="POST" action="{{ url_for('transactions.transaction_add') }}" autocomplete="off" novalidate>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="user_timezone" value="">
                 <div class="modal-header">
                     <h5 class="modal-title" id="add_tx_modal_title">Add Transaction</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -539,6 +540,7 @@
         <div class="modal-content">
             <form method="POST" id="editTransactionForm" autocomplete="off" novalidate>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="user_timezone" value="">
                 <div class="modal-header">
                     <h5 class="modal-title">Edit Transaction</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -718,6 +720,7 @@
         <div class="modal-content">
             <form method="POST" action="{{ url_for('transactions.dividend_add') }}" autocomplete="off" novalidate>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="user_timezone" value="">
                 <input type="hidden" name="portfolio_id" id="add_div_portfolio_id">
                 <input type="hidden" name="div_symbol" id="add_div_symbol">
                 <div class="modal-header">
@@ -781,6 +784,7 @@
         <div class="modal-content">
             <form method="POST" id="editDividendForm" autocomplete="off" novalidate>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="user_timezone" value="">
                 <div class="modal-header">
                     <h5 class="modal-title">Edit Dividend</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>

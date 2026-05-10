@@ -1,8 +1,9 @@
 """Base form class for common validation functionality."""
 
-from datetime import datetime
+from datetime import datetime, time, timezone
 from decimal import Decimal
 from typing import Dict, Any, Optional
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from portfolio_app.forms.validators import validate_positive_decimal
 from portfolio_app.utils.messages import MESSAGES, get_field_positive_message
 
@@ -11,6 +12,58 @@ from portfolio_app.utils.messages import MESSAGES, get_field_positive_message
 # attributes back these up, but the only authoritative check is here.
 NOTES_MAX_LENGTH  = 300
 SYMBOL_MAX_LENGTH = 20
+
+
+def _truncate_to_minute(value: datetime) -> datetime:
+    return value.replace(second=0, microsecond=0)
+
+
+def _get_user_zone(user_timezone: Optional[str]):
+    if not user_timezone:
+        return timezone.utc
+    try:
+        return ZoneInfo(user_timezone)
+    except (ZoneInfoNotFoundError, ValueError):
+        return timezone.utc
+
+
+def parse_user_timestamp_for_future_check(
+    value: str,
+    *,
+    user_timezone: Optional[str] = None,
+) -> tuple[datetime, datetime]:
+    """Parse a user timestamp and return ``(stored_datetime, utc_datetime)``.
+
+    Full ISO-8601 values with offsets are normalized directly. Date-only
+    values are interpreted as midnight in the user's IANA timezone so a user
+    at UTC+3 entering today's date at local midnight is not rejected by a UTC
+    host whose calendar date is still yesterday.
+    """
+    raw_value = (value or '').strip()
+    if not raw_value:
+        raise ValueError('blank timestamp')
+
+    user_zone = _get_user_zone(user_timezone)
+
+    try:
+        parsed_date = datetime.strptime(raw_value, '%Y-%m-%d').date()
+    except ValueError:
+        parsed_date = None
+
+    if parsed_date is not None:
+        local_dt = datetime.combine(parsed_date, time.min, tzinfo=user_zone)
+        return datetime.combine(parsed_date, time.min), local_dt.astimezone(timezone.utc)
+
+    normalized = raw_value[:-1] + '+00:00' if raw_value.endswith('Z') else raw_value
+    parsed = datetime.fromisoformat(normalized)
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=user_zone)
+
+    utc_dt = parsed.astimezone(timezone.utc)
+    # Store the user's selected wall-clock value without tzinfo to match the
+    # existing SQLAlchemy DateTime columns and display helpers.
+    stored_dt = parsed.astimezone(user_zone).replace(tzinfo=None)
+    return stored_dt, utc_dt
 
 
 class BaseForm:
@@ -158,29 +211,26 @@ class BaseForm:
         date_str: str,
         error_field_name: str,
     ) -> Optional[datetime]:
-        """Parse ``YYYY-MM-DD`` and reject blanks, bad format, or future dates.
+        """Parse a user date/timestamp and reject blanks, bad format, or future dates.
 
         On failure adds the appropriate message to ``self.errors`` keyed by
         ``error_field_name`` and returns None. On success returns the parsed
-        :class:`datetime` (naive, midnight) so callers don't need to repeat
-        the parse-and-validate dance.
+        :class:`datetime` for storage so callers don't need to repeat the
+        parse-and-validate dance.
         """
         if not date_str:
             self.errors[error_field_name] = MESSAGES['FIELD_REQUIRED']
             return None
         try:
-            parsed = datetime.strptime(date_str, '%Y-%m-%d')
+            parsed, parsed_utc = parse_user_timestamp_for_future_check(
+                date_str,
+                user_timezone=self._get_string('user_timezone', default=''),
+            )
         except ValueError:
             self.errors[error_field_name] = MESSAGES['INVALID_DATE_FORMAT']
             return None
-        # Compare against the server's local date. Any future date — even
-        # by a single day — corrupts the chronological recompute and has
-        # no legitimate business meaning here. (The earlier 24h grace was
-        # too generous: it accepted "tomorrow" as today, which is exactly
-        # what a backdate-attack or fat-finger entry looks like.) If a
-        # deployment serves users far from its TZ, set the server TZ to
-        # match its audience.
-        if parsed.date() > datetime.now().date():
+        now_utc = datetime.now(timezone.utc)
+        if _truncate_to_minute(parsed_utc) > _truncate_to_minute(now_utc):
             self.errors[error_field_name] = MESSAGES['DATE_IN_FUTURE']
             return None
         return parsed

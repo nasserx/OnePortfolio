@@ -220,6 +220,32 @@ function todayStr() {
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }
 
+function browserTimeZone() {
+    try {
+        return Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+    } catch (e) {
+        return '';
+    }
+}
+
+function applyBrowserTimeZone(root) {
+    const scope = root || document;
+    const tz = browserTimeZone();
+    scope.querySelectorAll('input[name="user_timezone"]').forEach(function(input) {
+        input.value = tz;
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    applyBrowserTimeZone(document);
+});
+
+document.addEventListener('submit', function(ev) {
+    if (ev.target && ev.target.querySelectorAll) {
+        applyBrowserTimeZone(ev.target);
+    }
+}, true);
+
 function initFlatpickr(id) {
     const el = document.getElementById(id);
     if (!el || el._flatpickr || !window.flatpickr) return;

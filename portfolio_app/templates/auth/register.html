@@ -42,7 +42,7 @@
                 <input type="text" id="username" name="username" autocomplete="username"
                        class="form-control form-control-auth {% if form_errors.get('username') %}is-invalid{% endif %}"
                        value="{{ form_values.get('username', '') }}"
-                       placeholder="Choose a username" autofocus required>
+                       placeholder="Username" autofocus required>
             </div>
             {% if form_errors.get('username') %}
                 <div class="invalid-feedback d-block mt-1">{{ form_errors['username'] }}</div>
@@ -56,7 +56,7 @@
                 <input type="email" id="email" name="email" autocomplete="email"
                        class="form-control form-control-auth {% if form_errors.get('email') %}is-invalid{% endif %}"
                        value="{{ form_values.get('email', '') }}"
-                       placeholder="you@example.com" required>
+                       placeholder="Email address" required>
             </div>
             {% if form_errors.get('email') %}
                 <div class="invalid-feedback d-block mt-1">{{ form_errors['email'] }}</div>
@@ -69,7 +69,7 @@
                 <i class="bi bi-lock fi" aria-hidden="true"></i>
                 <input type="password" id="password" name="password" autocomplete="new-password"
                        class="form-control form-control-auth has-toggle {% if form_errors.get('password') %}is-invalid{% endif %}"
-                       placeholder="Min. 8 characters" required>
+                       placeholder="Password (min. 8 characters)" required>
                 <button class="toggle-pw" type="button" id="togglePassword"
                         aria-label="Show or hide password">
                     <i class="bi bi-eye" id="toggleIcon" aria-hidden="true"></i>
@@ -89,7 +89,7 @@
                 <i class="bi bi-shield-check fi" aria-hidden="true"></i>
                 <input type="password" id="confirm_password" name="confirm_password" autocomplete="new-password"
                        class="form-control form-control-auth {% if form_errors.get('confirm_password') %}is-invalid{% endif %}"
-                       placeholder="Re-enter password" required>
+                       placeholder="Confirm password" required>
             </div>
             {% if form_errors.get('confirm_password') %}
                 <div class="invalid-feedback d-block mt-1">{{ form_errors['confirm_password'] }}</div>

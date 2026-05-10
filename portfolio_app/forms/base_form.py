@@ -2,8 +2,11 @@
 
 from datetime import datetime, time, timezone
 from decimal import Decimal
-from typing import Dict, Any, Optional
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+from typing import Dict, Any, Optional, Tuple
+try:
+    from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+except ImportError:  # Python < 3.9
+    from backports.zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from portfolio_app.forms.validators import validate_positive_decimal
 from portfolio_app.utils.messages import MESSAGES, get_field_positive_message
 
@@ -31,7 +34,7 @@ def parse_user_timestamp_for_future_check(
     value: str,
     *,
     user_timezone: Optional[str] = None,
-) -> tuple[datetime, datetime]:
+) -> Tuple[datetime, datetime]:
     """Parse a user timestamp and return ``(stored_datetime, utc_datetime)``.
 
     Full ISO-8601 values with offsets are normalized directly. Date-only

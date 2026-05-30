@@ -506,7 +506,7 @@
 
 // ── Inner event-row pagination (per portfolio) ────────────────────
 (function setupPortfolioInnerPagination() {
-    var PAGE_SIZE = 5;
+    var PAGE_SIZE = 10;
     var state = {};
 
     function getRows(portfolioId) {
@@ -586,7 +586,7 @@
 
 // ── Outer portfolio-card pagination ───────────────────────────────
 (function setupPortfolioOuterPagination() {
-    var PAGE_SIZE = 8;
+    var PAGE_SIZE = 100;
     var currentPage = 1;
 
     function getCards() {

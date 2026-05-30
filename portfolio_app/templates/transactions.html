@@ -56,14 +56,14 @@
         <div class="dropdown">
             <button class="btn btn-outline-secondary filter-dropdown-btn dropdown-toggle" type="button"
                     data-bs-toggle="dropdown" aria-expanded="false">
-                {{ selected_portfolio or 'All' }}
+                {{ selected_portfolio or 'All Portfolios' }}
                 <i class="bi bi-chevron-down"></i>
             </button>
             <ul class="dropdown-menu">
                 <li>
                     <a class="dropdown-item {% if not selected_portfolio %}active{% endif %}"
                        href="{{ url_for('transactions.transaction_list') }}">
-                        All
+                        All Portfolios
                     </a>
                 </li>
                 {% if portfolios %}
@@ -991,7 +991,7 @@ function openAddSymbolModal() {
 })();
 // ── Per-symbol inner-row pagination ──────────────────────────────────
 (function setupTablePagination() {
-    var PAGE_SIZE = 5;
+    var PAGE_SIZE = 10;
     var state = {};
 
     function getRows(groupId) {
@@ -1071,7 +1071,7 @@ function openAddSymbolModal() {
 
 // ── Outer symbol-card pagination ─────────────────────────────────────
 (function setupOuterPagination() {
-    var PAGE_SIZE = 8;
+    var PAGE_SIZE = 100;
     var currentPage = 1;
 
     function getCards() {

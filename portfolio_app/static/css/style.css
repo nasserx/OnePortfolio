@@ -1223,6 +1223,18 @@ textarea:-webkit-autofill, select:-webkit-autofill {
     font-size: 0.8125rem; padding: 0.375rem 0.625rem;
 }
 
+#addSymbolModal input.form-control, #addSymbolModal select.form-select,
+#addTransactionModal input.form-control, #addTransactionModal select.form-select,
+#editTransactionModal input.form-control, #editTransactionModal select.form-select,
+#addDividendModal input.form-control, #addDividendModal select.form-select,
+#editDividendModal input.form-control, #editDividendModal select.form-select,
+#newPortfolioModal input.form-control, #newPortfolioModal select.form-select,
+#depositFundsModal input.form-control, #depositFundsModal select.form-select,
+#withdrawFundsModal input.form-control, #withdrawFundsModal select.form-select,
+#editPortfolioEventModal input.form-control, #editPortfolioEventModal select.form-select {
+    min-height: 42px;
+}
+
 /* ============================================================ */
 /* Utilities                                                    */
 /* ============================================================ */

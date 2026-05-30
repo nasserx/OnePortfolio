@@ -1,6 +1,5 @@
 """Service factory — single source of truth for service instantiation."""
 
-import logging
 from typing import Optional
 from flask import g
 from portfolio_app import db
@@ -22,8 +21,6 @@ from portfolio_app.services.portfolio_service import PortfolioService
 from portfolio_app.services.transaction_service import TransactionService
 from portfolio_app.services.overview_service import OverviewService
 from portfolio_app.services.auth_service import AuthService
-
-logger = logging.getLogger(__name__)
 
 
 class Services:

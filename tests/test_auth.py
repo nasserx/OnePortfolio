@@ -16,8 +16,6 @@ The mail layer is monkey-patched (``send_verification_email`` /
 ``send_reset_email``) so no SMTP is ever attempted.
 """
 
-import os
-import re
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 

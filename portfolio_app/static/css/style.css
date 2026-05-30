@@ -190,6 +190,26 @@ label, .form-label { color: var(--text-2); font-weight: 500; font-size: 0.875rem
 /* Layout                                                       */
 /* ============================================================ */
 .app-layout { display: flex; min-height: 100vh; }
+.app-layout::after {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0; right: 0;
+    height: var(--topbar-height);
+    background: var(--app-bg);
+    z-index: 1025;
+    pointer-events: none;
+}
+.app-layout::before {
+    content: "";
+    position: fixed;
+    top: calc(var(--topbar-height) - 1px);
+    left: 0; right: 0;
+    height: 1px;
+    background: var(--border-color);
+    z-index: 1045;
+    pointer-events: none;
+}
 
 /* ============================================================ */
 /* Sidebar                                                      */
@@ -210,7 +230,6 @@ label, .form-label { color: var(--text-2); font-weight: 500; font-size: 0.875rem
     color: var(--text-1); font-size: 0.9375rem; font-weight: 600;
     letter-spacing: -0.25px; flex-shrink: 0; text-decoration: none;
     background: var(--app-bg);
-    box-shadow: 0 1px 0 var(--border-color);
 }
 .sidebar-brand:hover { color: var(--text-1); text-decoration: none; }
 .sidebar-brand img { width: 28px; height: 28px; flex-shrink: 0; }
@@ -277,7 +296,6 @@ label, .form-label { color: var(--text-2); font-weight: 500; font-size: 0.875rem
     padding: 0 1.25rem;
     position: sticky; top: 0; z-index: 1030;
     flex-shrink: 0;
-    box-shadow: 0 1px 0 var(--border-color);
 }
 
 .topbar-left { display: flex; align-items: center; gap: 1rem; }

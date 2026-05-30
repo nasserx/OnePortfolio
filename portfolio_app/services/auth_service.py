@@ -2,7 +2,6 @@
 
 import hmac
 import secrets
-import logging
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Tuple, Union
 
@@ -16,8 +15,6 @@ from portfolio_app.repositories.pending_registration_repository import (
     PendingRegistrationRepository,
 )
 from portfolio_app.utils.messages import MESSAGES
-
-logger = logging.getLogger(__name__)
 
 # Verification code expiry in minutes (the 6-digit OTP)
 VERIFICATION_CODE_EXPIRY_MINUTES = 10

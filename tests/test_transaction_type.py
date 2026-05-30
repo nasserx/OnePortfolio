@@ -1,6 +1,5 @@
 """Tests for TransactionAddForm transaction_type defaulting behaviour."""
 
-import pytest
 from types import SimpleNamespace
 from portfolio_app.forms.transaction_forms import TransactionAddForm
 from config import Config

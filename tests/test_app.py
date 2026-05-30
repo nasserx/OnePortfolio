@@ -12,7 +12,7 @@ Tests cover:
 """
 
 from portfolio_app import create_app, db
-from portfolio_app.models import Portfolio, Transaction, PortfolioEvent
+from portfolio_app.models import Transaction, PortfolioEvent
 from portfolio_app.models.user import User
 from portfolio_app.calculators import PortfolioCalculator
 from portfolio_app.routes.transactions import _apply_summary_roi
@@ -345,7 +345,7 @@ def test_category_summary(app):
         PortfolioCalculator.recalculate_all_averages_for_symbol(fund.id, 'AAPL')
         db.session.commit()
 
-        summary, portfolio_value = PortfolioCalculator.get_portfolio_summary(user_id=uid)
+        summary, _ = PortfolioCalculator.get_portfolio_summary(user_id=uid)
         assert len(summary) == 1
         cat = summary[0]
 
@@ -477,7 +477,6 @@ def test_dividends(app):
         db.drop_all()
         db.create_all()
 
-        from portfolio_app.models import Dividend
         from portfolio_app.models.user import User
         from portfolio_app.services.factory import Services
 

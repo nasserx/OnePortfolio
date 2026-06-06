@@ -922,7 +922,6 @@ textarea:-webkit-autofill, select:-webkit-autofill {
 
 .form-control.is-invalid,
 .form-select.is-invalid {
-    background: var(--danger-muted) !important;
     background-image: none !important;
     outline: 2px solid var(--danger) !important;
     outline-offset: 0 !important;
@@ -1520,6 +1519,12 @@ i.bi { vertical-align: middle; }
 [data-bs-theme="dark"] .form-control:focus,
 [data-bs-theme="dark"] .form-select:focus {
     outline: 2px solid var(--primary) !important;
+}
+[data-bs-theme="dark"] .form-control.is-invalid,
+[data-bs-theme="dark"] .form-select.is-invalid,
+[data-bs-theme="dark"] .form-control.is-invalid:focus,
+[data-bs-theme="dark"] .form-select.is-invalid:focus {
+    outline: 2px solid var(--danger) !important;
 }
 
 /* Data colors in dark — slightly brighter */

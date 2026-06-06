@@ -24,13 +24,15 @@ html { scroll-behavior: smooth; }
 }
 
 .landing-nav .landing-container {
-    display: flex; align-items: center;
-    justify-content: space-between; height: 100%;
+    display: grid; align-items: center;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    height: 100%;
     gap: 1.5rem;
 }
 
 .landing-brand {
     display: flex; align-items: center; gap: 0.625rem;
+    justify-self: start;
     text-decoration: none; color: var(--text-1);
     font-weight: 700; font-size: 1rem; letter-spacing: -0.2px;
 }
@@ -39,7 +41,7 @@ html { scroll-behavior: smooth; }
 
 .landing-nav-links {
     display: flex; align-items: center; gap: 0.25rem;
-    margin-left: auto; margin-right: 0.5rem;
+    justify-self: center;
 }
 .nav-link-inline {
     font-size: 0.875rem; font-weight: 500;
@@ -48,9 +50,16 @@ html { scroll-behavior: smooth; }
     border-radius: var(--radius-md) !important;
     transition: background var(--transition), color var(--transition);
 }
-.nav-link-inline:hover { background: var(--surface-hover); color: var(--text-1); }
+.nav-link-inline:hover,
+.nav-link-inline.is-active,
+.nav-link-inline[aria-current="location"] {
+    background: var(--surface-hover); color: var(--text-1);
+}
 
-.landing-nav-end { display: flex; align-items: center; gap: 0.5rem; }
+.landing-nav-end {
+    display: flex; align-items: center; gap: 0.5rem;
+    justify-self: end;
+}
 
 .landing-theme-toggle {
     display: flex; align-items: center; justify-content: center;
@@ -74,6 +83,12 @@ html { scroll-behavior: smooth; }
     box-shadow: 0 1px 3px rgba(0,0,0,.3), 0 2px 6px rgba(0,0,0,.2);
 }
 
+.landing-how,
+.landing-features,
+.landing-fit {
+    scroll-margin-top: 84px;
+}
+
 
 /* ============================================================ */
 /* Hero                                                         */
@@ -92,16 +107,6 @@ html { scroll-behavior: smooth; }
 .landing-hero-content {
     display: flex; flex-direction: column; gap: 1.5rem;
     justify-content: center;
-}
-
-.landing-badge {
-    display: inline-block;
-    background: var(--primary-muted); color: var(--primary);
-    padding: 0.3rem 0.875rem;
-    font-size: 0.75rem; font-weight: 600;
-    width: fit-content; letter-spacing: 0.06em;
-    text-transform: uppercase;
-    border-radius: var(--radius-pill) !important;
 }
 
 .landing-headline {
@@ -171,8 +176,7 @@ html { scroll-behavior: smooth; }
     display: flex; flex-direction: column; gap: 0.5rem;
     border-radius: var(--radius-lg) !important;
     outline: 1px solid var(--border-color) !important;
-    box-shadow: 0 4px 14px rgba(60,64,67,.08), 0 16px 36px rgba(60,64,67,.08) !important;
-    transition: transform var(--transition-slow), box-shadow var(--transition-slow);
+    transition: transform var(--transition-slow);
 
     /* Donut palette — matches the Material palette used in /charts
        (PALETTE constant in charts.html) so the landing preview reads
@@ -197,7 +201,6 @@ html { scroll-behavior: smooth; }
 }
 .landing-preview:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 18px rgba(60,64,67,.12), 0 20px 44px rgba(60,64,67,.10) !important;
 }
 
 /* Stat strip — uses --surface so it stays seamless against the
@@ -721,6 +724,10 @@ html { scroll-behavior: smooth; }
 /* Responsive                                                   */
 /* ============================================================ */
 @media (max-width: 1080px) {
+    .landing-nav .landing-container {
+        display: flex;
+        justify-content: space-between;
+    }
     .landing-nav-links { display: none; }
 
     .landing-hero { padding: 64px 0 48px; }
@@ -728,7 +735,6 @@ html { scroll-behavior: smooth; }
         grid-template-columns: 1fr; gap: 3rem; text-align: center;
     }
     .landing-hero-content { align-items: center; }
-    .landing-badge,
     .landing-cta-group { justify-content: center; }
     .landing-cta-note { max-width: 100%; text-align: center; }
     .landing-subtext { max-width: 100%; margin: 0 auto; }
@@ -814,7 +820,7 @@ body.auth-modal-open .landing-footer {
 /* Dark Mode                                                    */
 /* ============================================================ */
 [data-bs-theme="dark"] .landing-preview {
-    box-shadow: 0 4px 14px rgba(0,0,0,.35), 0 16px 36px rgba(0,0,0,.25) !important;
+    outline-color: transparent !important;
 
     /* Google Material dark-theme tones — softer, higher-contrast on dark surfaces. */
     --donut-1: #8ab4f8;   /* Blue   — Stocks  */
@@ -831,9 +837,6 @@ body.auth-modal-open .landing-footer {
     /* Gap in dark uses the lifted tone so it stays visible against the
        translucent tiles (which otherwise blend with --surface). */
     --tile-gap:       var(--surface-2);
-}
-[data-bs-theme="dark"] .landing-preview:hover {
-    box-shadow: 0 6px 18px rgba(0,0,0,.4), 0 20px 44px rgba(0,0,0,.3) !important;
 }
 [data-bs-theme="dark"] .landing-features { border-top-color: rgba(255,255,255,.08); }
 [data-bs-theme="dark"] .landing-footer   { border-top-color: rgba(255,255,255,.08); }

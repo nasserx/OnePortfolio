@@ -26,7 +26,7 @@
 
     <!-- Project CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v='20260503-20') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css', v='20260505-1') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css', v='20260606-1') }}">
 </head>
 <body>
 
@@ -67,7 +67,6 @@
 
             <!-- Left: copy -->
             <div class="landing-hero-content reveal">
-                <span class="landing-badge">Investment Tracker</span>
                 <h1 class="landing-headline">
                     Take control of your investment records.
                 </h1>
@@ -669,6 +668,76 @@
                 const onScroll = () => navbar.classList.toggle('scrolled', window.scrollY > 8);
                 window.addEventListener('scroll', onScroll, { passive: true });
                 onScroll();
+            }
+
+            /* ── Active section nav state ── */
+            const sectionLinks = Array.from(document.querySelectorAll('.landing-nav-links .nav-link-inline[href^="#"]'));
+            const sectionTargets = sectionLinks
+                .map((link) => document.getElementById(link.getAttribute('href').slice(1)))
+                .filter(Boolean);
+            let activeSectionId = '';
+            let activeUpdateQueued = false;
+
+            function setActiveSection(sectionId) {
+                if (!sectionId || sectionId === activeSectionId) return;
+                activeSectionId = sectionId;
+
+                sectionLinks.forEach((link) => {
+                    const isActive = link.getAttribute('href') === `#${sectionId}`;
+                    link.classList.toggle('is-active', isActive);
+                    if (isActive) {
+                        link.setAttribute('aria-current', 'location');
+                    } else {
+                        link.removeAttribute('aria-current');
+                    }
+                });
+            }
+
+            function currentSectionId() {
+                const navHeight = navbar?.offsetHeight || 64;
+                const activationPoint = window.scrollY + navHeight + Math.min(window.innerHeight * 0.32, 240);
+                let sectionId = '';
+
+                sectionTargets.forEach((section) => {
+                    if (section.offsetTop <= activationPoint) {
+                        sectionId = section.id;
+                    }
+                });
+
+                return sectionId || activeSectionId;
+            }
+
+            function updateActiveSection() {
+                activeUpdateQueued = false;
+                setActiveSection(currentSectionId());
+            }
+
+            function queueActiveSectionUpdate() {
+                if (activeUpdateQueued) return;
+                activeUpdateQueued = true;
+                requestAnimationFrame(updateActiveSection);
+            }
+
+            sectionLinks.forEach((link) => {
+                link.addEventListener('click', () => {
+                    setActiveSection(link.getAttribute('href').slice(1));
+                });
+            });
+
+            if (sectionTargets.length && 'IntersectionObserver' in window) {
+                const activeSectionObserver = new IntersectionObserver(() => {
+                    queueActiveSectionUpdate();
+                }, {
+                    rootMargin: '-64px 0px -45% 0px',
+                    threshold: [0, 0.2, 0.6, 1]
+                });
+                sectionTargets.forEach((section) => activeSectionObserver.observe(section));
+            }
+
+            if (sectionTargets.length) {
+                window.addEventListener('scroll', queueActiveSectionUpdate, { passive: true });
+                window.addEventListener('resize', queueActiveSectionUpdate, { passive: true });
+                queueActiveSectionUpdate();
             }
 
             /* ── Scroll-reveal animation ──

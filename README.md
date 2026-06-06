@@ -233,8 +233,8 @@ Then click **Reload** on the Web tab.
 
 ## 🖼️ Screenshots
 
-### Landing Page
-![Landing Page](screenshots/landing.png)
+### Homepage
+![Homepage](screenshots/homepage.png)
 
 ## 📝 License
 

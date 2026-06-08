@@ -740,15 +740,15 @@ textarea,
 }
 .metric-label {
     font-size: 0.625rem; color: var(--text-3);
-    font-weight: 500; text-transform: uppercase;
+    font-weight: 600; text-transform: uppercase;
     letter-spacing: 0.07em; white-space: nowrap;
 }
 .metric-value {
-    font-size: 0.875rem; font-weight: 400;
+    font-size: 0.875rem; font-weight: 500;
     color: var(--text-1); font-variant-numeric: tabular-nums;
 }
 .metric-roi {
-    font-size: 0.75rem; font-weight: 400;
+    font-size: 0.75rem; font-weight: 450;
     font-variant-numeric: tabular-nums;
 }
 
@@ -771,6 +771,267 @@ textarea,
 .portfolio-icon-wrap.text-danger  { background: var(--danger-muted)  !important; }
 
 .card-value { display: block; font-variant-numeric: tabular-nums; }
+
+/* ============================================================ */
+/* Overview Dashboard                                           */
+/* ============================================================ */
+.overview-page {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.overview-page-header {
+    align-items: center;
+    margin-bottom: 0.25rem;
+}
+
+.overview-heading {
+    min-width: 0;
+}
+
+.overview-page-header h1 {
+    font-size: clamp(1.5rem, 2vw, 1.9rem);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+}
+
+.overview-subtitle {
+    margin: 0.3rem 0 0;
+    color: var(--text-2);
+    font-size: 0.875rem;
+}
+
+.overview-header-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    white-space: nowrap;
+}
+
+.overview-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+}
+
+.overview-section-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-top: 0.1rem;
+}
+
+.overview-section-header h2 {
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: -0.015em;
+}
+
+.overview-kpi-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.85rem;
+    margin-bottom: 0;
+}
+
+.overview-kpi-card {
+    min-height: 104px;
+    padding: 0.9rem;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: flex-start;
+    gap: 0.75rem;
+}
+
+.overview-kpi-card:hover {
+    outline-color: color-mix(in srgb, var(--primary) 22%, var(--border-color)) !important;
+}
+
+.overview-kpi-icon {
+    width: 34px;
+    height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-md) !important;
+    background: var(--surface-2);
+    color: var(--text-2);
+    outline: 1px solid var(--border-color) !important;
+    flex-shrink: 0;
+    margin-top: 0.05rem;
+}
+
+.overview-kpi-icon-primary {
+    background: var(--primary-muted);
+    color: var(--primary);
+    outline-color: color-mix(in srgb, var(--primary) 24%, var(--border-color)) !important;
+}
+
+.overview-kpi-icon-profit {
+    background: var(--success-muted);
+    color: var(--success);
+    outline-color: color-mix(in srgb, var(--success) 24%, var(--border-color)) !important;
+}
+
+.overview-kpi-icon-loss {
+    background: var(--danger-muted);
+    color: var(--danger);
+    outline-color: color-mix(in srgb, var(--danger) 24%, var(--border-color)) !important;
+}
+
+.overview-kpi-body {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.22rem;
+    padding-top: 0.05rem;
+}
+
+.overview-kpi-body .stat-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding-right: 1.1rem;
+}
+
+.overview-kpi-card .stat-info-icon {
+    top: 0.85rem;
+    right: 0.9rem;
+}
+
+.overview-kpi-body .stat-value {
+    font-size: clamp(1.25rem, 1.8vw, 1.55rem);
+    line-height: 1.15;
+}
+
+.overview-portfolios-section {
+    margin-top: 0.2rem;
+}
+
+.overview-portfolio-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.85rem;
+}
+
+.overview-portfolio-card .card-body {
+    padding: 0.9rem;
+}
+
+.overview-portfolio-card-accent {
+    outline-color: color-mix(in srgb, var(--primary) 18%, var(--border-color)) !important;
+}
+
+.overview-portfolio-card-accent:hover {
+    outline-color: color-mix(in srgb, var(--primary) 28%, var(--border-color)) !important;
+}
+
+.overview-portfolio-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.85rem;
+    padding-bottom: 0.75rem;
+    box-shadow: inset 0 -1px 0 var(--border-color);
+}
+
+.overview-portfolio-title-group {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+}
+
+.overview-portfolio-icon {
+    width: 30px;
+    height: 30px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-md) !important;
+    background: var(--surface-2);
+    color: var(--primary);
+    outline: 1px solid var(--border-color) !important;
+    flex-shrink: 0;
+}
+
+.overview-portfolio-icon-primary {
+    background: var(--primary-muted);
+    color: var(--primary);
+    outline-color: color-mix(in srgb, var(--primary) 24%, var(--border-color)) !important;
+}
+
+.overview-portfolio-icon-success,
+.overview-portfolio-icon-crypto {
+    background: var(--success-muted);
+    color: var(--success);
+    outline-color: color-mix(in srgb, var(--success) 24%, var(--border-color)) !important;
+}
+
+.overview-portfolio-icon-warning {
+    background: var(--warning-muted);
+    color: var(--warning);
+    outline-color: color-mix(in srgb, var(--warning) 28%, var(--border-color)) !important;
+}
+
+.overview-portfolio-card h3 {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.98rem;
+    font-weight: 700;
+    letter-spacing: -0.015em;
+}
+
+.overview-portfolio-card .overview-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    flex-shrink: 0;
+}
+
+.overview-metric-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0;
+    margin-top: 0;
+}
+
+.overview-metric-grid .metric-item {
+    min-width: 0;
+    padding: 0.7rem 0.75rem 0.45rem 0;
+}
+
+.overview-metric-grid .metric-item:nth-child(3n) {
+    padding-left: 0;
+}
+
+.overview-metric-grid .metric-label {
+    white-space: normal;
+}
+
+.overview-metric-grid .metric-value {
+    font-size: 0.9rem;
+}
+
+.overview-empty-state {
+    min-height: 260px;
+    gap: 0.8rem;
+    background: var(--card-bg);
+}
+
+.overview-empty-icon {
+    width: 42px;
+    height: 42px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-lg) !important;
+    background: var(--primary-muted);
+    color: var(--primary);
+    outline: 1px solid color-mix(in srgb, var(--primary) 24%, var(--border-color)) !important;
+}
 
 /* ============================================================ */
 /* Generic Card                                                 */
@@ -841,14 +1102,14 @@ tr:focus-within .row-actions,
 .summary-item { text-align: center; }
 .summary-label {
     font-size: 0.6rem; color: var(--text-3);
-    text-transform: uppercase; letter-spacing: 0.07em; font-weight: 500;
+    text-transform: uppercase; letter-spacing: 0.07em; font-weight: 600;
 }
 .summary-value {
-    font-size: 0.875rem; font-weight: 400;
+    font-size: 0.875rem; font-weight: 500;
     color: var(--text-1); font-variant-numeric: tabular-nums;
 }
 .summary-subvalue {
-    font-size: 0.7rem; font-weight: 400; color: var(--text-2);
+    font-size: 0.7rem; font-weight: 450; color: var(--text-2);
     font-variant-numeric: tabular-nums;
 }
 .summary-row { min-height: 28px; }
@@ -890,6 +1151,7 @@ tr:focus-within .row-actions,
     padding: 0.58rem 0.875rem;
     vertical-align: middle;
     background: var(--card-bg) !important;
+    font-weight: 450;
 }
 .table th:first-child,
 .table td:first-child {
@@ -944,6 +1206,7 @@ tr:focus-within .row-actions,
     background: var(--card-bg) !important;
     color: var(--text-1) !important;
     font-size: 0.875rem;
+    font-weight: 450;
     white-space: nowrap;
 }
 .transactions-table th:first-child,
@@ -965,7 +1228,7 @@ tr:focus-within .row-actions,
 }
 .transactions-table tbody td small {
     color: var(--text-2) !important;
-    font-weight: 400;
+    font-weight: 450;
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
 }
@@ -975,15 +1238,44 @@ tr:focus-within .row-actions,
 .transactions-table .tx-type-label {
     display: inline-block;
     font-size: 0.875em;
-    font-weight: 400;
+    font-weight: 500;
     letter-spacing: 0;
     text-align: left;
 }
 .transactions-table .tx-type-buy { color: var(--success); }
 .transactions-table .tx-type-sell { color: var(--danger); }
 .transactions-table .badge { font-size: 0.7rem; padding: 0.22em 0.55em; }
+.transactions-table .badge-dividend {
+    display: inline-block;
+    min-width: 0;
+    padding: 0 !important;
+    background: transparent !important;
+    color: var(--primary) !important;
+    outline: none !important;
+    border-radius: 0 !important;
+    font-size: 0.875em;
+    font-weight: 500;
+    letter-spacing: 0;
+    text-align: left;
+}
 .transactions-table .btn-sm { padding: 0.2rem 0.45rem; }
 .transactions-table .btn-group.btn-group-sm { gap: 6px; }
+
+.symbol-card .portfolio-header .badge.bg-light.text-dark.border {
+    display: inline-flex;
+    align-items: center;
+    min-width: 0;
+    padding: 0.08rem 0.32rem !important;
+    background: color-mix(in srgb, var(--surface-2) 82%, transparent) !important;
+    color: var(--text-2) !important;
+    border: 1px solid color-mix(in srgb, var(--border-color) 58%, transparent) !important;
+    outline: none !important;
+    border-radius: var(--radius-sm) !important;
+    font-size: 0.66rem;
+    font-weight: 500;
+    letter-spacing: 0;
+    line-height: 1.2;
+}
 
 .portfolio-transactions { overflow: hidden; }
 .portfolio-transactions .bg-light {
@@ -1689,6 +1981,16 @@ i.bi { vertical-align: middle; }
     outline-color: rgba(255,255,255,.055) !important;
 }
 
+[data-bs-theme="dark"] .overview-kpi-card,
+[data-bs-theme="dark"] .overview-portfolio-card-accent {
+    outline-color: color-mix(in srgb, var(--primary) 16%, rgba(255,255,255,.055)) !important;
+}
+
+[data-bs-theme="dark"] .overview-kpi-card:hover,
+[data-bs-theme="dark"] .overview-portfolio-card-accent:hover {
+    outline-color: color-mix(in srgb, var(--primary) 24%, rgba(255,255,255,.07)) !important;
+}
+
 [data-bs-theme="dark"] .table thead th,
 [data-bs-theme="dark"] .transactions-table thead th {
     border-bottom-color: rgba(255,255,255,.055) !important;
@@ -1769,6 +2071,17 @@ i.bi { vertical-align: middle; }
 }
 [data-bs-theme="dark"] .transactions-table .tx-type-buy { color: #81c995; }
 [data-bs-theme="dark"] .transactions-table .tx-type-sell { color: #f28b82; }
+[data-bs-theme="dark"] .transactions-table .badge-dividend {
+    background: transparent !important;
+    color: var(--primary) !important;
+    outline: none !important;
+}
+[data-bs-theme="dark"] .symbol-card .portfolio-header .badge.bg-light.text-dark.border {
+    background: color-mix(in srgb, var(--surface-2) 78%, transparent) !important;
+    color: var(--text-2) !important;
+    border-color: rgba(255,255,255,.045) !important;
+    outline: none !important;
+}
 [data-bs-theme="dark"] .sidebar-user-dropdown {
     outline: 1px solid rgba(255,255,255,.055) !important;
 }
@@ -1824,6 +2137,12 @@ i.bi { vertical-align: middle; }
         backdrop-filter: blur(10px);
         box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--border-color) 70%, transparent);
     }
+    .overview-kpi-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .overview-portfolio-grid {
+        grid-template-columns: 1fr;
+    }
 }
 
 @media (max-width: 768px) {
@@ -1847,6 +2166,20 @@ i.bi { vertical-align: middle; }
     .card-body { padding: 1rem; }
     .btn-sm { padding: 0.25rem 0.625rem; font-size: 0.8125rem; }
     .page-header { flex-wrap: wrap; margin-bottom: 1.25rem; }
+    .overview-page-header {
+        gap: 0.85rem;
+    }
+    .overview-header-action {
+        width: 100%;
+        justify-content: center;
+    }
+    .overview-metric-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .overview-portfolio-card-header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
 }
 
 @media (max-width: 576px) {
@@ -1858,6 +2191,22 @@ i.bi { vertical-align: middle; }
     .topbar-title { display: none; }
     .stat-cards-row { gap: 0.75rem; }
     .stat-card-item { padding: 1rem; }
+    .overview-page {
+        gap: 1rem;
+    }
+    .overview-kpi-grid {
+        grid-template-columns: 1fr;
+    }
+    .overview-kpi-card {
+        min-height: auto;
+    }
+    .overview-metric-grid {
+        grid-template-columns: 1fr;
+    }
+    .overview-portfolio-card .overview-btn {
+        width: 100%;
+        justify-content: center;
+    }
 }
 
 @media print {

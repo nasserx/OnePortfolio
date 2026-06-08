@@ -108,12 +108,12 @@
     --info:             #7dd3fc;
     --info-muted:       rgba(14,165,233,.18);
 
-    --app-bg:           #0b0d10;
-    --surface:          #14171d;
-    --surface-2:        #1b1f27;
-    --surface-hover:    #222733;
+    --app-bg:           #0b0c0e;
+    --surface:          #15171b;
+    --surface-2:        #1b1d22;
+    --surface-hover:    #22252b;
     --surface-active:   rgba(138,180,255,.16);
-    --surface-elevated: #191d25;
+    --surface-elevated: #1a1c21;
 
     --success-hover:    rgba(34,197,94,.24);
     --danger-hover:     rgba(248,113,113,.24);
@@ -124,22 +124,22 @@
     --btn-danger-hover:   #fecaca;
     --btn-warning-hover:  #fef3c7;
 
-    --sidebar-bg:       #11141a;
-    --sidebar-hover:    #1c212b;
+    --sidebar-bg:       #101114;
+    --sidebar-hover:    #1a1c20;
 
-    --border-color:     rgba(255,255,255,.075);
-    --border-strong:    rgba(255,255,255,.13);
+    --border-color:     rgba(255,255,255,.08);
+    --border-strong:    rgba(255,255,255,.14);
 
     --text-1:           #f8fafc;
     --text-2:           #cbd5e1;
     --text-3:           #8b95a7;
     --text-inv:         #0b0d10;
 
-    --input-bg:         #181c24;
-    --input-focus-bg:   #1d2330;
+    --input-bg:         #20232a;
+    --input-focus-bg:   #242935;
 
-    --card-bg:          #14171d;
-    --row-alt:          #181c24;
+    --card-bg:          #15171b;
+    --row-alt:          #191b20;
 
     --color-profit:     #86efac;
     --color-loss:       #fca5a5;
@@ -238,7 +238,7 @@ textarea,
 .sidebar-brand {
     display: flex; align-items: center; gap: 0.75rem;
     padding: 0 1.25rem; height: var(--sidebar-brand-height);
-    color: var(--text-1); font-size: 0.95rem; font-weight: 700;
+    color: var(--text-1); font-size: 1.08rem; font-weight: 700;
     letter-spacing: -0.25px; flex-shrink: 0; text-decoration: none;
     background: var(--sidebar-bg);
     box-shadow: none;
@@ -783,6 +783,7 @@ textarea,
 
 .overview-page-header {
     align-items: center;
+    justify-content: flex-end;
     margin-bottom: 0.25rem;
 }
 
@@ -842,9 +843,11 @@ textarea,
     grid-template-columns: auto 1fr;
     align-items: flex-start;
     gap: 0.75rem;
+    outline-color: transparent !important;
 }
 
-.overview-kpi-card:hover {
+.overview-kpi-card:hover,
+.overview-kpi-card:focus-within {
     outline-color: color-mix(in srgb, var(--primary) 22%, var(--border-color)) !important;
 }
 
@@ -920,10 +923,11 @@ textarea,
 }
 
 .overview-portfolio-card-accent {
-    outline-color: color-mix(in srgb, var(--primary) 18%, var(--border-color)) !important;
+    outline-color: transparent !important;
 }
 
-.overview-portfolio-card-accent:hover {
+.overview-portfolio-card-accent:hover,
+.overview-portfolio-card-accent:focus-within {
     outline-color: color-mix(in srgb, var(--primary) 28%, var(--border-color)) !important;
 }
 
@@ -1042,6 +1046,28 @@ textarea,
     outline: 1px solid var(--border-color) !important;
     box-shadow: none;
 }
+
+.overview-kpi-card,
+.overview-portfolio-card-accent,
+.portfolio-list-card,
+.transactions-symbol-card,
+.charts-card,
+.charts-empty-state {
+    border-color: transparent !important;
+    border-width: 0 !important;
+    outline-color: transparent !important;
+}
+
+.overview-kpi-card:hover,
+.overview-kpi-card:focus-within {
+    outline-color: color-mix(in srgb, var(--primary) 22%, var(--border-color)) !important;
+}
+
+.overview-portfolio-card-accent:hover,
+.overview-portfolio-card-accent:focus-within {
+    outline-color: color-mix(in srgb, var(--primary) 28%, var(--border-color)) !important;
+}
+
 .card-header {
     background: var(--card-bg);
     color: var(--text-1); font-weight: 500;
@@ -1065,19 +1091,37 @@ textarea,
 .row-actions {
     opacity: 0;
     transition: opacity var(--transition);
-    gap: 7px !important;
+    gap: 8px !important;
     display: inline-flex !important;
 }
-.portfolio-header:hover .row-actions,
-tr:hover .row-actions,
-.portfolio-header:focus-within .row-actions,
-tr:focus-within .row-actions,
+.portfolio-header:hover .portfolio-summary-actions > .row-actions,
+.portfolio-header:focus-within .portfolio-summary-actions > .row-actions,
+.transactions-symbol-header:hover .transactions-symbol-actions > .row-actions,
+.transactions-symbol-header:focus-within .transactions-symbol-actions > .row-actions,
+tr:hover > .actions-cell > .row-actions,
+tr:focus-within > .actions-cell > .row-actions,
+.actions-cell:focus-within > .row-actions,
 .row-actions:focus-within {
     opacity: 1;
 }
 
 /* Row action buttons — compact controls for dense financial rows */
 .row-actions .btn { font-size: 0.875rem !important; }
+
+.portfolio-summary-actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+}
+
+.portfolio-list-card {
+    outline-color: transparent !important;
+}
+
+.portfolio-list-card:hover,
+.portfolio-list-card:focus-within {
+    outline-color: color-mix(in srgb, var(--primary) 20%, var(--border-color)) !important;
+}
 
 /* Row action buttons — vivid tonal backgrounds on hover only */
 .row-actions .btn-outline-primary:hover { background: var(--primary-hover) !important; }
@@ -1115,6 +1159,149 @@ tr:focus-within .row-actions,
 .summary-row { min-height: 28px; }
 .portfolio-summary .summary-value:not(.profit):not(.loss):not(.dividend):not(.neutral) {
     color: var(--text-1) !important;
+}
+
+/* ============================================================ */
+/* Transactions Page                                            */
+/* ============================================================ */
+.transactions-page {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.transactions-page-header {
+    align-items: flex-start;
+    justify-content: flex-end;
+    margin-bottom: 0.15rem;
+}
+
+.transactions-heading {
+    min-width: 0;
+}
+
+.transactions-heading h1 {
+    font-size: clamp(1.5rem, 2vw, 1.9rem);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+}
+
+.transactions-heading p {
+    margin: 0.3rem 0 0;
+    color: var(--text-2);
+    font-size: 0.875rem;
+}
+
+.transactions-toolbar {
+    justify-content: flex-end;
+    flex-wrap: wrap;
+}
+
+.transactions-search {
+    min-width: 190px;
+}
+
+.transactions-search-input {
+    width: 210px;
+    max-width: 100%;
+    font-size: 0.875rem;
+}
+
+.transactions-symbol-list {
+    row-gap: 0.75rem;
+}
+
+.transactions-symbol-card {
+    margin-bottom: 0.65rem !important;
+    outline-color: transparent !important;
+}
+
+.transactions-symbol-card:hover,
+.transactions-symbol-card:focus-within {
+    outline-color: color-mix(in srgb, var(--primary) 20%, var(--border-color)) !important;
+}
+
+.transactions-symbol-header {
+    padding: 0.75rem 0.9rem !important;
+    background: var(--card-bg) !important;
+}
+
+.transactions-symbol-summary-row {
+    row-gap: 0.75rem;
+}
+
+.transactions-symbol-identity {
+    min-width: 0;
+}
+
+.transactions-symbol-name {
+    color: var(--text-1) !important;
+    font-size: 0.98rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    line-height: 1;
+}
+
+.transactions-symbol-metrics .portfolio-summary {
+    gap: 0.35rem 0.65rem;
+}
+
+.transactions-symbol-metrics .summary-item {
+    text-align: left;
+    min-width: 0;
+}
+
+.transactions-symbol-metrics .summary-label {
+    font-size: 0.58rem;
+}
+
+.transactions-symbol-metrics .summary-value {
+    font-size: 0.84rem;
+}
+
+.transactions-symbol-actions {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.transactions-inline-empty {
+    background: var(--card-bg) !important;
+    color: var(--text-2);
+}
+
+.transactions-empty-state {
+    min-height: 240px;
+    background: var(--card-bg);
+}
+
+.transactions-empty-icon {
+    width: 42px;
+    height: 42px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-lg) !important;
+    background: var(--primary-muted);
+    color: var(--primary);
+    outline: 1px solid color-mix(in srgb, var(--primary) 24%, var(--border-color)) !important;
+}
+
+.charts-page {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.charts-card,
+.charts-empty-state {
+    outline-color: transparent !important;
+}
+
+.charts-card:hover,
+.charts-card:focus-within,
+.charts-empty-state:hover,
+.charts-empty-state:focus-within {
+    outline-color: color-mix(in srgb, var(--primary) 18%, var(--border-color)) !important;
 }
 
 /* ============================================================ */
@@ -1184,6 +1371,7 @@ tr:focus-within .row-actions,
     --bs-table-hover-color: var(--text-1);
     --bs-table-bg: var(--card-bg);
     --bs-table-striped-bg: var(--card-bg);
+    min-width: 980px;
 }
 .transactions-table thead th {
     /* See .table thead th rule above — same transparent + divider treatment. */
@@ -1193,7 +1381,7 @@ tr:focus-within .row-actions,
     background-image: none !important;
     border-bottom: 1px solid var(--border-color) !important;
     color: var(--text-3) !important;
-    padding: 0.5rem 0.875rem;
+    padding: 0.55rem 0.85rem;
     font-size: 0.6rem;
     font-weight: 500;
     letter-spacing: 0.07em;
@@ -1201,8 +1389,8 @@ tr:focus-within .row-actions,
     white-space: nowrap;
 }
 .transactions-table td {
-    padding: 0.45rem 0.875rem;
-    height: 40px;
+    padding: 0.48rem 0.85rem;
+    height: 38px;
     background: var(--card-bg) !important;
     color: var(--text-1) !important;
     font-size: 0.875rem;
@@ -1259,7 +1447,44 @@ tr:focus-within .row-actions,
     text-align: left;
 }
 .transactions-table .btn-sm { padding: 0.2rem 0.45rem; }
-.transactions-table .btn-group.btn-group-sm { gap: 6px; }
+.transactions-table .btn-group.btn-group-sm { gap: 8px; }
+
+.transactions-page .portfolio-transactions {
+    background: var(--card-bg);
+}
+
+.transactions-page .portfolio-transactions .table-responsive {
+    background: var(--card-bg);
+    overflow-x: auto;
+}
+
+.transactions-page .transactions-table tbody td:first-child small {
+    color: var(--text-3) !important;
+}
+
+.transactions-page .transactions-table .tx-notes-cell {
+    color: var(--text-2);
+}
+
+.transactions-page .tx-pagination-bar {
+    border-top: 1px solid var(--border-color);
+    background: var(--card-bg);
+    color: var(--text-2);
+}
+
+.transactions-page .tx-pg-num {
+    border-radius: var(--radius-md) !important;
+    color: var(--text-2);
+}
+
+.transactions-page .tx-pg-num:hover:not(.active) {
+    background: var(--surface-hover);
+}
+
+.transactions-page .tx-pg-num.active {
+    background: var(--primary);
+    color: #fff;
+}
 
 .symbol-card .portfolio-header .badge.bg-light.text-dark.border {
     display: inline-flex;
@@ -1900,13 +2125,15 @@ i.bi { vertical-align: middle; }
 
 /* Icon-only action buttons — compact square, used in fund/transaction rows */
 .btn-icon {
-    width: 30px !important;
-    height: 30px !important;
-    min-width: 30px;
-    min-height: 30px;
+    width: 28px !important;
+    height: 28px !important;
+    min-width: 28px;
+    min-height: 28px;
     padding: 0 !important;
     display: inline-flex; align-items: center; justify-content: center;
     border-radius: var(--radius-md) !important;
+    border: 0 !important;
+    outline: none !important;
     flex-shrink: 0;
     line-height: 1;
     aspect-ratio: 1 / 1;
@@ -1916,10 +2143,10 @@ i.bi { vertical-align: middle; }
     outline-offset: 2px !important;
 }
 .btn-icon.btn-sm {
-    width: 28px !important;
-    height: 28px !important;
-    min-width: 28px;
-    min-height: 28px;
+    width: 26px !important;
+    height: 26px !important;
+    min-width: 26px;
+    min-height: 26px;
     padding: 0 !important;
     font-size: 0.8125rem;
 }
@@ -1983,12 +2210,38 @@ i.bi { vertical-align: middle; }
 
 [data-bs-theme="dark"] .overview-kpi-card,
 [data-bs-theme="dark"] .overview-portfolio-card-accent {
-    outline-color: color-mix(in srgb, var(--primary) 16%, rgba(255,255,255,.055)) !important;
+    outline-color: transparent !important;
 }
 
 [data-bs-theme="dark"] .overview-kpi-card:hover,
+[data-bs-theme="dark"] .overview-kpi-card:focus-within,
+[data-bs-theme="dark"] .overview-portfolio-card-accent:focus-within,
 [data-bs-theme="dark"] .overview-portfolio-card-accent:hover {
-    outline-color: color-mix(in srgb, var(--primary) 24%, rgba(255,255,255,.07)) !important;
+    outline-color: color-mix(in srgb, var(--primary) 38%, rgba(255,255,255,.09)) !important;
+}
+
+[data-bs-theme="dark"] .transactions-symbol-card {
+    outline-color: transparent !important;
+}
+
+[data-bs-theme="dark"] .transactions-symbol-card:hover,
+[data-bs-theme="dark"] .transactions-symbol-card:focus-within {
+    outline-color: color-mix(in srgb, var(--primary) 36%, rgba(255,255,255,.09)) !important;
+}
+
+[data-bs-theme="dark"] .portfolio-list-card,
+[data-bs-theme="dark"] .charts-card,
+[data-bs-theme="dark"] .charts-empty-state {
+    outline-color: transparent !important;
+}
+
+[data-bs-theme="dark"] .portfolio-list-card:hover,
+[data-bs-theme="dark"] .portfolio-list-card:focus-within,
+[data-bs-theme="dark"] .charts-card:hover,
+[data-bs-theme="dark"] .charts-card:focus-within,
+[data-bs-theme="dark"] .charts-empty-state:hover,
+[data-bs-theme="dark"] .charts-empty-state:focus-within {
+    outline-color: color-mix(in srgb, var(--primary) 34%, rgba(255,255,255,.09)) !important;
 }
 
 [data-bs-theme="dark"] .table thead th,
@@ -2029,12 +2282,31 @@ i.bi { vertical-align: middle; }
 /* Inputs in dark */
 [data-bs-theme="dark"] .form-control,
 [data-bs-theme="dark"] .form-select {
-    outline: 1px solid rgba(255,255,255,.07) !important;
+    background: var(--input-bg) !important;
+    color: var(--text-1) !important;
+    outline: 1px solid rgba(255,255,255,.16) !important;
+}
+[data-bs-theme="dark"] .form-control:hover,
+[data-bs-theme="dark"] .form-select:hover {
+    outline-color: rgba(255,255,255,.24) !important;
+}
+[data-bs-theme="dark"] .form-control::placeholder,
+[data-bs-theme="dark"] .form-select::placeholder {
+    color: #9aa3b2 !important;
 }
 [data-bs-theme="dark"] .form-control:focus,
 [data-bs-theme="dark"] .form-select:focus {
-    outline: 1px solid var(--primary) !important;
-    box-shadow: 0 0 0 2px var(--focus-ring) !important;
+    background: var(--input-focus-bg) !important;
+    outline: 1px solid color-mix(in srgb, var(--primary) 72%, rgba(255,255,255,.22)) !important;
+    box-shadow: 0 0 0 2px rgba(138,180,255,.14) !important;
+}
+[data-bs-theme="dark"] .form-select:disabled,
+[data-bs-theme="dark"] .form-control:disabled,
+[data-bs-theme="dark"] .form-control[readonly],
+[data-bs-theme="dark"] .form-select[readonly] {
+    background: #181b21 !important;
+    color: var(--text-3) !important;
+    outline-color: rgba(255,255,255,.08) !important;
 }
 [data-bs-theme="dark"] .form-control.is-invalid,
 [data-bs-theme="dark"] .form-select.is-invalid,
@@ -2143,6 +2415,19 @@ i.bi { vertical-align: middle; }
     .overview-portfolio-grid {
         grid-template-columns: 1fr;
     }
+    .transactions-page-header {
+        gap: 0.9rem;
+    }
+    .transactions-toolbar {
+        width: 100%;
+        justify-content: flex-start;
+    }
+    .transactions-symbol-actions {
+        justify-content: flex-start;
+    }
+    .portfolio-summary-actions {
+        justify-content: flex-start;
+    }
 }
 
 @media (max-width: 768px) {
@@ -2180,6 +2465,34 @@ i.bi { vertical-align: middle; }
         align-items: flex-start;
         flex-direction: column;
     }
+    .transactions-toolbar {
+        align-items: stretch !important;
+    }
+    .transactions-toolbar > .dropdown,
+    .transactions-search,
+    .transactions-toolbar > .btn,
+    .transactions-toolbar > a.btn {
+        flex: 1 1 100%;
+    }
+    .transactions-toolbar .filter-dropdown-btn,
+    .transactions-search-input {
+        width: 100%;
+    }
+    .transactions-symbol-header {
+        padding: 0.85rem !important;
+    }
+    .transactions-symbol-identity {
+        margin-bottom: 0.15rem;
+    }
+    .transactions-symbol-metrics .portfolio-summary.columns-6 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .transactions-symbol-actions .row-actions {
+        margin-top: 0.1rem;
+    }
+    .row-actions {
+        opacity: 1;
+    }
 }
 
 @media (max-width: 576px) {
@@ -2206,6 +2519,27 @@ i.bi { vertical-align: middle; }
     .overview-portfolio-card .overview-btn {
         width: 100%;
         justify-content: center;
+    }
+    .transactions-heading h1 {
+        font-size: 1.4rem;
+    }
+    .transactions-symbol-metrics .portfolio-summary.columns-6 {
+        grid-template-columns: 1fr;
+    }
+    .transactions-symbol-metrics .summary-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+    }
+    .transactions-symbol-metrics .summary-label {
+        white-space: normal;
+    }
+}
+
+@media (hover: none), (pointer: coarse) {
+    .row-actions {
+        opacity: 1;
     }
 }
 

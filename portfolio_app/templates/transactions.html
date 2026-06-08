@@ -49,8 +49,9 @@
 {% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <div class="d-flex align-items-center gap-2 ms-auto">
+<div class="transactions-page">
+<header class="page-header transactions-page-header">
+    <div class="transactions-toolbar d-flex align-items-center gap-2">
 
         <!-- Portfolio filter dropdown -->
         <div class="dropdown">
@@ -81,13 +82,12 @@
         </div>
 
         <!-- Symbol search -->
-        <div class="position-relative">
+        <div class="position-relative transactions-search">
             <span class="position-absolute top-50 start-0 translate-middle-y ps-3 text-muted">
                 <i class="bi bi-search" style="font-size:.875rem;"></i>
             </span>
-            <input type="text" class="form-control ps-5" id="symbolSearch"
+            <input type="text" class="form-control ps-5 transactions-search-input" id="symbolSearch"
                    placeholder="Search symbol..."
-                   style="width:200px; font-size:.875rem;"
                    oninput="this.value = this.value.toUpperCase(); filterBySymbol(this.value);"
                    autocomplete="off">
         </div>
@@ -98,10 +98,10 @@
             <a class="btn btn-primary" href="{{ url_for('portfolios.portfolios_list') }}">Create a portfolio first</a>
         {% endif %}
     </div>
-</div>
+</header>
 
 <!-- Transactions by Symbol -->
-<div class="row">
+<div class="row transactions-symbol-list">
     <div class="col-12">
         {% if holdings|length > 0 %}
             {% for item in holdings %}
@@ -109,16 +109,16 @@
             {% set symbol_dividends = dividends_by_symbol.get(symbol_key, []) %}
             {% set symbol_dividend_total = dividend_totals.get(symbol_key, 0) %}
             {% set show_dividend_rows = symbol_dividends|length > 0 %}
-            <div class="card mb-2 symbol-card" data-symbol="{{ item.symbol }}">
-                 <div class="card-header py-2 px-3 portfolio-header page-accent-surface"
+            <div class="card mb-2 symbol-card transactions-symbol-card" data-symbol="{{ item.symbol }}">
+                 <div class="card-header py-2 px-3 portfolio-header transactions-symbol-header page-accent-surface"
                      onclick="toggleSymbolTransactions('{{ item.html_group_id }}')">
-                    <div class="row align-items-center g-1 summary-row">
-                        <div class="col-lg-2 col-md-3 d-flex align-items-center gap-2">
+                    <div class="row align-items-center g-1 summary-row transactions-symbol-summary-row">
+                        <div class="col-lg-2 col-md-3 d-flex align-items-center gap-2 transactions-symbol-identity">
                             <i class="bi bi-chevron-right portfolio-chevron" id="chevron-{{ item.html_group_id }}"></i>
-                            <span class="fw-bold text-dark">{{ item.symbol }}</span>
+                            <span class="fw-bold text-dark transactions-symbol-name">{{ item.symbol }}</span>
                             <span class="badge bg-light text-dark border">{{ item.portfolio.name }}</span>
                         </div>
-                        <div class="col-lg-8 col-md-7">
+                        <div class="col-lg-8 col-md-7 transactions-symbol-metrics">
                             <div class="portfolio-summary columns-6">
                                 <div class="summary-item">
                                     <div class="summary-label">Transactions</div>
@@ -153,7 +153,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-lg-2 col-md-2 text-end">
+                        <div class="col-lg-2 col-md-2 text-end transactions-symbol-actions">
                             <div class="btn-group btn-group-sm row-actions" role="group">
                                 <button type="button"
                                         class="btn btn-outline-primary btn-icon js-add-transaction-btn"
@@ -247,7 +247,7 @@
                                     <td class="tx-notes-cell"{% if tx_notes %} title="{{ tx_notes }}"{% endif %}>
                                         <small class="text-muted">{{ tx_notes if tx_notes else '—' }}</small>
                                     </td>
-                                    <td class="text-center">
+                                    <td class="text-center actions-cell">
                                         <div class="btn-group btn-group-sm row-actions" role="group">
                                             <button type="button" class="btn btn-outline-primary btn-icon btn-sm js-edit-transaction-btn"
                                                     data-tx='{{ {
@@ -296,7 +296,7 @@
                                     <td class="tx-notes-cell"{% if div_notes %} title="{{ div_notes }}"{% endif %}>
                                         <small class="text-muted">{{ div_notes if div_notes else '—' }}</small>
                                     </td>
-                                    <td class="text-center">
+                                    <td class="text-center actions-cell">
                                         <div class="btn-group btn-group-sm row-actions" role="group">
                                             <button type="button"
                                                     class="btn btn-outline-primary btn-icon btn-sm js-edit-dividend-btn"
@@ -322,7 +322,7 @@
                     </div>
                     <div class="tx-pagination-bar" id="pgbar-{{ item.html_group_id }}"></div>
                     {% else %}
-                    <div class="p-3 text-center help-message page-accent-surface">
+                    <div class="p-3 text-center help-message transactions-inline-empty page-accent-surface">
                         <button type="button" class="btn btn-outline-secondary btn-sm js-add-transaction-btn"
                                 data-portfolio-id="{{ item.portfolio.id }}"
                                 data-portfolio="{{ item.portfolio.name|e }}"
@@ -336,17 +336,22 @@
             {% endfor %}
         <div id="outer-pg-bar" class="tx-pagination-bar mt-1 px-1"></div>
         {% else %}
-        <div class="card border-0 shadow-sm">
-            <div class="card-body">
-                <div class="alert alert-info text-center mb-0">
-                    <i class="bi bi-info-circle"></i>
-                    No symbols yet. Click Add Symbol then add transactions.
-                </div>
+        <div class="empty-state transactions-empty-state">
+            <div class="transactions-empty-icon" aria-hidden="true">
+                <i class="bi bi-plus-square"></i>
             </div>
+            <h2 class="empty-state-title">No symbols yet</h2>
+            <p class="empty-state-text">Add a symbol, then record manual buy, sell, and dividend activity.</p>
+            {% if portfolios|length > 0 %}
+            <button type="button" class="btn btn-primary" onclick="openAddSymbolModal()">Add Symbol</button>
+            {% else %}
+            <a class="btn btn-primary" href="{{ url_for('portfolios.portfolios_list') }}">Create a portfolio first</a>
+            {% endif %}
         </div>
         {% endif %}
 
     </div>
+</div>
 </div>
 
 <!-- Add Symbol Modal -->

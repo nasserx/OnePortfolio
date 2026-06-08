@@ -5,12 +5,7 @@
 {% block content %}
 <div class="overview-page">
     <header class="page-header overview-page-header">
-        <div class="overview-heading">
-            <h1>Overview</h1>
-            <p class="overview-subtitle">Totals derived from your manual records.</p>
-        </div>
         <a href="{{ url_for('portfolios.portfolios_list') }}" class="btn btn-primary overview-header-action">
-            <i class="bi bi-plus-lg" aria-hidden="true"></i>
             <span>New Portfolio</span>
         </a>
     </header>
@@ -81,13 +76,7 @@
         </div>
     </section>
 
-    <section class="overview-section overview-portfolios-section" aria-labelledby="overview-portfolios-heading">
-        <div class="overview-section-header">
-            <div>
-                <h2 id="overview-portfolios-heading">Portfolio Summary</h2>
-            </div>
-        </div>
-
+    <section class="overview-section overview-portfolios-section" aria-label="Portfolios">
         {% if portfolio_summary|length > 0 %}
         <div class="overview-portfolio-grid">
             {% for item in portfolio_summary %}

@@ -66,7 +66,6 @@
 
     /* ── Cards / Tables ── */
     --card-bg:          #ffffff;
-    --row-alt:          #f8fafc;
     --row-hover:        var(--primary-muted);
 
     /* ── Data colors ── */
@@ -940,8 +939,6 @@ textarea,
 }
 .portfolio-header:hover,
 .portfolio-header:focus-within { background: var(--card-bg) !important; }
-.portfolio-header:hover .card-header,
-.portfolio-header:focus-within .card-header { background: var(--card-bg) !important; }
 
 /* Row action buttons — visible on hover only */
 .row-actions {

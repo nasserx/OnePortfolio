@@ -88,7 +88,7 @@ body {
     will-change: opacity, transform;
 }
 .nav-link-inline:hover {
-    background: var(--primary-muted);
+    background: var(--brand-hover);
     color: var(--text-1);
 }
 .nav-link-inline.is-active,
@@ -98,7 +98,7 @@ body {
     font-weight: 500;
 }
 .nav-link-inline:focus-visible {
-    background: var(--primary-muted);
+    background: var(--brand-hover);
     color: var(--primary);
 }
 .nav-link-inline.is-active::after,
@@ -191,7 +191,7 @@ body {
     transition: background var(--transition);
     white-space: nowrap;
 }
-.btn-cta-secondary:hover { background: var(--primary-hover); color: var(--primary); }
+.btn-cta-secondary:hover { background: var(--brand-hover-strong); color: var(--primary); }
 
 .landing-cta-note {
     font-size: 0.875rem;
@@ -543,7 +543,7 @@ body {
 }
 .step-card:hover {
     transform: translateY(-3px);
-    background: #fffaf5;
+    background: var(--brand-hover);
     box-shadow: 0 10px 24px rgba(124,45,18,.08) !important;
 }
 
@@ -603,7 +603,7 @@ body {
     transition: transform var(--transition), background var(--transition), box-shadow var(--transition);
 }
 .feature-card:hover {
-    background: #fffaf5;
+    background: var(--brand-hover);
     transform: translateY(-2px);
     box-shadow: 0 10px 22px rgba(124,45,18,.07) !important;
 }

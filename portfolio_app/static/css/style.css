@@ -34,6 +34,9 @@
     --success-hover:    #d8f3e2;
     --danger-hover:     #fde0e0;
     --primary-hover:    #ffedd5;
+    --neutral-hover:    var(--surface-hover);
+    --brand-hover:      var(--primary-muted);
+    --brand-hover-strong: var(--primary-hover);
 
     /* ── Filled button hover (darker fill) ── */
     --btn-primary-hover:  #ea580c;
@@ -66,12 +69,13 @@
 
     /* ── Cards / Tables ── */
     --card-bg:          #ffffff;
-    --row-hover:        var(--primary-muted);
+    --row-hover:        var(--brand-hover);
 
     /* ── Data colors ── */
     --color-profit:     #16a34a;
     --color-loss:       #dc2626;
-    --color-dividend:   #111827;
+    --color-dividend:   #2563eb;
+    --color-dividend-muted: #eff6ff;
     --color-neutral:    #7b8494;
 
     /* ── Motion ── */
@@ -214,7 +218,7 @@ textarea,
 .sidebar-nav-link:hover,
 .sidebar-nav-link:focus-visible {
     color: var(--text-1);
-    background: var(--primary-muted);
+    background: var(--brand-hover);
     text-decoration: none;
 }
 .sidebar-nav-link:hover i,
@@ -223,7 +227,7 @@ textarea,
 .sidebar-nav-link.active:hover,
 .sidebar-nav-link.active:focus-visible {
     color: var(--primary) !important;
-    background: var(--primary-muted) !important;
+    background: var(--brand-hover) !important;
     outline: 0 !important;
     font-weight: 600;
 }
@@ -392,7 +396,7 @@ textarea,
 }
 .dropdown-item.active,
 .dropdown-item:active {
-    background: var(--primary-muted) !important;
+    background: var(--brand-hover) !important;
     color: var(--primary) !important;
     font-weight: 600;
 }
@@ -439,7 +443,7 @@ textarea,
     background: var(--surface-hover) !important;
 }
 .filter-dropdown-btn + .dropdown-menu .dropdown-item.active {
-    background: var(--primary-muted) !important;
+    background: var(--brand-hover) !important;
     color: var(--primary) !important; font-weight: 500;
 }
 
@@ -768,8 +772,7 @@ textarea,
     font-size: clamp(1.25rem, 1.8vw, 1.55rem);
     line-height: 1.15;
 }
-.overview-kpi-body .stat-value:not(.profit):not(.loss),
-.overview-kpi-body .stat-value.dividend {
+.overview-kpi-body .stat-value:not(.profit):not(.loss):not(.dividend) {
     color: var(--text-1) !important;
 }
 
@@ -938,7 +941,7 @@ textarea,
     transition: background var(--transition-slow);
 }
 .portfolio-header:hover,
-.portfolio-header:focus-within { background: var(--card-bg) !important; }
+.portfolio-header:focus-within { background: var(--row-hover) !important; }
 
 /* Row action buttons — visible on hover only */
 .row-actions {
@@ -987,7 +990,7 @@ textarea,
 }
 
 /* Row action buttons — vivid tonal backgrounds on hover only */
-.row-actions .btn-outline-primary:hover { background: var(--primary-hover) !important; }
+.row-actions .btn-outline-primary:hover { background: var(--brand-hover-strong) !important; }
 .row-actions .btn-outline-success:hover  { background: var(--success-hover) !important; }
 .row-actions .btn-outline-danger:hover   { background: var(--danger-hover)  !important; }
 
@@ -1080,7 +1083,8 @@ textarea,
 }
 
 .portfolio-primary-metrics .summary-label {
-    color: var(--primary);
+    color: var(--text-3);
+    font-size: 0.625rem;
     white-space: normal;
 }
 
@@ -1152,7 +1156,7 @@ textarea,
 /* Transactions Page                                            */
 /* ============================================================ */
 .transactions-page {
-    --transaction-dividend-blue: #2563eb;
+    --transaction-dividend-blue: var(--color-dividend);
     display: flex;
     flex-direction: column;
     gap: 1rem;
@@ -1229,8 +1233,8 @@ textarea,
 }
 
 .transactions-symbol-metrics .summary-label {
-    color: var(--primary);
-    font-size: 0.58rem;
+    color: var(--text-3);
+    font-size: 0.625rem;
 }
 
 .transactions-symbol-metrics .summary-value {
@@ -1518,7 +1522,7 @@ textarea,
     min-width: 0;
     padding: 0 !important;
     background: transparent !important;
-    color: var(--primary) !important;
+    color: var(--color-dividend) !important;
     outline: none !important;
     border-radius: 0 !important;
     font-size: 0.875em;
@@ -1549,6 +1553,10 @@ textarea,
 
 .transactions-page .transactions-table .tx-notes-cell {
     color: var(--text-2);
+    max-width: 160px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .transactions-page .transactions-table.dashboard-actions-table thead th,
@@ -1579,24 +1587,53 @@ textarea,
     text-align: center !important;
 }
 
-.transactions-page .tx-pagination-bar {
+/* Shared compact pagination for expandable portfolio and transaction lists. */
+.tx-pagination-bar {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 0.4rem 0.75rem;
     border-top: 1px solid var(--border-color);
     background: var(--card-bg);
     color: var(--text-2);
+    font-size: 0.8125rem;
 }
 
-.transactions-page .tx-pg-num {
+.tx-pg-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.tx-pg-num {
+    min-width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     border-radius: var(--radius-md) !important;
+    cursor: pointer;
     color: var(--text-2);
+    font-size: 0.8125rem;
+    user-select: none;
+    transition: background var(--transition), color var(--transition);
 }
 
-.transactions-page .tx-pg-num:hover:not(.active) {
-    background: var(--surface-hover);
+.tx-pg-num:hover:not(.active) {
+    background: var(--neutral-hover);
+    color: var(--text-1);
 }
 
-.transactions-page .tx-pg-num.active {
+.tx-pg-num.active {
     background: var(--primary);
     color: #fff;
+    font-weight: 600;
+    pointer-events: none;
+}
+
+.tx-pagination-bar .btn {
+    font-size: 1.1rem;
+    line-height: 1;
 }
 
 .symbol-card .portfolio-header .badge.bg-light.text-dark.border {
@@ -1761,7 +1798,7 @@ textarea:-webkit-autofill, select:-webkit-autofill {
 }
 .btn-outline-primary:hover,
 .btn-outline-primary:focus {
-    background: var(--primary-muted) !important;
+    background: var(--brand-hover) !important;
     color: var(--primary-dark) !important;
     outline-color: var(--button-border-hover) !important;
 }
@@ -1769,13 +1806,13 @@ textarea:-webkit-autofill, select:-webkit-autofill {
 .btn-outline-success {
     background: transparent !important;
     color: var(--success) !important;
-    outline: 1px solid var(--button-border) !important;
-    transition: background var(--transition) !important;
+    outline: 1px solid color-mix(in srgb, var(--success) 35%, var(--border-color)) !important;
+    transition: background var(--transition), outline-color var(--transition) !important;
 }
 .btn-outline-success:hover,
 .btn-outline-success:focus {
-    background: var(--card-bg) !important;
-    outline-color: var(--button-border-hover) !important;
+    background: var(--success-hover) !important;
+    outline-color: color-mix(in srgb, var(--success) 45%, var(--border-color)) !important;
 }
 
 .btn-outline-danger {
@@ -1791,18 +1828,19 @@ textarea:-webkit-autofill, select:-webkit-autofill {
 .btn-outline-secondary {
     background: transparent !important;
     color: var(--text-2) !important;
-    outline: 1px solid var(--button-border) !important;
+    outline: 1px solid var(--input-border) !important;
 }
-.btn-outline-secondary:hover {
-    background: var(--primary-muted) !important;
+.btn-outline-secondary:hover,
+.btn-outline-secondary:focus {
+    background: var(--neutral-hover) !important;
     color: var(--text-1) !important;
-    outline-color: var(--button-border-hover) !important;
+    outline-color: var(--input-border) !important;
 }
 
 /* Transaction type tabs (add modal) */
 .tx-type-tabs {
     display: flex;
-    border-bottom: 1px solid var(--border-color);
+    gap: 0.5rem;
     margin-bottom: 0.25rem;
 }
 .tx-type-tab {
@@ -1810,27 +1848,26 @@ textarea:-webkit-autofill, select:-webkit-autofill {
     position: relative;
     background: transparent;
     border: none;
+    border-radius: var(--radius-md) !important;
+    outline: 1px solid transparent !important;
     padding: 0.55rem 1rem;
     font-size: 0.9375rem;
     font-weight: 500;
     color: var(--text-2);
     cursor: pointer;
-    transition: color var(--transition);
+    transition: background var(--transition), color var(--transition), outline-color var(--transition);
 }
-.tx-type-tab::after {
-    content: '';
-    position: absolute;
-    bottom: -1px;
-    left: 0; right: 0;
-    height: 2px;
-    background: transparent;
-    transition: background var(--transition);
+.tx-type-tab:hover { color: var(--text-1); background: var(--neutral-hover); }
+.tx-tab-buy.active {
+    color: var(--success);
+    background: var(--success-muted);
+    outline-color: color-mix(in srgb, var(--success) 34%, var(--border-color)) !important;
 }
-.tx-type-tab:hover { color: var(--text-1); }
-.tx-tab-buy.active         { color: var(--success); }
-.tx-tab-buy.active::after  { background: var(--success); }
-.tx-tab-sell.active        { color: var(--danger); }
-.tx-tab-sell.active::after { background: var(--danger); }
+.tx-tab-sell.active {
+    color: var(--danger);
+    background: var(--danger-muted);
+    outline-color: color-mix(in srgb, var(--danger) 34%, var(--border-color)) !important;
+}
 
 /* Transaction type buttons */
 .btn-buy, .btn-sell, .btn-dividend {
@@ -1865,7 +1902,7 @@ textarea:-webkit-autofill, select:-webkit-autofill {
     transition: all var(--transition);
 }
 .overview-btn:hover {
-    background: var(--primary-muted) !important;
+    background: var(--brand-hover) !important;
     color: var(--primary) !important;
 }
 
@@ -1890,7 +1927,7 @@ textarea:-webkit-autofill, select:-webkit-autofill {
 }
 .badge-dividend {
     display: inline-block; min-width: 4.75rem; text-align: center;
-    font-weight: 600; background: var(--primary-muted); color: var(--primary);
+    font-weight: 600; background: var(--color-dividend-muted); color: var(--color-dividend);
     letter-spacing: 0.02em;
 }
 .badge.bg-light, .badge.text-dark {
@@ -2155,13 +2192,13 @@ i.bi.text-primary,
 .settings-sidebar-link:hover,
 .settings-sidebar-link:focus-visible {
     color: var(--text-1);
-    background: var(--primary-muted);
+    background: var(--brand-hover);
 }
 .settings-sidebar-link.active,
 .settings-sidebar-link.active:hover,
 .settings-sidebar-link.active:focus-visible {
     color: var(--primary) !important;
-    background: var(--primary-muted) !important;
+    background: var(--brand-hover) !important;
     outline: 0 !important;
     font-weight: 600;
 }

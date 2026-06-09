@@ -4,48 +4,6 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
-<style>
-.tx-pagination-bar {
-    display: none;
-    align-items: center;
-    justify-content: center;
-    padding: 0.4rem 0.75rem;
-    border-top: 1px solid var(--bs-border-color);
-    font-size: 0.8125rem;
-    color: var(--bs-secondary-color);
-}
-.tx-pg-indicator {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-.tx-pg-num {
-    min-width: 28px;
-    height: 28px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-    font-size: 0.8125rem;
-    cursor: pointer;
-    color: var(--bs-body-color);
-    transition: background 0.15s;
-    user-select: none;
-}
-.tx-pg-num:hover:not(.active) { background: var(--bs-tertiary-bg); }
-.tx-pg-num.active {
-    background: var(--bs-primary);
-    color: #fff;
-    font-weight: 600;
-    pointer-events: none;
-}
-.tx-notes-cell {
-    max-width: 160px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-</style>
 {% endblock %}
 
 {% block content %}
@@ -1039,9 +997,9 @@ function openAddSymbolModal() {
         bar.style.display = 'flex';
         bar.innerHTML =
             '<div class="tx-pg-indicator">' +
-                '<button class="btn btn-sm tx-pg-prev px-1 py-0 border-0 text-secondary" style="font-size:1.1rem;line-height:1"' + (page <= 1 ? ' disabled' : '') + ' data-gid="' + groupId + '">&#8249;</button>' +
+                '<button class="btn btn-sm tx-pg-prev px-1 py-0 border-0 text-secondary"' + (page <= 1 ? ' disabled' : '') + ' data-gid="' + groupId + '">&#8249;</button>' +
                 nums +
-                '<button class="btn btn-sm tx-pg-next px-1 py-0 border-0 text-secondary" style="font-size:1.1rem;line-height:1"' + (page >= totalPages ? ' disabled' : '') + ' data-gid="' + groupId + '">&#8250;</button>' +
+                '<button class="btn btn-sm tx-pg-next px-1 py-0 border-0 text-secondary"' + (page >= totalPages ? ' disabled' : '') + ' data-gid="' + groupId + '">&#8250;</button>' +
             '</div>';
     }
 
@@ -1121,9 +1079,9 @@ function openAddSymbolModal() {
         bar.style.display = 'flex';
         bar.innerHTML =
             '<div class="tx-pg-indicator">' +
-                '<button class="btn btn-sm px-1 py-0 border-0 text-secondary outer-pg-prev" style="font-size:1.1rem;line-height:1"' + (currentPage <= 1 ? ' disabled' : '') + '>&#8249;</button>' +
+                '<button class="btn btn-sm px-1 py-0 border-0 text-secondary outer-pg-prev"' + (currentPage <= 1 ? ' disabled' : '') + '>&#8249;</button>' +
                 nums +
-                '<button class="btn btn-sm px-1 py-0 border-0 text-secondary outer-pg-next" style="font-size:1.1rem;line-height:1"' + (currentPage >= totalPages ? ' disabled' : '') + '>&#8250;</button>' +
+                '<button class="btn btn-sm px-1 py-0 border-0 text-secondary outer-pg-next"' + (currentPage >= totalPages ? ' disabled' : '') + '>&#8250;</button>' +
             '</div>';
     }
 

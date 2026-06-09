@@ -61,26 +61,12 @@ html { scroll-behavior: smooth; }
     justify-self: end;
 }
 
-.landing-theme-toggle {
-    display: flex; align-items: center; justify-content: center;
-    width: 36px; height: 36px;
-    background: none; cursor: pointer;
-    color: var(--text-2);
-    font-size: 1rem; line-height: 1;
-    border-radius: var(--radius-md) !important;
-    transition: background var(--transition), color var(--transition);
-}
-.landing-theme-toggle:hover { background: var(--surface-hover); color: var(--text-1); }
-
 .landing-nav .btn-nav-login  { font-size: 0.8125rem; padding: 0.3rem 0.875rem; }
 .landing-nav .btn-nav-signup { font-size: 0.8125rem; padding: 0.3rem 1rem; }
 
 /* Navbar scrolled state — elevation shadow */
 .landing-nav.scrolled {
     box-shadow: 0 1px 3px rgba(60,64,67,.10), 0 2px 6px rgba(60,64,67,.06);
-}
-[data-bs-theme="dark"] .landing-nav.scrolled {
-    box-shadow: 0 1px 3px rgba(0,0,0,.3), 0 2px 6px rgba(0,0,0,.2);
 }
 
 .landing-how,
@@ -204,8 +190,7 @@ html { scroll-behavior: smooth; }
 }
 
 /* Stat strip — uses --surface so it stays seamless against the
-   preview shell in both themes (light: same #ffffff; dark: same
-   lifted #292a2d). No outline, no inter-stat dividers. */
+   preview shell. No outline, no inter-stat dividers. */
 .preview-stats {
     display: grid; grid-template-columns: repeat(4, 1fr);
     background: var(--surface);
@@ -817,53 +802,6 @@ body.auth-modal-open .landing-footer {
 
 
 /* ============================================================ */
-/* Dark Mode                                                    */
-/* ============================================================ */
-[data-bs-theme="dark"] .landing-preview {
-    outline-color: transparent !important;
-
-    /* Google Material dark-theme tones — softer, higher-contrast on dark surfaces. */
-    --donut-1: #8ab4f8;   /* Blue   — Stocks  */
-    --donut-2: #81c995;   /* Green  — ETFs    */
-    --donut-3: #fdd663;   /* Yellow — Gold    */
-    --donut-4: #f28b82;   /* Red    — Crypto  */
-
-    /* Heatmap tonal palette in dark — translucent containers blend with
-       --surface, paired with light on-container text (~4.5:1 contrast). */
-    --tile-gain-bg:   rgba(129, 201, 149, 0.16);
-    --tile-gain-text: #a8d5b5;
-    --tile-loss-bg:   rgba(242, 139, 130, 0.18);
-    --tile-loss-text: #f6aea8;
-    /* Gap in dark uses the lifted tone so it stays visible against the
-       translucent tiles (which otherwise blend with --surface). */
-    --tile-gap:       var(--surface-2);
-}
-[data-bs-theme="dark"] .landing-features { border-top-color: rgba(255,255,255,.08); }
-[data-bs-theme="dark"] .landing-footer   { border-top-color: rgba(255,255,255,.08); }
-[data-bs-theme="dark"] .landing-nav      { border-bottom-color: rgba(255,255,255,.08); }
-
-/* Step + feature cards: elevate above section background */
-[data-bs-theme="dark"] .step-card,
-[data-bs-theme="dark"] .feature-card,
-[data-bs-theme="dark"] .trust-item,
-[data-bs-theme="dark"] .benefit-item,
-[data-bs-theme="dark"] .fit-panel {
-    background: var(--surface-2);
-}
-[data-bs-theme="dark"] .step-card:hover,
-[data-bs-theme="dark"] .feature-card:hover {
-    background: var(--surface-active);
-    box-shadow: 0 4px 16px rgba(0,0,0,.3) !important;
-}
-
-/* Final CTA card in dark mode — gradient looks washed out, use solid surface */
-[data-bs-theme="dark"] .final-cta-card {
-    background: var(--surface-2);
-    outline-color: rgba(255,255,255,.08) !important;
-}
-
-
-/* ============================================================ */
 /* Auth Modal                                                   */
 /* ============================================================ */
 #authModal .modal-dialog { max-width: 420px; }
@@ -874,10 +812,6 @@ body.auth-modal-open .landing-footer {
     box-shadow: var(--shadow-overlay);
     overflow: hidden;
 }
-[data-bs-theme="dark"] #authModal .modal-content {
-    outline-color: rgba(255,255,255,.10) !important;
-}
-
 .auth-modal-tabbar {
     display: flex; align-items: center;
     padding: 0 1.5rem;

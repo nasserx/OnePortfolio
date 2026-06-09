@@ -91,69 +91,6 @@
 }
 
 /* ============================================================ */
-/* Design Tokens — Dark Theme                                   */
-/* ============================================================ */
-[data-bs-theme="dark"] {
-    --primary:          #8ab4ff;
-    --primary-dark:     #bfdbfe;
-    --primary-muted:    rgba(96,165,250,.18);
-    --primary-tint:     rgba(96,165,250,.10);
-
-    --success:          #86efac;
-    --success-muted:    rgba(34,197,94,.16);
-    --danger:           #fca5a5;
-    --danger-muted:     rgba(248,113,113,.16);
-    --warning:          #fde68a;
-    --warning-muted:    rgba(245,158,11,.18);
-    --info:             #7dd3fc;
-    --info-muted:       rgba(14,165,233,.18);
-
-    --app-bg:           #0b0c0e;
-    --surface:          #15171b;
-    --surface-2:        #1b1d22;
-    --surface-hover:    #22252b;
-    --surface-active:   rgba(138,180,255,.16);
-    --surface-elevated: #1a1c21;
-
-    --success-hover:    rgba(34,197,94,.24);
-    --danger-hover:     rgba(248,113,113,.24);
-    --primary-hover:    rgba(96,165,250,.24);
-
-    --btn-primary-hover:  #bfdbfe;
-    --btn-success-hover:  #bbf7d0;
-    --btn-danger-hover:   #fecaca;
-    --btn-warning-hover:  #fef3c7;
-
-    --sidebar-bg:       #101114;
-    --sidebar-hover:    #1a1c20;
-
-    --border-color:     rgba(255,255,255,.08);
-    --border-strong:    rgba(255,255,255,.14);
-
-    --text-1:           #f8fafc;
-    --text-2:           #cbd5e1;
-    --text-3:           #8b95a7;
-    --text-inv:         #0b0d10;
-
-    --input-bg:         #20232a;
-    --input-focus-bg:   #242935;
-
-    --card-bg:          #15171b;
-    --row-alt:          #191b20;
-
-    --color-profit:     #86efac;
-    --color-loss:       #fca5a5;
-    --color-dividend:   #8ab4ff;
-    --color-neutral:    #8b95a7;
-
-    --focus-ring:       rgba(138,180,255,.18);
-    --danger-ring:      rgba(252,165,165,.16);
-    --shadow-sm:        none;
-    --shadow-md:        none;
-    --shadow-overlay:   none;
-}
-
-/* ============================================================ */
 /* Reset                                                        */
 /* ============================================================ */
 *, *::before, *::after {
@@ -500,33 +437,6 @@ textarea,
     color: var(--primary) !important; font-weight: 500;
 }
 
-/* ── Theme Toggle Switch ── */
-.theme-toggle {
-    width: 36px; height: 20px;
-    background: var(--surface-2);
-    border-radius: 10px !important;
-    position: relative;
-    flex-shrink: 0;
-    transition: background 0.22s ease;
-    display: inline-flex; align-items: center;
-    outline: 1px solid var(--border-color) !important;
-}
-.theme-toggle.is-on {
-    background: var(--primary);
-    outline-color: var(--primary) !important;
-}
-.theme-toggle-thumb {
-    position: absolute;
-    width: 16px; height: 16px;
-    background: #fff;
-    border-radius: 50% !important;
-    top: 2px; left: 2px;
-    transition: transform 0.22s ease;
-}
-.theme-toggle.is-on .theme-toggle-thumb {
-    transform: translateX(16px);
-}
-
 /* ── Dropdown items ── */
 .settings-item {
     padding: 0.55rem 0.75rem; cursor: pointer;
@@ -681,7 +591,6 @@ textarea,
 }
 .stat-info-icon:hover { opacity: 1; color: var(--primary); }
 
-/* Tooltip theme-aware */
 .tooltip { opacity: 1 !important; }
 .tooltip .tooltip-inner {
     background: var(--surface-2);
@@ -695,11 +604,6 @@ textarea,
     box-shadow: none !important;
 }
 .tooltip .tooltip-arrow::before { border-top-color: var(--surface-2) !important; }
-
-[data-bs-theme="dark"] .tooltip .tooltip-inner {
-    background: #3c3f43;
-}
-[data-bs-theme="dark"] .tooltip .tooltip-arrow::before { border-top-color: #3c3f43 !important; }
 .stat-value {
     font-size: 1.625rem; font-weight: 600;
     color: var(--text-1); line-height: 1.15;
@@ -1899,10 +1803,6 @@ textarea:-webkit-autofill, select:-webkit-autofill {
     background: var(--info-muted) !important;
     color: var(--info) !important;
 }
-[data-bs-theme="dark"] .flash-alert {
-    outline-color: rgba(255,255,255,.055) !important;
-}
-
 /* ============================================================ */
 /* Modals                                                       */
 /* ============================================================ */
@@ -1927,13 +1827,9 @@ textarea:-webkit-autofill, select:-webkit-autofill {
 
 .modal-header .btn-close { opacity: 0.4; }
 .modal-header .btn-close:hover { opacity: 0.7; }
-[data-bs-theme="dark"] .modal-header .btn-close {
-    filter: invert(1) grayscale(100%) brightness(200%) !important;
-}
 
 .modal-footer .btn { min-height: 38px; }
 .modal-backdrop { background: rgba(32,33,36,.55); }
-[data-bs-theme="dark"] .modal-backdrop { background: rgba(0,0,0,.78); }
 
 .nav-tabs {
     gap: 0.25rem;
@@ -2300,203 +2196,6 @@ i.bi { vertical-align: middle; }
     flex-shrink: 0;
 }
 .nav-avatar-btn:hover { background: var(--surface-hover); color: var(--primary); }
-
-/* ============================================================ */
-/* Dark Mode Overrides                                          */
-/* Most theming flows through tokens automatically; this block  */
-/* is reserved for surfaces that need a different tint shade    */
-/* than what --border-color naturally provides.                 */
-/* ============================================================ */
-
-/* Decorative dividers: lighter tint than --border-color (.12) so
-   they read as faint separators rather than component outlines. */
-[data-bs-theme="dark"] .sidebar-divider,
-[data-bs-theme="dark"] .sidebar-sep,
-[data-bs-theme="dark"] .dropdown-divider {
-    background: rgba(255,255,255,.08) !important;
-}
-
-/* Card outlines: slightly subtler than --border-color in dark
-   so dense card layouts don't feel framed-in. */
-[data-bs-theme="dark"] .card,
-[data-bs-theme="dark"] .stat-card-item,
-[data-bs-theme="dark"] .portfolio-card,
-[data-bs-theme="dark"] .modal-content,
-[data-bs-theme="dark"] .auth-card,
-[data-bs-theme="dark"] .auth-inner-card,
-[data-bs-theme="dark"] .settings-readonly-field {
-    outline-color: rgba(255,255,255,.055) !important;
-}
-
-[data-bs-theme="dark"] .overview-kpi-card,
-[data-bs-theme="dark"] .overview-portfolio-card-accent {
-    outline-color: transparent !important;
-}
-
-[data-bs-theme="dark"] .overview-kpi-card:hover,
-[data-bs-theme="dark"] .overview-kpi-card:focus-within,
-[data-bs-theme="dark"] .overview-portfolio-card-accent:focus-within,
-[data-bs-theme="dark"] .overview-portfolio-card-accent:hover {
-    outline-color: color-mix(in srgb, var(--primary) 38%, rgba(255,255,255,.09)) !important;
-}
-
-[data-bs-theme="dark"] .transactions-symbol-card {
-    outline-color: transparent !important;
-}
-
-[data-bs-theme="dark"] .transactions-symbol-card:hover,
-[data-bs-theme="dark"] .transactions-symbol-card:focus-within {
-    outline-color: color-mix(in srgb, var(--primary) 36%, rgba(255,255,255,.09)) !important;
-}
-
-[data-bs-theme="dark"] .portfolio-list-card,
-[data-bs-theme="dark"] .charts-card,
-[data-bs-theme="dark"] .charts-empty-state {
-    outline-color: transparent !important;
-}
-
-[data-bs-theme="dark"] .portfolio-list-card:hover,
-[data-bs-theme="dark"] .portfolio-list-card:focus-within,
-[data-bs-theme="dark"] .charts-card:hover,
-[data-bs-theme="dark"] .charts-card:focus-within,
-[data-bs-theme="dark"] .charts-empty-state:hover,
-[data-bs-theme="dark"] .charts-empty-state:focus-within {
-    outline-color: color-mix(in srgb, var(--primary) 34%, rgba(255,255,255,.09)) !important;
-}
-
-[data-bs-theme="dark"] .table thead th,
-[data-bs-theme="dark"] .transactions-table thead th {
-    border-bottom-color: rgba(255,255,255,.055) !important;
-}
-
-[data-bs-theme="dark"] .table tbody tr:not(:last-child) td,
-[data-bs-theme="dark"] .transactions-table tbody tr:not(:last-child) td {
-    background-image: linear-gradient(
-        to bottom,
-        transparent calc(100% - 1px),
-        rgba(255,255,255,.045) calc(100% - 1px)
-    ) !important;
-}
-
-/* Avatar in dark: primary background is light, needs dark text */
-[data-bs-theme="dark"] .user-avatar { color: var(--text-inv) !important; }
-
-/* Filled buttons in dark: light backgrounds need dark text for contrast */
-[data-bs-theme="dark"] .btn-primary,
-[data-bs-theme="dark"] .btn-primary:hover,
-[data-bs-theme="dark"] .btn-success,
-[data-bs-theme="dark"] .btn-success:hover,
-[data-bs-theme="dark"] .btn-danger,
-[data-bs-theme="dark"] .btn-danger:hover,
-[data-bs-theme="dark"] .btn-warning,
-[data-bs-theme="dark"] .btn-warning:hover { color: var(--text-inv) !important; }
-
-[data-bs-theme="dark"] .btn-buy,
-[data-bs-theme="dark"] .btn-sell,
-[data-bs-theme="dark"] .btn-dividend { color: var(--text-inv) !important; }
-
-/* Modal dark */
-[data-bs-theme="dark"] .modal-header { background: var(--surface-elevated) !important; }
-[data-bs-theme="dark"] .modal-footer { background: var(--surface-elevated) !important; }
-
-/* Inputs in dark */
-[data-bs-theme="dark"] .form-control,
-[data-bs-theme="dark"] .form-select {
-    background: var(--input-bg) !important;
-    color: var(--text-1) !important;
-    outline: 1px solid rgba(255,255,255,.16) !important;
-}
-[data-bs-theme="dark"] .form-control:hover,
-[data-bs-theme="dark"] .form-select:hover {
-    outline-color: rgba(255,255,255,.24) !important;
-}
-[data-bs-theme="dark"] .form-control::placeholder,
-[data-bs-theme="dark"] .form-select::placeholder {
-    color: #9aa3b2 !important;
-}
-[data-bs-theme="dark"] .form-control:focus,
-[data-bs-theme="dark"] .form-select:focus {
-    background: var(--input-focus-bg) !important;
-    outline: 1px solid color-mix(in srgb, var(--primary) 72%, rgba(255,255,255,.22)) !important;
-    box-shadow: 0 0 0 2px rgba(138,180,255,.14) !important;
-}
-[data-bs-theme="dark"] .form-select:disabled,
-[data-bs-theme="dark"] .form-control:disabled,
-[data-bs-theme="dark"] .form-control[readonly],
-[data-bs-theme="dark"] .form-select[readonly] {
-    background: #181b21 !important;
-    color: var(--text-3) !important;
-    outline-color: rgba(255,255,255,.08) !important;
-}
-[data-bs-theme="dark"] .form-control.is-invalid,
-[data-bs-theme="dark"] .form-select.is-invalid,
-[data-bs-theme="dark"] .form-control.is-invalid:focus,
-[data-bs-theme="dark"] .form-select.is-invalid:focus {
-    outline: 1px solid var(--danger) !important;
-}
-[data-bs-theme="dark"] .form-control.is-invalid,
-[data-bs-theme="dark"] .form-select.is-invalid {
-    box-shadow: none !important;
-}
-[data-bs-theme="dark"] .form-control.is-invalid:focus,
-[data-bs-theme="dark"] .form-select.is-invalid:focus {
-    box-shadow: 0 0 0 2px var(--danger-ring) !important;
-}
-
-/* Data colors in dark — slightly brighter */
-[data-bs-theme="dark"] .profit   { color: #81c995 !important; }
-[data-bs-theme="dark"] .loss     { color: #f28b82 !important; }
-[data-bs-theme="dark"] .dividend { color: #8ab4f8 !important; }
-
-/* Badges in dark: boost opacity so muted backgrounds are visible */
-[data-bs-theme="dark"] .badge-buy {
-    background: rgba(129,201,149,.28);
-    color: #81c995;
-}
-[data-bs-theme="dark"] .badge-sell {
-    background: rgba(242,139,130,.28);
-    color: #f28b82;
-}
-[data-bs-theme="dark"] .badge-dividend {
-    background: rgba(138,180,248,.28);
-    color: #8ab4f8;
-}
-[data-bs-theme="dark"] .transactions-table .tx-type-buy { color: #81c995; }
-[data-bs-theme="dark"] .transactions-table .tx-type-sell { color: #f28b82; }
-[data-bs-theme="dark"] .transactions-table .badge-dividend {
-    background: transparent !important;
-    color: var(--primary) !important;
-    outline: none !important;
-}
-[data-bs-theme="dark"] .symbol-card .portfolio-header .badge.bg-light.text-dark.border {
-    background: color-mix(in srgb, var(--surface-2) 78%, transparent) !important;
-    color: var(--text-2) !important;
-    border-color: rgba(255,255,255,.045) !important;
-    outline: none !important;
-}
-[data-bs-theme="dark"] .sidebar-user-dropdown {
-    outline: 1px solid rgba(255,255,255,.055) !important;
-}
-
-/* Theme toggle in dark */
-[data-bs-theme="dark"] .theme-toggle {
-    outline: 1px solid rgba(255,255,255,.075) !important;
-}
-
-/* Flatpickr dark */
-[data-bs-theme="dark"] .flatpickr-calendar {
-    background: var(--surface); color: var(--text-1);
-    outline: 1px solid rgba(255,255,255,.10) !important;
-}
-[data-bs-theme="dark"] .flatpickr-day { color: var(--text-1); }
-[data-bs-theme="dark"] .flatpickr-day:hover { background: var(--surface-hover); }
-[data-bs-theme="dark"] .flatpickr-day.selected { background: var(--primary); color: var(--text-inv); }
-[data-bs-theme="dark"] .flatpickr-months .flatpickr-month { color: var(--text-1); fill: var(--text-1); }
-[data-bs-theme="dark"] .flatpickr-current-month .flatpickr-monthDropdown-months {
-    background: var(--surface-2); color: var(--text-1);
-}
-[data-bs-theme="dark"] span.flatpickr-weekday { color: var(--text-2); }
-[data-bs-theme="dark"] .flatpickr-day.flatpickr-disabled { color: var(--text-3); }
 
 /* ============================================================ */
 /* Scrollbar                                                    */

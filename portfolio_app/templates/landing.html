@@ -1,14 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    {# Theme must be set before render to prevent flash of wrong theme.
-       Priority: localStorage → system preference → light #}
-    <script>document.documentElement.setAttribute(
-        'data-bs-theme',
-        localStorage.getItem('theme') ||
-        (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
-    );</script>
-
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OnePortfolio — Track your investments</title>
@@ -46,9 +38,6 @@
             </div>
 
             <div class="landing-nav-end">
-                <button class="landing-theme-toggle" id="landingThemeToggle" aria-label="Toggle theme">
-                    <i class="bi bi-moon-stars" id="landingThemeIcon" aria-hidden="true"></i>
-                </button>
                 <button class="btn-nav-login"
                         data-bs-toggle="modal" data-bs-target="#authModal" data-tab="login">
                     Log In
@@ -645,23 +634,7 @@
 
     <script>
         (function () {
-            const html   = document.documentElement;
-            const btn    = document.getElementById('landingThemeToggle');
-            const icon   = document.getElementById('landingThemeIcon');
             const navbar = document.getElementById('landingNav');
-
-            /* ── Theme toggle ── */
-            function updateIcon() {
-                icon.className = html.getAttribute('data-bs-theme') === 'dark'
-                    ? 'bi bi-sun' : 'bi bi-moon-stars';
-            }
-            updateIcon();
-            btn?.addEventListener('click', () => {
-                const next = html.getAttribute('data-bs-theme') === 'dark' ? 'light' : 'dark';
-                html.setAttribute('data-bs-theme', next);
-                localStorage.setItem('theme', next);
-                updateIcon();
-            });
 
             /* ── Navbar scroll effect ── */
             if (navbar) {

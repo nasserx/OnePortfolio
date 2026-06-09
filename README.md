@@ -65,7 +65,6 @@ From those four record types the app derives every number on the dashboard:
 | **Brute-force protection** | 5 failed logins → 30-minute lockout; rate limits on auth endpoints via Flask-Limiter |
 | **Account settings** | Change password, change email (with re-verification), self-delete account with OTP |
 | **Admin panel** | List users, send reset emails, toggle admin flag |
-| **Dark / Light mode** | Theme toggle backed by Material Design 3 colour tokens, persisted to `localStorage` |
 | **Responsive UI** | Bootstrap 5.3 layout with paginated symbol cards and event tables |
 
 ## 🛠️ Tech Stack

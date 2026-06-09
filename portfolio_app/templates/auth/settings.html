@@ -113,7 +113,7 @@
                         {% if is_demo_account %}
                             <button class="btn btn-outline-secondary btn-sm" disabled>Change</button>
                         {% else %}
-                            <a href="{{ url_for('auth.change_password') }}" class="btn btn-outline-primary btn-sm">
+                            <a href="{{ url_for('auth.change_password') }}" class="btn btn-primary btn-sm">
                                 Change
                             </a>
                         {% endif %}
@@ -138,7 +138,7 @@
                         {% if is_demo_account %}
                             <button class="btn btn-outline-secondary btn-sm" disabled>Update Email</button>
                         {% else %}
-                            <a href="{{ url_for('auth.update_email') }}" class="btn btn-outline-primary btn-sm">
+                            <a href="{{ url_for('auth.update_email') }}" class="btn btn-primary btn-sm">
                                 Update Email
                             </a>
                         {% endif %}

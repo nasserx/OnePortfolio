@@ -80,35 +80,12 @@
         {% if portfolio_summary|length > 0 %}
         <div class="overview-portfolio-grid">
             {% for item in portfolio_summary %}
-            {% set portfolio_name = item.name|lower %}
-            {% if 'crypto' in portfolio_name or 'bitcoin' in portfolio_name or 'btc' in portfolio_name %}
-                {% set portfolio_icon = 'bi-currency-bitcoin' %}
-                {% set portfolio_icon_tone = 'crypto' %}
-            {% elif 'stock' in portfolio_name or 'stocks' in portfolio_name or 'saham' in portfolio_name or 'share' in portfolio_name or 'shares' in portfolio_name or 'equity' in portfolio_name %}
-                {% set portfolio_icon = 'bi-graph-up-arrow' %}
-                {% set portfolio_icon_tone = 'primary' %}
-            {% elif 'etf' in portfolio_name or 'etfs' in portfolio_name or 'fund' in portfolio_name or 'funds' in portfolio_name %}
-                {% set portfolio_icon = 'bi-bar-chart-line' %}
-                {% set portfolio_icon_tone = 'primary' %}
-            {% elif 'gold' in portfolio_name or 'metal' in portfolio_name %}
-                {% set portfolio_icon = 'bi-gem' %}
-                {% set portfolio_icon_tone = 'warning' %}
-            {% elif 'cash' in portfolio_name or 'money' in portfolio_name %}
-                {% set portfolio_icon = 'bi-cash-stack' %}
-                {% set portfolio_icon_tone = 'success' %}
-            {% elif 'retirement' in portfolio_name or 'pension' in portfolio_name %}
-                {% set portfolio_icon = 'bi-piggy-bank' %}
-                {% set portfolio_icon_tone = 'success' %}
-            {% else %}
-                {% set portfolio_icon = 'bi-folder' %}
-                {% set portfolio_icon_tone = 'primary' %}
-            {% endif %}
             <article class="card h-100 portfolio-card overview-portfolio-card overview-portfolio-card-accent page-accent-surface">
                 <div class="card-body">
                     <div class="overview-portfolio-card-header">
                         <div class="overview-portfolio-title-group">
-                            <span class="overview-portfolio-icon overview-portfolio-icon-{{ portfolio_icon_tone }}" aria-hidden="true">
-                                <i class="bi {{ portfolio_icon }}"></i>
+                            <span class="overview-portfolio-icon overview-portfolio-icon-primary" aria-hidden="true">
+                                <i class="bi bi-wallet2"></i>
                             </span>
                             <h3>{{ item.name }}</h3>
                         </div>

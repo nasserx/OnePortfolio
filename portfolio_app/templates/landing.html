@@ -650,6 +650,9 @@
                 .filter(Boolean);
             let activeSectionId = '';
             let activeUpdateQueued = false;
+            let activeUpdateTimer = 0;
+            let scrollSpyLocked = false;
+            let unlockScrollSpyTimer = 0;
 
             function setActiveSection(sectionId) {
                 if (!sectionId || sectionId === activeSectionId) return;
@@ -682,18 +685,50 @@
 
             function updateActiveSection() {
                 activeUpdateQueued = false;
+                if (scrollSpyLocked) return;
                 setActiveSection(currentSectionId());
             }
 
             function queueActiveSectionUpdate() {
-                if (activeUpdateQueued) return;
+                if (scrollSpyLocked || activeUpdateQueued) return;
                 activeUpdateQueued = true;
-                requestAnimationFrame(updateActiveSection);
+                window.clearTimeout(activeUpdateTimer);
+                activeUpdateTimer = window.setTimeout(() => {
+                    requestAnimationFrame(updateActiveSection);
+                }, 70);
+            }
+
+            function scrollToSection(sectionId) {
+                const section = document.getElementById(sectionId);
+                if (!section) return;
+
+                const navHeight = navbar?.offsetHeight || 64;
+                const targetTop = section.getBoundingClientRect().top + window.scrollY - navHeight - 18;
+                const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+                scrollSpyLocked = true;
+                window.clearTimeout(unlockScrollSpyTimer);
+                setActiveSection(sectionId);
+
+                window.scrollTo({
+                    top: Math.max(0, targetTop),
+                    behavior: prefersReducedMotion ? 'auto' : 'smooth'
+                });
+
+                if (history.replaceState) {
+                    history.replaceState(null, '', `#${sectionId}`);
+                }
+
+                unlockScrollSpyTimer = window.setTimeout(() => {
+                    scrollSpyLocked = false;
+                    queueActiveSectionUpdate();
+                }, prefersReducedMotion ? 80 : 780);
             }
 
             sectionLinks.forEach((link) => {
-                link.addEventListener('click', () => {
-                    setActiveSection(link.getAttribute('href').slice(1));
+                link.addEventListener('click', (ev) => {
+                    ev.preventDefault();
+                    scrollToSection(link.getAttribute('href').slice(1));
                 });
             });
 

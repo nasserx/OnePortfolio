@@ -67,6 +67,7 @@
     /* ── Cards / Tables ── */
     --card-bg:          #ffffff;
     --row-alt:          #f8fafc;
+    --row-hover:        var(--primary-muted);
 
     /* ── Data colors ── */
     --color-profit:     #16a34a;
@@ -223,8 +224,8 @@ textarea,
 .sidebar-nav-link.active:hover,
 .sidebar-nav-link.active:focus-visible {
     color: var(--primary) !important;
-    background: transparent !important;
-    outline: 1px solid var(--primary) !important;
+    background: var(--primary-muted) !important;
+    outline: 0 !important;
     font-weight: 600;
 }
 .sidebar-nav-link.active i,
@@ -1048,6 +1049,10 @@ textarea,
     padding: 0.78rem 0.9rem !important;
     background: var(--card-bg) !important;
 }
+.portfolio-primary-header:hover,
+.portfolio-primary-header:focus-within {
+    background: var(--card-bg) !important;
+}
 
 .portfolio-primary-row {
     row-gap: 0.8rem;
@@ -1078,6 +1083,7 @@ textarea,
 }
 
 .portfolio-primary-metrics .summary-label {
+    color: var(--primary);
     white-space: normal;
 }
 
@@ -1195,6 +1201,10 @@ textarea,
     padding: 0.75rem 0.9rem !important;
     background: var(--card-bg) !important;
 }
+.transactions-symbol-header:hover,
+.transactions-symbol-header:focus-within {
+    background: var(--card-bg) !important;
+}
 
 .transactions-symbol-summary-row {
     row-gap: 0.75rem;
@@ -1222,6 +1232,7 @@ textarea,
 }
 
 .transactions-symbol-metrics .summary-label {
+    color: var(--primary);
     font-size: 0.58rem;
 }
 
@@ -1284,7 +1295,7 @@ textarea,
 /* ============================================================ */
 .table {
     background: var(--card-bg); color: var(--text-1); margin: 0;
-    --bs-table-hover-bg: var(--row-alt);
+    --bs-table-hover-bg: var(--row-hover);
     --bs-table-hover-color: var(--text-1);
     --bs-table-bg: var(--card-bg);
 }
@@ -1330,7 +1341,7 @@ textarea,
     background-size: 100% 100%;
 }
 .table-hover > tbody > tr:hover > * {
-    background: var(--row-alt) !important;
+    background: var(--row-hover) !important;
     background-image: none !important;
 }
 .table-light {
@@ -1342,7 +1353,7 @@ textarea,
 /* ── Transactions Table ── */
 .transactions-table {
     font-size: 0.875rem;
-    --bs-table-hover-bg: var(--row-alt);
+    --bs-table-hover-bg: var(--row-hover);
     --bs-table-hover-color: var(--text-1);
     --bs-table-bg: var(--card-bg);
     --bs-table-striped-bg: var(--card-bg);
@@ -1483,7 +1494,7 @@ textarea,
     ) !important;
 }
 .transactions-table tbody tr:hover td {
-    background: var(--row-alt) !important;
+    background: var(--row-hover) !important;
     background-image: none !important;
 }
 .transactions-table tbody td small {
@@ -1547,6 +1558,7 @@ textarea,
 .transactions-page .transactions-table.dashboard-actions-table thead th.small,
 .portfolios-page .portfolio-events-table.dashboard-actions-table thead th,
 .portfolios-page .portfolio-events-table.dashboard-actions-table thead th.small {
+    color: var(--primary) !important;
     font-size: 0.8125rem !important;
     font-weight: 500 !important;
     letter-spacing: 0 !important;
@@ -1594,14 +1606,14 @@ textarea,
     display: inline-flex;
     align-items: center;
     min-width: 0;
-    padding: 0.08rem 0.32rem !important;
-    background: color-mix(in srgb, var(--surface-2) 82%, transparent) !important;
-    color: var(--text-2) !important;
-    border: 1px solid color-mix(in srgb, var(--border-color) 58%, transparent) !important;
+    padding: 0 !important;
+    background: transparent !important;
+    color: var(--primary) !important;
+    border: 0 !important;
     outline: none !important;
     border-radius: var(--radius-sm) !important;
-    font-size: 0.66rem;
-    font-weight: 500;
+    font-size: 0.72rem;
+    font-weight: 600;
     letter-spacing: 0;
     line-height: 1.2;
 }
@@ -2152,8 +2164,8 @@ i.bi.text-primary,
 .settings-sidebar-link.active:hover,
 .settings-sidebar-link.active:focus-visible {
     color: var(--primary) !important;
-    background: transparent !important;
-    outline: 1px solid var(--primary) !important;
+    background: var(--primary-muted) !important;
+    outline: 0 !important;
     font-weight: 600;
 }
 .settings-sidebar-link .bi { font-size: 0.9rem; flex-shrink: 0; }

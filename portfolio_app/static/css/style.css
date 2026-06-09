@@ -1098,8 +1098,8 @@ textarea,
 .portfolio-header:focus-within .portfolio-summary-actions > .row-actions,
 .transactions-symbol-header:hover .transactions-symbol-actions > .row-actions,
 .transactions-symbol-header:focus-within .transactions-symbol-actions > .row-actions,
-tr:hover > .actions-cell > .row-actions,
-tr:focus-within > .actions-cell > .row-actions,
+.dashboard-actions-table > tbody > tr:hover > .actions-cell > .row-actions,
+.dashboard-actions-table > tbody > tr:focus-within > .actions-cell > .row-actions,
 .actions-cell:focus-within > .row-actions,
 .row-actions:focus-within {
     opacity: 1;
@@ -1115,6 +1115,7 @@ tr:focus-within > .actions-cell > .row-actions,
 }
 
 .portfolio-list-card {
+    margin-bottom: 0.65rem !important;
     outline-color: transparent !important;
 }
 
@@ -1159,6 +1160,125 @@ tr:focus-within > .actions-cell > .row-actions,
 .summary-row { min-height: 28px; }
 .portfolio-summary .summary-value:not(.profit):not(.loss):not(.dividend):not(.neutral) {
     color: var(--text-1) !important;
+}
+
+/* ============================================================ */
+/* Portfolios Page                                              */
+/* ============================================================ */
+.portfolios-page {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.portfolios-page-header {
+    justify-content: flex-end;
+    margin-bottom: 0.15rem;
+}
+
+.portfolios-list {
+    row-gap: 0.75rem;
+}
+
+.portfolio-primary-header {
+    padding: 0.78rem 0.9rem !important;
+    background: var(--card-bg) !important;
+}
+
+.portfolio-primary-row {
+    row-gap: 0.8rem;
+}
+
+.portfolio-identity {
+    min-width: 0;
+}
+
+.portfolio-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text-1) !important;
+    font-size: 0.98rem;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.portfolio-primary-metrics .portfolio-summary {
+    gap: 0.35rem 0.7rem;
+}
+
+.portfolio-primary-metrics .summary-item {
+    text-align: center;
+    min-width: 0;
+}
+
+.portfolio-primary-metrics .summary-label {
+    white-space: normal;
+}
+
+.portfolio-primary-metrics .summary-value {
+    line-height: 1.2;
+}
+
+.portfolios-page .portfolio-transactions {
+    background: var(--card-bg);
+}
+
+.portfolios-page .portfolio-cash-events .table-responsive {
+    background: var(--card-bg);
+    overflow-x: auto;
+}
+
+.portfolios-page .portfolio-events-table {
+    min-width: 680px;
+}
+
+.portfolios-page .portfolio-events-table td {
+    height: 40px;
+}
+
+.portfolios-page .portfolio-events-table tbody td:first-child small {
+    color: var(--text-3) !important;
+}
+
+.portfolio-event-notes {
+    max-width: 240px;
+    color: var(--text-2);
+}
+
+.portfolio-event-notes small {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.portfolio-inline-empty {
+    padding: 1rem 1.25rem;
+    color: var(--text-2);
+    background: var(--card-bg) !important;
+}
+
+.portfolio-inline-empty small {
+    color: var(--text-2) !important;
+}
+
+.portfolios-empty-state {
+    min-height: 240px;
+    background: var(--card-bg);
+}
+
+.portfolios-empty-icon {
+    width: 42px;
+    height: 42px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-md) !important;
+    background: var(--primary-muted);
+    color: var(--primary);
+    font-size: 1.2rem;
 }
 
 /* ============================================================ */
@@ -1247,7 +1367,7 @@ tr:focus-within > .actions-cell > .row-actions,
 }
 
 .transactions-symbol-metrics .summary-item {
-    text-align: left;
+    text-align: center;
     min-width: 0;
 }
 
@@ -2481,13 +2601,22 @@ i.bi { vertical-align: middle; }
     .transactions-symbol-header {
         padding: 0.85rem !important;
     }
+    .portfolio-primary-header {
+        padding: 0.85rem !important;
+    }
     .transactions-symbol-identity {
+        margin-bottom: 0.15rem;
+    }
+    .portfolio-identity {
         margin-bottom: 0.15rem;
     }
     .transactions-symbol-metrics .portfolio-summary.columns-6 {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
     .transactions-symbol-actions .row-actions {
+        margin-top: 0.1rem;
+    }
+    .portfolio-summary-actions .row-actions {
         margin-top: 0.1rem;
     }
     .row-actions {
@@ -2526,13 +2655,25 @@ i.bi { vertical-align: middle; }
     .transactions-symbol-metrics .portfolio-summary.columns-6 {
         grid-template-columns: 1fr;
     }
+    .portfolio-primary-metrics .portfolio-summary.columns-3 {
+        grid-template-columns: 1fr;
+    }
     .transactions-symbol-metrics .summary-item {
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 1rem;
     }
+    .portfolio-primary-metrics .summary-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+    }
     .transactions-symbol-metrics .summary-label {
+        white-space: normal;
+    }
+    .portfolio-primary-metrics .summary-label {
         white-space: normal;
     }
 }

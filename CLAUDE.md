@@ -76,7 +76,7 @@ Custom form base class in `portfolio_app/forms/base_form.py` (not Flask-WTF). `v
 
 ## Frontend
 
-**Templates:** `base.html` is the shell (sidebar, topbar, theme toggle). All pages extend it. Auth pages extend `auth_base.html`.
+**Templates:** `base.html` is the shell (sidebar and topbar). All pages extend it. Auth pages extend `auth_base.html`.
 
 **`static/js/main.js`** exports one `InvestmentPortfolioApp` class initialized on `DOMContentLoaded`. Key internal classes:
 - `FormValidator` — declarative rules-based client-side validation (replaces HTML5 native validation)

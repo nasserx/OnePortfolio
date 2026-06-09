@@ -584,18 +584,6 @@
     bindHeatmapToggle('portfolio-metric', portfolioHeatmap);
     bindHeatmapToggle('symbol-metric',    symbolHeatmap);
 
-    /* ════════════════════════════════════════════════════════════════
-       Theme observer — repaint chart text when --text-1 changes.
-       Treemap tile colors are theme-agnostic; only the donut's center
-       text reads CSS vars at draw time, so it needs an explicit redraw.
-    ════════════════════════════════════════════════════════════════ */
-
-    new MutationObserver(function() {
-        Chart.defaults.color = textColor();
-        allocationChart.update('none');
-        if (portfolioHeatmap) portfolioHeatmap.update('none');
-        if (symbolHeatmap)    symbolHeatmap.update('none');
-    }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-bs-theme'] });
 })();
 </script>
 {% endblock %}

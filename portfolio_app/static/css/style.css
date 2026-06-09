@@ -195,7 +195,7 @@ textarea,
 }
 .sidebar-brand:hover { color: var(--text-1); text-decoration: none; }
 .sidebar-brand img {
-    width: 30px; height: 30px; flex-shrink: 0;
+    width: 32px; height: 32px; flex-shrink: 0;
     border-radius: var(--radius-sm) !important;
 }
 

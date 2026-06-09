@@ -17,8 +17,8 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
 
     <!-- Project CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v='20260503-20') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css', v='20260606-1') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v='20260609-1') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css', v='20260609-3') }}">
 </head>
 <body>
 
@@ -34,7 +34,7 @@
             <div class="landing-nav-links" aria-label="Page sections">
                 <a href="#how"      class="nav-link-inline">How it works</a>
                 <a href="#features" class="nav-link-inline">Features</a>
-                <a href="#fit"      class="nav-link-inline">Why manual</a>
+                <a href="#fit"      class="nav-link-inline">Manual</a>
             </div>
 
             <div class="landing-nav-end">
@@ -57,26 +57,22 @@
             <!-- Left: copy -->
             <div class="landing-hero-content reveal">
                 <h1 class="landing-headline">
-                    Take control of your investment records.
+                    Track every portfolio with a cleaner manual workflow.
                 </h1>
                 <p class="landing-subtext">
-                    Broker apps show accounts. OnePortfolio helps you build your own investment view.
-                    Track portfolios, cash movements, buys, sells, dividends, average cost, realized P&amp;L,
-                    ROI, and allocation manually, with full control over the records behind every number.
+                    OnePortfolio gives you a calm place to record cash movements, buys, sells,
+                    dividends, average cost, realized P&amp;L, ROI, and allocation without broker sync.
                 </p>
                 <div class="landing-cta-group">
                     <button class="btn-cta-primary"
                             data-bs-toggle="modal" data-bs-target="#authModal" data-tab="demo">
-                        Try the Demo
+                        Try Demo
                     </button>
                     <button class="btn-cta-secondary"
                             data-bs-toggle="modal" data-bs-target="#authModal" data-tab="register">
-                        Start Tracking Free
+                        Create Account
                     </button>
                 </div>
-                <p class="landing-cta-note">
-                    No broker sync. No automated imports. Just clean, private records you control.
-                </p>
             </div>
 
             <!-- Right: dashboard preview -->
@@ -177,19 +173,19 @@
             <div class="landing-trust-grid reveal">
                 <div class="trust-item">
                     <i class="bi bi-pencil-square" aria-hidden="true"></i>
-                    <span>Manual portfolio tracking</span>
+                    <span>Manual tracking</span>
                 </div>
                 <div class="trust-item">
-                    <i class="bi bi-link-45deg" aria-hidden="true"></i>
-                    <span>No broker integrations</span>
+                    <i class="bi bi-calculator" aria-hidden="true"></i>
+                    <span>Clear calculations</span>
                 </div>
                 <div class="trust-item">
                     <i class="bi bi-database-lock" aria-hidden="true"></i>
-                    <span>Self-hostable and privacy-conscious</span>
+                    <span>Private records</span>
                 </div>
                 <div class="trust-item">
-                    <i class="bi bi-envelope-check" aria-hidden="true"></i>
-                    <span>Email-verified accounts</span>
+                    <i class="bi bi-link-45deg" aria-hidden="true"></i>
+                    <span>No broker sync</span>
                 </div>
             </div>
         </div>
@@ -202,9 +198,9 @@
 
             <div class="landing-section-head reveal">
                 <span class="landing-eyebrow">How it works</span>
-                <h2 class="landing-section-title">A calmer way to manage your investment records</h2>
+                <h2 class="landing-section-title">Simple enough to trust. Structured enough to scale.</h2>
                 <p class="landing-section-sub">
-                    Create your structure, record what happens, and let OnePortfolio calculate the view from your entries.
+                    Build your structure once, record activity as it happens, and let the dashboard stay organized.
                 </p>
             </div>
 
@@ -212,39 +208,28 @@
 
                 <article class="step-card reveal">
                     <span class="step-num">01</span>
-                    <h3>Create your own portfolio structure</h3>
+                    <h3>Create portfolios</h3>
                     <p>
-                        Organize investments by strategy, asset type, goal, or anything that matches how
-                        you think: <em>Stocks</em>, <em>Gold</em>, <em>ETFs</em>, <em>Crypto</em>,
-                        <em>Retirement</em>, or custom portfolios.
+                        Organize investments by strategy, asset type, goal, or any structure that matches how you think.
                     </p>
                 </article>
 
                 <article class="step-card reveal">
                     <span class="step-num">02</span>
-                    <h3>Record every important movement</h3>
+                    <h3>Record activity</h3>
                     <p>
-                        Log deposits, withdrawals, tracked symbols, buy and sell transactions, dividends,
-                        fees, dates, and notes with a clear manual record.
+                        Log funding, withdrawals, buys, sells, dividends, fees, dates, and notes in one consistent flow.
                     </p>
                 </article>
 
                 <article class="step-card reveal">
                     <span class="step-num">03</span>
-                    <h3>Let the system calculate the view</h3>
+                    <h3>Review the view</h3>
                     <p>
-                        OnePortfolio derives available cash, book value, average cost, dividends,
-                        realized P&amp;L, ROI, and allocation directly from your entries.
+                        See cash, book value, average cost, realized P&amp;L, ROI, dividends, and allocation from your records.
                     </p>
                 </article>
 
-            </div>
-
-            <div class="landing-how-cta reveal">
-                <button class="btn-cta-primary"
-                        data-bs-toggle="modal" data-bs-target="#authModal" data-tab="demo">
-                    Try the Demo
-                </button>
             </div>
 
         </div>
@@ -257,80 +242,35 @@
 
             <div class="landing-section-head reveal">
                 <span class="landing-eyebrow">Features</span>
-                <h2 class="landing-section-title">Built for investors who want clean records, not black-box summaries</h2>
+                <h2 class="landing-section-title">Everything important, without the clutter.</h2>
                 <p class="landing-section-sub">
-                    Everything your spreadsheet struggles to keep clean, organized around the way you actually invest.
+                    A focused toolkit for investors who want reliable records and readable performance.
                 </p>
             </div>
 
             <div class="landing-features-grid">
 
                 <div class="feature-card reveal">
-                    <h3>Multi-portfolio control</h3>
-                    <p>Create separate portfolios for different strategies, assets, or goals, and keep each one organized on its own terms.</p>
+                    <h3>Multi-portfolio tracking</h3>
+                    <p>Separate long-term holdings, experiments, income strategies, or custom goals without mixing the records.</p>
                 </div>
 
                 <div class="feature-card reveal">
-                    <h3>Cash movement history</h3>
-                    <p>Track deposits, withdrawals, and initial funding events with dates, notes, and an editable audit trail.</p>
+                    <h3>Transaction history</h3>
+                    <p>Track buys, sells, deposits, withdrawals, dividends, fees, dates, and notes with clear editability.</p>
                 </div>
 
                 <div class="feature-card reveal">
-                    <h3>Transaction-level tracking</h3>
-                    <p>Record every buy and sell with symbol, price, quantity, fees, date, and optional notes.</p>
+                    <h3>Performance math</h3>
+                    <p>Review average cost, realized gains and losses, ROI, dividends, and cash position from your entries.</p>
                 </div>
 
                 <div class="feature-card reveal">
-                    <h3>Average cost clarity</h3>
-                    <p>Keep cost basis consistent with automatic average cost calculations after each buy.</p>
-                </div>
-
-                <div class="feature-card reveal">
-                    <h3>Dividend records</h3>
-                    <p>Attribute dividends to specific symbols and include them in realized performance.</p>
-                </div>
-
-                <div class="feature-card reveal">
-                    <h3>Performance visuals</h3>
-                    <p>Review allocation, portfolio performance, and symbol-level realized P&amp;L through clean charts and heatmaps.</p>
+                    <h3>Visual summaries</h3>
+                    <p>Use allocation charts and symbol-level heatmaps to understand where results are coming from.</p>
                 </div>
 
             </div>
-        </div>
-    </section>
-
-
-    <!-- ══════════════════ BENEFITS ══════════════════ -->
-    <section class="landing-benefits" id="benefits">
-        <div class="landing-container">
-
-            <div class="landing-section-head reveal">
-                <span class="landing-eyebrow">Benefits</span>
-                <h2 class="landing-section-title">Your private source of truth for investment tracking</h2>
-                <p class="landing-section-sub">
-                    Move beyond spreadsheet maintenance without giving up the manual control that keeps your records trustworthy.
-                </p>
-            </div>
-
-            <div class="benefits-list reveal">
-                <div class="benefit-item">
-                    <i class="bi bi-check2-circle" aria-hidden="true"></i>
-                    <span>See portfolio-level and symbol-level performance from one dashboard.</span>
-                </div>
-                <div class="benefit-item">
-                    <i class="bi bi-check2-circle" aria-hidden="true"></i>
-                    <span>Understand realized gains, losses, dividends, ROI, and cash position from your own records.</span>
-                </div>
-                <div class="benefit-item">
-                    <i class="bi bi-check2-circle" aria-hidden="true"></i>
-                    <span>Organize investments around your strategy instead of a broker's account layout.</span>
-                </div>
-                <div class="benefit-item">
-                    <i class="bi bi-check2-circle" aria-hidden="true"></i>
-                    <span>Keep the data model simple, transparent, and under your control.</span>
-                </div>
-            </div>
-
         </div>
     </section>
 
@@ -340,12 +280,16 @@
         <div class="landing-container">
             <div class="fit-panel reveal">
                 <span class="landing-eyebrow">Manual by design</span>
-                <h2 class="landing-section-title">Designed for deliberate tracking, not automatic broker syncing</h2>
+                <h2 class="landing-section-title">Made for deliberate tracking, not automatic syncing.</h2>
                 <p class="landing-section-sub">
-                    OnePortfolio does not connect to brokers or fetch live prices. It is made for investors
-                    who want a precise manual record, transparent calculations, and a private system they can
-                    trust because they control the data.
+                    OnePortfolio does not connect to brokers or fetch live prices. You keep the records explicit,
+                    editable, and understandable.
                 </p>
+                <div class="fit-points">
+                    <span><i class="bi bi-check2" aria-hidden="true"></i> You control the data</span>
+                    <span><i class="bi bi-check2" aria-hidden="true"></i> The math stays transparent</span>
+                    <span><i class="bi bi-check2" aria-hidden="true"></i> The workflow stays focused</span>
+                </div>
             </div>
         </div>
     </section>
@@ -355,19 +299,18 @@
     <section class="landing-final-cta">
         <div class="landing-container">
             <div class="final-cta-card reveal">
-                <h2 class="final-cta-title">Build a cleaner record of every portfolio you manage.</h2>
+                <h2 class="final-cta-title">Start with one portfolio. Keep every number understandable.</h2>
                 <p class="final-cta-sub">
-                    Start with one portfolio, add your first cash movement or transaction,
-                    and see a structured view of your investment performance in minutes.
+                    Add your first cash movement or transaction and see a structured view in minutes.
                 </p>
                 <div class="landing-cta-group">
                     <button class="btn-cta-primary"
                             data-bs-toggle="modal" data-bs-target="#authModal" data-tab="demo">
-                        Try the Demo
+                        Try Demo
                     </button>
                     <button class="btn-cta-secondary"
                             data-bs-toggle="modal" data-bs-target="#authModal" data-tab="register">
-                        Start Tracking Free
+                        Create Account
                     </button>
                 </div>
             </div>
@@ -382,7 +325,7 @@
             <div class="landing-footer-links">
                 <a href="#how">How it works</a>
                 <a href="#features">Features</a>
-                <a href="#fit">Why manual</a>
+                <a href="#fit">Manual</a>
                 <a href="{{ url_for('auth.login') }}">Log In</a>
                 <a href="{{ url_for('auth.register') }}">Sign Up</a>
             </div>

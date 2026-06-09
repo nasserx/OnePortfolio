@@ -50,31 +50,32 @@
 {% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <button type="button" class="btn btn-primary ms-auto" data-bs-toggle="modal" data-bs-target="#newPortfolioModal">
+<div class="portfolios-page">
+<header class="page-header portfolios-page-header">
+    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newPortfolioModal">
         New Portfolio
     </button>
-</div>
+</header>
 
-<div class="row">
+<div class="row portfolios-list">
     <div class="col-12">
         {% if portfolio_details %}
             {% for item in portfolio_details %}
-            <div class="card mb-2 portfolio-card">
+            <div class="card mb-2 portfolio-card portfolio-list-card">
 
                 <!-- Clickable header -->
-                <div class="card-header py-2 px-3 portfolio-header page-accent-surface"
+                <div class="card-header py-2 px-3 portfolio-header portfolio-primary-header page-accent-surface"
                      onclick="togglePortfolioEvents('{{ item.portfolio.id }}')">
-                    <div class="row align-items-center g-1 summary-row">
+                    <div class="row align-items-center g-1 summary-row portfolio-primary-row">
 
                         <!-- Name + chevron -->
-                        <div class="col-lg-3 col-md-3 d-flex align-items-center gap-2">
+                        <div class="col-lg-3 col-md-3 d-flex align-items-center gap-2 portfolio-identity">
                             <i class="bi bi-chevron-right portfolio-chevron" id="chevron-{{ item.portfolio.id }}"></i>
-                            <span class="fw-bold">{{ item.portfolio.name }}</span>
+                            <span class="fw-bold portfolio-name">{{ item.portfolio.name }}</span>
                         </div>
 
                         <!-- Metrics -->
-                        <div class="col-lg-7 col-md-5">
+                        <div class="col-lg-7 col-md-5 portfolio-primary-metrics">
                             <div class="portfolio-summary columns-3">
                                 <div class="summary-item">
                                     <div class="summary-label">Transactions</div>
@@ -92,7 +93,7 @@
                         </div>
 
                         <!-- Actions -->
-                        <div class="col-lg-2 col-md-4 text-end">
+                        <div class="col-lg-2 col-md-4 text-end portfolio-summary-actions">
                             <div class="btn-group btn-group-sm row-actions" role="group">
                                 <button type="button"
                                         class="btn btn-outline-success btn-icon js-deposit-funds-btn"
@@ -127,10 +128,10 @@
                 </div>
 
                 <!-- Events table (collapsed by default) -->
-                <div class="portfolio-transactions" id="events-{{ item.portfolio.id }}" style="display: none;">
+                <div class="portfolio-transactions portfolio-cash-events" id="events-{{ item.portfolio.id }}" style="display: none;">
                     {% if item.events %}
                     <div class="table-responsive">
-                        <table class="table table-sm table-hover align-middle mb-0 transactions-table">
+                        <table class="table table-sm table-hover align-middle mb-0 transactions-table dashboard-actions-table portfolio-events-table">
                             <thead class="table-light">
                                 <tr>
                                     <th class="small" style="width:120px;">Date</th>
@@ -156,8 +157,11 @@
                                             {% if event.amount_delta >= 0 %}+{% endif %}{{ event.amount_delta|fmt_money }}
                                         </small>
                                     </td>
-                                    <td><small class="text-muted">{{ event.notes or '—' }}</small></td>
-                                    <td class="text-center">
+                                    {% set event_notes = event.notes or '' %}
+                                    <td class="portfolio-event-notes"{% if event_notes %} title="{{ event_notes }}"{% endif %}>
+                                        <small class="text-muted">{{ event_notes if event_notes else '—' }}</small>
+                                    </td>
+                                    <td class="text-center actions-cell">
                                         <div class="btn-group btn-group-sm row-actions" role="group">
                                             <button type="button"
                                                     class="btn btn-outline-primary btn-icon btn-sm js-edit-portfolio-event-btn"
@@ -189,8 +193,8 @@
                     </div>
                     <div class="tx-pagination-bar" id="pgbar-ev-{{ item.portfolio.id }}"></div>
                     {% else %}
-                    <div class="p-3 text-center help-message page-accent-surface">
-                        <small class="text-muted">No transactions yet. Use Deposit to add funds.</small>
+                    <div class="portfolio-inline-empty page-accent-surface">
+                        <small>No cash events yet. Use Deposit to add funds.</small>
                     </div>
                     {% endif %}
                 </div>
@@ -199,13 +203,20 @@
             {% endfor %}
         <div id="outer-pg-bar-portfolios" class="tx-pagination-bar mt-1 px-1"></div>
         {% else %}
-        <div class="card">
-            <div class="card-body text-center py-4">
-                <p class="text-muted mb-0">No portfolios yet. Click <strong>New Portfolio</strong> to get started.</p>
+        <div class="empty-state portfolios-empty-state">
+            <div class="portfolios-empty-icon" aria-hidden="true">
+                <i class="bi bi-folder-plus"></i>
             </div>
+            <h2 class="empty-state-title">No portfolios yet</h2>
+            <p class="empty-state-text">Create your first portfolio to start recording cash events and transactions manually.</p>
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newPortfolioModal">
+                <i class="bi bi-plus-lg" aria-hidden="true"></i>
+                <span>Create Portfolio</span>
+            </button>
         </div>
         {% endif %}
     </div>
+</div>
 </div>
 
 <!-- ── Deposit Modal ───────────────────────────────────────────────── -->

@@ -150,13 +150,14 @@
 {% endblock %}
 
 {% block content %}
+<div class="charts-page">
 
 {% if chart_data.donut_categories %}
 <div class="row g-3">
 
     <!-- Allocation Donut -->
     <div class="col-12 col-lg-6">
-        <div class="card h-100 page-accent-surface">
+        <div class="card h-100 page-accent-surface charts-card">
             <div class="card-body p-4">
                 <p class="text-muted charts-eyebrow mb-3">Portfolio Allocation</p>
                 <div class="allocation-wrap">
@@ -171,7 +172,7 @@
 
     <!-- Performance Heatmap (portfolios) -->
     <div class="col-12 col-lg-6">
-        <div class="card h-100 page-accent-surface">
+        <div class="card h-100 page-accent-surface charts-card">
             <div class="card-body p-4">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <p class="text-muted charts-eyebrow mb-0">Portfolio Performance Heatmap</p>
@@ -202,7 +203,7 @@
 <!-- Symbol Performance Heatmap (full width) -->
 <div class="row g-3 mt-0">
     <div class="col-12">
-        <div class="card page-accent-surface">
+        <div class="card page-accent-surface charts-card">
             <div class="card-body p-4">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <p class="text-muted charts-eyebrow mb-0">Symbol Performance Heatmap</p>
@@ -230,10 +231,11 @@
 </div>
 
 {% else %}
-<div class="alert alert-info">
+<div class="alert alert-info charts-empty-state">
     <i class="bi bi-info-circle me-2"></i>No data available. <a href="{{ url_for('portfolios.portfolios_list') }}">Add a portfolio</a> to get started.
 </div>
 {% endif %}
+</div>
 
 {% endblock %}
 

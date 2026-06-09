@@ -37,22 +37,26 @@
         <!-- Nav links -->
         <nav class="sidebar-nav">
             <a class="sidebar-nav-link {% if request.endpoint == 'dashboard.index' %}active{% endif %}"
-               href="{{ url_for('dashboard.index') }}">
+               href="{{ url_for('dashboard.index') }}"
+               {% if request.endpoint == 'dashboard.index' %}aria-current="page"{% endif %}>
                 <i class="bi bi-grid-1x2" aria-hidden="true"></i>
                 Overview
             </a>
             <a class="sidebar-nav-link {% if request.endpoint == 'portfolios.portfolios_list' %}active{% endif %}"
-               href="{{ url_for('portfolios.portfolios_list') }}">
+               href="{{ url_for('portfolios.portfolios_list') }}"
+               {% if request.endpoint == 'portfolios.portfolios_list' %}aria-current="page"{% endif %}>
                 <i class="bi bi-wallet2" aria-hidden="true"></i>
                 Portfolios
             </a>
             <a class="sidebar-nav-link {% if request.endpoint == 'transactions.transaction_list' %}active{% endif %}"
-               href="{{ url_for('transactions.transaction_list') }}">
+               href="{{ url_for('transactions.transaction_list') }}"
+               {% if request.endpoint == 'transactions.transaction_list' %}aria-current="page"{% endif %}>
                 <i class="bi bi-arrow-left-right" aria-hidden="true"></i>
                 Transactions
             </a>
-<a class="sidebar-nav-link {% if request.endpoint == 'charts.charts' %}active{% endif %}"
-               href="{{ url_for('charts.charts') }}">
+            <a class="sidebar-nav-link {% if request.endpoint == 'charts.charts' %}active{% endif %}"
+               href="{{ url_for('charts.charts') }}"
+               {% if request.endpoint == 'charts.charts' %}aria-current="page"{% endif %}>
                 <i class="bi bi-bar-chart-line" aria-hidden="true"></i>
                 Charts
             </a>
@@ -60,7 +64,8 @@
             {% if current_user.is_admin %}
             <div class="sidebar-divider"></div>
             <a class="sidebar-nav-link {% if request.endpoint == 'admin.users' %}active{% endif %}"
-               href="{{ url_for('admin.users') }}">
+               href="{{ url_for('admin.users') }}"
+               {% if request.endpoint == 'admin.users' %}aria-current="page"{% endif %}>
                 <i class="bi bi-shield-check" aria-hidden="true"></i>
                 Users
             </a>
@@ -114,6 +119,8 @@
 
     </aside>
 
+    <button class="sidebar-backdrop" id="sidebarBackdrop" type="button" aria-label="Close navigation"></button>
+
     <!-- ═══════════════════════════════════════ -->
     <!-- Main -->
     <!-- ═══════════════════════════════════════ -->
@@ -123,10 +130,11 @@
         <header class="app-topbar">
             <div class="topbar-left">
                 <!-- Mobile menu toggle -->
-                <button class="btn btn-sm btn-outline-secondary d-lg-none p-1" id="sidebarToggle" aria-label="Toggle menu">
-                    <i class="bi bi-list" style="font-size:1.25rem;"></i>
+                <button class="btn btn-sm btn-outline-secondary topbar-menu-btn d-lg-none" id="sidebarToggle"
+                        aria-label="Toggle menu" aria-controls="appSidebar" aria-expanded="false">
+                    <i class="bi bi-list" aria-hidden="true"></i>
                 </button>
-                <span class="fw-600 text-1" style="font-size:0.9rem; color: var(--text-2);">
+                <span class="topbar-title">
                     {% block topbar_title %}{% endblock %}
                 </span>
             </div>
@@ -181,8 +189,9 @@
     const themeBtn      = document.getElementById('themeBtn');
     const themeIcon     = document.getElementById('themeIcon');
     const themeToggle   = document.getElementById('themeToggle');
-    const sidebarToggle = document.getElementById('sidebarToggle');
-    const sidebar       = document.getElementById('appSidebar');
+    const sidebarToggle  = document.getElementById('sidebarToggle');
+    const sidebar        = document.getElementById('appSidebar');
+    const sidebarBackdrop = document.getElementById('sidebarBackdrop');
     const systemDark    = window.matchMedia('(prefers-color-scheme: dark)');
 
     function applyTheme(isDark) {
@@ -276,13 +285,27 @@
 
     // Mobile sidebar toggle
     if (sidebarToggle && sidebar) {
+        function setSidebarOpen(open) {
+            sidebar.classList.toggle('open', open);
+            document.body.classList.toggle('sidebar-open', open);
+            sidebarToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        }
+
         sidebarToggle.addEventListener('click', function() {
-            sidebar.classList.toggle('open');
+            setSidebarOpen(!sidebar.classList.contains('open'));
         });
+        if (sidebarBackdrop) {
+            sidebarBackdrop.addEventListener('click', function() {
+                setSidebarOpen(false);
+            });
+        }
         document.addEventListener('click', function(e) {
             if (!sidebar.contains(e.target) && !sidebarToggle.contains(e.target)) {
-                sidebar.classList.remove('open');
+                setSidebarOpen(false);
             }
+        });
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') setSidebarOpen(false);
         });
     }
 })();

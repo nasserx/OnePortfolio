@@ -3,100 +3,170 @@
 {% block title %}Overview - OnePortfolio{% endblock %}
 
 {% block content %}
+<div class="overview-page">
+    <header class="page-header overview-page-header">
+        <a href="{{ url_for('portfolios.portfolios_list') }}" class="btn btn-primary overview-header-action">
+            <span>New Portfolio</span>
+        </a>
+    </header>
 
-<!-- Stat Cards -->
-<div class="stat-cards-row">
-    <div class="stat-card-item">
-        <span class="stat-label">Total Contributed</span>
-        <span class="stat-value overview-value">{{ totals.total_contributed|fmt_money }}</span>
-    </div>
-    <div class="stat-card-item">
-        <i class="bi bi-info-circle stat-info-icon"
-           data-bs-toggle="tooltip" data-bs-placement="top"
-           title="Cost Basis + Cash"></i>
-        <span class="stat-label">Book Value</span>
-        <span class="stat-value">{{ totals.total_value|fmt_money }}</span>
-    </div>
-    <div class="stat-card-item">
-        <span class="stat-label">Total Dividends</span>
-        <span class="stat-value dividend">{% if totals.total_dividends > 0 %}+{% endif %}{{ totals.total_dividends|fmt_money }}</span>
-    </div>
-    <div class="stat-card-item">
-        <i class="bi bi-info-circle stat-info-icon"
-           data-bs-toggle="tooltip" data-bs-placement="top"
-           title="Σ (sell − avg cost) × qty − fees + dividends"></i>
-        <span class="stat-label">Realized P&amp;L</span>
-        <span class="stat-value {% if totals.total_realized_pnl >= 0 %}profit{% else %}loss{% endif %}">
-            {% if totals.total_realized_pnl >= 0 %}+{% endif %}{{ totals.total_realized_pnl|fmt_money }}
-        </span>
-        <span class="stat-sub {% if totals.realized_roi_percent >= 0 %}profit{% else %}loss{% endif %}">{{ totals.realized_roi_display }}</span>
-    </div>
-</div>
-
-<!-- Asset Allocation Cards -->
-<div class="row g-3 mb-4">
-    {% for item in portfolio_summary %}
-    <div class="col-md-6">
-        <div class="card h-100 portfolio-card page-accent-surface">
-            <div class="card-body">
-
-                <!-- Header row: asset class name + view link -->
-                <div class="d-flex align-items-center justify-content-between">
-                    <h5 class="mb-0" style="font-size:0.875rem; font-weight:600; letter-spacing:-0.1px;">
-                        {{ item.name }}
-                    </h5>
-                    <a href="{{ url_for('transactions.transaction_list', portfolio=item.name) }}"
-                       class="btn btn-sm overview-btn">
-                        View Transactions
-                    </a>
+    <section class="overview-section" aria-labelledby="overview-totals-heading">
+        <h2 id="overview-totals-heading" class="visually-hidden">Dashboard totals</h2>
+        <div class="stat-cards-row overview-kpi-grid">
+            <article class="stat-card-item overview-kpi-card">
+                <div class="overview-kpi-icon" aria-hidden="true">
+                    <i class="bi bi-bank"></i>
                 </div>
+                <div class="overview-kpi-body">
+                    <span class="stat-label">Total Contributed</span>
+                    <span class="stat-value overview-value">{{ totals.total_contributed|fmt_money }}</span>
+                </div>
+            </article>
 
-                <!-- 3-column metrics grid -->
-                <div class="portfolio-metrics">
-                    <div class="metric-item">
-                        <span class="metric-label">Total Contributed</span>
-                        <span class="metric-value">{{ item.total_contributed|fmt_money }}</span>
+            <article class="stat-card-item overview-kpi-card">
+                <div class="overview-kpi-icon" aria-hidden="true">
+                    <i class="bi bi-journal-check"></i>
+                </div>
+                <div class="overview-kpi-body">
+                    <span class="stat-label">
+                        Book Value
+                        <span class="bi bi-info-circle stat-info-icon"
+                              tabindex="0"
+                              role="img"
+                              aria-label="Book value is cost basis plus cash."
+                              data-bs-toggle="tooltip"
+                              data-bs-placement="top"
+                              title="Cost Basis + Cash"></span>
+                    </span>
+                    <span class="stat-value">{{ totals.total_value|fmt_money }}</span>
+                </div>
+            </article>
+
+            <article class="stat-card-item overview-kpi-card">
+                <div class="overview-kpi-icon overview-kpi-icon-primary" aria-hidden="true">
+                    <i class="bi bi-cash-coin"></i>
+                </div>
+                <div class="overview-kpi-body">
+                    <span class="stat-label">Total Dividends</span>
+                    <span class="stat-value dividend">{% if totals.total_dividends > 0 %}+{% endif %}{{ totals.total_dividends|fmt_money }}</span>
+                </div>
+            </article>
+
+            <article class="stat-card-item overview-kpi-card">
+                <div class="overview-kpi-icon {% if totals.total_realized_pnl >= 0 %}overview-kpi-icon-profit{% else %}overview-kpi-icon-loss{% endif %}" aria-hidden="true">
+                    <i class="bi bi-graph-up-arrow"></i>
+                </div>
+                <div class="overview-kpi-body">
+                    <span class="stat-label">
+                        Realized P&amp;L
+                        <span class="bi bi-info-circle stat-info-icon"
+                              tabindex="0"
+                              role="img"
+                              aria-label="Realized P and L is derived from sells, average cost, fees, and dividends."
+                              data-bs-toggle="tooltip"
+                              data-bs-placement="top"
+                              title="Σ (sell − avg cost) × qty − fees + dividends"></span>
+                    </span>
+                    <span class="stat-value {% if totals.total_realized_pnl >= 0 %}profit{% else %}loss{% endif %}">
+                        {% if totals.total_realized_pnl >= 0 %}+{% endif %}{{ totals.total_realized_pnl|fmt_money }}
+                    </span>
+                    <span class="stat-sub {% if totals.realized_roi_percent >= 0 %}profit{% else %}loss{% endif %}">{{ totals.realized_roi_display }}</span>
+                </div>
+            </article>
+        </div>
+    </section>
+
+    <section class="overview-section overview-portfolios-section" aria-label="Portfolios">
+        {% if portfolio_summary|length > 0 %}
+        <div class="overview-portfolio-grid">
+            {% for item in portfolio_summary %}
+            {% set portfolio_name = item.name|lower %}
+            {% if 'crypto' in portfolio_name or 'bitcoin' in portfolio_name or 'btc' in portfolio_name %}
+                {% set portfolio_icon = 'bi-currency-bitcoin' %}
+                {% set portfolio_icon_tone = 'crypto' %}
+            {% elif 'stock' in portfolio_name or 'stocks' in portfolio_name or 'saham' in portfolio_name or 'share' in portfolio_name or 'shares' in portfolio_name or 'equity' in portfolio_name %}
+                {% set portfolio_icon = 'bi-graph-up-arrow' %}
+                {% set portfolio_icon_tone = 'primary' %}
+            {% elif 'etf' in portfolio_name or 'etfs' in portfolio_name or 'fund' in portfolio_name or 'funds' in portfolio_name %}
+                {% set portfolio_icon = 'bi-bar-chart-line' %}
+                {% set portfolio_icon_tone = 'primary' %}
+            {% elif 'gold' in portfolio_name or 'metal' in portfolio_name %}
+                {% set portfolio_icon = 'bi-gem' %}
+                {% set portfolio_icon_tone = 'warning' %}
+            {% elif 'cash' in portfolio_name or 'money' in portfolio_name %}
+                {% set portfolio_icon = 'bi-cash-stack' %}
+                {% set portfolio_icon_tone = 'success' %}
+            {% elif 'retirement' in portfolio_name or 'pension' in portfolio_name %}
+                {% set portfolio_icon = 'bi-piggy-bank' %}
+                {% set portfolio_icon_tone = 'success' %}
+            {% else %}
+                {% set portfolio_icon = 'bi-folder' %}
+                {% set portfolio_icon_tone = 'primary' %}
+            {% endif %}
+            <article class="card h-100 portfolio-card overview-portfolio-card overview-portfolio-card-accent page-accent-surface">
+                <div class="card-body">
+                    <div class="overview-portfolio-card-header">
+                        <div class="overview-portfolio-title-group">
+                            <span class="overview-portfolio-icon overview-portfolio-icon-{{ portfolio_icon_tone }}" aria-hidden="true">
+                                <i class="bi {{ portfolio_icon }}"></i>
+                            </span>
+                            <h3>{{ item.name }}</h3>
+                        </div>
+                        <a href="{{ url_for('transactions.transaction_list', portfolio=item.name) }}"
+                           class="btn btn-sm overview-btn">
+                            <span>View Transactions</span>
+                            <i class="bi bi-arrow-right" aria-hidden="true"></i>
+                        </a>
                     </div>
-                    <div class="metric-item">
-                        <span class="metric-label">Cost Basis</span>
-                        <span class="metric-value">{{ item.cost_basis|fmt_money }}</span>
-                    </div>
-                    <div class="metric-item">
-                        <span class="metric-label">Cash</span>
-                        <span class="metric-value">{{ item.cash|fmt_money }}</span>
-                    </div>
-                    <div class="metric-item">
-                        <span class="metric-label">Book Value</span>
-                        <span class="metric-value">{{ item.book_value|fmt_money }}</span>
-                    </div>
-                    <div class="metric-item">
-                        <span class="metric-label">Realized P&amp;L</span>
-                        <span class="metric-value {% if item.realized_pnl >= 0 %}profit{% else %}loss{% endif %}">
-                            {% if item.realized_pnl >= 0 %}+{% endif %}{{ item.realized_pnl|fmt_money }}
-                            <small class="metric-roi {% if item.realized_roi_percent >= 0 %}profit{% else %}loss{% endif %}">({{ item.realized_roi_display }})</small>
-                        </span>
-                    </div>
-                    <div class="metric-item">
-                        <span class="metric-label">Dividends</span>
-                        <span class="metric-value dividend">{% if item.total_dividends > 0 %}+{% endif %}{{ item.total_dividends|fmt_money }}</span>
+
+                    <div class="portfolio-metrics overview-metric-grid">
+                        <div class="metric-item">
+                            <span class="metric-label">Total Contributed</span>
+                            <span class="metric-value">{{ item.total_contributed|fmt_money }}</span>
+                        </div>
+                        <div class="metric-item">
+                            <span class="metric-label">Cost Basis</span>
+                            <span class="metric-value">{{ item.cost_basis|fmt_money }}</span>
+                        </div>
+                        <div class="metric-item">
+                            <span class="metric-label">Cash</span>
+                            <span class="metric-value">{{ item.cash|fmt_money }}</span>
+                        </div>
+                        <div class="metric-item">
+                            <span class="metric-label">Book Value</span>
+                            <span class="metric-value">{{ item.book_value|fmt_money }}</span>
+                        </div>
+                        <div class="metric-item">
+                            <span class="metric-label">Realized P&amp;L</span>
+                            <span class="metric-value {% if item.realized_pnl >= 0 %}profit{% else %}loss{% endif %}">
+                                {% if item.realized_pnl >= 0 %}+{% endif %}{{ item.realized_pnl|fmt_money }}
+                                <small class="metric-roi {% if item.realized_roi_percent >= 0 %}profit{% else %}loss{% endif %}">({{ item.realized_roi_display }})</small>
+                            </span>
+                        </div>
+                        <div class="metric-item">
+                            <span class="metric-label">Dividends</span>
+                            <span class="metric-value dividend">{% if item.total_dividends > 0 %}+{% endif %}{{ item.total_dividends|fmt_money }}</span>
+                        </div>
                     </div>
                 </div>
-
+            </article>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state overview-empty-state">
+            <div class="overview-empty-icon" aria-hidden="true">
+                <i class="bi bi-folder-plus"></i>
             </div>
+            <h2 class="empty-state-title">No portfolios yet</h2>
+            <p class="empty-state-text">Create your first portfolio to start recording cash events, transactions, and dividends manually.</p>
+            <a href="{{ url_for('portfolios.portfolios_list') }}" class="btn btn-primary">
+                <i class="bi bi-plus-lg" aria-hidden="true"></i>
+                <span>Create Portfolio</span>
+            </a>
         </div>
-    </div>
-    {% endfor %}
-
-    {% if portfolio_summary|length == 0 %}
-    <div class="col-12">
-        <div class="alert alert-info">
-            <i class="bi bi-info-circle me-2"></i>
-            No portfolios yet. <a href="{{ url_for('portfolios.portfolios_list') }}">Create a portfolio</a> to get started.
-        </div>
-    </div>
-    {% endif %}
+        {% endif %}
+    </section>
 </div>
-
 {% endblock %}
 
 {% block extra_js %}

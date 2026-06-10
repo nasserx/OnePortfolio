@@ -11,14 +11,14 @@
     <link rel="manifest"         href="{{ url_for('static', filename='icons/site.webmanifest') }}">
 
     <!-- Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <!-- Vendor CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
 
     <!-- Project CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v='20260609-1') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css', v='20260609-3') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v='20260610-3') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css', v='20260610-2') }}">
 </head>
 <body>
 
@@ -79,8 +79,8 @@
             <div class="landing-preview-wrap reveal">
                 <div class="landing-preview" aria-hidden="true">
 
-                    <!-- Metric strip -->
-                    <div class="preview-stats">
+                    <!-- Stats summary card -->
+                    <div class="preview-card stats-summary-card preview-stats">
                         <div class="preview-stat">
                             <span class="preview-stat-label">Contributed</span>
                             <span class="preview-stat-value">$77,870</span>
@@ -99,17 +99,23 @@
                         </div>
                     </div>
 
-                    <!-- Charts row: donut (Allocation) + heatmap (Performance) — mirrors /charts -->
+                    <!-- Charts row: allocation + performance -->
                     <div class="preview-charts">
 
-                        <!-- Donut chart -->
-                        <div class="preview-chart-card">
+                        <div class="preview-card preview-chart-card portfolio-allocation-card">
                             <div class="preview-chart-head">
                                 <span class="preview-chart-title">Portfolio allocation</span>
                             </div>
 
                             <div class="preview-donut-body">
-                                <div class="preview-donut">
+                                <div class="preview-donut" role="img" aria-label="Portfolio allocation">
+                                    <svg class="preview-donut-svg" viewBox="0 0 42 42" focusable="false">
+                                        <circle class="preview-donut-track" cx="21" cy="21" r="15.9155"></circle>
+                                        <circle class="preview-donut-slice slice-stocks" cx="21" cy="21" r="15.9155"></circle>
+                                        <circle class="preview-donut-slice slice-etfs" cx="21" cy="21" r="15.9155"></circle>
+                                        <circle class="preview-donut-slice slice-gold" cx="21" cy="21" r="15.9155"></circle>
+                                        <circle class="preview-donut-slice slice-crypto" cx="21" cy="21" r="15.9155"></circle>
+                                    </svg>
                                     <div class="preview-donut-hole">
                                         <span class="preview-donut-label">TOTAL</span>
                                         <span class="preview-donut-value">$100K</span>
@@ -124,8 +130,7 @@
                             </div>
                         </div>
 
-                        <!-- Symbol performance heatmap (mirrors /charts treemap) -->
-                        <div class="preview-chart-card">
+                        <div class="preview-card preview-chart-card performance-heatmap-card">
                             <div class="preview-chart-head">
                                 <span class="preview-chart-title">Performance heatmap</span>
                             </div>
@@ -588,9 +593,11 @@
 
             /* ── Active section nav state ── */
             const sectionLinks = Array.from(document.querySelectorAll('.landing-nav-links .nav-link-inline[href^="#"]'));
-            const sectionTargets = sectionLinks
-                .map((link) => document.getElementById(link.getAttribute('href').slice(1)))
-                .filter(Boolean);
+            const sectionTargets = [];
+            sectionLinks.forEach((link) => {
+                const target = document.getElementById(link.getAttribute('href').slice(1));
+                if (target) sectionTargets.push(target);
+            });
             let activeSectionId = '';
             let activeUpdateQueued = false;
             let activeUpdateTimer = 0;

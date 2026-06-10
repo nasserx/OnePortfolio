@@ -260,8 +260,9 @@
     const OTHERS_COLOR = '#9aa0a6';
 
     // Treemap tile colors — match the brand's profit/loss palette elsewhere.
-    const TILE_GAIN = 'rgba(52, 168, 83, 0.85)';
-    const TILE_LOSS = 'rgba(234, 67, 53, 0.85)';
+    const TILE_GAIN = '#16A34A';
+    const TILE_LOSS = '#DC2626';
+    const TILE_NEUTRAL = '#334155';
 
     const NAME_MAX = 10;  // chars before truncation; tooltip keeps the full name.
 
@@ -288,10 +289,10 @@
         notation: 'compact', maximumFractionDigits: 2,
     });
     function fmtRoi(v) {
-        return (v >= 0 ? '+' : '') + v.toFixed(1) + '%';
+        return (v > 0 ? '+' : '') + v.toFixed(1) + '%';
     }
     function fmtSigned(v) {
-        return (v >= 0 ? '+' : '-') + Math.abs(v).toFixed(2);
+        return (v > 0 ? '+' : (v < 0 ? '-' : '')) + Math.abs(v).toFixed(2);
     }
 
     Chart.defaults.color = textColor();
@@ -303,8 +304,8 @@
        it through the standard Chart.js options object.
     ════════════════════════════════════════════════════════════════ */
 
-    const CENTER_LABEL_FONT = '600 12px Roboto, sans-serif';
-    const CENTER_VALUE_FONT = '700 14px Roboto, sans-serif';
+    const CENTER_LABEL_FONT = '600 12px Inter, sans-serif';
+    const CENTER_VALUE_FONT = '700 14px Inter, sans-serif';
     const CENTER_LABEL_DY   = -11;
     const CENTER_VALUE_DY   = 8;
 
@@ -502,7 +503,8 @@
                     borderWidth: 0,
                     backgroundColor: function(ctx) {
                         if (ctx.type !== 'data') return 'transparent';
-                        return ctx.raw._data.pnl >= 0 ? TILE_GAIN : TILE_LOSS;
+                        const pnl = ctx.raw._data.pnl || 0;
+                        return pnl > 0 ? TILE_GAIN : (pnl < 0 ? TILE_LOSS : TILE_NEUTRAL);
                     },
                     labels: {
                         display: true,

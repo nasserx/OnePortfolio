@@ -117,8 +117,8 @@
                                         {% endif %}
                                     </td>
                                     <td class="text-end">
-                                        <small class="{% if event.amount_delta >= 0 %}profit{% else %}loss{% endif %}">
-                                            {% if event.amount_delta >= 0 %}+{% endif %}{{ event.amount_delta|fmt_money }}
+                                        <small class="{% if event.amount_delta > 0 %}profit{% elif event.amount_delta < 0 %}loss{% else %}neutral{% endif %}">
+                                            {% if event.amount_delta > 0 %}+{% endif %}{{ event.amount_delta|fmt_money }}
                                         </small>
                                     </td>
                                     {% set event_notes = event.notes or '' %}

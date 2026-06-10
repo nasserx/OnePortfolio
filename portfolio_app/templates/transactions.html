@@ -96,10 +96,10 @@
                                 </div>
                                 <div class="summary-item">
                                     <div class="summary-label">Realized P&amp;L</div>
-                                    <div class="summary-value {% if item.summary.realized_pnl >= 0 %}profit{% else %}loss{% endif %}">
-                                        {% if item.summary.realized_pnl >= 0 %}+{% endif %}{{ item.summary.realized_pnl|fmt_money }}
+                                    <div class="summary-value {% if item.summary.realized_pnl > 0 %}profit{% elif item.summary.realized_pnl < 0 %}loss{% else %}neutral{% endif %}">
+                                        {% if item.summary.realized_pnl > 0 %}+{% endif %}{{ item.summary.realized_pnl|fmt_money }}
                                     </div>
-                                    <div class="summary-value summary-subvalue {% if item.summary.roi_percent is not none and item.summary.roi_percent >= 0 %}profit{% elif item.summary.roi_percent is not none and item.summary.roi_percent < 0 %}loss{% else %}neutral{% endif %}">
+                                    <div class="summary-value summary-subvalue {% if item.summary.roi_percent is not none and item.summary.roi_percent > 0 %}profit{% elif item.summary.roi_percent is not none and item.summary.roi_percent < 0 %}loss{% else %}neutral{% endif %}">
                                         {{ item.summary.roi_percent_display }}
                                     </div>
                                 </div>
@@ -188,13 +188,13 @@
                                         {% set tx_net_pnl = transaction.net_pnl %}
                                         {% set tx_net_pnl_pct = transaction.net_pnl_percent %}
                                         <td class="text-end">
-                                            <small class="{% if tx_net_pnl >= 0 %}profit{% else %}loss{% endif %}">
-                                                {% if tx_net_pnl >= 0 %}+{% endif %}{{ tx_net_pnl|fmt_money }}
+                                            <small class="{% if tx_net_pnl > 0 %}profit{% elif tx_net_pnl < 0 %}loss{% else %}neutral{% endif %}">
+                                                {% if tx_net_pnl > 0 %}+{% endif %}{{ tx_net_pnl|fmt_money }}
                                             </small>
                                         </td>
                                         <td class="text-end">
-                                            <small class="{% if tx_net_pnl_pct is not none and tx_net_pnl_pct >= 0 %}profit{% elif tx_net_pnl_pct is not none and tx_net_pnl_pct < 0 %}loss{% else %}neutral{% endif %}">
-                                                {% if tx_net_pnl_pct is not none %}{% if tx_net_pnl_pct >= 0 %}+{% endif %}{{ tx_net_pnl_pct|fmt_money }}%{% else %}—{% endif %}
+                                            <small class="{% if tx_net_pnl_pct is not none and tx_net_pnl_pct > 0 %}profit{% elif tx_net_pnl_pct is not none and tx_net_pnl_pct < 0 %}loss{% else %}neutral{% endif %}">
+                                                {% if tx_net_pnl_pct is not none %}{% if tx_net_pnl_pct > 0 %}+{% endif %}{{ tx_net_pnl_pct|fmt_money }}%{% else %}—{% endif %}
                                             </small>
                                         </td>
                                     {% else %}

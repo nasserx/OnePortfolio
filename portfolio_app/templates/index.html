@@ -47,7 +47,7 @@
             </article>
 
             <article class="stat-card-item overview-kpi-card">
-                <div class="overview-kpi-icon {% if totals.total_realized_pnl >= 0 %}overview-kpi-icon-profit{% else %}overview-kpi-icon-loss{% endif %}" aria-hidden="true">
+                <div class="overview-kpi-icon {% if totals.total_realized_pnl > 0 %}overview-kpi-icon-profit{% elif totals.total_realized_pnl < 0 %}overview-kpi-icon-loss{% else %}overview-kpi-icon-neutral{% endif %}" aria-hidden="true">
                     <i class="bi bi-graph-up-arrow"></i>
                 </div>
                 <div class="overview-kpi-body">
@@ -61,10 +61,10 @@
                               data-bs-placement="top"
                               title="Σ (sell − avg cost) × qty − fees + dividends"></span>
                     </span>
-                    <span class="stat-value {% if totals.total_realized_pnl >= 0 %}profit{% else %}loss{% endif %}">
-                        {% if totals.total_realized_pnl >= 0 %}+{% endif %}{{ totals.total_realized_pnl|fmt_money }}
+                    <span class="stat-value {% if totals.total_realized_pnl > 0 %}profit{% elif totals.total_realized_pnl < 0 %}loss{% else %}neutral{% endif %}">
+                        {% if totals.total_realized_pnl > 0 %}+{% endif %}{{ totals.total_realized_pnl|fmt_money }}
                     </span>
-                    <span class="stat-sub {% if totals.realized_roi_percent >= 0 %}profit{% else %}loss{% endif %}">{{ totals.realized_roi_display }}</span>
+                    <span class="stat-sub {% if totals.realized_roi_percent > 0 %}profit{% elif totals.realized_roi_percent < 0 %}loss{% else %}neutral{% endif %}">{{ totals.realized_roi_display }}</span>
                 </div>
             </article>
         </div>
@@ -109,9 +109,9 @@
                         </div>
                         <div class="metric-item">
                             <span class="metric-label">Realized P&amp;L</span>
-                            <span class="metric-value {% if item.realized_pnl >= 0 %}profit{% else %}loss{% endif %}">
-                                {% if item.realized_pnl >= 0 %}+{% endif %}{{ item.realized_pnl|fmt_money }}
-                                <small class="metric-roi {% if item.realized_roi_percent >= 0 %}profit{% else %}loss{% endif %}">({{ item.realized_roi_display }})</small>
+                            <span class="metric-value {% if item.realized_pnl > 0 %}profit{% elif item.realized_pnl < 0 %}loss{% else %}neutral{% endif %}">
+                                {% if item.realized_pnl > 0 %}+{% endif %}{{ item.realized_pnl|fmt_money }}
+                                <small class="metric-roi {% if item.realized_roi_percent > 0 %}profit{% elif item.realized_roi_percent < 0 %}loss{% else %}neutral{% endif %}">({{ item.realized_roi_display }})</small>
                             </span>
                         </div>
                         <div class="metric-item">

@@ -1490,6 +1490,18 @@ textarea,
 }
 .transactions-table .tx-type-buy,
 .transactions-table .tx-type-sell { color: var(--text-2); }
+.transactions-page .transactions-table .tx-type-buy {
+    color: var(--color-profit);
+}
+.transactions-page .transactions-table .tx-type-sell {
+    color: var(--color-loss);
+}
+.transactions-page .transactions-table .tx-type-label,
+.transactions-page .transactions-table .badge-dividend {
+    font-size: inherit;
+    font-weight: 400;
+    line-height: inherit;
+}
 .transactions-table .badge { font-size: 0.7rem; padding: 0.22em 0.55em; }
 .transactions-table .badge-dividend {
     display: inline-block;
@@ -1499,8 +1511,6 @@ textarea,
     color: var(--color-dividend) !important;
     outline: none !important;
     border-radius: 0 !important;
-    font-size: 0.875em;
-    font-weight: 500;
     letter-spacing: 0;
     text-align: left;
 }
@@ -1543,6 +1553,26 @@ textarea,
     letter-spacing: 0 !important;
     line-height: 1.2;
     text-transform: none !important;
+}
+
+.transactions-page .portfolio-transactions .transactions-table.dashboard-actions-table thead th,
+.transactions-page .portfolio-transactions .transactions-table.dashboard-actions-table thead th.small,
+.portfolios-page .portfolio-cash-events .portfolio-events-table.dashboard-actions-table thead th,
+.portfolios-page .portfolio-cash-events .portfolio-events-table.dashboard-actions-table thead th.small {
+    font-size: 0.8125rem !important;
+    font-weight: 500 !important;
+    line-height: 1.4;
+}
+.transactions-page .portfolio-transactions .transactions-table.dashboard-actions-table tbody td,
+.transactions-page .portfolio-transactions .transactions-table.dashboard-actions-table tbody td small,
+.transactions-page .portfolio-transactions .transactions-table.dashboard-actions-table .tx-type-label,
+.transactions-page .portfolio-transactions .transactions-table.dashboard-actions-table .badge-dividend,
+.portfolios-page .portfolio-cash-events .portfolio-events-table.dashboard-actions-table tbody td,
+.portfolios-page .portfolio-cash-events .portfolio-events-table.dashboard-actions-table tbody td small,
+.portfolios-page .portfolio-cash-events .portfolio-events-table.dashboard-actions-table .tx-type-label {
+    font-size: 0.8125rem;
+    font-weight: 400;
+    line-height: 1.5;
 }
 
 .transactions-page .transactions-table.dashboard-actions-table thead th,

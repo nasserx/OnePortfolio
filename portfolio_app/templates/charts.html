@@ -259,10 +259,18 @@
     const OTHERS_LABEL = 'Others';
     const OTHERS_COLOR = '#9aa0a6';
 
-    // Treemap tile colors — match the brand's profit/loss palette elsewhere.
-    const TILE_GAIN = '#16A34A';
-    const TILE_LOSS = '#DC2626';
-    const TILE_NEUTRAL = '#334155';
+    // Treemap tile colors: soft gain/loss backgrounds with readable text.
+    const HEATMAP_COLORS = {
+        gainLight: '#cfe8d4',
+        gainStrong: '#a9d8b1',
+        gainText: '#285c30',
+        lossLight: '#f0cccc',
+        lossStrong: '#e4abab',
+        lossText: '#b8322f',
+        neutralBg: '#f8fafc',
+    };
+    const HEATMAP_MIN_INTENSITY = 0.26;
+    const HEATMAP_EPSILON = 0.000001;
 
     const NAME_MAX = 10;  // chars before truncation; tooltip keeps the full name.
 
@@ -275,6 +283,7 @@
         return v || fallback;
     }
     function textColor() { return cssVar('--text-1', '#202124'); }
+    function mutedTextColor() { return cssVar('--text-3', '#64748b'); }
 
     function paletteColor(i) { return PALETTE[i % PALETTE.length]; }
     function colorFor(name, i) {
@@ -293,6 +302,72 @@
     }
     function fmtSigned(v) {
         return (v > 0 ? '+' : (v < 0 ? '-' : '')) + Math.abs(v).toFixed(2);
+    }
+
+    function clamp(value, min, max) {
+        return Math.min(Math.max(value, min), max);
+    }
+
+    function hexToRgb(hex) {
+        const clean = hex.replace('#', '');
+        return {
+            r: parseInt(clean.slice(0, 2), 16),
+            g: parseInt(clean.slice(2, 4), 16),
+            b: parseInt(clean.slice(4, 6), 16),
+        };
+    }
+
+    function rgbToHex(rgb) {
+        return '#' + [rgb.r, rgb.g, rgb.b].map(function(channel) {
+            return Math.round(channel).toString(16).padStart(2, '0');
+        }).join('');
+    }
+
+    function mixHex(from, to, amount) {
+        const a = hexToRgb(from);
+        const b = hexToRgb(to);
+        return rgbToHex({
+            r: a.r + (b.r - a.r) * amount,
+            g: a.g + (b.g - a.g) * amount,
+            b: a.b + (b.b - a.b) * amount,
+        });
+    }
+
+    function maxByMetric(tree) {
+        return tree.reduce(function(acc, item) {
+            acc.abs_pnl = Math.max(acc.abs_pnl, Math.abs(Number(item.abs_pnl) || 0));
+            acc.abs_roi = Math.max(acc.abs_roi, Math.abs(Number(item.abs_roi) || 0));
+            return acc;
+        }, { abs_pnl: 0, abs_roi: 0 });
+    }
+
+    function heatmapTone(ctx) {
+        if (ctx.type !== 'data') {
+            return { background: 'transparent', text: textColor() };
+        }
+
+        const d = ctx.raw._data;
+        const metricKey = (ctx.dataset && ctx.dataset.key) || 'abs_pnl';
+        const maxAbs = (ctx.dataset && ctx.dataset.maxByMetric && ctx.dataset.maxByMetric[metricKey]) || 0;
+        const metricValue = Math.abs(Number(d[metricKey]) || 0);
+        const pnl = Number(d.pnl) || 0;
+
+        if (Math.abs(pnl) < HEATMAP_EPSILON || metricValue < HEATMAP_EPSILON || maxAbs < HEATMAP_EPSILON) {
+            return { background: HEATMAP_COLORS.neutralBg, text: mutedTextColor() };
+        }
+
+        const intensity = clamp(metricValue / maxAbs, HEATMAP_MIN_INTENSITY, 1);
+        if (pnl > 0) {
+            return {
+                background: mixHex(HEATMAP_COLORS.gainLight, HEATMAP_COLORS.gainStrong, intensity),
+                text: HEATMAP_COLORS.gainText,
+            };
+        }
+
+        return {
+            background: mixHex(HEATMAP_COLORS.lossLight, HEATMAP_COLORS.lossStrong, intensity),
+            text: HEATMAP_COLORS.lossText,
+        };
     }
 
     Chart.defaults.color = textColor();
@@ -493,24 +568,26 @@
     function buildTreemapConfig(opts) {
         const tree = opts.tree;
         const tooltipLines = opts.tooltipLines;
+        const metricMax = maxByMetric(tree);
         return {
             type: 'treemap',
             data: {
                 datasets: [{
                     tree: tree,
                     key: 'abs_pnl',
+                    maxByMetric: metricMax,
                     spacing: 1,
                     borderWidth: 0,
                     backgroundColor: function(ctx) {
-                        if (ctx.type !== 'data') return 'transparent';
-                        const pnl = ctx.raw._data.pnl || 0;
-                        return pnl > 0 ? TILE_GAIN : (pnl < 0 ? TILE_LOSS : TILE_NEUTRAL);
+                        return heatmapTone(ctx).background;
                     },
                     labels: {
                         display: true,
                         align: 'center',
                         position: 'middle',
-                        color: '#fff',
+                        color: function(ctx) {
+                            return heatmapTone(ctx).text;
+                        },
                         // Font scales with the tile's smaller dimension so labels
                         // shrink (instead of overflowing) on cramped tiles.
                         font: tileLabelFont,

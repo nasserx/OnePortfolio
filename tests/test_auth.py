@@ -419,6 +419,29 @@ class TestLogin:
 
 class TestAuthUiAndGoogle:
 
+    def test_landing_auth_actions_link_to_dedicated_pages(self, client):
+        resp = client.get('/')
+        assert resp.status_code == 200
+        body = resp.get_data(as_text=True)
+
+        assert 'class="btn-nav-login" href="/login"' in body
+        assert 'class="btn-nav-signup" href="/register"' in body
+        assert 'class="btn-cta-primary" href="/login"' in body
+        assert 'class="btn-cta-secondary" href="/register"' in body
+        assert 'Log In' in body
+        assert 'Sign Up' in body
+        assert 'Create Account' in body
+
+    def test_landing_no_longer_renders_auth_modal(self, client):
+        resp = client.get('/')
+        assert resp.status_code == 200
+        body = resp.get_data(as_text=True)
+
+        assert 'id="authModal"' not in body
+        assert 'data-bs-target="#authModal"' not in body
+        assert 'id="loginForm"' not in body
+        assert 'id="registerForm"' not in body
+
     def test_register_page_uses_email_password_only(self, client):
         resp = client.get('/register')
         assert resp.status_code == 200
@@ -436,6 +459,15 @@ class TestAuthUiAndGoogle:
         assert 'Email address' in body
         assert 'Reset password' in body
         assert 'Forgot password?' not in body
+
+    def test_dedicated_auth_pages_still_render(self, client):
+        login_resp = client.get('/login')
+        register_resp = client.get('/register')
+
+        assert login_resp.status_code == 200
+        assert register_resp.status_code == 200
+        assert 'Welcome back' in login_resp.get_data(as_text=True)
+        assert 'Create your account' in register_resp.get_data(as_text=True)
 
     def test_google_config_defaults_disabled(self, app):
         assert app.config['GOOGLE_OAUTH_ENABLED'] is False

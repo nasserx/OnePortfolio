@@ -18,7 +18,7 @@
 
     <!-- Project CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v='20260611-1') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css', v='20260611-1') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css', v='20260611-2') }}">
 </head>
 <body>
 
@@ -38,14 +38,12 @@
             </div>
 
             <div class="landing-nav-end">
-                <button class="btn-nav-login"
-                        data-bs-toggle="modal" data-bs-target="#authModal" data-tab="login">
+                <a class="btn-nav-login" href="{{ url_for('auth.login') }}">
                     Log In
-                </button>
-                <button class="btn-nav-signup"
-                        data-bs-toggle="modal" data-bs-target="#authModal" data-tab="register">
+                </a>
+                <a class="btn-nav-signup" href="{{ url_for('auth.register') }}">
                     Sign Up
-                </button>
+                </a>
             </div>
         </div>
     </nav>
@@ -64,14 +62,12 @@
                     dividends, average cost, realized P&amp;L, ROI, and allocation without broker sync.
                 </p>
                 <div class="landing-cta-group">
-                    <button class="btn-cta-primary"
-                            data-bs-toggle="modal" data-bs-target="#authModal" data-tab="demo">
+                    <a class="btn-cta-primary" href="{{ url_for('auth.login') }}">
                         Try Demo
-                    </button>
-                    <button class="btn-cta-secondary"
-                            data-bs-toggle="modal" data-bs-target="#authModal" data-tab="register">
+                    </a>
+                    <a class="btn-cta-secondary" href="{{ url_for('auth.register') }}">
                         Create Account
-                    </button>
+                    </a>
                 </div>
             </div>
 
@@ -309,14 +305,12 @@
                     Add your first cash movement or transaction and see a structured view in minutes.
                 </p>
                 <div class="landing-cta-group">
-                    <button class="btn-cta-primary"
-                            data-bs-toggle="modal" data-bs-target="#authModal" data-tab="demo">
+                    <a class="btn-cta-primary" href="{{ url_for('auth.login') }}">
                         Try Demo
-                    </button>
-                    <button class="btn-cta-secondary"
-                            data-bs-toggle="modal" data-bs-target="#authModal" data-tab="register">
+                    </a>
+                    <a class="btn-cta-secondary" href="{{ url_for('auth.register') }}">
                         Create Account
-                    </button>
+                    </a>
                 </div>
             </div>
         </div>
@@ -336,240 +330,6 @@
             </div>
         </div>
     </footer>
-
-
-    <!-- ══════════════════ AUTH MODAL ══════════════════ -->
-    <div class="modal fade" id="authModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-
-                <button type="button" class="auth-modal-close" data-bs-dismiss="modal" aria-label="Close">
-                    <i class="bi bi-x-lg" aria-hidden="true"></i>
-                </button>
-
-                <!-- ── LOGIN PANEL ── -->
-                <div id="panelLogin" class="auth-modal-panel">
-                    <div class="auth-modal-panel-header text-center">
-                        <img src="{{ url_for('static', filename='icons/favicon.svg') }}"
-                             alt="OnePortfolio logo" class="auth-logo mb-3">
-                        <h2 class="auth-title">Welcome back</h2>
-                        <p class="auth-subtitle mb-0">Sign in to your portfolio</p>
-                    </div>
-
-                    <div id="loginGeneralError" class="alert alert-danger py-2 mb-3 d-none">
-                        <i class="bi bi-exclamation-circle me-1"></i>
-                        <span id="loginGeneralErrorMsg"></span>
-                    </div>
-
-                    <form id="loginForm" method="post" action="{{ url_for('auth.login') }}" novalidate>
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <input type="hidden" name="_modal" value="1">
-
-                        <a href="{{ url_for('auth.google_signin') }}"
-                           class="btn btn-outline-secondary btn-auth btn-google w-100 mb-3">
-                            <i class="bi bi-google me-2" aria-hidden="true"></i>
-                            Continue with Google
-                        </a>
-                        {% if not config.get('GOOGLE_OAUTH_ENABLED') %}
-                            <div class="auth-coming-soon text-center mb-3">Coming soon</div>
-                        {% endif %}
-
-                        <div class="auth-divider mb-3"><span>or</span></div>
-
-                        <div class="mb-2">
-                            <div class="field-wrap">
-                                <i class="bi bi-envelope fi" aria-hidden="true"></i>
-                                <input type="text" id="loginUsername" name="username"
-                                       autocomplete="email"
-                                       class="form-control form-control-auth"
-                                       placeholder="Email address" required>
-                            </div>
-                            <div class="auth-field-error d-none mt-1" data-error-for="loginUsername"></div>
-                        </div>
-
-                        <div class="mb-2">
-                            <div class="field-wrap">
-                                <i class="bi bi-lock fi" aria-hidden="true"></i>
-                                <input type="password" id="loginPassword" name="password"
-                                       autocomplete="current-password"
-                                       class="form-control form-control-auth has-toggle"
-                                       placeholder="Password" required>
-                                <button class="toggle-pw" type="button" id="loginPwToggle"
-                                        aria-label="Show or hide password">
-                                    <i class="bi bi-eye" id="loginPwIcon" aria-hidden="true"></i>
-                                </button>
-                            </div>
-                            <div class="auth-field-error d-none mt-1" data-error-for="loginPassword"></div>
-                        </div>
-
-                        <div class="mb-4 d-flex align-items-center justify-content-between">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox"
-                                       id="loginRemember" name="remember">
-                                <label class="form-check-label auth-subtitle" for="loginRemember">
-                                    Keep me signed in
-                                </label>
-                            </div>
-                            <button type="button" class="btn-modal-switch auth-subtitle fw-400"
-                                    data-panel="panelForgot">
-                                Reset password
-                            </button>
-                        </div>
-
-                        <button type="submit" id="loginSubmitBtn" class="btn btn-primary btn-auth w-100">
-                            Sign in
-                        </button>
-                    </form>
-
-                    <div class="text-center mt-3">
-                        <span class="auth-subtitle">New here? </span>
-                        <button type="button" class="btn-modal-switch fw-500"
-                                data-panel="panelSignup">Create account</button>
-                    </div>
-                </div><!-- /#panelLogin -->
-
-
-                <!-- ── REGISTER PANEL ── -->
-                <div id="panelSignup" class="auth-modal-panel d-none">
-                    <div class="auth-modal-panel-header text-center">
-                        <img src="{{ url_for('static', filename='icons/favicon.svg') }}"
-                             alt="OnePortfolio logo" class="auth-logo mb-3">
-                        <h2 class="auth-title">Create your account</h2>
-                        <p class="auth-subtitle mb-0">Start tracking your portfolio</p>
-                    </div>
-
-                    <div id="registerGeneralError" class="alert alert-danger py-2 mb-3 d-none">
-                        <i class="bi bi-exclamation-circle me-1"></i>
-                        <span id="registerGeneralErrorMsg"></span>
-                    </div>
-
-                    <form id="registerForm" method="post" action="{{ url_for('auth.register') }}" novalidate>
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <input type="hidden" name="_modal" value="1">
-
-                        <a href="{{ url_for('auth.google_signin', next='register') }}"
-                           class="btn btn-outline-secondary btn-auth btn-google w-100 mb-3">
-                            <i class="bi bi-google me-2" aria-hidden="true"></i>
-                            Continue with Google
-                        </a>
-                        {% if not config.get('GOOGLE_OAUTH_ENABLED') %}
-                            <div class="auth-coming-soon text-center mb-3">Coming soon</div>
-                        {% endif %}
-
-                        <div class="auth-divider mb-3"><span>or</span></div>
-
-                        <div class="mb-2">
-                            <div class="field-wrap">
-                                <i class="bi bi-envelope fi" aria-hidden="true"></i>
-                                <input type="email" id="regEmail" name="email"
-                                       autocomplete="email"
-                                       class="form-control form-control-auth"
-                                       placeholder="Email address" required>
-                            </div>
-                            <div class="auth-field-error d-none mt-1" data-error-for="regEmail"></div>
-                        </div>
-
-                        <div class="mb-2">
-                            <div class="field-wrap">
-                                <i class="bi bi-lock fi" aria-hidden="true"></i>
-                                <input type="password" id="regPassword" name="password"
-                                       autocomplete="new-password"
-                                       class="form-control form-control-auth has-toggle"
-                                       placeholder="Password" required>
-                                <button class="toggle-pw" type="button" id="regPwToggle"
-                                        aria-label="Show or hide password">
-                                    <i class="bi bi-eye" id="regPwIcon" aria-hidden="true"></i>
-                                </button>
-                            </div>
-                            <div class="strength-bar">
-                                <div class="bar-fill" id="regStrengthBar"></div>
-                            </div>
-                            <div class="auth-field-error d-none mt-1" data-error-for="regPassword"></div>
-                        </div>
-
-                        <button type="submit" id="registerSubmitBtn"
-                                class="btn btn-primary btn-auth w-100">
-                            Create account
-                        </button>
-                    </form>
-
-                    <div class="text-center mt-3">
-                        <span class="auth-subtitle">Already have an account? </span>
-                        <button type="button" class="btn-modal-switch fw-500"
-                                data-panel="panelLogin">Sign in</button>
-                    </div>
-                </div><!-- /#panelSignup -->
-
-
-                <!-- ── FORGOT PASSWORD PANEL ── -->
-                <div id="panelForgot" class="auth-modal-panel d-none">
-                    <div class="auth-modal-panel-header">
-                        <h2 class="auth-title">Reset your password</h2>
-                    </div>
-
-                    <div id="forgotGeneralError" class="alert alert-danger py-2 mb-3 d-none">
-                        <i class="bi bi-exclamation-circle me-1"></i>
-                        <span id="forgotGeneralErrorMsg"></span>
-                    </div>
-
-                    <form id="forgotForm" method="post" action="{{ url_for('auth.forgot_password') }}" novalidate>
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <input type="hidden" name="_modal" value="1">
-
-                        <div class="mb-3">
-                            <div class="field-wrap">
-                                <i class="bi bi-envelope fi" aria-hidden="true"></i>
-                                <input type="email" id="forgotEmail" name="email"
-                                       autocomplete="email"
-                                       class="form-control form-control-auth"
-                                       placeholder="you@example.com" required>
-                            </div>
-                            <div class="auth-field-error d-none mt-1" data-error-for="forgotEmail"></div>
-                        </div>
-
-                        <button type="submit" id="forgotSubmitBtn" class="btn btn-primary btn-auth w-100">
-                            Send Reset Link
-                        </button>
-                    </form>
-
-                    <div class="text-center mt-3">
-                        <button type="button" class="btn-modal-switch auth-subtitle fw-400"
-                                data-panel="panelLogin">
-                            <i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Back to Sign In
-                        </button>
-                    </div>
-                </div><!-- /#panelForgot -->
-
-
-                <!-- ── FORGOT PASSWORD SUCCESS PANEL ── -->
-                <div id="panelForgotDone" class="auth-modal-panel d-none">
-                    <div class="text-center">
-                        <div class="icon-circle">
-                            <i class="bi bi-envelope" aria-hidden="true"></i>
-                        </div>
-                        <h2 class="auth-title mb-2">Check your inbox</h2>
-                        <p class="auth-subtitle mb-4">
-                            If an account with that email exists, we've sent a reset link.<br>
-                            The link will expire in <strong>1 hour</strong>.
-                        </p>
-                        <p class="auth-subtitle mb-0">
-                            Didn't receive it? Check your spam folder, or
-                            <button type="button" class="btn-modal-switch fw-500"
-                                    data-panel="panelForgot">try again</button>.
-                        </p>
-                    </div>
-                    <hr class="my-4">
-                    <div class="text-center">
-                        <button type="button" class="btn-modal-switch auth-subtitle fw-400"
-                                data-panel="panelLogin">
-                            <i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Back to Sign In
-                        </button>
-                    </div>
-                </div><!-- /#panelForgotDone -->
-
-            </div><!-- /.modal-content -->
-        </div><!-- /.modal-dialog -->
-    </div><!-- /#authModal -->
 
 
     <!-- Vendor JS -->
@@ -710,226 +470,6 @@
             } else {
                 reveals.forEach((el) => el.classList.add('is-visible'));
             }
-
-            /* ══════════════════════════════════════════
-               Auth Modal
-            ══════════════════════════════════════════ */
-            const authModal = document.getElementById('authModal');
-            let isDemoLoginAttempt = false;
-
-            /* Switch visible modal panel. */
-            function showPanel(panelId) {
-                document.querySelectorAll('.auth-modal-panel')
-                    .forEach(p => p.classList.add('d-none'));
-                document.getElementById(panelId)?.classList.remove('d-none');
-            }
-
-            /* Panel-switch buttons */
-            document.querySelectorAll('.btn-modal-switch').forEach(el => {
-                el.addEventListener('click', () => showPanel(el.dataset.panel));
-            });
-
-            function fillDemoCredentials() {
-                const username = document.getElementById('loginUsername');
-                const password = document.getElementById('loginPassword');
-                const remember = document.getElementById('loginRemember');
-                if (username) username.value = 'demo';
-                if (password) password.value = 'demo1234';
-                if (remember) remember.checked = false;
-                isDemoLoginAttempt = true;
-            }
-
-            function submitLoginForm() {
-                const form = document.getElementById('loginForm');
-                if (!form) return;
-                if (typeof form.requestSubmit === 'function') {
-                    form.requestSubmit();
-                    return;
-                }
-                form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
-            }
-
-            /* Open on correct tab when any navbar/hero trigger is clicked */
-            document.querySelectorAll('[data-bs-target="#authModal"]').forEach(trigger => {
-                trigger.addEventListener('click', () => {
-                    const targetTab = trigger.dataset.tab;
-                    showPanel(targetTab === 'register' ? 'panelSignup' : 'panelLogin');
-                    if (targetTab === 'demo') {
-                        fillDemoCredentials();
-                        window.setTimeout(() => {
-                            submitLoginForm();
-                        }, 120);
-                    }
-                });
-            });
-
-            /* Auto-open from URL param (?modal=login or ?modal=register) */
-            const urlParam = new URLSearchParams(window.location.search).get('modal');
-            if (urlParam === 'login' || urlParam === 'register') {
-                showPanel(urlParam === 'register' ? 'panelSignup' : 'panelLogin');
-                bootstrap.Modal.getOrCreateInstance(authModal).show();
-                history.replaceState(null, '', window.location.pathname);
-            }
-
-            /* Blur landing content when modal is open */
-            authModal?.addEventListener('show.bs.modal',   () => document.body.classList.add('auth-modal-open'));
-            authModal?.addEventListener('hidden.bs.modal', () => document.body.classList.remove('auth-modal-open'));
-
-            /* Reset modal on close */
-            authModal?.addEventListener('hidden.bs.modal', () => {
-                ['panelLogin', 'panelSignup', 'panelForgot'].forEach(clearErrors);
-                authModal.querySelectorAll('form').forEach(f => f.reset());
-                const bar = document.getElementById('regStrengthBar');
-                if (bar) { bar.style.width = '0%'; bar.style.background = 'transparent'; }
-                showPanel('panelLogin');
-            });
-
-            /* ── Password visibility toggles ── */
-            function bindToggle(inputId, btnId, iconId) {
-                const input = document.getElementById(inputId);
-                const ico   = document.getElementById(iconId);
-                document.getElementById(btnId)?.addEventListener('click', () => {
-                    const show  = input.type === 'password';
-                    input.type  = show ? 'text' : 'password';
-                    ico.className = show ? 'bi bi-eye-slash' : 'bi bi-eye';
-                });
-            }
-            bindToggle('loginPassword', 'loginPwToggle', 'loginPwIcon');
-            bindToggle('regPassword',   'regPwToggle',   'regPwIcon');
-
-            /* ── Password strength meter ── */
-            const regPw = document.getElementById('regPassword');
-            const sBar  = document.getElementById('regStrengthBar');
-            if (regPw && sBar) {
-                regPw.addEventListener('input', function () {
-                    const v = this.value;
-                    let score = 0;
-                    if (v.length >= 8)          score++;
-                    if (v.length >= 12)         score++;
-                    if (/[A-Z]/.test(v))        score++;
-                    if (/[0-9]/.test(v))        score++;
-                    if (/[^A-Za-z0-9]/.test(v)) score++;
-                    const colors = ['', '#d93025', '#f9ab00', '#1a73e8', '#0f9d58', '#0f9d58'];
-                    const widths = ['0%', '20%', '40%', '65%', '85%', '100%'];
-                    sBar.style.width      = widths[score]  || '0%';
-                    sBar.style.background = colors[score] || 'transparent';
-                });
-            }
-
-            /* ══════════════════════════════════════════
-               AJAX Form Handling
-            ══════════════════════════════════════════ */
-
-            /* field name → input element id, per panel */
-            const FIELD_MAP = {
-                panelLogin:  { username: 'loginUsername', password: 'loginPassword' },
-                panelSignup: { email: 'regEmail', password: 'regPassword' },
-                panelForgot: { email: 'forgotEmail' },
-            };
-            const GENERAL_ERROR = {
-                panelLogin:  { wrap: 'loginGeneralError',    msg: 'loginGeneralErrorMsg'    },
-                panelSignup: { wrap: 'registerGeneralError', msg: 'registerGeneralErrorMsg' },
-                panelForgot: { wrap: 'forgotGeneralError',   msg: 'forgotGeneralErrorMsg'   },
-            };
-
-            function clearErrors(panelId) {
-                const panel = document.getElementById(panelId);
-                if (!panel) return;
-                panel.querySelectorAll('.is-invalid')
-                    .forEach(el => el.classList.remove('is-invalid'));
-                panel.querySelectorAll('[data-error-for]').forEach(el => {
-                    el.textContent = '';
-                    el.classList.remove('d-block');
-                    el.classList.add('d-none');
-                });
-                const ge = GENERAL_ERROR[panelId];
-                if (ge) document.getElementById(ge.wrap)?.classList.add('d-none');
-            }
-
-            function showErrors(panelId, errors) {
-                const fieldMap = FIELD_MAP[panelId] || {};
-                const ge       = GENERAL_ERROR[panelId];
-
-                Object.entries(errors).forEach(([field, msg]) => {
-                    if (field === '__all__') {
-                        if (ge) {
-                            document.getElementById(ge.msg).textContent = msg;
-                            document.getElementById(ge.wrap)?.classList.remove('d-none');
-                        }
-                        return;
-                    }
-                    const inputId = fieldMap[field];
-                    if (!inputId) return;
-                    const input  = document.getElementById(inputId);
-                    const errDiv = document.querySelector(`[data-error-for="${inputId}"]`);
-                    if (input)  input.classList.add('is-invalid');
-                    if (errDiv) {
-                        errDiv.textContent = msg;
-                        errDiv.classList.remove('d-none');
-                        errDiv.classList.add('d-block');
-                    }
-                });
-            }
-
-            function setLoading(btn, loading, originalText) {
-                btn.disabled    = loading;
-                btn.textContent = loading ? 'Please wait…' : originalText;
-            }
-
-            function bindAjaxForm(formId, panelId, submitBtnId, onSuccess) {
-                const form      = document.getElementById(formId);
-                const submitBtn = document.getElementById(submitBtnId);
-                if (!form) return;
-
-                form.addEventListener('submit', async (e) => {
-                    e.preventDefault();
-                    clearErrors(panelId);
-                    const origText = submitBtn.textContent;
-                    setLoading(submitBtn, true, origText);
-
-                    const formData  = new FormData(form);
-                    const csrfToken = formData.get('csrf_token');
-
-                    try {
-                        const res  = await fetch(form.action, {
-                            method: 'POST',
-                            headers: {
-                                'X-CSRFToken': csrfToken,
-                                'X-Requested-With': 'XMLHttpRequest',
-                                'Accept': 'application/json',
-                            },
-                            body: formData,
-                        });
-                        const data = await res.json();
-
-                        if (data.ok) {
-                            isDemoLoginAttempt = false;
-                            if (onSuccess) onSuccess(data);
-                            else window.location.href = data.redirect;
-                        } else {
-                            const errors = data.errors || {};
-                            if (formId === 'loginForm' && isDemoLoginAttempt) {
-                                errors.__all__ = 'Demo login is unavailable right now. You can still create a free account or sign in manually.';
-                                isDemoLoginAttempt = false;
-                            }
-                            showErrors(panelId, errors);
-                            setLoading(submitBtn, false, origText);
-                        }
-                    } catch (_) {
-                        const message = (formId === 'loginForm' && isDemoLoginAttempt)
-                            ? 'Demo login could not be completed. Please try again or create a free account.'
-                            : 'Network error. Please try again.';
-                        isDemoLoginAttempt = false;
-                        showErrors(panelId, { '__all__': message });
-                        setLoading(submitBtn, false, origText);
-                    }
-                });
-            }
-
-            bindAjaxForm('loginForm',    'panelLogin',  'loginSubmitBtn');
-            bindAjaxForm('registerForm', 'panelSignup', 'registerSubmitBtn');
-            bindAjaxForm('forgotForm',   'panelForgot', 'forgotSubmitBtn',
-                         () => showPanel('panelForgotDone'));
 
         })();
     </script>

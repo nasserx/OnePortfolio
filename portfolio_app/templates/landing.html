@@ -17,8 +17,8 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
 
     <!-- Project CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v='20260610-3') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css', v='20260610-2') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v='20260611-1') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css', v='20260611-1') }}">
 </head>
 <body>
 
@@ -343,14 +343,9 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
 
-                <!-- Tab bar -->
-                <div class="auth-modal-tabbar">
-                    <button class="auth-modal-tab active" id="tabLogin"  data-panel="panelLogin">Log In</button>
-                    <button class="auth-modal-tab"        id="tabSignup" data-panel="panelSignup">Sign Up</button>
-                    <button type="button" class="auth-modal-close" data-bs-dismiss="modal" aria-label="Close">
-                        <i class="bi bi-x-lg" aria-hidden="true"></i>
-                    </button>
-                </div>
+                <button type="button" class="auth-modal-close" data-bs-dismiss="modal" aria-label="Close">
+                    <i class="bi bi-x-lg" aria-hidden="true"></i>
+                </button>
 
                 <!-- ── LOGIN PANEL ── -->
                 <div id="panelLogin" class="auth-modal-panel">
@@ -370,13 +365,24 @@
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <input type="hidden" name="_modal" value="1">
 
+                        <a href="{{ url_for('auth.google_signin') }}"
+                           class="btn btn-outline-secondary btn-auth btn-google w-100 mb-3">
+                            <i class="bi bi-google me-2" aria-hidden="true"></i>
+                            Continue with Google
+                        </a>
+                        {% if not config.get('GOOGLE_OAUTH_ENABLED') %}
+                            <div class="auth-coming-soon text-center mb-3">Coming soon</div>
+                        {% endif %}
+
+                        <div class="auth-divider mb-3"><span>or</span></div>
+
                         <div class="mb-2">
                             <div class="field-wrap">
-                                <i class="bi bi-person fi" aria-hidden="true"></i>
+                                <i class="bi bi-envelope fi" aria-hidden="true"></i>
                                 <input type="text" id="loginUsername" name="username"
-                                       autocomplete="username"
+                                       autocomplete="email"
                                        class="form-control form-control-auth"
-                                       placeholder="Username or email" required>
+                                       placeholder="Email address" required>
                             </div>
                             <div class="auth-field-error d-none mt-1" data-error-for="loginUsername"></div>
                         </div>
@@ -406,19 +412,19 @@
                             </div>
                             <button type="button" class="btn-modal-switch auth-subtitle fw-400"
                                     data-panel="panelForgot">
-                                Forgot password?
+                                Reset password
                             </button>
                         </div>
 
                         <button type="submit" id="loginSubmitBtn" class="btn btn-primary btn-auth w-100">
-                            Sign In
+                            Sign in
                         </button>
                     </form>
 
                     <div class="text-center mt-3">
-                        <span class="auth-subtitle">Don't have an account? </span>
+                        <span class="auth-subtitle">New here? </span>
                         <button type="button" class="btn-modal-switch fw-500"
-                                data-panel="panelSignup">Create one</button>
+                                data-panel="panelSignup">Create account</button>
                     </div>
                 </div><!-- /#panelLogin -->
 
@@ -428,7 +434,7 @@
                     <div class="auth-modal-panel-header text-center">
                         <img src="{{ url_for('static', filename='icons/favicon.svg') }}"
                              alt="OnePortfolio logo" class="auth-logo mb-3">
-                        <h2 class="auth-title">Create account</h2>
+                        <h2 class="auth-title">Create your account</h2>
                         <p class="auth-subtitle mb-0">Start tracking your portfolio</p>
                     </div>
 
@@ -441,16 +447,16 @@
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <input type="hidden" name="_modal" value="1">
 
-                        <div class="mb-2">
-                            <div class="field-wrap">
-                                <i class="bi bi-person fi" aria-hidden="true"></i>
-                                <input type="text" id="regUsername" name="username"
-                                       autocomplete="username"
-                                       class="form-control form-control-auth"
-                                       placeholder="Username" required>
-                            </div>
-                            <div class="auth-field-error d-none mt-1" data-error-for="regUsername"></div>
-                        </div>
+                        <a href="{{ url_for('auth.google_signin', next='register') }}"
+                           class="btn btn-outline-secondary btn-auth btn-google w-100 mb-3">
+                            <i class="bi bi-google me-2" aria-hidden="true"></i>
+                            Continue with Google
+                        </a>
+                        {% if not config.get('GOOGLE_OAUTH_ENABLED') %}
+                            <div class="auth-coming-soon text-center mb-3">Coming soon</div>
+                        {% endif %}
+
+                        <div class="auth-divider mb-3"><span>or</span></div>
 
                         <div class="mb-2">
                             <div class="field-wrap">
@@ -469,7 +475,7 @@
                                 <input type="password" id="regPassword" name="password"
                                        autocomplete="new-password"
                                        class="form-control form-control-auth has-toggle"
-                                       placeholder="Password (min. 8 characters)" required>
+                                       placeholder="Password" required>
                                 <button class="toggle-pw" type="button" id="regPwToggle"
                                         aria-label="Show or hide password">
                                     <i class="bi bi-eye" id="regPwIcon" aria-hidden="true"></i>
@@ -481,20 +487,9 @@
                             <div class="auth-field-error d-none mt-1" data-error-for="regPassword"></div>
                         </div>
 
-                        <div class="mb-3">
-                            <div class="field-wrap">
-                                <i class="bi bi-shield-check fi" aria-hidden="true"></i>
-                                <input type="password" id="regConfirm" name="confirm_password"
-                                       autocomplete="new-password"
-                                       class="form-control form-control-auth"
-                                       placeholder="Confirm password" required>
-                            </div>
-                            <div class="auth-field-error d-none mt-1" data-error-for="regConfirm"></div>
-                        </div>
-
                         <button type="submit" id="registerSubmitBtn"
                                 class="btn btn-primary btn-auth w-100">
-                            Create Account
+                            Create account
                         </button>
                     </form>
 
@@ -722,21 +717,15 @@
             const authModal = document.getElementById('authModal');
             let isDemoLoginAttempt = false;
 
-            /* Switch visible panel + sync active tab.
-               Forgot panels stay under "Log In" tab. */
+            /* Switch visible modal panel. */
             function showPanel(panelId) {
                 document.querySelectorAll('.auth-modal-panel')
                     .forEach(p => p.classList.add('d-none'));
                 document.getElementById(panelId)?.classList.remove('d-none');
-
-                document.querySelectorAll('.auth-modal-tab')
-                    .forEach(t => t.classList.remove('active'));
-                const activeTabId = (panelId === 'panelSignup') ? 'tabSignup' : 'tabLogin';
-                document.getElementById(activeTabId)?.classList.add('active');
             }
 
-            /* Tab bar + all panel-switch buttons */
-            document.querySelectorAll('.auth-modal-tab, .btn-modal-switch').forEach(el => {
+            /* Panel-switch buttons */
+            document.querySelectorAll('.btn-modal-switch').forEach(el => {
                 el.addEventListener('click', () => showPanel(el.dataset.panel));
             });
 
@@ -834,8 +823,7 @@
             /* field name → input element id, per panel */
             const FIELD_MAP = {
                 panelLogin:  { username: 'loginUsername', password: 'loginPassword' },
-                panelSignup: { username: 'regUsername', email: 'regEmail',
-                               password: 'regPassword', confirm_password: 'regConfirm' },
+                panelSignup: { email: 'regEmail', password: 'regPassword' },
                 panelForgot: { email: 'forgotEmail' },
             };
             const GENERAL_ERROR = {

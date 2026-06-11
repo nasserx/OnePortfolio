@@ -908,45 +908,24 @@ body.auth-modal-open .landing-footer {
     border-radius: var(--radius-lg) !important;
     outline: 1px solid var(--border-color) !important;
     overflow: hidden;
-}
-.auth-modal-tabbar {
-    display: flex; align-items: center;
-    padding: 0 1.5rem;
-    background: var(--primary);
-    border-bottom: 1px solid var(--primary-dark);
-}
-.auth-modal-tab {
-    padding: 1rem 0.25rem;
-    margin-right: 1.25rem;
-    font-size: 0.9375rem; font-weight: 500;
-    color: #ffffffb8; background: none; cursor: pointer;
     position: relative;
-    transition: color var(--transition);
 }
-.auth-modal-tab::after {
-    content: '';
-    position: absolute; bottom: 0; left: 0; right: 0;
-    height: 3px; background: transparent;
-    border-radius: 3px 3px 0 0;
-    transition: background var(--transition);
-}
-.auth-modal-tab:hover,
-.auth-modal-tab:focus-visible,
-.auth-modal-tab.active        { color: #fff; font-weight: 600; }
-.auth-modal-tab.active::after { background: #fff; }
 
 .auth-modal-close {
-    margin-left: auto;
-    background: none; color: #ffffffd1; cursor: pointer;
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    z-index: 2;
+    background: none; color: var(--text-3); cursor: pointer;
     padding: 0.375rem;
     border-radius: var(--radius-sm) !important;
     font-size: 1rem; line-height: 1;
     transition: background var(--transition), color var(--transition);
 }
 .auth-modal-close:hover,
-.auth-modal-close:focus-visible { background: #ffffff24; color: #fff; }
+.auth-modal-close:focus-visible { background: var(--surface-hover); color: var(--text-1); }
 
-.auth-modal-panel { padding: 1.75rem 2rem 2rem; }
+.auth-modal-panel { padding: 2rem; }
 .auth-modal-panel-header { margin-bottom: 1.25rem; }
 
 .btn-modal-switch {

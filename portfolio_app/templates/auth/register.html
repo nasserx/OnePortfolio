@@ -8,7 +8,7 @@
     <div class="text-center mb-3">
         <img src="{{ url_for('static', filename='icons/favicon.svg') }}"
              alt="OnePortfolio logo" class="auth-logo mb-3">
-        <h1 class="auth-title">Create account</h1>
+        <h1 class="auth-title">Create your account</h1>
         <p class="auth-subtitle mb-0">Start tracking your portfolio</p>
     </div>
 
@@ -32,22 +32,19 @@
     {% endif %}
 
     <!-- Register form -->
+    <a href="{{ url_for('auth.google_signin', next='register') }}"
+       class="btn btn-outline-secondary btn-auth btn-google w-100 mb-3">
+        <i class="bi bi-google me-2" aria-hidden="true"></i>
+        Continue with Google
+    </a>
+    {% if not config.get('GOOGLE_OAUTH_ENABLED') %}
+        <div class="auth-coming-soon text-center mb-3">Coming soon</div>
+    {% endif %}
+
+    <div class="auth-divider mb-3"><span>or</span></div>
+
     <form method="post" action="{{ url_for('auth.register') }}" novalidate>
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-
-        <!-- Username -->
-        <div class="mb-2">
-            <div class="field-wrap">
-                <i class="bi bi-person fi" aria-hidden="true"></i>
-                <input type="text" id="username" name="username" autocomplete="username"
-                       class="form-control form-control-auth {% if form_errors.get('username') %}is-invalid{% endif %}"
-                       value="{{ form_values.get('username', '') }}"
-                       placeholder="Username" autofocus required>
-            </div>
-            {% if form_errors.get('username') %}
-                <div class="invalid-feedback d-block mt-1">{{ form_errors['username'] }}</div>
-            {% endif %}
-        </div>
 
         <!-- Email -->
         <div class="mb-2">
@@ -56,7 +53,7 @@
                 <input type="email" id="email" name="email" autocomplete="email"
                        class="form-control form-control-auth {% if form_errors.get('email') %}is-invalid{% endif %}"
                        value="{{ form_values.get('email', '') }}"
-                       placeholder="Email address" required>
+                       placeholder="Email address" autofocus required>
             </div>
             {% if form_errors.get('email') %}
                 <div class="invalid-feedback d-block mt-1">{{ form_errors['email'] }}</div>
@@ -69,7 +66,7 @@
                 <i class="bi bi-lock fi" aria-hidden="true"></i>
                 <input type="password" id="password" name="password" autocomplete="new-password"
                        class="form-control form-control-auth has-toggle {% if form_errors.get('password') %}is-invalid{% endif %}"
-                       placeholder="Password (min. 8 characters)" required>
+                       placeholder="Password" required>
                 <button class="toggle-pw" type="button" id="togglePassword"
                         aria-label="Show or hide password">
                     <i class="bi bi-eye" id="toggleIcon" aria-hidden="true"></i>
@@ -83,21 +80,8 @@
             {% endif %}
         </div>
 
-        <!-- Confirm password -->
-        <div class="mb-3">
-            <div class="field-wrap">
-                <i class="bi bi-shield-check fi" aria-hidden="true"></i>
-                <input type="password" id="confirm_password" name="confirm_password" autocomplete="new-password"
-                       class="form-control form-control-auth {% if form_errors.get('confirm_password') %}is-invalid{% endif %}"
-                       placeholder="Confirm password" required>
-            </div>
-            {% if form_errors.get('confirm_password') %}
-                <div class="invalid-feedback d-block mt-1">{{ form_errors['confirm_password'] }}</div>
-            {% endif %}
-        </div>
-
         <button type="submit" class="btn btn-primary btn-auth w-100">
-            Create Account
+            Create account
         </button>
     </form>
 

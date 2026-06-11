@@ -2204,6 +2204,7 @@ i.bi.text-primary,
     max-width: 180px; letter-spacing: 0.2em;
     font-weight: 600; font-size: 1rem; text-align: center;
 }
+.settings-delete-confirm-input { max-width: 220px; font-weight: 600; }
 .settings-tab-content { min-height: 400px; }
 
 /* ============================================================ */
@@ -2224,9 +2225,35 @@ i.bi.text-primary,
 .auth-logo { width: 40px; height: 40px; }
 .auth-title { font-size: 1.375rem; font-weight: 600; color: var(--text-1); }
 .auth-subtitle { color: var(--text-3); font-size: 0.875rem; }
+.auth-coming-soon { color: var(--text-3); font-size: 0.75rem; }
 
 .form-control-auth { padding: 0.625rem 0.875rem; font-size: 0.9375rem; }
 .btn-auth { padding: 0.625rem 1rem; font-size: 0.9375rem; font-weight: 500; }
+.btn-google {
+    border-color: var(--border-color);
+    color: var(--text-1);
+    background: var(--surface);
+}
+.btn-google:hover,
+.btn-google:focus-visible {
+    color: var(--text-1);
+    background: var(--surface-hover);
+    border-color: var(--border-color);
+}
+.auth-divider {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: var(--text-3);
+    font-size: 0.8125rem;
+}
+.auth-divider::before,
+.auth-divider::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--border-color);
+}
 
 .field-wrap { position: relative; }
 .field-wrap .fi {

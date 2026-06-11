@@ -32,28 +32,12 @@ class RegisterForm(BaseForm):
     def __init__(
         self,
         data: dict,
-        check_username_taken: Optional[Callable[[str], bool]] = None,
         check_email_taken: Optional[Callable[[str], bool]] = None,
     ):
         super().__init__(data)
-        self.check_username_taken = check_username_taken
         self.check_email_taken = check_email_taken
 
     def validate(self) -> bool:
-        # --- Username ---
-        username = self._validate_required_string('username', MESSAGES['USERNAME_REQUIRED'])
-        if username:
-            if len(username) < 3:
-                self.errors['username'] = MESSAGES['USERNAME_TOO_SHORT']
-            elif len(username) > 80:
-                self.errors['username'] = MESSAGES['USERNAME_TOO_LONG']
-            elif not all(c.isalpha() or c == '_' for c in username):
-                self.errors['username'] = MESSAGES['USERNAME_INVALID_CHARS']
-            elif self.check_username_taken and self.check_username_taken(username):
-                self.errors['username'] = MESSAGES['USERNAME_TAKEN']
-            else:
-                self.cleaned_data['username'] = username
-
         # --- Email ---
         email = self._validate_required_string('email', MESSAGES['EMAIL_REQUIRED'])
         if email:
@@ -74,14 +58,6 @@ class RegisterForm(BaseForm):
                 self.errors['password'] = MESSAGES['PASSWORD_TOO_SHORT']
             else:
                 self.cleaned_data['password'] = password
-
-        # --- Confirm password ---
-        confirm = self._validate_required_string('confirm_password', MESSAGES['PASSWORD_CONFIRM_REQUIRED'])
-        if confirm and password and not self.errors.get('password'):
-            if confirm != password:
-                self.errors['confirm_password'] = MESSAGES['PASSWORDS_NO_MATCH']
-            else:
-                self.cleaned_data['confirm_password'] = confirm
 
         return not self.has_errors()
 
@@ -163,7 +139,20 @@ class VerifyCodeForm(BaseForm):
 
 
 class ConfirmDeletionForm(VerifyCodeForm):
-    """Alias of VerifyCodeForm used for account deletion OTP confirmation."""
+    """Form for final account deletion intent after OTP verification."""
+
+    def validate(self) -> bool:
+        confirm = self._validate_required_string(
+            'delete_confirm',
+            MESSAGES['DELETION_CONFIRM_TEXT_REQUIRED'],
+        )
+        if confirm:
+            if confirm != 'delete':
+                self.errors['delete_confirm'] = MESSAGES['DELETION_CONFIRM_TEXT_REQUIRED']
+            else:
+                self.cleaned_data['delete_confirm'] = confirm
+
+        return not self.has_errors()
 
 
 class UpdateEmailForm(BaseForm):

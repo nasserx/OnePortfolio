@@ -52,9 +52,9 @@
                         <i class="bi bi-person-circle me-2 text-primary" aria-hidden="true"></i>Profile
                     </h3>
 
-                    <!-- Username (read-only) -->
+                    <!-- Name (read-only) -->
                     <div class="mb-4">
-                        <label class="form-label">Username</label>
+                        <label class="form-label">Name</label>
                         <div class="settings-readonly-field">
                             <i class="bi bi-person text-muted" aria-hidden="true"></i>
                             <span>{{ current_user.username }}</span>
@@ -62,7 +62,6 @@
                                 <span class="badge nav-admin-badge ms-auto">Admin</span>
                             {% endif %}
                         </div>
-                        <div class="form-text">Cannot be changed.</div>
                     </div>
 
                     <!-- Email (read-only) -->
@@ -100,6 +99,21 @@
                         <i class="bi bi-shield-lock me-2 text-primary" aria-hidden="true"></i>Security
                     </h3>
 
+                    <div class="settings-action-desc mb-3">Sign-in methods</div>
+
+                    <!-- Google sign-in placeholder -->
+                    <div class="settings-action-row">
+                        <div>
+                            <div class="settings-action-title">
+                                <i class="bi bi-google me-2" aria-hidden="true"></i>Google
+                            </div>
+                            <div class="settings-action-desc">Coming soon / Not connected</div>
+                        </div>
+                        <button class="btn btn-outline-secondary btn-sm" disabled>Coming soon</button>
+                    </div>
+
+                    <hr class="my-3">
+
                     <!-- Change Password -->
                     <div class="settings-action-row">
                         <div>
@@ -108,6 +122,8 @@
                             </div>
                             {% if is_demo_account %}
                                 <div class="settings-action-desc">Disabled for the demo account.</div>
+                            {% else %}
+                                <div class="settings-action-desc">Set / Change</div>
                             {% endif %}
                         </div>
                         {% if is_demo_account %}
@@ -182,56 +198,118 @@
                             <form id="form-delete-request" class="mb-0">
                                 <button type="button" class="btn btn-outline-danger btn-sm"
                                         id="btn-show-delete-confirm">
-                                    <i class="bi bi-trash me-2" aria-hidden="true"></i>Delete Account
+                                    <i class="bi bi-trash me-2" aria-hidden="true"></i>Delete account
                                 </button>
                             </form>
 
-                            <!-- Step 2: OTP (hidden until triggered, auto-shown on send/error) -->
                             {% set deletion_error = request.args.get('deletion_error') %}
                             {% set deletion_sent  = request.args.get('deletion_sent') %}
-                            <div id="delete-confirm-section"
-                                 class="{% if not deletion_error and not deletion_sent %}d-none{% endif %}">
+                            {% set deletion_verified = request.args.get('deletion_verified') %}
+
+                            <!-- Step 2: start deletion and send the email code -->
+                            <div id="delete-start-section"
+                                 class="{% if not deletion_error or deletion_sent or deletion_verified %}d-none{% endif %}">
+                                <div class="alert alert-warning py-2 mb-3">
+                                    <i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>
+                                    This action cannot be undone.
+                                </div>
+                                {% if deletion_error and not deletion_sent %}
+                                    <div class="alert alert-danger py-2 mb-3">
+                                        <i class="bi bi-exclamation-circle me-1" aria-hidden="true"></i>{{ deletion_error }}
+                                    </div>
+                                {% endif %}
+
+                                <form method="post" action="{{ url_for('auth.delete_account_request') }}"
+                                      class="mb-0">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="btn btn-warning btn-sm">
+                                        <i class="bi bi-envelope me-1" aria-hidden="true"></i>Send confirmation code
+                                    </button>
+                                    <button type="submit" form="form-delete-cancel"
+                                            class="btn btn-link btn-sm ms-1" style="color: var(--text-2);">Cancel</button>
+                                </form>
+                            </div>
+
+                            <form id="form-delete-cancel" method="post" action="{{ url_for('auth.delete_account_cancel') }}" class="d-none">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            </form>
+
+                            <!-- Step 3: verify the email code -->
+                            {% if deletion_sent and not deletion_verified %}
+                            <div id="delete-confirm-section">
+                                <div class="alert alert-warning py-2 mb-3">
+                                    <i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>
+                                    This action cannot be undone.
+                                </div>
+                                {% if deletion_error %}
+                                    <div class="alert alert-danger py-2 mb-3">
+                                        <i class="bi bi-exclamation-circle me-1" aria-hidden="true"></i>{{ deletion_error }}
+                                    </div>
+                                {% endif %}
+                                {% if not deletion_error %}
+                                    <div class="form-text text-success mb-3">
+                                        <i class="bi bi-check-circle me-1" aria-hidden="true"></i>Code sent to {{ current_user.email }}.
+                                    </div>
+                                {% endif %}
 
                                 <form method="post" action="{{ url_for('auth.delete_account_request') }}"
                                       class="mb-3">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <button type="submit" class="btn btn-warning btn-sm">
-                                        {% if deletion_sent %}
-                                            <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>Resend Code
-                                        {% else %}
-                                            <i class="bi bi-envelope me-1" aria-hidden="true"></i>Send Code
-                                        {% endif %}
+                                    <button type="submit" class="btn btn-outline-warning btn-sm">
+                                        <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>Resend confirmation code
                                     </button>
-                                    <a href="{{ url_for('auth.settings', tab='account') }}"
-                                       class="btn btn-link btn-sm ms-1" style="color: var(--text-2);">Cancel</a>
+                                    <button type="submit" form="form-delete-cancel"
+                                            class="btn btn-link btn-sm ms-1" style="color: var(--text-2);">Cancel</button>
                                 </form>
+
+                                <form method="post" action="{{ url_for('auth.delete_account_verify') }}"
+                                      novalidate>
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <div class="mb-3">
+                                        <label for="delete-code" class="form-label">Confirmation Code</label>
+                                        <input type="text" id="delete-code" name="code"
+                                               class="form-control form-control-sm settings-code-input"
+                                               inputmode="numeric" maxlength="6"
+                                               autocomplete="one-time-code"
+                                               placeholder="000000" autofocus required>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary btn-sm">
+                                        <i class="bi bi-check-circle me-2" aria-hidden="true"></i>Verify code
+                                    </button>
+                                </form>
+                            </div>
+                            {% endif %}
+
+                            <!-- Step 4: final typed confirmation -->
+                            {% if deletion_verified %}
+                            <div id="delete-final-section">
+                                <div class="alert alert-warning py-2 mb-3">
+                                    <i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>
+                                    This action cannot be undone.
+                                </div>
+                                {% if deletion_error %}
+                                    <div class="alert alert-danger py-2 mb-3">
+                                        <i class="bi bi-exclamation-circle me-1" aria-hidden="true"></i>{{ deletion_error }}
+                                    </div>
+                                {% endif %}
 
                                 <form method="post" action="{{ url_for('auth.delete_account_confirm') }}"
                                       novalidate>
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <div class="mb-2">
-                                        <label for="delete-code" class="form-label">Confirmation Code</label>
-                                        <input type="text" id="delete-code" name="code"
-                                               class="form-control form-control-sm settings-code-input {% if deletion_error %}is-invalid{% endif %}"
-                                               inputmode="numeric" maxlength="6"
-                                               autocomplete="one-time-code"
-                                               placeholder="000000" autofocus required>
-                                        {% if deletion_sent and not deletion_error %}
-                                            <div class="form-text text-success mt-1">
-                                                <i class="bi bi-check-circle me-1" aria-hidden="true"></i>Code sent to {{ current_user.email }}.
-                                            </div>
-                                        {% endif %}
-                                        {% if deletion_error %}
-                                            <div class="invalid-feedback d-block mt-1">
-                                                <i class="bi bi-exclamation-circle me-1" aria-hidden="true"></i>{{ deletion_error }}
-                                            </div>
-                                        {% endif %}
+                                    <div class="mb-3">
+                                        <label for="delete-confirm" class="form-label">Type "delete" to permanently delete your account</label>
+                                        <input type="text" id="delete-confirm" name="delete_confirm"
+                                               class="form-control form-control-sm settings-delete-confirm-input"
+                                               autocomplete="off" autofocus required>
                                     </div>
-                                    <button type="submit" class="btn btn-danger btn-sm mt-2">
-                                        <i class="bi bi-trash me-2" aria-hidden="true"></i>Confirm Deletion
+                                    <button type="submit" class="btn btn-danger btn-sm">
+                                        <i class="bi bi-trash me-2" aria-hidden="true"></i>Delete permanently
                                     </button>
+                                    <button type="submit" form="form-delete-cancel"
+                                            class="btn btn-link btn-sm ms-1" style="color: var(--text-2);">Cancel</button>
                                 </form>
                             </div>
+                            {% endif %}
                         {% endif %}
                     </div>
                 </div>
@@ -265,20 +343,27 @@
         });
     });
 
-    // Delete account: show OTP section when "Delete Account" is clicked
+    // Delete account: show the send-code stage when "Delete account" is clicked
     const btnShow    = document.getElementById('btn-show-delete-confirm');
-    const section    = document.getElementById('delete-confirm-section');
+    const startSection = document.getElementById('delete-start-section');
+    const confirmSection = document.getElementById('delete-confirm-section');
+    const finalSection = document.getElementById('delete-final-section');
     const btnRequest = document.getElementById('form-delete-request');
 
-    // If OTP section is already visible (sent/error state), hide the trigger button
-    if (section && !section.classList.contains('d-none') && btnRequest) {
+    // If a deletion stage is already visible (sent/error state), hide the trigger button
+    const deletionStageVisible = (
+        (startSection && !startSection.classList.contains('d-none')) ||
+        (confirmSection && !confirmSection.classList.contains('d-none')) ||
+        (finalSection && !finalSection.classList.contains('d-none'))
+    );
+    if (deletionStageVisible && btnRequest) {
         btnRequest.classList.add('d-none');
     }
 
-    if (btnShow && section) {
+    if (btnShow && startSection) {
         btnShow.addEventListener('click', function () {
             btnRequest.classList.add('d-none');
-            section.classList.remove('d-none');
+            startSection.classList.remove('d-none');
         });
     }
 })();

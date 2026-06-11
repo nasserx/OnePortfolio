@@ -32,17 +32,28 @@
     {% endif %}
 
     <!-- Login form -->
+    <a href="{{ url_for('auth.google_signin') }}"
+       class="btn btn-outline-secondary btn-auth btn-google w-100 mb-3">
+        <i class="bi bi-google me-2" aria-hidden="true"></i>
+        Continue with Google
+    </a>
+    {% if not config.get('GOOGLE_OAUTH_ENABLED') %}
+        <div class="auth-coming-soon text-center mb-3">Coming soon</div>
+    {% endif %}
+
+    <div class="auth-divider mb-3"><span>or</span></div>
+
     <form method="post" action="{{ url_for('auth.login') }}{% if request.args.get('next') %}?next={{ request.args.get('next') }}{% endif %}" novalidate>
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-        <!-- Username or Email -->
+        <!-- Email -->
         <div class="mb-2">
             <div class="field-wrap">
-                <i class="bi bi-person fi" aria-hidden="true"></i>
-                <input type="text" id="username" name="username" autocomplete="username"
+                <i class="bi bi-envelope fi" aria-hidden="true"></i>
+                <input type="text" id="username" name="username" autocomplete="email"
                        class="form-control form-control-auth {% if form_errors.get('username') %}is-invalid{% endif %}"
                        value="{{ form_values.get('username', '') }}"
-                       placeholder="Enter your username or email" autofocus required>
+                       placeholder="Email address" autofocus required>
             </div>
             {% if form_errors.get('username') %}
                 <div class="invalid-feedback d-block mt-1">{{ form_errors['username'] }}</div>
@@ -55,7 +66,7 @@
                 <i class="bi bi-lock fi" aria-hidden="true"></i>
                 <input type="password" id="password" name="password" autocomplete="current-password"
                        class="form-control form-control-auth has-toggle {% if form_errors.get('password') %}is-invalid{% endif %}"
-                       placeholder="Enter your password" required>
+                       placeholder="Password" required>
                 <button class="toggle-pw" type="button" id="togglePassword" title="Show/hide password"
                         aria-label="Show or hide password">
                     <i class="bi bi-eye" id="toggleIcon" aria-hidden="true"></i>
@@ -66,7 +77,7 @@
             {% endif %}
         </div>
 
-        <!-- Remember me + Forgot password -->
+        <!-- Remember me + Reset password -->
         <div class="mb-4 d-flex align-items-center justify-content-between">
             <div class="form-check">
                 <input class="form-check-input" type="checkbox" id="remember" name="remember">
@@ -75,19 +86,19 @@
                 </label>
             </div>
             <a href="{{ url_for('auth.forgot_password') }}" class="auth-subtitle">
-                Forgot password?
+                Reset password
             </a>
         </div>
 
         <button type="submit" class="btn btn-primary btn-auth w-100">
-            Sign In
+            Sign in
         </button>
     </form>
 
     <!-- Register link -->
     <div class="text-center mt-4">
-        <span class="auth-subtitle">Don't have an account? </span>
-        <a href="{{ url_for('auth.register') }}" class="fw-500">Create one</a>
+        <span class="auth-subtitle">New here? </span>
+        <a href="{{ url_for('auth.register') }}" class="fw-500">Create account</a>
     </div>
 
 {% endblock %}

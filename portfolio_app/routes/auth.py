@@ -6,7 +6,7 @@ user settings, and account deletion.
 import logging
 from functools import wraps
 from urllib.parse import urlparse
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
+from flask import Blueprint, current_app, render_template, request, redirect, url_for, flash, jsonify, session
 from flask_login import login_user, logout_user, login_required, current_user
 from flask_limiter.util import get_remote_address
 
@@ -34,6 +34,7 @@ from portfolio_app.utils.messages import MESSAGES
 logger = logging.getLogger(__name__)
 
 auth_bp = Blueprint('auth', __name__)
+_DELETION_VERIFIED_SESSION_KEY = 'deletion_verified_user_id'
 
 
 def demo_restricted(f):
@@ -182,24 +183,11 @@ def register():
         from_modal = bool(request.form.get('_modal'))
         svc = get_services()
 
-        # A username/email taken by either a verified user or by another
-        # live pending record (different email/username) is unavailable.
-        # When the user is re-submitting with the same email, register()
-        # will silently invalidate the prior pending row, so we don't
-        # treat a same-email pending as "taken" at the form-validation
-        # layer.
-        def _username_taken(u: str) -> bool:
-            if svc.user_repo.get_by_username(u):
-                return True
-            pending = svc.pending_registration_repo.get_by_username(u)
-            return pending is not None and pending.email != (request.form.get('email') or '').lower()
-
         def _email_taken(e: str) -> bool:
             return svc.user_repo.get_by_email(e) is not None
 
         form = RegisterForm(
             request.form,
-            check_username_taken=_username_taken,
             check_email_taken=_email_taken,
         )
 
@@ -207,7 +195,6 @@ def register():
             data = form.get_cleaned_data()
             try:
                 pending, code = svc.auth_service.register(
-                    data['username'],
                     data['email'],
                     data['password'],
                 )
@@ -240,6 +227,29 @@ def register():
         form_errors=form_errors,
         form_values=form_values,
     )
+
+
+@auth_bp.route('/auth/google')
+def google_signin():
+    """Placeholder route for future Google OAuth sign-in."""
+    target = request.args.get('next')
+    redirect_endpoint = 'auth.register' if target == 'register' else 'auth.login'
+
+    if not current_app.config.get('GOOGLE_OAUTH_ENABLED'):
+        flash(MESSAGES['GOOGLE_SIGNIN_COMING_SOON'], 'info')
+        return redirect(url_for(redirect_endpoint))
+
+    has_credentials = all([
+        current_app.config.get('GOOGLE_CLIENT_ID'),
+        current_app.config.get('GOOGLE_CLIENT_SECRET'),
+        current_app.config.get('GOOGLE_REDIRECT_URI'),
+    ])
+    if not has_credentials:
+        flash(MESSAGES['GOOGLE_SIGNIN_NOT_CONFIGURED'], 'warning')
+        return redirect(url_for(redirect_endpoint))
+
+    flash(MESSAGES['GOOGLE_SIGNIN_COMING_SOON'], 'info')
+    return redirect(url_for(redirect_endpoint))
 
 
 @auth_bp.route('/verify-code', methods=['GET', 'POST'])
@@ -561,6 +571,7 @@ def delete_account_request():
         return redirect(url_for('auth.settings', tab='account',
                                 deletion_error=MESSAGES['DELETION_NO_EMAIL']))
 
+    session.pop(_DELETION_VERIFIED_SESSION_KEY, None)
     svc = get_services()
     try:
         code = svc.auth_service.request_account_deletion(current_user)
@@ -576,6 +587,49 @@ def delete_account_request():
                                 deletion_error=MESSAGES['DELETION_CODE_SEND_FAILED']))
 
 
+@auth_bp.route('/settings/delete/cancel', methods=['POST'])
+@login_required
+def delete_account_cancel():
+    """Cancel the in-progress account deletion flow."""
+    session.pop(_DELETION_VERIFIED_SESSION_KEY, None)
+    return redirect(url_for('auth.settings', tab='account'))
+
+
+@auth_bp.route('/settings/delete/verify', methods=['POST'])
+@login_required
+@demo_restricted
+@limiter.limit(
+    "5 per 15 minutes",
+    key_func=lambda: f"deletion:{current_user.get_id() or ''}",
+    error_message=MESSAGES['ACCOUNT_LOCKED'],
+)
+def delete_account_verify():
+    """Verify the account-deletion OTP before showing the final delete step."""
+    form = VerifyCodeForm(request.form)
+
+    def _verify_error(msg: str):
+        session.pop(_DELETION_VERIFIED_SESSION_KEY, None)
+        return redirect(url_for('auth.settings', tab='account', deletion_sent='1',
+                                deletion_error=msg))
+
+    if not form.validate():
+        first_error = next(iter(form.errors.values()), MESSAGES['DELETION_INVALID_CODE'])
+        return _verify_error(first_error)
+
+    svc = get_services()
+    user = svc.user_repo.get_by_id(current_user.id)
+    if not user:
+        return _verify_error(MESSAGES['DELETION_INVALID_CODE'])
+
+    data = form.get_cleaned_data()
+    success, error_msg = svc.auth_service.verify_account_deletion_code(user, data['code'])
+    if not success:
+        return _verify_error(error_msg or MESSAGES['DELETION_INVALID_CODE'])
+
+    session[_DELETION_VERIFIED_SESSION_KEY] = str(user.id)
+    return redirect(url_for('auth.settings', tab='account', deletion_verified='1'))
+
+
 @auth_bp.route('/settings/delete/confirm', methods=['POST'])
 @login_required
 @demo_restricted
@@ -585,11 +639,16 @@ def delete_account_request():
     error_message=MESSAGES['ACCOUNT_LOCKED'],
 )
 def delete_account_confirm():
-    """Verify the OTP and permanently delete the authenticated user's account."""
+    """Permanently delete the authenticated user's account after OTP verification."""
     form = ConfirmDeletionForm(request.form)
 
     def _deletion_error(msg: str):
-        return redirect(url_for('auth.settings', tab='account', deletion_error=msg))
+        return redirect(url_for('auth.settings', tab='account', deletion_verified='1',
+                                deletion_error=msg))
+
+    if session.get(_DELETION_VERIFIED_SESSION_KEY) != current_user.get_id():
+        return redirect(url_for('auth.settings', tab='account', deletion_sent='1',
+                                deletion_error=MESSAGES['DELETION_CODE_NOT_VERIFIED']))
 
     if not form.validate():
         first_error = next(iter(form.errors.values()), MESSAGES['DELETION_INVALID_CODE'])
@@ -603,9 +662,10 @@ def delete_account_confirm():
     if not user:
         return _deletion_error(MESSAGES['DELETION_INVALID_CODE'])
 
-    success, error_msg = svc.auth_service.confirm_account_deletion(user, data['code'])
+    success, error_msg = svc.auth_service.complete_verified_account_deletion(user)
 
     if success:
+        session.pop(_DELETION_VERIFIED_SESSION_KEY, None)
         logout_user()
         flash(MESSAGES['DELETION_CONFIRMED'], 'success')
         return redirect(url_for('auth.login'))

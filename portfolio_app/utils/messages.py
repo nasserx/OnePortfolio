@@ -146,11 +146,13 @@ MESSAGES = {
     'EMAIL_PASSWORD_CONFIRM_REQUIRED': "Please enter your current password to confirm this change.",
 
     # Auth — login, registration, verification
-    'INVALID_CREDENTIALS':         "Invalid username or password.",
+    'INVALID_CREDENTIALS':         "Invalid email or password.",
     'ACCOUNT_LOCKED':              "Too many failed sign-in attempts. Please try again in a few minutes.",
     'REGISTRATION_FAILED':         "Registration failed. Please try again.",
     'RATE_LIMIT_SIGNUP':           "Too many sign-up attempts. Please try again later.",
     'RATE_LIMIT_RESEND':           "Too many resend requests. Please try again later.",
+    'GOOGLE_SIGNIN_COMING_SOON':   "Google sign-in is coming soon.",
+    'GOOGLE_SIGNIN_NOT_CONFIGURED': "Google sign-in is not configured yet.",
 
     'VERIFICATION_CODE_REQUIRED':  "Verification code is required.",
     'VERIFICATION_CODE_INVALID_FORMAT': "Please enter the 6-digit code sent to your email.",
@@ -173,6 +175,8 @@ MESSAGES = {
     'DELETION_CONFIRMED':          "Your account has been permanently deleted.",
     'DELETION_INVALID_CODE':       "The code is incorrect or has expired. Please request a new one.",
     'DELETION_NO_EMAIL':           "No email address is linked to your account. Please contact an administrator for help.",
+    'DELETION_CODE_NOT_VERIFIED':    "Please verify the confirmation code first.",
+    'DELETION_CONFIRM_TEXT_REQUIRED': "Type \"delete\" to confirm account deletion.",
 
     # Admin panel
     'USER_NOT_FOUND':              "User not found.",

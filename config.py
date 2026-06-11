@@ -91,6 +91,13 @@ class Config:
     # Public base URL used in email links (no trailing slash)
     APP_BASE_URL = os.environ.get('APP_BASE_URL', '')
 
+    # Google OAuth placeholder configuration. Disabled by default; this release
+    # only prepares the UI/config surface and does not implement OAuth.
+    GOOGLE_OAUTH_ENABLED = os.getenv("GOOGLE_OAUTH_ENABLED", "0") == "1"
+    GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
+    GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
+    GOOGLE_REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI", "")
+
     # Token expiry (seconds). Email-verification uses a 6-digit OTP whose
     # 10-minute lifetime is enforced in AuthService — no Config knob needed.
     PASSWORD_RESET_EXPIRY     = 60 * 60         # 1 hour

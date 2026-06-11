@@ -1,6 +1,7 @@
 """Authentication service for user management."""
 
 import hmac
+import re
 import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Tuple, Union
@@ -29,6 +30,8 @@ LOCKOUT_DURATION_MINUTES = 30
 # the user has to request a fresh one. Combined with the per-email rate
 # limit on /verify-code, this closes the 900K-code brute-force window.
 MAX_OTP_ATTEMPTS = 5
+USERNAME_MAX_LENGTH = 80
+_USERNAME_SAFE_RE = re.compile(r'[^a-z0-9]+')
 
 
 class AuthService:
@@ -51,7 +54,7 @@ class AuthService:
     # Registration — stages into pending_registration
     # ------------------------------------------------------------------
 
-    def register(self, username: str, email: str, password: str) -> Tuple[PendingRegistration, str]:
+    def register(self, email: str, password: str) -> Tuple[PendingRegistration, str]:
         """Stage a new sign-up and generate a 6-digit verification code.
 
         The account is **not** inserted into the ``user`` table until the
@@ -59,7 +62,6 @@ class AuthService:
         the same email is deleted so its token/OTP can no longer be used.
 
         Args:
-            username: Desired username.
             email: User's email address (stored lowercase).
             password: Plain-text password (hashed before storing, even in
                 the staging table).
@@ -68,8 +70,7 @@ class AuthService:
             Tuple of (created PendingRegistration, 6-digit verification code).
 
         Raises:
-            ValueError: If username or email is already taken by an existing
-                user, or by a different live pending registration.
+            ValueError: If the email is already taken by an existing user.
         """
         # Tidy stale staged rows so old reservations don't block new sign-ups.
         self.pending_repo.purge_expired(datetime.now(timezone.utc))
@@ -77,19 +78,14 @@ class AuthService:
         email_lc = email.lower()
 
         # Guard against collisions with verified accounts first.
-        if self.user_repo.get_by_username(username):
-            raise ValueError(MESSAGES['USERNAME_TAKEN'])
         if self.user_repo.get_by_email(email_lc):
             raise ValueError(MESSAGES['EMAIL_ALREADY_EXISTS'])
 
         # Same-email sign-up: invalidate any prior staged token for this
         # email by deleting the pending row outright.
         self.pending_repo.delete_by_email(email_lc)
-        self.pending_repo.delete_by_username(username)
 
-        # Cross-row username collision (different email) — block it.
-        if self.pending_repo.get_by_username(username):
-            raise ValueError(MESSAGES['USERNAME_TAKEN'])
+        username = self._generate_username(email_lc)
 
         code = self._make_verification_code()
         token = secrets.token_urlsafe(32)
@@ -417,11 +413,17 @@ class AuthService:
     def confirm_account_deletion(self, user: User, code: str) -> Tuple[bool, str]:
         # Reject upfront if the code was never set or has expired — the same
         # generic message hides whether the user is in the deletion flow.
-        if (
-            not user.deletion_code
-            or not user.deletion_code_expires_at
-            or datetime.now(timezone.utc) > self._as_utc(user.deletion_code_expires_at)
-        ):
+        success, error_msg = self.verify_account_deletion_code(user, code)
+        if not success:
+            return False, error_msg
+
+        self.user_repo.delete(user)
+        self.user_repo.commit()
+        return True, ''
+
+    def verify_account_deletion_code(self, user: User, code: str) -> Tuple[bool, str]:
+        """Verify the deletion OTP without deleting the account."""
+        if not self._deletion_code_is_live(user):
             return False, MESSAGES['DELETION_INVALID_CODE']
 
         if not hmac.compare_digest(user.deletion_code, code.strip()):
@@ -436,9 +438,24 @@ class AuthService:
             self.user_repo.commit()
             return False, MESSAGES['DELETION_INVALID_CODE']
 
+        user.deletion_code_failed_attempts = 0
+        self.user_repo.commit()
+        return True, ''
+
+    def complete_verified_account_deletion(self, user: User) -> Tuple[bool, str]:
+        """Delete an account after its deletion OTP has been verified."""
+        if not self._deletion_code_is_live(user):
+            return False, MESSAGES['DELETION_INVALID_CODE']
         self.user_repo.delete(user)
         self.user_repo.commit()
         return True, ''
+
+    def _deletion_code_is_live(self, user: User) -> bool:
+        return (
+            bool(user.deletion_code)
+            and bool(user.deletion_code_expires_at)
+            and datetime.now(timezone.utc) <= self._as_utc(user.deletion_code_expires_at)
+        )
 
     # ------------------------------------------------------------------
     # Admin-only operations
@@ -471,6 +488,33 @@ class AuthService:
     def _make_verification_code() -> str:
         """Generate a cryptographically random 6-digit OTP code."""
         return str(secrets.randbelow(900000) + 100000)
+
+    def _generate_username(self, email: str) -> str:
+        """Create a stable internal username from an email prefix."""
+        prefix = (email.split('@', 1)[0] or '').lower()
+        base = _USERNAME_SAFE_RE.sub('_', prefix).strip('_') or 'user'
+        base = base[:USERNAME_MAX_LENGTH].strip('_') or 'user'
+
+        if self._username_available(base):
+            return base
+
+        for suffix_num in range(2, 10000):
+            suffix = f'_{suffix_num}'
+            candidate = f'{base[:USERNAME_MAX_LENGTH - len(suffix)].rstrip("_")}{suffix}'
+            if self._username_available(candidate):
+                return candidate
+
+        while True:
+            suffix = f'_{secrets.token_hex(3)}'
+            candidate = f'{base[:USERNAME_MAX_LENGTH - len(suffix)].rstrip("_")}{suffix}'
+            if self._username_available(candidate):
+                return candidate
+
+    def _username_available(self, username: str) -> bool:
+        return (
+            self.user_repo.get_by_username(username) is None
+            and self.pending_repo.get_by_username(username) is None
+        )
 
     @staticmethod
     def _as_utc(dt: datetime) -> datetime:

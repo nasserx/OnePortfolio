@@ -131,6 +131,10 @@ All configuration is read from environment variables (place them in a `.env` fil
 | `SESSION_COOKIE_SECURE` | — | `1` to set `Secure` on session and remember-me cookies (HTTPS only) |
 | `DEV_AUTO_LOGIN` | — | `1` to auto-login as the first user (development only) |
 | `FLASK_ENV` | — | Set to `production` to enforce a real `SECRET_KEY` |
+| `GOOGLE_OAUTH_ENABLED` | — | Optional Google sign-in feature flag. Defaults to `0`; prepared but disabled in this version |
+| `GOOGLE_CLIENT_ID` | — | Optional Google OAuth client ID for a future OAuth release |
+| `GOOGLE_CLIENT_SECRET` | — | Optional Google OAuth client secret for a future OAuth release |
+| `GOOGLE_REDIRECT_URI` | — | Optional future callback URL, e.g. `https://yourapp.pythonanywhere.com/auth/google/callback` |
 
 > Gmail accepts only [App Passwords](https://myaccount.google.com/apppasswords) here — your regular account password will not work.
 
@@ -221,10 +225,16 @@ os.environ['EMAIL_USER']            = 'your-gmail@gmail.com'
 os.environ['EMAIL_PASSWORD']        = 'your-app-password'
 os.environ['APP_BASE_URL']          = 'https://yourapp.pythonanywhere.com'
 os.environ['SESSION_COOKIE_SECURE'] = '1'
+os.environ['GOOGLE_OAUTH_ENABLED']  = '0'
+os.environ['GOOGLE_CLIENT_ID']      = ''
+os.environ['GOOGLE_CLIENT_SECRET']  = ''
+os.environ['GOOGLE_REDIRECT_URI']   = 'https://yourapp.pythonanywhere.com/auth/google/callback'
 
 from portfolio_app import create_app
 application = create_app()
 ```
+
+Google sign-in is prepared but disabled by default in this version. These Google variables are optional and are not required for normal email/password registration, login, verification, or password reset.
 
 Then click **Reload** on the Web tab.
 

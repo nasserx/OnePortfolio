@@ -219,16 +219,16 @@ textarea,
 .sidebar-nav-link:hover,
 .sidebar-nav-link:focus-visible {
     color: var(--text-1);
-    background: var(--nav-hover);
+    background: var(--surface-hover);
     text-decoration: none;
 }
 .sidebar-nav-link:hover i,
-.sidebar-nav-link:focus-visible i { color: var(--primary); }
+.sidebar-nav-link:focus-visible i { color: var(--text-3); }
 .sidebar-nav-link.active,
 .sidebar-nav-link.active:hover,
 .sidebar-nav-link.active:focus-visible {
     color: var(--primary) !important;
-    background: var(--nav-hover) !important;
+    background: transparent !important;
     outline: 0 !important;
     font-weight: 600;
 }
@@ -894,8 +894,8 @@ textarea,
 
 .overview-kpi-card:hover,
 .overview-kpi-card:focus-within {
-    background: var(--surface-hover) !important;
-    outline-color: var(--border-strong) !important;
+    background: var(--card-bg) !important;
+    outline-color: var(--border-color) !important;
 }
 
 .overview-portfolio-card-accent:hover,
@@ -1267,12 +1267,11 @@ textarea,
 .charts-card:focus-within,
 .charts-empty-state:hover,
 .charts-empty-state:focus-within {
-    background: var(--surface-hover) !important;
-    outline-color: var(--border-strong) !important;
+    outline-color: var(--border-color) !important;
 }
 .charts-card:hover > .card-body,
 .charts-card:focus-within > .card-body {
-    background: var(--surface-hover) !important;
+    background: var(--card-bg) !important;
 }
 
 /* ============================================================ */
@@ -1832,11 +1831,15 @@ textarea:-webkit-autofill, select:-webkit-autofill {
     transition: background var(--transition), color var(--transition), outline-color var(--transition);
 }
 .tx-type-tab:hover { color: var(--text-1); background: var(--neutral-hover); }
-.tx-tab-buy.active,
+.tx-tab-buy.active {
+    color: var(--success);
+    background: var(--success-muted);
+    outline-color: var(--success-hover) !important;
+}
 .tx-tab-sell.active {
-    color: var(--primary);
-    background: var(--primary-muted);
-    outline-color: #fed7aa !important;
+    color: var(--danger);
+    background: var(--danger-muted);
+    outline-color: var(--danger-hover) !important;
 }
 
 /* Transaction type buttons */
@@ -2118,15 +2121,9 @@ hr {
 }
 i.bi { vertical-align: middle; }
 
-.sidebar-nav-link i,
-.sidebar-nav-link:hover i,
-.sidebar-nav-link:focus-visible i,
 .sidebar-nav-link.active i,
 .sidebar-nav-link.active:hover i,
 .sidebar-nav-link.active:focus-visible i,
-.settings-sidebar-link .bi,
-.settings-sidebar-link:hover .bi,
-.settings-sidebar-link:focus-visible .bi,
 .settings-sidebar-link.active .bi,
 .settings-sidebar-link.active:hover .bi,
 .settings-sidebar-link.active:focus-visible .bi,
@@ -2161,19 +2158,19 @@ i.bi.text-primary,
 .settings-sidebar-link:hover,
 .settings-sidebar-link:focus-visible {
     color: var(--text-1);
-    background: var(--settings-hover);
+    background: var(--surface-hover);
 }
 .settings-sidebar-link.active,
 .settings-sidebar-link.active:hover,
 .settings-sidebar-link.active:focus-visible {
     color: var(--primary) !important;
-    background: var(--settings-hover) !important;
+    background: transparent !important;
     outline: 0 !important;
     font-weight: 600;
 }
 .settings-sidebar-link .bi { font-size: 0.9rem; flex-shrink: 0; }
 .settings-sidebar-link:hover .bi,
-.settings-sidebar-link:focus-visible .bi { color: var(--primary); }
+.settings-sidebar-link:focus-visible .bi { color: var(--text-3); }
 .settings-sidebar-link.active .bi,
 .settings-sidebar-link.active:hover .bi,
 .settings-sidebar-link.active:focus-visible .bi { color: var(--primary); }
@@ -2239,6 +2236,11 @@ i.bi.text-primary,
     color: var(--text-1);
     background: var(--surface-hover);
     border-color: var(--border-color);
+}
+.google-brand-icon {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
 }
 .auth-divider {
     display: flex;

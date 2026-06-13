@@ -14,7 +14,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
 
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v='20260611-1') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css', v='20260613-2') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css', v='20260613-26') }}">
 </head>
 <body class="landing-page">
 
@@ -44,10 +44,6 @@
         <section class="landing-hero">
             <div class="landing-container hero-grid">
                 <div class="landing-hero-content reveal">
-                    <span class="hero-badge">
-                        <i class="bi bi-shield-check" aria-hidden="true"></i>
-                        Manual by design. Trusted by investors.
-                    </span>
                     <h1 class="landing-headline">Track every portfolio with clarity. No broker sync.</h1>
                     <p class="landing-subtext">
                         OnePortfolio helps you record cash movements, transactions, dividends, and performance - without
@@ -70,7 +66,7 @@
                     <div class="dashboard-mockup" role="group" aria-label="OnePortfolio dashboard preview">
                         <aside class="mock-sidebar" aria-label="Dashboard navigation">
                             <div class="mock-sidebar-brand">
-                                <span class="mock-logo-dot"></span>
+                                <img src="{{ url_for('static', filename='icons/favicon.svg') }}" alt="" class="mock-sidebar-logo" aria-hidden="true">
                                 <span>OnePortfolio</span>
                             </div>
                             <nav class="mock-menu" aria-label="Dashboard sections">
@@ -96,19 +92,19 @@
                             <div class="mock-metrics" role="group" aria-label="Portfolio summary">
                                 <div class="metric-card">
                                     <span>Total Contributed</span>
-                                    <strong>$64,280.00</strong>
+                                    <strong>$18,420</strong>
                                 </div>
                                 <div class="metric-card">
                                     <span>Book Value</span>
-                                    <strong>$78,945.30</strong>
+                                    <strong>$21,945</strong>
                                 </div>
                                 <div class="metric-card">
                                     <span>Total Dividends</span>
-                                    <strong>$3,842.16</strong>
+                                    <strong>$842</strong>
                                 </div>
                                 <div class="metric-card positive">
                                     <span>Realized P&amp;L</span>
-                                    <strong>+$7,218.44</strong>
+                                    <strong>+$1,218</strong>
                                 </div>
                             </div>
 
@@ -117,43 +113,11 @@
                                     <div class="mock-panel-head">
                                         <h3>Allocation</h3>
                                     </div>
-                                    <ul class="allocation-list">
-                                        <li class="allocation-row allocation-us">
-                                            <div class="allocation-row-top">
-                                                <span><i class="swatch swatch-us"></i> US Stocks</span>
-                                                <strong>53%</strong>
-                                            </div>
-                                            <div class="allocation-bar"><span></span></div>
-                                        </li>
-                                        <li class="allocation-row allocation-income">
-                                            <div class="allocation-row-top">
-                                                <span><i class="swatch swatch-income"></i> Dividend Income</span>
-                                                <strong>19%</strong>
-                                            </div>
-                                            <div class="allocation-bar"><span></span></div>
-                                        </li>
-                                        <li class="allocation-row allocation-etf">
-                                            <div class="allocation-row-top">
-                                                <span><i class="swatch swatch-etf"></i> Retirement ETFs</span>
-                                                <strong>10.5%</strong>
-                                            </div>
-                                            <div class="allocation-bar"><span></span></div>
-                                        </li>
-                                        <li class="allocation-row allocation-gold">
-                                            <div class="allocation-row-top">
-                                                <span><i class="swatch swatch-gold"></i> Gold</span>
-                                                <strong>9.7%</strong>
-                                            </div>
-                                            <div class="allocation-bar"><span></span></div>
-                                        </li>
-                                        <li class="allocation-row allocation-crypto">
-                                            <div class="allocation-row-top">
-                                                <span><i class="swatch swatch-crypto"></i> Crypto</span>
-                                                <strong>7.8%</strong>
-                                            </div>
-                                            <div class="allocation-bar"><span></span></div>
-                                        </li>
-                                    </ul>
+                                    <div class="allocation-donut-wrap" aria-hidden="true">
+                                        <div class="allocation-donut">
+                                            <span>$21,945</span>
+                                        </div>
+                                    </div>
                                 </article>
 
                                 <article class="mock-panel performance-panel">
@@ -163,23 +127,23 @@
                                     <div class="portfolio-list">
                                         <div class="portfolio-row">
                                             <span>US Stocks</span>
-                                            <strong class="gain">+$4,612.30 <small>+12.34%</small></strong>
+                                            <strong class="gain">+$1,120 <small>+8.40%</small></strong>
                                         </div>
                                         <div class="portfolio-row">
                                             <span>Dividend Income</span>
-                                            <strong class="gain">+$874.60 <small>+6.21%</small></strong>
+                                            <strong class="gain">+$320 <small>+4.10%</small></strong>
                                         </div>
                                         <div class="portfolio-row">
                                             <span>Retirement ETFs</span>
-                                            <strong class="gain">+$344.40 <small>+4.37%</small></strong>
+                                            <strong class="gain">+$180 <small>+2.80%</small></strong>
                                         </div>
                                         <div class="portfolio-row">
                                             <span>Gold</span>
-                                            <strong class="loss">-$143.40 <small>-1.84%</small></strong>
+                                            <strong class="loss">-$72 <small>-1.20%</small></strong>
                                         </div>
                                         <div class="portfolio-row">
                                             <span>Crypto</span>
-                                            <strong class="gain">+$978.20 <small>+18.72%</small></strong>
+                                            <strong class="gain">+$540 <small>+12.60%</small></strong>
                                         </div>
                                     </div>
                                 </article>

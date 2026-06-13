@@ -3,356 +3,358 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OnePortfolio — Track your investments</title>
+    <title>OnePortfolio - Track every portfolio with clarity</title>
 
-    <!-- Icons & PWA -->
-    <link rel="icon"             href="{{ url_for('static', filename='icons/favicon.svg') }}" type="image/svg+xml">
+    <link rel="icon" href="{{ url_for('static', filename='icons/favicon.svg') }}" type="image/svg+xml">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/apple-touch-icon.png') }}">
-    <link rel="manifest"         href="{{ url_for('static', filename='icons/site.webmanifest') }}">
+    <link rel="manifest" href="{{ url_for('static', filename='icons/site.webmanifest') }}">
 
-    <!-- Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <!-- Vendor CSS -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
 
-    <!-- Project CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v='20260611-1') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css', v='20260611-2') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css', v='20260613-2') }}">
 </head>
-<body>
+<body class="landing-page">
 
-    <!-- ══════════════════ NAVBAR ══════════════════ -->
     <nav class="landing-nav" id="landingNav" aria-label="Landing page navigation">
         <div class="landing-container">
-            <a href="/" class="landing-brand">
-                <img src="{{ url_for('static', filename='icons/favicon.svg') }}"
-                     alt="OnePortfolio" class="landing-logo">
-                OnePortfolio
-            </a>
+            <div class="landing-nav-left">
+                <a href="/" class="landing-brand">
+                    <img src="{{ url_for('static', filename='icons/favicon.svg') }}" alt="OnePortfolio" class="landing-logo">
+                    <span>OnePortfolio</span>
+                </a>
 
-            <div class="landing-nav-links" aria-label="Page sections">
-                <a href="#how"      class="nav-link-inline">How it works</a>
-                <a href="#features" class="nav-link-inline">Features</a>
-                <a href="#fit"      class="nav-link-inline">Manual</a>
+                <div class="landing-nav-links">
+                    <a href="#benefits" class="nav-link-inline">Benefits</a>
+                    <a href="#how" class="nav-link-inline">How it works</a>
+                    <a href="#features" class="nav-link-inline">Features</a>
+                </div>
             </div>
 
             <div class="landing-nav-end">
-                <a class="btn-nav-login" href="{{ url_for('auth.login') }}">
-                    Log In
-                </a>
-                <a class="btn-nav-signup" href="{{ url_for('auth.register') }}">
-                    Sign Up
-                </a>
+                <a class="btn-nav-login" href="{{ url_for('auth.login') }}">Log In</a>
+                <a class="btn-nav-signup" href="{{ url_for('auth.register') }}">Sign Up</a>
             </div>
         </div>
     </nav>
 
-    <!-- ══════════════════ HERO ══════════════════ -->
-    <section class="landing-hero">
-        <div class="landing-container">
+    <main>
+        <section class="landing-hero">
+            <div class="landing-container hero-grid">
+                <div class="landing-hero-content reveal">
+                    <span class="hero-badge">
+                        <i class="bi bi-shield-check" aria-hidden="true"></i>
+                        Manual by design. Trusted by investors.
+                    </span>
+                    <h1 class="landing-headline">Track every portfolio with clarity. No broker sync.</h1>
+                    <p class="landing-subtext">
+                        OnePortfolio helps you record cash movements, transactions, dividends, and performance - without
+                        clutter or sync complexity. You control the data. The math stays transparent.
+                    </p>
 
-            <!-- Left: copy -->
-            <div class="landing-hero-content reveal">
-                <h1 class="landing-headline">
-                    Track every portfolio with a cleaner manual workflow.
-                </h1>
-                <p class="landing-subtext">
-                    OnePortfolio gives you a calm place to record cash movements, buys, sells,
-                    dividends, average cost, realized P&amp;L, ROI, and allocation without broker sync.
-                </p>
-                <div class="landing-cta-group">
-                    <a class="btn-cta-primary" href="{{ url_for('auth.login') }}">
-                        Try Demo
-                    </a>
-                    <a class="btn-cta-secondary" href="{{ url_for('auth.register') }}">
-                        Create Account
-                    </a>
-                </div>
-            </div>
-
-            <!-- Right: dashboard preview -->
-            <div class="landing-preview-wrap reveal">
-                <div class="landing-preview" aria-hidden="true">
-
-                    <!-- Stats summary card -->
-                    <div class="preview-card stats-summary-card preview-stats">
-                        <div class="preview-stat">
-                            <span class="preview-stat-label">Contributed</span>
-                            <span class="preview-stat-value">$77,870</span>
-                        </div>
-                        <div class="preview-stat">
-                            <span class="preview-stat-label">Book Value</span>
-                            <span class="preview-stat-value">$84,210</span>
-                        </div>
-                        <div class="preview-stat">
-                            <span class="preview-stat-label">Dividends</span>
-                            <span class="preview-stat-value profit">+$1,240</span>
-                        </div>
-                        <div class="preview-stat">
-                            <span class="preview-stat-label">Realized P&amp;L</span>
-                            <span class="preview-stat-value profit">+$6,340</span>
-                        </div>
+                    <div class="landing-cta-group">
+                        <a class="btn-cta-primary" href="{{ url_for('auth.login') }}">Try Live Demo</a>
+                        <a class="btn-cta-secondary" href="{{ url_for('auth.register') }}">Create Account</a>
                     </div>
 
-                    <!-- Charts row: allocation + performance -->
-                    <div class="preview-charts">
+                    <div class="hero-trust-notes">
+                        <span><i class="bi bi-lock" aria-hidden="true"></i> Private by default</span>
+                        <span><i class="bi bi-calculator" aria-hidden="true"></i> Transparent math</span>
+                        <span><i class="bi bi-sliders2" aria-hidden="true"></i> You&rsquo;re in control</span>
+                    </div>
+                </div>
 
-                        <div class="preview-card preview-chart-card portfolio-allocation-card">
-                            <div class="preview-chart-head">
-                                <span class="preview-chart-title">Portfolio allocation</span>
+                <div class="landing-preview-wrap reveal">
+                    <div class="dashboard-mockup" role="group" aria-label="OnePortfolio dashboard preview">
+                        <aside class="mock-sidebar" aria-label="Dashboard navigation">
+                            <div class="mock-sidebar-brand">
+                                <span class="mock-logo-dot"></span>
+                                <span>OnePortfolio</span>
+                            </div>
+                            <nav class="mock-menu" aria-label="Dashboard sections">
+                                <span class="active"><i class="bi bi-grid-1x2" aria-hidden="true"></i> Overview</span>
+                                <span><i class="bi bi-briefcase" aria-hidden="true"></i> Portfolios</span>
+                                <span><i class="bi bi-receipt" aria-hidden="true"></i> Transactions</span>
+                                <span><i class="bi bi-pie-chart" aria-hidden="true"></i> Charts</span>
+                            </nav>
+                            <div class="mock-user-chip">
+                                <span class="mock-avatar">OP</span>
+                                <span>Owner</span>
+                            </div>
+                        </aside>
+
+                        <section class="mock-main" aria-label="Dashboard sample">
+                            <div class="mock-topbar">
+                                <div>
+                                    <h2>Portfolio Dashboard</h2>
+                                </div>
+                                <button class="mock-action" type="button">Add Transaction</button>
                             </div>
 
-                            <div class="preview-donut-body">
-                                <div class="preview-donut" role="img" aria-label="Portfolio allocation">
-                                    <svg class="preview-donut-svg" viewBox="0 0 42 42" focusable="false">
-                                        <circle class="preview-donut-track" cx="21" cy="21" r="15.9155"></circle>
-                                        <circle class="preview-donut-slice slice-stocks" cx="21" cy="21" r="15.9155"></circle>
-                                        <circle class="preview-donut-slice slice-etfs" cx="21" cy="21" r="15.9155"></circle>
-                                        <circle class="preview-donut-slice slice-gold" cx="21" cy="21" r="15.9155"></circle>
-                                        <circle class="preview-donut-slice slice-crypto" cx="21" cy="21" r="15.9155"></circle>
-                                    </svg>
-                                    <div class="preview-donut-hole">
-                                        <span class="preview-donut-label">TOTAL</span>
-                                        <span class="preview-donut-value">$100K</span>
+                            <div class="mock-metrics" role="group" aria-label="Portfolio summary">
+                                <div class="metric-card">
+                                    <span>Total Contributed</span>
+                                    <strong>$64,280.00</strong>
+                                </div>
+                                <div class="metric-card">
+                                    <span>Book Value</span>
+                                    <strong>$78,945.30</strong>
+                                </div>
+                                <div class="metric-card">
+                                    <span>Total Dividends</span>
+                                    <strong>$3,842.16</strong>
+                                </div>
+                                <div class="metric-card positive">
+                                    <span>Realized P&amp;L</span>
+                                    <strong>+$7,218.44</strong>
+                                </div>
+                            </div>
+
+                            <div class="mock-dashboard-grid">
+                                <article class="mock-panel allocation-panel">
+                                    <div class="mock-panel-head">
+                                        <h3>Allocation</h3>
                                     </div>
-                                </div>
-                                <ul class="preview-donut-legend">
-                                    <li><span class="legend-swatch s-1"></span><span class="legend-name">Stocks</span><span class="legend-pct">40%</span></li>
-                                    <li><span class="legend-swatch s-2"></span><span class="legend-name">ETFs</span><span class="legend-pct">30%</span></li>
-                                    <li><span class="legend-swatch s-3"></span><span class="legend-name">Gold</span><span class="legend-pct">20%</span></li>
-                                    <li><span class="legend-swatch s-4"></span><span class="legend-name">Crypto</span><span class="legend-pct">10%</span></li>
-                                </ul>
+                                    <ul class="allocation-list">
+                                        <li class="allocation-row allocation-us">
+                                            <div class="allocation-row-top">
+                                                <span><i class="swatch swatch-us"></i> US Stocks</span>
+                                                <strong>53%</strong>
+                                            </div>
+                                            <div class="allocation-bar"><span></span></div>
+                                        </li>
+                                        <li class="allocation-row allocation-income">
+                                            <div class="allocation-row-top">
+                                                <span><i class="swatch swatch-income"></i> Dividend Income</span>
+                                                <strong>19%</strong>
+                                            </div>
+                                            <div class="allocation-bar"><span></span></div>
+                                        </li>
+                                        <li class="allocation-row allocation-etf">
+                                            <div class="allocation-row-top">
+                                                <span><i class="swatch swatch-etf"></i> Retirement ETFs</span>
+                                                <strong>10.5%</strong>
+                                            </div>
+                                            <div class="allocation-bar"><span></span></div>
+                                        </li>
+                                        <li class="allocation-row allocation-gold">
+                                            <div class="allocation-row-top">
+                                                <span><i class="swatch swatch-gold"></i> Gold</span>
+                                                <strong>9.7%</strong>
+                                            </div>
+                                            <div class="allocation-bar"><span></span></div>
+                                        </li>
+                                        <li class="allocation-row allocation-crypto">
+                                            <div class="allocation-row-top">
+                                                <span><i class="swatch swatch-crypto"></i> Crypto</span>
+                                                <strong>7.8%</strong>
+                                            </div>
+                                            <div class="allocation-bar"><span></span></div>
+                                        </li>
+                                    </ul>
+                                </article>
+
+                                <article class="mock-panel performance-panel">
+                                    <div class="mock-panel-head">
+                                        <h3>Portfolio Performance</h3>
+                                    </div>
+                                    <div class="portfolio-list">
+                                        <div class="portfolio-row">
+                                            <span>US Stocks</span>
+                                            <strong class="gain">+$4,612.30 <small>+12.34%</small></strong>
+                                        </div>
+                                        <div class="portfolio-row">
+                                            <span>Dividend Income</span>
+                                            <strong class="gain">+$874.60 <small>+6.21%</small></strong>
+                                        </div>
+                                        <div class="portfolio-row">
+                                            <span>Retirement ETFs</span>
+                                            <strong class="gain">+$344.40 <small>+4.37%</small></strong>
+                                        </div>
+                                        <div class="portfolio-row">
+                                            <span>Gold</span>
+                                            <strong class="loss">-$143.40 <small>-1.84%</small></strong>
+                                        </div>
+                                        <div class="portfolio-row">
+                                            <span>Crypto</span>
+                                            <strong class="gain">+$978.20 <small>+18.72%</small></strong>
+                                        </div>
+                                    </div>
+                                </article>
+
+                                <article class="mock-panel heatmap-panel">
+                                    <div class="mock-panel-head">
+                                        <h3>Symbol Performance</h3>
+                                    </div>
+                                    <div class="symbol-heatmap" role="group" aria-label="Symbol performance heatmap">
+                                        <div class="heat-tile tile-nvda gain gain-5"><span>NVDA</span><strong>+7.92%</strong></div>
+                                        <div class="heat-tile tile-btc gain gain-4"><span>BTC</span><strong>+6.18%</strong></div>
+                                        <div class="heat-tile tile-tsla loss loss-5"><span>TSLA</span><strong>-4.52%</strong></div>
+                                        <div class="heat-tile tile-aapl gain gain-3"><span>AAPL</span><strong>+3.21%</strong></div>
+                                        <div class="heat-tile tile-msft gain gain-2"><span>MSFT</span><strong>+2.18%</strong></div>
+                                        <div class="heat-tile tile-meta gain gain-2"><span>META</span><strong>+2.37%</strong></div>
+                                        <div class="heat-tile tile-eth loss loss-3"><span>ETH</span><strong>-2.11%</strong></div>
+                                        <div class="heat-tile tile-amzn loss loss-2"><span>AMZN</span><strong>-1.34%</strong></div>
+                                        <div class="heat-tile tile-goog gain gain-1"><span>GOOG</span><strong>+1.48%</strong></div>
+                                        <div class="heat-tile tile-jpm gain gain-1"><span>JPM</span><strong>+1.12%</strong></div>
+                                        <div class="heat-tile tile-voo gain gain-1"><span>VOO</span><strong>+0.72%</strong></div>
+                                        <div class="heat-tile tile-qqq gain gain-1"><span>QQQ</span><strong>+1.05%</strong></div>
+                                        <div class="heat-tile tile-xom loss loss-1"><span>XOM</span><strong>-0.87%</strong></div>
+                                        <div class="heat-tile tile-ko gain gain-1"><span>KO</span><strong>+0.63%</strong></div>
+                                        <div class="heat-tile tile-gld gain gain-1"><span>GLD</span><strong>+0.41%</strong></div>
+                                    </div>
+                                </article>
                             </div>
-                        </div>
-
-                        <div class="preview-card preview-chart-card performance-heatmap-card">
-                            <div class="preview-chart-head">
-                                <span class="preview-chart-title">Performance heatmap</span>
-                            </div>
-
-                            <div class="preview-heatmap">
-                                <div class="preview-tile gain tile-btc">
-                                    <span class="tile-name">BTC</span>
-                                    <span class="tile-val">+5,840</span>
-                                </div>
-                                <div class="preview-tile gain tile-aapl">
-                                    <span class="tile-name">AAPL</span>
-                                    <span class="tile-val">+1,520</span>
-                                </div>
-                                <div class="preview-tile gain tile-nvda">
-                                    <span class="tile-name">NVDA</span>
-                                    <span class="tile-val">+1,200</span>
-                                </div>
-                                <div class="preview-tile loss tile-eth">
-                                    <span class="tile-name">ETH</span>
-                                    <span class="tile-val">−1,800</span>
-                                </div>
-                                <div class="preview-tile gain tile-gld">
-                                    <span class="tile-name">GLD</span>
-                                    <span class="tile-val">+420</span>
-                                </div>
-                                <div class="preview-tile loss tile-meta">
-                                    <span class="tile-name">META</span>
-                                    <span class="tile-val">−280</span>
-                                </div>
-                            </div>
-                        </div>
-
-                    </div><!-- /.preview-charts -->
-
-                </div><!-- /.landing-preview -->
-            </div><!-- /.landing-preview-wrap -->
-
-        </div><!-- /.landing-container -->
-    </section>
-
-
-    <!-- ══════════════════ TRUST SIGNALS ══════════════════ -->
-    <section class="landing-trust" aria-label="OnePortfolio trust signals">
-        <div class="landing-container">
-            <div class="landing-trust-grid reveal">
-                <div class="trust-item">
-                    <i class="bi bi-pencil-square" aria-hidden="true"></i>
-                    <span>Manual tracking</span>
-                </div>
-                <div class="trust-item">
-                    <i class="bi bi-calculator" aria-hidden="true"></i>
-                    <span>Clear calculations</span>
-                </div>
-                <div class="trust-item">
-                    <i class="bi bi-database-lock" aria-hidden="true"></i>
-                    <span>Private records</span>
-                </div>
-                <div class="trust-item">
-                    <i class="bi bi-link-45deg" aria-hidden="true"></i>
-                    <span>No broker sync</span>
+                        </section>
+                    </div>
                 </div>
             </div>
-        </div>
-    </section>
+        </section>
 
-
-    <!-- ══════════════════ HOW IT WORKS ══════════════════ -->
-    <section class="landing-how" id="how">
-        <div class="landing-container">
-
-            <div class="landing-section-head reveal">
-                <span class="landing-eyebrow">How it works</span>
-                <h2 class="landing-section-title">Simple enough to trust. Structured enough to scale.</h2>
-                <p class="landing-section-sub">
-                    Build your structure once, record activity as it happens, and let the dashboard stay organized.
-                </p>
+        <section class="benefit-strip" id="benefits" aria-label="OnePortfolio benefits">
+            <div class="landing-container">
+                <div class="benefit-grid reveal">
+                    <article class="benefit-card">
+                        <i class="bi bi-pencil-square" aria-hidden="true"></i>
+                        <h2>Manual tracking</h2>
+                        <p>Every entry is intentional and under your control.</p>
+                    </article>
+                    <article class="benefit-card">
+                        <i class="bi bi-calculator" aria-hidden="true"></i>
+                        <h2>Transparent math</h2>
+                        <p>Clear formulas you can see and trust.</p>
+                    </article>
+                    <article class="benefit-card">
+                        <i class="bi bi-database-lock" aria-hidden="true"></i>
+                        <h2>Private by default</h2>
+                        <p>Your data is yours and never shared.</p>
+                    </article>
+                    <article class="benefit-card">
+                        <i class="bi bi-link-45deg" aria-hidden="true"></i>
+                        <h2>No broker sync</h2>
+                        <p>No permissions, no access. Just you and your data.</p>
+                    </article>
+                </div>
             </div>
+        </section>
 
-            <div class="landing-steps">
-
-                <article class="step-card reveal">
-                    <span class="step-num">01</span>
-                    <h3>Create portfolios</h3>
-                    <p>
-                        Organize investments by strategy, asset type, goal, or any structure that matches how you think.
+        <section class="landing-how" id="how">
+            <div class="landing-container">
+                <div class="landing-section-head reveal">
+                    <span class="landing-eyebrow">How it works</span>
+                    <h2 class="landing-section-title">Simple. Structured. In Your Control.</h2>
+                    <p class="landing-section-sub">
+                        Build your structure once, record activity as it happens, and let the dashboard tell the story.
                     </p>
-                </article>
+                </div>
 
-                <article class="step-card reveal">
-                    <span class="step-num">02</span>
-                    <h3>Record activity</h3>
-                    <p>
-                        Log funding, withdrawals, buys, sells, dividends, fees, dates, and notes in one consistent flow.
+                <div class="landing-steps">
+                    <article class="step-card reveal">
+                        <span class="step-num">01</span>
+                        <h3>Create Portfolios</h3>
+                        <p>Organize investments by strategy, asset type, or goal - your way.</p>
+                    </article>
+                    <article class="step-card reveal">
+                        <span class="step-num">02</span>
+                        <h3>Record Activity</h3>
+                        <p>Log deposits, withdrawals, buys, sells, dividends, fees, dates, and notes.</p>
+                    </article>
+                    <article class="step-card reveal">
+                        <span class="step-num">03</span>
+                        <h3>Review Performance</h3>
+                        <p>See performance, allocation, ROI, and insights - all from your records.</p>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <section class="landing-features" id="features">
+            <div class="landing-container">
+                <div class="landing-section-head reveal">
+                    <span class="landing-eyebrow">Features</span>
+                    <h2 class="landing-section-title">Everything you need. Nothing you don&rsquo;t.</h2>
+                    <p class="landing-section-sub">
+                        Focused tools for investors who want readable records, clear calculations, and less noise.
                     </p>
-                </article>
+                </div>
 
-                <article class="step-card reveal">
-                    <span class="step-num">03</span>
-                    <h3>Review the view</h3>
-                    <p>
-                        See cash, book value, average cost, realized P&amp;L, ROI, dividends, and allocation from your records.
+                <div class="landing-features-grid">
+                    <article class="feature-card reveal">
+                        <span class="feature-icon"><i class="bi bi-briefcase" aria-hidden="true"></i></span>
+                        <h3>Multi-Portfolio Tracking</h3>
+                        <p>Track multiple portfolios separately with clean isolation and summaries.</p>
+                    </article>
+                    <article class="feature-card reveal">
+                        <span class="feature-icon"><i class="bi bi-receipt" aria-hidden="true"></i></span>
+                        <h3>Transactions &amp; Dividends</h3>
+                        <p>Record trades, deposits, withdrawals, dividends, fees, and cash flows.</p>
+                    </article>
+                    <article class="feature-card reveal">
+                        <span class="feature-icon"><i class="bi bi-percent" aria-hidden="true"></i></span>
+                        <h3>Average Cost Calculations</h3>
+                        <p>Automatic average cost basis, realized P&amp;L, and ROI tracking.</p>
+                    </article>
+                    <article class="feature-card reveal">
+                        <span class="feature-icon"><i class="bi bi-bar-chart-line" aria-hidden="true"></i></span>
+                        <h3>Visual Summaries</h3>
+                        <p>Allocation charts, heatmaps, and insights that are easy to read.</p>
+                    </article>
+                    <article class="feature-card reveal">
+                        <span class="feature-icon"><i class="bi bi-shield-lock" aria-hidden="true"></i></span>
+                        <h3>Secure &amp; Private</h3>
+                        <p>Your data stays private. No broker connections. No unnecessary sharing.</p>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <section class="landing-final-cta">
+            <div class="landing-container">
+                <div class="final-cta-card reveal">
+                    <span class="landing-eyebrow">Start simple</span>
+                    <h2 class="final-cta-title">Start with one portfolio. Keep every number understandable.</h2>
+                    <p class="final-cta-sub">
+                        Add your first cash movement or transaction and see a structured view in minutes.
                     </p>
-                </article>
-
-            </div>
-
-        </div>
-    </section>
-
-
-    <!-- ══════════════════ FEATURES ══════════════════ -->
-    <section class="landing-features" id="features">
-        <div class="landing-container">
-
-            <div class="landing-section-head reveal">
-                <span class="landing-eyebrow">Features</span>
-                <h2 class="landing-section-title">Everything important, without the clutter.</h2>
-                <p class="landing-section-sub">
-                    A focused toolkit for investors who want reliable records and readable performance.
-                </p>
-            </div>
-
-            <div class="landing-features-grid">
-
-                <div class="feature-card reveal">
-                    <h3>Multi-portfolio tracking</h3>
-                    <p>Separate long-term holdings, experiments, income strategies, or custom goals without mixing the records.</p>
-                </div>
-
-                <div class="feature-card reveal">
-                    <h3>Transaction history</h3>
-                    <p>Track buys, sells, deposits, withdrawals, dividends, fees, dates, and notes with clear editability.</p>
-                </div>
-
-                <div class="feature-card reveal">
-                    <h3>Performance math</h3>
-                    <p>Review average cost, realized gains and losses, ROI, dividends, and cash position from your entries.</p>
-                </div>
-
-                <div class="feature-card reveal">
-                    <h3>Visual summaries</h3>
-                    <p>Use allocation charts and symbol-level heatmaps to understand where results are coming from.</p>
-                </div>
-
-            </div>
-        </div>
-    </section>
-
-
-    <!-- ══════════════════ PRODUCT FIT ══════════════════ -->
-    <section class="landing-fit" id="fit">
-        <div class="landing-container">
-            <div class="fit-panel reveal">
-                <span class="landing-eyebrow">Manual by design</span>
-                <h2 class="landing-section-title">Made for deliberate tracking, not automatic syncing.</h2>
-                <p class="landing-section-sub">
-                    OnePortfolio does not connect to brokers or fetch live prices. You keep the records explicit,
-                    editable, and understandable.
-                </p>
-                <div class="fit-points">
-                    <span><i class="bi bi-check2" aria-hidden="true"></i> You control the data</span>
-                    <span><i class="bi bi-check2" aria-hidden="true"></i> The math stays transparent</span>
-                    <span><i class="bi bi-check2" aria-hidden="true"></i> The workflow stays focused</span>
+                    <div class="landing-cta-group">
+                        <a class="btn-cta-primary" href="{{ url_for('auth.login') }}">Try Live Demo</a>
+                        <a class="btn-cta-secondary" href="{{ url_for('auth.register') }}">Create Account</a>
+                    </div>
                 </div>
             </div>
-        </div>
-    </section>
+        </section>
+    </main>
 
-
-    <!-- ══════════════════ FINAL CTA ══════════════════ -->
-    <section class="landing-final-cta">
-        <div class="landing-container">
-            <div class="final-cta-card reveal">
-                <h2 class="final-cta-title">Start with one portfolio. Keep every number understandable.</h2>
-                <p class="final-cta-sub">
-                    Add your first cash movement or transaction and see a structured view in minutes.
-                </p>
-                <div class="landing-cta-group">
-                    <a class="btn-cta-primary" href="{{ url_for('auth.login') }}">
-                        Try Demo
-                    </a>
-                    <a class="btn-cta-secondary" href="{{ url_for('auth.register') }}">
-                        Create Account
-                    </a>
-                </div>
-            </div>
-        </div>
-    </section>
-
-
-    <!-- ══════════════════ FOOTER ══════════════════ -->
     <footer class="landing-footer">
         <div class="landing-container">
-            <span class="landing-footer-copy">© 2026 OnePortfolio</span>
+            <span class="landing-footer-copy">&copy; 2026 OnePortfolio</span>
             <div class="landing-footer-links">
+                <a href="#benefits">Benefits</a>
                 <a href="#how">How it works</a>
                 <a href="#features">Features</a>
-                <a href="#fit">Manual</a>
                 <a href="{{ url_for('auth.login') }}">Log In</a>
                 <a href="{{ url_for('auth.register') }}">Sign Up</a>
             </div>
         </div>
     </footer>
 
-
-    <!-- Vendor JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
     <script>
         (function () {
             const navbar = document.getElementById('landingNav');
 
-            /* ── Navbar scroll effect ── */
             if (navbar) {
                 const onScroll = () => navbar.classList.toggle('scrolled', window.scrollY > 8);
                 window.addEventListener('scroll', onScroll, { passive: true });
                 onScroll();
             }
 
-            /* ── Active section nav state ── */
             const sectionLinks = Array.from(document.querySelectorAll('.landing-nav-links .nav-link-inline[href^="#"]'));
-            const sectionTargets = [];
-            sectionLinks.forEach((link) => {
-                const target = document.getElementById(link.getAttribute('href').slice(1));
-                if (target) sectionTargets.push(target);
-            });
+            const sectionTargets = sectionLinks
+                .map((link) => document.getElementById(link.getAttribute('href').slice(1)))
+                .filter(Boolean);
             let activeSectionId = '';
             let activeUpdateQueued = false;
             let activeUpdateTimer = 0;
@@ -380,9 +382,7 @@
                 let sectionId = '';
 
                 sectionTargets.forEach((section) => {
-                    if (section.offsetTop <= activationPoint) {
-                        sectionId = section.id;
-                    }
+                    if (section.offsetTop <= activationPoint) sectionId = section.id;
                 });
 
                 return sectionId || activeSectionId;
@@ -420,9 +420,7 @@
                     behavior: prefersReducedMotion ? 'auto' : 'smooth'
                 });
 
-                if (history.replaceState) {
-                    history.replaceState(null, '', `#${sectionId}`);
-                }
+                if (history.replaceState) history.replaceState(null, '', `#${sectionId}`);
 
                 unlockScrollSpyTimer = window.setTimeout(() => {
                     scrollSpyLocked = false;
@@ -453,9 +451,6 @@
                 queueActiveSectionUpdate();
             }
 
-            /* ── Scroll-reveal animation ──
-               Adds .is-visible to .reveal elements when they enter the viewport.
-               Falls back to immediate reveal if IntersectionObserver is unavailable. */
             const reveals = document.querySelectorAll('.reveal');
             if ('IntersectionObserver' in window) {
                 const io = new IntersectionObserver((entries) => {
@@ -470,9 +465,7 @@
             } else {
                 reveals.forEach((el) => el.classList.add('is-visible'));
             }
-
         })();
     </script>
-
 </body>
 </html>

@@ -88,3 +88,22 @@ def calculate_return(realized_pnl, total_income, base):
         'return_percent': return_percent,
         'return_display': return_display,
     }
+
+
+def calculate_cash_balance(total_capital, transactions, total_income):
+    """Calculate total cash from capital, buy/sell cash flows, and income."""
+    cash = to_decimal(total_capital)
+
+    for transaction in transactions:
+        price = to_decimal(transaction.price)
+        quantity = to_decimal(transaction.quantity)
+        fees = to_decimal(transaction.fees)
+        gross = price * quantity
+
+        if transaction.transaction_type == 'Buy':
+            cash -= gross + fees
+        elif transaction.transaction_type == 'Sell':
+            cash += gross - fees
+
+    cash += to_decimal(total_income)
+    return cash

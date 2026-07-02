@@ -2,6 +2,7 @@ from decimal import Decimal
 from types import SimpleNamespace
 
 from portfolio_app.calculators.financial_math import (
+    calculate_cash_balance,
     calculate_return,
     calculate_symbol_transaction_summary,
 )
@@ -141,3 +142,68 @@ def test_zero_denominator_return_display():
     _assert_decimal(result['return_amount'], '12.34')
     _assert_decimal(result['return_percent'], '0')
     assert result['return_display'] == '—'
+
+
+def test_cash_balance_capital_with_no_transactions_or_income():
+    cash = calculate_cash_balance(_dec('1000'), [], _dec('0'))
+
+    _assert_decimal(cash, '1000')
+
+
+def test_cash_balance_subtracts_buy_outflow_including_fees():
+    cash = calculate_cash_balance(_dec('1000'), [
+        _tx('Buy', '100', '3', '2.5'),
+    ], _dec('0'))
+
+    _assert_decimal(cash, '697.5')
+
+
+def test_cash_balance_adds_sell_proceeds_after_fees():
+    cash = calculate_cash_balance(_dec('1000'), [
+        _tx('Sell', '120', '2', '3'),
+    ], _dec('0'))
+
+    _assert_decimal(cash, '1237')
+
+
+def test_cash_balance_handles_multiple_buy_sell_records():
+    cash = calculate_cash_balance(_dec('2000'), [
+        _tx('Buy', '50', '10', '5'),
+        _tx('Sell', '60', '4', '2'),
+        _tx('Buy', '20', '3', '1'),
+    ], _dec('0'))
+
+    _assert_decimal(cash, '1672')
+
+
+def test_cash_balance_income_increases_cash():
+    cash = calculate_cash_balance(_dec('1000'), [], _dec('25.75'))
+
+    _assert_decimal(cash, '1025.75')
+
+
+def test_cash_balance_combines_capital_transactions_and_income():
+    cash = calculate_cash_balance(_dec('1300'), [
+        _tx('Buy', '50', '10', '5'),
+        _tx('Sell', '60', '4', '2'),
+    ], _dec('25'))
+
+    _assert_decimal(cash, '1058')
+
+
+def test_cash_balance_exact_decimal_precision_without_float_conversion():
+    cash = calculate_cash_balance(_dec('1.00'), [
+        _tx('Buy', '0.10', '0.10', '0.01'),
+        _tx('Sell', '0.30', '0.10', '0.002'),
+    ], _dec('0.003'))
+
+    _assert_decimal(cash, '1.011')
+
+
+def test_cash_balance_zero_values():
+    cash = calculate_cash_balance(_dec('0'), [
+        _tx('Buy', '0', '0', '0'),
+        _tx('Sell', '0', '0', '0'),
+    ], _dec('0'))
+
+    _assert_decimal(cash, '0')

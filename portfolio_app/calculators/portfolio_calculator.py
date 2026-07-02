@@ -4,6 +4,7 @@ from decimal import Decimal
 from sqlalchemy import case, func
 from portfolio_app import db
 from portfolio_app.calculators.financial_math import (
+    calculate_cash_balance,
     calculate_return,
     calculate_symbol_transaction_summary,
 )
@@ -129,26 +130,14 @@ class PortfolioCalculator:
     @staticmethod
     def get_available_cash_for_portfolio(portfolio_id, *, user_id=None, exclude_transaction_id=None) -> Decimal:
         """Available cash: net deposits - buy_outflows + sell_inflows + income."""
-        cash = PortfolioCalculator.get_net_deposits_for_portfolio(portfolio_id, user_id=user_id)
+        total_capital = PortfolioCalculator.get_net_deposits_for_portfolio(portfolio_id, user_id=user_id)
         query = Transaction.query.filter_by(portfolio_id=portfolio_id)
         query = PortfolioCalculator._scope_to_user(query, Transaction, user_id)
         if exclude_transaction_id is not None:
             query = query.filter(Transaction.id != exclude_transaction_id)
         transactions = query.order_by(Transaction.date.asc()).all()
-
-        for t in transactions:
-            price = _to_decimal(t.price)
-            quantity = _to_decimal(t.quantity)
-            fees = _to_decimal(t.fees)
-            gross = price * quantity
-
-            if t.transaction_type == 'Buy':
-                cash -= gross + fees
-            elif t.transaction_type == 'Sell':
-                cash += gross - fees
-
-        cash += PortfolioCalculator.get_dividend_total_for_portfolio(portfolio_id, user_id=user_id)
-        return cash
+        total_income = PortfolioCalculator.get_dividend_total_for_portfolio(portfolio_id, user_id=user_id)
+        return calculate_cash_balance(total_capital, transactions, total_income)
 
     # ------------------------------------------------------------------
     # Portfolio summary (dashboard cards)

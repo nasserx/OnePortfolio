@@ -695,6 +695,7 @@ def settings():
     return render_template(
         'auth/settings.html',
         google_identity_linked=google_identity_linked,
+        google_disconnect_form=GoogleDisconnectForm({}),
     )
 
 

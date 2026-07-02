@@ -247,7 +247,7 @@ def test_existing_account_settings_controls_remain_present(app_factory):
     assert 'Delete account' in account_page
 
 
-def test_no_linking_or_unlinking_controls_are_rendered(app_factory):
+def test_no_linking_relinking_or_account_switching_controls_are_rendered(app_factory):
     app = app_factory()
     user_id = _create_user(app)
     _create_google_identity(app, user_id)
@@ -255,7 +255,6 @@ def test_no_linking_or_unlinking_controls_are_rendered(app_factory):
     html = _settings_html(app)
 
     assert 'Connect Google' not in html
-    assert 'Disconnect' not in html
     assert 'Unlink' not in html
     assert 'Relink' not in html
     assert 'Change account' not in html

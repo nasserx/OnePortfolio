@@ -115,7 +115,35 @@
                                 {% endif %}
                             </div>
                         </div>
+                        {% if google_identity_linked and is_demo_account %}
+                            <button class="btn btn-outline-secondary btn-sm" disabled>Disconnect Google</button>
+                        {% endif %}
                     </div>
+                    {% if google_identity_linked %}
+                        {% if is_demo_account %}
+                            <div class="settings-action-desc mt-2">Disabled for the demo account.</div>
+                        {% else %}
+                            <form method="post" action="{{ url_for('auth.google_disconnect') }}"
+                                  class="mt-3 pt-3 border-top" novalidate>
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <div class="mb-3">
+                                    <label for="google-disconnect-current-password" class="form-label">Current password</label>
+                                    <input type="password"
+                                           id="google-disconnect-current-password"
+                                           name="current_password"
+                                           class="form-control form-control-sm"
+                                           autocomplete="current-password"
+                                           required>
+                                    <div class="form-text">
+                                        Disconnecting Google sign-in does not delete this account.
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-outline-danger btn-sm">
+                                    Disconnect Google
+                                </button>
+                            </form>
+                        {% endif %}
+                    {% endif %}
 
                     <hr class="my-3">
 

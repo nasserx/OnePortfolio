@@ -11,7 +11,7 @@ from flask import Blueprint, abort, current_app, render_template, request, redir
 from flask_login import login_user, logout_user, login_required, current_user
 from flask_limiter.util import get_remote_address
 from authlib.integrations.base_client import MismatchingStateError, OAuthError
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from portfolio_app import get_oauth, limiter
 from portfolio_app.services import get_services
@@ -20,6 +20,7 @@ from portfolio_app.forms.auth_forms import (
     LoginForm,
     RegisterForm,
     ChangePasswordForm,
+    GoogleDisconnectForm,
     ConfirmDeletionForm,
     ForgotPasswordForm,
     ResetPasswordForm,
@@ -695,6 +696,47 @@ def settings():
         'auth/settings.html',
         google_identity_linked=google_identity_linked,
     )
+
+
+@auth_bp.route('/settings/google/disconnect', methods=['POST'])
+@login_required
+@demo_restricted
+def google_disconnect():
+    """Disconnect the authenticated user's local Google identity link."""
+    form = GoogleDisconnectForm(request.form)
+    if not form.validate():
+        first_error = next(iter(form.errors.values()), MESSAGES['INVALID_INPUT'])
+        flash(first_error, 'warning')
+        return redirect(url_for('auth.settings', tab='security'))
+
+    data = form.get_cleaned_data()
+    if not current_user.password_hash or not current_user.check_password(data['current_password']):
+        flash(MESSAGES['CURRENT_PASSWORD_INCORRECT'], 'warning')
+        return redirect(url_for('auth.settings', tab='security'))
+
+    svc = get_services()
+    identity = svc.oauth_identity_repo.get_for_user_and_provider(
+        current_user.id,
+        _GOOGLE_OAUTH_PROVIDER,
+    )
+    if identity is None:
+        flash(MESSAGES['GOOGLE_DISCONNECT_NOT_CONNECTED'], 'info')
+        return redirect(url_for('auth.settings', tab='security'))
+
+    try:
+        svc.oauth_identity_repo.delete(identity)
+        svc.oauth_identity_repo.commit()
+    except SQLAlchemyError as exc:
+        svc.oauth_identity_repo.db.session.rollback()
+        logger.warning(
+            'Google OAuth disconnect failed: %s',
+            type(exc).__name__,
+        )
+        flash(MESSAGES['GOOGLE_DISCONNECT_FAILED'], 'warning')
+        return redirect(url_for('auth.settings', tab='security'))
+
+    flash(MESSAGES['GOOGLE_DISCONNECT_SUCCESS'], 'success')
+    return redirect(url_for('auth.settings', tab='security'))
 
 
 # ---------------------------------------------------------------------------

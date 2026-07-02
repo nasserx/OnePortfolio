@@ -87,6 +87,17 @@ class ChangePasswordForm(BaseForm):
         return not self.has_errors()
 
 
+class GoogleDisconnectForm(BaseForm):
+    """Form for confirming Google sign-in disconnection."""
+
+    def validate(self) -> bool:
+        current = self._validate_required_string('current_password', MESSAGES['CURRENT_PASSWORD_REQUIRED'])
+        if current:
+            self.cleaned_data['current_password'] = current
+
+        return not self.has_errors()
+
+
 class ForgotPasswordForm(BaseForm):
     """Form for requesting a password reset email."""
 

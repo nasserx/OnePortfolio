@@ -155,6 +155,9 @@ MESSAGES = {
     'GOOGLE_SIGNIN_NOT_CONFIGURED': "Google sign-in is not configured yet.",
     'GOOGLE_SIGNIN_FAILED':        "Google sign-in could not be completed. Please try again.",
     'GOOGLE_SIGNIN_NO_ACCOUNT':    "No existing account matches that Google email. Please sign in with email and password.",
+    'GOOGLE_DISCONNECT_SUCCESS':    "Google sign-in connection removed.",
+    'GOOGLE_DISCONNECT_NOT_CONNECTED': "Google sign-in is not connected.",
+    'GOOGLE_DISCONNECT_FAILED':     "Google connection could not be removed. Please try again.",
 
     'VERIFICATION_CODE_REQUIRED':  "Verification code is required.",
     'VERIFICATION_CODE_INVALID_FORMAT': "Please enter the 6-digit code sent to your email.",

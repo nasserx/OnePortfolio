@@ -1,10 +1,10 @@
 # Migrations
 
-OnePortfolio uses an in-app SQLite migration system in `portfolio_app/__init__.py`.
+OnePortfolio uses an in-app SQLite migration system in `portfolio_app/migrations.py`.
 
 ## Schema Version
 
-`TARGET_SCHEMA_VERSION` defines the current expected SQLite schema version.
+`TARGET_SCHEMA_VERSION` in `portfolio_app/migrations.py` defines the current expected SQLite schema version.
 
 Startup migration state is stored in SQLite through:
 
@@ -14,7 +14,7 @@ When `user_version` is already at or above `TARGET_SCHEMA_VERSION`, migration wo
 
 ## Startup Flow
 
-`create_app()` calls the migration runner before creating missing tables. The migration runner:
+`create_app()` imports and calls `run_migrations(app)` before creating missing tables. The migration runner:
 
 1. Opens the configured SQLAlchemy engine.
 2. Checks `PRAGMA user_version`.

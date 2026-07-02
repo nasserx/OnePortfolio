@@ -4,7 +4,7 @@ OnePortfolio is a Flask application built around an application factory and laye
 
 ## Application Factory
 
-`portfolio_app/__init__.py` defines `create_app(config_class=Config)`. The factory loads configuration, initializes extensions, registers blueprints, wires context processors and error handlers, runs SQLite migrations, and creates missing tables.
+`portfolio_app/__init__.py` defines `create_app(config_class=Config)`. The factory loads configuration, initializes extensions, registers blueprints, wires context processors and error handlers, calls the SQLite migration runner in `portfolio_app/migrations.py`, and creates missing tables.
 
 The same factory is used by `app.py`, `wsgi.py`, and tests.
 
@@ -91,7 +91,8 @@ See [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md) for UI constraints.
 
 ## Important Files
 
-- `portfolio_app/__init__.py`: application factory, migrations, app-level wiring.
+- `portfolio_app/__init__.py`: application factory and app-level wiring.
+- `portfolio_app/migrations.py`: SQLite schema migration runner and migration steps.
 - `config.py`: environment-driven configuration.
 - `portfolio_app/services/factory.py`: per-request services container.
 - `portfolio_app/services/transaction_service.py`: asset entries, income, symbols, chronology, and cash/quantity rules.
@@ -102,7 +103,7 @@ See [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md) for UI constraints.
 
 ## Architectural Risks
 
-- `portfolio_app/__init__.py` is large because it contains app wiring and migration logic.
+- `portfolio_app/__init__.py` is large because it still contains app wiring, extension setup, error handlers, security headers, and blueprint registration.
 - `PortfolioCalculator` is large because it owns portfolio, asset, cash, and return calculations.
 - `TransactionService` is large because it coordinates asset entries, income, symbols, validations, and recalculation.
 

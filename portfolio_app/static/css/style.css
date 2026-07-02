@@ -513,7 +513,7 @@ textarea,
 }
 
 .stat-label {
-    font-size: var(--font-size-label); font-weight: 600;
+    font-size: var(--font-size-label); font-weight: 400;
     text-transform: uppercase; letter-spacing: var(--letter-spacing-label);
     color: var(--text-3);
     min-width: 0;
@@ -540,7 +540,7 @@ textarea,
 }
 .tooltip .tooltip-arrow::before { border-top-color: var(--surface-2) !important; }
 .stat-value {
-    font-size: var(--font-size-kpi); font-weight: 600;
+    font-size: var(--font-size-kpi); font-weight: 500;
     color: var(--text-1); line-height: 1.15;
     letter-spacing: var(--letter-spacing-normal);
     font-variant-numeric: tabular-nums;
@@ -591,11 +591,11 @@ textarea,
 }
 .metric-label {
     font-size: var(--font-size-label); color: var(--text-3);
-    font-weight: 600; text-transform: uppercase;
+    font-weight: 400; text-transform: uppercase;
     letter-spacing: 0.07em; white-space: nowrap;
 }
 .metric-value {
-    font-size: var(--font-size-numeric); font-weight: 500;
+    font-size: var(--font-size-numeric); font-weight: 400;
     color: var(--text-1); font-variant-numeric: tabular-nums;
     display: block;
     min-width: 0;
@@ -775,8 +775,8 @@ textarea,
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-size: 0.98rem;
-    font-weight: 600;
+    font-size: var(--font-size-summary-name);
+    font-weight: 500;
     letter-spacing: -0.015em;
 }
 
@@ -909,14 +909,20 @@ textarea,
 
 /* Row action buttons — compact controls for dense financial rows */
 .row-actions .btn {
-    border-color: transparent !important;
+    border: 0 !important;
     font-size: 0.875rem !important;
-    outline: none !important;
+    outline: 1px solid transparent !important;
+    outline-offset: 2px !important;
+    color: var(--text-2) !important;
+    background: transparent !important;
+    transition: background var(--transition), color var(--transition), outline-color var(--transition) !important;
 }
 .row-actions .btn:focus-visible {
-    border-color: var(--control-border-focus) !important;
+    border: 0 !important;
+    background: var(--surface-hover) !important;
     box-shadow: none !important;
-    outline: none !important;
+    outline: 1px solid var(--control-border-focus) !important;
+    outline-offset: 2px !important;
 }
 
 .portfolio-summary-actions {
@@ -936,10 +942,92 @@ textarea,
     outline-color: var(--border-strong) !important;
 }
 
-/* Row action buttons — vivid tonal backgrounds on hover only */
-.row-actions .btn-outline-primary:hover { background: var(--accent-soft) !important; }
-.row-actions .btn-outline-success:hover  { background: var(--success-muted) !important; }
-.row-actions .btn-outline-danger:hover   { background: var(--danger-hover)  !important; }
+.row-actions .btn-outline-primary,
+.row-actions .btn-outline-secondary {
+    color: var(--text-2) !important;
+}
+.row-actions .btn-outline-primary:hover,
+.row-actions .btn-outline-primary:active,
+.row-actions .btn-outline-primary:focus-visible,
+.row-actions .btn-outline-secondary:hover,
+.row-actions .btn-outline-secondary:active,
+.row-actions .btn-outline-secondary:focus-visible {
+    color: var(--text-1) !important;
+    background: var(--surface-hover) !important;
+    border: 0 !important;
+}
+.row-actions .btn-outline-success {
+    color: var(--positive) !important;
+    border: 0 !important;
+}
+.row-actions .btn-outline-success:hover,
+.row-actions .btn-outline-success:active,
+.row-actions .btn-outline-success:focus-visible {
+    color: var(--positive) !important;
+    background: var(--positive-bg) !important;
+    border: 0 !important;
+}
+.row-actions .btn-outline-danger {
+    color: var(--negative) !important;
+    border: 0 !important;
+}
+.row-actions .btn-outline-danger:hover,
+.row-actions .btn-outline-danger:active,
+.row-actions .btn-outline-danger:focus-visible {
+    color: var(--negative) !important;
+    background: var(--negative-bg) !important;
+    border: 0 !important;
+}
+.btn-action-income {
+    color: var(--income) !important;
+    border: 0 !important;
+}
+
+.btn-action-positive {
+    color: var(--positive) !important;
+    background: transparent !important;
+    border: 0 !important;
+}
+
+.btn-action-positive:hover,
+.btn-action-positive:active,
+.btn-action-positive:focus-visible {
+    color: var(--positive) !important;
+    background: var(--positive-bg) !important;
+    border: 0 !important;
+}
+
+.btn-action-positive:focus-visible {
+    box-shadow: none !important;
+    outline: 1px solid var(--control-border-focus) !important;
+    outline-offset: 2px !important;
+}
+
+.btn-action-positive:disabled,
+.btn-action-positive.disabled {
+    color: var(--text-disabled) !important;
+    background: transparent !important;
+    border: 0 !important;
+}
+
+.btn-action-income:hover,
+.btn-action-income:active,
+.btn-action-income:focus-visible {
+    color: var(--income) !important;
+    background: var(--income-bg) !important;
+    border: 0 !important;
+}
+.btn-action-income:focus-visible {
+    box-shadow: none !important;
+    outline: 1px solid var(--control-border-focus) !important;
+    outline-offset: 2px !important;
+}
+.btn-action-income:disabled,
+.btn-action-income.disabled {
+    color: var(--text-disabled) !important;
+    background: transparent !important;
+    border: 0 !important;
+}
 
 .portfolio-chevron {
     transition: transform 0.2s ease;
@@ -964,15 +1052,15 @@ textarea,
     overflow: hidden;
 }
 .summary-label {
-    font-size: var(--font-size-label); color: var(--text-3);
-    text-transform: uppercase; letter-spacing: var(--letter-spacing-label); font-weight: 600;
+    font-size: var(--font-size-summary-label); color: var(--text-3);
+    text-transform: uppercase; letter-spacing: var(--letter-spacing-label); font-weight: 400;
     min-width: 0;
     max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 .summary-value {
-    font-size: var(--font-size-kpi-compact); font-weight: 500;
+    font-size: var(--font-size-summary-value); font-weight: 400;
     color: var(--text-1); font-variant-numeric: tabular-nums;
     display: block;
     min-width: 0;
@@ -982,7 +1070,7 @@ textarea,
     white-space: nowrap;
 }
 .summary-subvalue {
-    font-size: var(--font-size-helper); font-weight: 450; color: var(--text-2);
+    font-size: var(--font-size-summary-context); font-weight: 400; color: var(--text-2);
     font-variant-numeric: tabular-nums;
 }
 .summary-row { min-height: 28px; }
@@ -1031,8 +1119,8 @@ textarea,
     text-overflow: ellipsis;
     white-space: nowrap;
     color: var(--text-1) !important;
-    font-size: 0.98rem;
-    font-weight: 600;
+    font-size: var(--font-size-summary-name);
+    font-weight: 500;
     line-height: 1.2;
 }
 
@@ -1181,8 +1269,8 @@ textarea,
 
 .transactions-symbol-name {
     color: var(--text-1) !important;
-    font-size: 0.98rem;
-    font-weight: 600;
+    font-size: var(--font-size-summary-name);
+    font-weight: 500;
     letter-spacing: 0;
     line-height: 1.2;
 }
@@ -1263,14 +1351,154 @@ textarea,
 }
 
 .charts-page {
-    display: flex;
-    flex-direction: column;
+    display: grid;
     gap: 1rem;
+}
+
+.charts-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+    align-items: stretch;
 }
 
 .charts-card,
 .charts-empty-state {
     outline-color: var(--border-soft) !important;
+}
+
+.charts-card {
+    border-radius: var(--radius-lg) !important;
+    box-shadow: none !important;
+}
+
+.charts-card .card-body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+    padding: 1.15rem !important;
+}
+
+.charts-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 0.9rem;
+}
+
+.charts-title-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+}
+
+.charts-title {
+    margin: 0;
+    color: var(--text-1);
+    font-size: var(--font-size-card-title);
+    font-weight: 500;
+}
+
+.charts-helper {
+    color: var(--text-3);
+    font-size: var(--font-size-helper);
+    line-height: 1.35;
+}
+
+.allocation-wrap {
+    display: grid;
+    grid-template-columns: minmax(164px, 220px) minmax(0, 1fr);
+    align-items: center;
+    gap: 1.1rem;
+}
+
+.allocation-canvas-wrap {
+    width: 100%;
+    max-width: 220px;
+    aspect-ratio: 1 / 1;
+}
+
+.allocation-legend {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    grid-template-columns: 10px minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: 0.625rem;
+    row-gap: 0.5rem;
+    color: var(--text-2);
+    font-size: var(--font-size-helper);
+    font-weight: 400;
+}
+
+.allocation-legend li {
+    display: contents;
+}
+
+.allocation-legend .swatch,
+.allocation-legend .name,
+.allocation-legend .pct {
+    cursor: pointer;
+    user-select: none;
+    transition: opacity 0.15s ease;
+}
+
+.allocation-legend li.is-hidden .swatch {
+    opacity: 0.3;
+}
+
+.allocation-legend li.is-hidden .name,
+.allocation-legend li.is-hidden .pct {
+    color: var(--text-3);
+    opacity: 0.6;
+    text-decoration: line-through;
+}
+
+.allocation-legend .swatch {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+
+.allocation-legend .swatch-1 { background: var(--chart-allocation-1); }
+.allocation-legend .swatch-2 { background: var(--chart-allocation-2); }
+.allocation-legend .swatch-3 { background: var(--chart-allocation-3); }
+.allocation-legend .swatch-4 { background: var(--chart-allocation-4); }
+.allocation-legend .swatch-5 { background: var(--chart-allocation-5); }
+.allocation-legend .swatch-6 { background: var(--chart-allocation-6); }
+.allocation-legend .swatch-7 { background: var(--chart-allocation-7); }
+.allocation-legend .swatch-other { background: var(--chart-allocation-other); }
+
+.allocation-legend .name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.allocation-legend .pct {
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+}
+
+.allocation-note {
+    margin-top: 0.75rem;
+}
+
+.charts-empty-panel {
+    grid-column: 1 / -1;
+    min-height: 180px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-3);
+    font-size: var(--font-size-helper);
+    text-align: center;
+    outline: 1px dashed var(--border-muted) !important;
+    border-radius: var(--radius-md) !important;
+    background: var(--surface-2);
 }
 
 .charts-card:hover,
@@ -1315,7 +1543,7 @@ textarea,
 }
 
 .table thead th {
-    font-weight: 600; font-size: var(--font-size-table-head);
+    font-weight: 500; font-size: var(--font-size-table-head);
     letter-spacing: var(--letter-spacing-label); text-transform: uppercase;
     color: var(--table-header-color) !important;
     --bs-table-bg: var(--table-header-bg);
@@ -1382,7 +1610,7 @@ textarea,
     color: var(--table-header-color) !important;
     padding: 0.55rem 0.85rem;
     font-size: var(--font-size-table-head);
-    font-weight: 600;
+    font-weight: 500;
     letter-spacing: var(--letter-spacing-label);
     text-transform: uppercase;
     white-space: nowrap;
@@ -1414,7 +1642,7 @@ textarea,
 }
 .dashboard-actions-table th {
     font-size: var(--font-size-table-head);
-    font-weight: 600;
+    font-weight: 500;
     letter-spacing: var(--letter-spacing-label);
     line-height: 1.2;
     text-transform: uppercase;
@@ -1422,7 +1650,7 @@ textarea,
 .transactions-table.dashboard-actions-table thead th,
 .portfolios-page .portfolio-events-table thead th {
     font-size: var(--font-size-table-head) !important;
-    font-weight: 600;
+    font-weight: 500;
     letter-spacing: var(--letter-spacing-label);
     line-height: 1.2;
     text-transform: uppercase;
@@ -1681,7 +1909,7 @@ textarea,
 .tx-pg-num.active {
     background: var(--primary);
     color: var(--text-inv);
-    font-weight: 600;
+    font-weight: 500;
     pointer-events: none;
 }
 
@@ -1701,7 +1929,7 @@ textarea,
     outline: none !important;
     border-radius: var(--radius-sm) !important;
     font-size: 0.72rem;
-    font-weight: 600;
+    font-weight: 500;
     letter-spacing: 0;
     line-height: 1.2;
 }
@@ -2123,14 +2351,14 @@ textarea:-webkit-autofill, select:-webkit-autofill {
 .badge {
     background: var(--badge-bg) !important;
     color: var(--badge-color) !important;
-    font-weight: 600; padding: 0.28em 0.65em;
+    font-weight: 500; padding: 0.28em 0.65em;
     font-size: 0.75rem; border-radius: var(--radius-pill) !important;
     outline: 1px solid var(--badge-border) !important;
 }
 
 .badge-buy {
     display: inline-block; min-width: 4.75rem; text-align: center;
-    font-weight: 600;
+    font-weight: 500;
     background: var(--badge-bg) !important;
     color: var(--badge-color) !important;
     outline-color: var(--badge-border) !important;
@@ -2138,7 +2366,7 @@ textarea:-webkit-autofill, select:-webkit-autofill {
 }
 .badge-sell {
     display: inline-block; min-width: 4.75rem; text-align: center;
-    font-weight: 600;
+    font-weight: 500;
     background: var(--badge-bg) !important;
     color: var(--badge-color) !important;
     outline-color: var(--badge-border) !important;
@@ -2146,7 +2374,7 @@ textarea:-webkit-autofill, select:-webkit-autofill {
 }
 .badge-dividend {
     display: inline-block; min-width: 4.75rem; text-align: center;
-    font-weight: 600;
+    font-weight: 500;
     background: var(--badge-income-bg) !important;
     color: var(--badge-income-color) !important;
     outline-color: var(--badge-income-border) !important;
@@ -2320,7 +2548,7 @@ textarea:-webkit-autofill, select:-webkit-autofill {
     margin-top: 0.25rem;
     line-height: 1;
 }
-.notes-counter.is-danger { color: var(--bs-danger); font-weight: 600; }
+.notes-counter.is-danger { color: var(--bs-danger); font-weight: 500; }
 #editTransactionModal .form-select:disabled,
 #editTransactionModal .form-control[readonly] {
     background: var(--surface-2) !important; color: var(--text-3) !important; opacity: 1;
@@ -2451,7 +2679,7 @@ textarea:-webkit-autofill, select:-webkit-autofill {
 .fw-600 { font-weight: 600; }
 .text-emphasis {
     color: inherit;
-    font-weight: 600;
+    font-weight: 500;
 }
 
 hr {
@@ -2492,6 +2720,14 @@ i.bi.text-info,
 .overview-btn .bi,
 .nav-tabs .bi {
     color: var(--icon-accent) !important;
+}
+
+.row-actions .btn-outline-success .bi,
+.row-actions .btn-outline-danger .bi,
+.row-actions .btn-action-income .bi,
+.btn-action-positive .bi,
+.btn-action-income .bi {
+    color: currentColor !important;
 }
 
 .btn-primary .bi,
@@ -2710,7 +2946,7 @@ i.bi.text-info,
 .empty-state-title {
     color: var(--text-1);
     font-size: 0.95rem;
-    font-weight: 600;
+    font-weight: 500;
 }
 .empty-state-text {
     max-width: 34rem;
@@ -2728,16 +2964,19 @@ i.bi.text-info,
     padding: 0 !important;
     display: inline-flex; align-items: center; justify-content: center;
     border-radius: var(--radius-md) !important;
-    border: 1px solid transparent !important;
-    outline: none !important;
+    border: 0 !important;
+    outline: 1px solid transparent !important;
+    outline-offset: 2px !important;
     flex-shrink: 0;
     line-height: 1;
     aspect-ratio: 1 / 1;
 }
 .btn-icon:focus-visible {
-    border-color: var(--control-border-focus) !important;
+    border: 0 !important;
+    background: var(--surface-hover) !important;
     box-shadow: none !important;
-    outline: none !important;
+    outline: 1px solid var(--control-border-focus) !important;
+    outline-offset: 2px !important;
 }
 .btn-icon.btn-sm {
     width: 26px !important;
@@ -2799,6 +3038,9 @@ i.bi.text-info,
     .overview-portfolio-grid {
         grid-template-columns: 1fr;
     }
+    .charts-grid {
+        grid-template-columns: 1fr;
+    }
     .transactions-page-header {
         gap: 0.9rem;
     }
@@ -2838,6 +3080,13 @@ i.bi.text-info,
     .page-header { flex-wrap: wrap; margin-bottom: 1.25rem; }
     .overview-metric-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .allocation-wrap {
+        grid-template-columns: 1fr;
+        justify-items: center;
+    }
+    .allocation-legend {
+        width: 100%;
     }
     .overview-portfolio-card-header {
         align-items: flex-start;

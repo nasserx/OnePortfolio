@@ -73,7 +73,7 @@
                     <div class="row align-items-center g-1 summary-row transactions-symbol-summary-row">
                         <div class="col-lg-2 col-md-3 d-flex align-items-center gap-2 transactions-symbol-identity">
                             <i class="bi bi-chevron-right portfolio-chevron" id="chevron-{{ item.html_group_id }}"></i>
-                            <span class="fw-600 text-dark transactions-symbol-name">{{ item.symbol }}</span>
+                            <span class="text-dark transactions-symbol-name">{{ item.symbol }}</span>
                             <span class="badge bg-light text-dark border">{{ item.portfolio.name }}</span>
                         </div>
                         <div class="col-lg-8 col-md-7 transactions-symbol-metrics">
@@ -117,7 +117,7 @@
                         <div class="col-lg-2 col-md-2 text-end transactions-symbol-actions">
                             <div class="btn-group btn-group-sm row-actions" role="group">
                                 <button type="button"
-                                        class="btn btn-outline-primary btn-icon js-add-transaction-btn"
+                                        class="btn btn-outline-success btn-icon js-add-transaction-btn"
                                         data-portfolio-id="{{ item.portfolio.id }}"
                                         data-portfolio="{{ item.portfolio.name|e }}"
                                         data-symbol="{{ item.symbol|e }}"
@@ -128,7 +128,7 @@
                                     <i class="bi bi-plus-lg"></i>
                                 </button>
                                 <button type="button"
-                                        class="btn btn-outline-success btn-icon js-add-dividend-btn"
+                                        class="btn btn-action-income btn-icon js-add-dividend-btn"
                                         data-portfolio-id="{{ item.portfolio.id }}"
                                         data-symbol="{{ item.symbol|e }}"
                                         title="Add Income"
@@ -154,22 +154,22 @@
                     </div>
                 </div>
 
-                <div class="portfolio-transactions" id="transactions-{{ item.html_group_id }}" style="display: none;">
+                <div class="portfolio-transactions" id="transactions-{{ item.html_group_id }}" hidden>
                     {% if item.transactions|length > 0 or show_dividend_rows %}
                     <div class="table-responsive">
                         <table class="table table-sm table-hover align-middle mb-0 transactions-table dashboard-actions-table">
                             <thead class="table-light">
                                 <tr>
-                                    <th class="small" style="width: 110px;">Date</th>
-                                    <th class="small" style="width: 90px;">Type</th>
-                                    <th class="small text-end" style="width: 130px;">Price</th>
-                                    <th class="small text-end" style="width: 100px;">Quantity</th>
-                                    <th class="small text-end" style="width: 100px;">Fee</th>
-                                    <th class="small text-end" style="width: 150px;">Total</th>
-                                    <th class="small text-end" style="width: 130px;">Realized P&amp;L</th>
-                                    <th class="small text-end" style="width: 110px;">Return</th>
-                                    <th class="small" style="width: 180px;">Notes</th>
-                                    <th class="small text-center" style="width: 100px;">Actions</th>
+                                    <th class="small">Date</th>
+                                    <th class="small">Type</th>
+                                    <th class="small text-end">Price</th>
+                                    <th class="small text-end">Quantity</th>
+                                    <th class="small text-end">Fee</th>
+                                    <th class="small text-end">Total</th>
+                                    <th class="small text-end">Realized P&amp;L</th>
+                                    <th class="small text-end">Return</th>
+                                    <th class="small">Notes</th>
+                                    <th class="small text-center">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -284,7 +284,7 @@
                     <div class="tx-pagination-bar" id="pgbar-{{ item.html_group_id }}"></div>
                     {% else %}
                     <div class="p-3 text-center help-message transactions-inline-empty page-accent-surface">
-                        <button type="button" class="btn btn-outline-secondary btn-sm js-add-transaction-btn"
+                        <button type="button" class="btn btn-action-positive btn-sm js-add-transaction-btn"
                                 data-portfolio-id="{{ item.portfolio.id }}"
                                 data-portfolio="{{ item.portfolio.name|e }}"
                                 data-symbol="{{ item.symbol|e }}">
@@ -736,7 +736,7 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="submit" class="btn btn-primary" id="add_div_submit_btn">Record Income</button>
+                    <button type="submit" class="btn btn-action-income" id="add_div_submit_btn">Record Income</button>
                 </div>
             </form>
         </div>
@@ -1123,7 +1123,7 @@ function openAddSymbolModal() {
     openSet.forEach(function (id) {
         var d = document.getElementById('transactions-' + id);
         var c = document.getElementById('chevron-' + id);
-        if (d) d.style.display = 'block';
+        if (d) d.hidden = false;
         if (c) { c.classList.remove('bi-chevron-right'); c.classList.add('bi-chevron-down'); }
         if (window.initSymbolPagination) window.initSymbolPagination(id);
     });
@@ -1137,13 +1137,13 @@ function openAddSymbolModal() {
         var d = document.getElementById('transactions-' + groupId);
         var c = document.getElementById('chevron-' + groupId);
         if (!d || !c) return;
-        if (d.style.display === 'none') {
-            d.style.display = 'block';
+        if (d.hidden) {
+            d.hidden = false;
             c.classList.replace('bi-chevron-right', 'bi-chevron-down');
             openSet.add(groupId);
             if (window.initSymbolPagination) window.initSymbolPagination(groupId);
         } else {
-            d.style.display = 'none';
+            d.hidden = true;
             c.classList.replace('bi-chevron-down', 'bi-chevron-right');
             openSet.delete(groupId);
         }

@@ -110,9 +110,13 @@ def _portfolio_rows(portfolio_summary: List[Dict[str, Any]]) -> List[Dict[str, A
 
 def _allocation_rows(portfolio_summary: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Portfolio allocation rows: top 7 by book value + Other Portfolios."""
-    total_book_value = sum((Decimal(str(p['book_value'])) for p in portfolio_summary), ZERO)
+    meaningful = [
+        p for p in portfolio_summary
+        if Decimal(str(p['book_value'])) > ZERO
+    ]
+    total_book_value = sum((Decimal(str(p['book_value'])) for p in meaningful), ZERO)
     ranked = sorted(
-        portfolio_summary,
+        meaningful,
         key=lambda p: Decimal(str(p['book_value'])),
         reverse=True,
     )
@@ -148,6 +152,59 @@ def _allocation_rows(portfolio_summary: List[Dict[str, Any]]) -> List[Dict[str, 
         rows.append({
             'name': ALLOCATION_OTHERS_LABEL,
             'book_value': float(other_book_value),
+            'allocation': float(allocation),
+        })
+
+    return rows
+
+
+def _capital_allocation_rows(portfolio_summary: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Portfolio allocation rows by Total Capital (deposits - withdrawals)."""
+    meaningful = [
+        p for p in portfolio_summary
+        if Decimal(str(p.get('total_capital', ZERO))) > ZERO
+    ]
+    total_capital = sum(
+        (Decimal(str(p.get('total_capital', ZERO))) for p in meaningful),
+        ZERO,
+    )
+    ranked = sorted(
+        meaningful,
+        key=lambda p: Decimal(str(p.get('total_capital', ZERO))),
+        reverse=True,
+    )
+
+    if len(ranked) <= ALLOCATION_TOP_N:
+        selected = ranked
+        other_capital = ZERO
+    else:
+        selected = ranked[:ALLOCATION_TOP_N]
+        other_capital = sum(
+            (Decimal(str(p.get('total_capital', ZERO))) for p in ranked[ALLOCATION_TOP_N:]),
+            ZERO,
+        )
+
+    rows = []
+    for portfolio in selected:
+        capital = Decimal(str(portfolio.get('total_capital', ZERO)))
+        allocation = (
+            safe_divide(capital, total_capital) * Decimal('100')
+            if total_capital != ZERO else ZERO
+        )
+        rows.append({
+            'name': portfolio['name'],
+            'capital': float(capital),
+            'allocation': float(allocation),
+        })
+
+    if other_capital != ZERO or len(ranked) > ALLOCATION_TOP_N:
+        allocation = (
+            safe_divide(other_capital, total_capital) * Decimal('100')
+            if total_capital != ZERO else ZERO
+        )
+        rows.append({
+            'name': ALLOCATION_OTHERS_LABEL,
+            'capital': float(other_capital),
             'allocation': float(allocation),
         })
 
@@ -655,37 +712,24 @@ def charts() -> str:
     """Charts page - Portfolio visualizations."""
     svc = get_services()
     portfolio_summary, _ = svc.overview_service.get_portfolio_summary()
-    symbol_performance   = svc.overview_service.get_symbol_performance()
 
     allocation_rows = _allocation_rows(portfolio_summary)
-    portfolio_performance = _portfolio_performance_rows(portfolio_summary)
-    asset_performance = _asset_performance_rows(symbol_performance)
-    current_year = datetime.now().year
-    portfolio_trend = _monthly_performance_trend(
-        portfolio_summary,
-        user_id=svc.portfolio_repo.user_id,
-        year=current_year,
-    )
-    asset_trend = _asset_monthly_performance_trend(
-        asset_performance,
-        user_id=svc.portfolio_repo.user_id,
-        year=current_year,
-    )
+    capital_rows = _capital_allocation_rows(portfolio_summary)
 
     chart_data: Dict[str, Any] = {
-        'donut_categories':  [r['name'] for r in allocation_rows],
-        'donut_allocations': [r['allocation'] for r in allocation_rows],
-        'donut_book_values': [r['book_value'] for r in allocation_rows],
-        'allocation_grouped': len(portfolio_summary) > ALLOCATION_TOP_N,
-        'performance_trend': portfolio_trend,
-        'portfolio_stats': _portfolio_stats(portfolio_summary, portfolio_trend),
-        'portfolio_performance': portfolio_performance,
-        'portfolio_trend': portfolio_trend,
-        'asset_performance': asset_performance,
-        'asset_performance_display': _asset_leaderboard_rows(asset_performance),
-        'asset_performance_limited': len(asset_performance) > ASSET_LEADERBOARD_LIMIT,
-        'asset_stats': _asset_stats(asset_performance),
-        'asset_trend': asset_trend,
-        'total_book_value':  float(sum(p['book_value'] for p in portfolio_summary)),
+        'book_value_chart': {
+            'categories':  [r['name'] for r in allocation_rows],
+            'allocations': [r['allocation'] for r in allocation_rows],
+            'values':      [r['book_value'] for r in allocation_rows],
+            'total':       float(sum((Decimal(str(r['book_value'])) for r in allocation_rows), ZERO)),
+            'grouped':     len([p for p in portfolio_summary if Decimal(str(p['book_value'])) > ZERO]) > ALLOCATION_TOP_N,
+        },
+        'capital_chart': {
+            'categories':  [r['name'] for r in capital_rows],
+            'allocations': [r['allocation'] for r in capital_rows],
+            'values':      [r['capital'] for r in capital_rows],
+            'total':       float(sum((Decimal(str(r['capital'])) for r in capital_rows), ZERO)),
+            'grouped':     len([p for p in portfolio_summary if Decimal(str(p.get('total_capital', ZERO))) > ZERO]) > ALLOCATION_TOP_N,
+        },
     }
     return render_template('charts.html', chart_data=chart_data)

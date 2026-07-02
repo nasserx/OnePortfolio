@@ -110,6 +110,11 @@
     --font-size-chart-axis-title: 8;
     --font-size-chart-center-label: 10;
     --font-size-chart-center-value: 13;
+    --font-size-summary-name: 0.9375rem;
+    --font-size-summary-label: var(--font-size-label);
+    --font-size-summary-value: 0.8125rem;
+    --font-size-summary-context: 0.75rem;
+    --font-size-empty-value: 0.75rem;
     --font-size-xs: 0.75rem;
     --font-size-sm: 0.8125rem;
     --font-size-md: 0.9375rem;

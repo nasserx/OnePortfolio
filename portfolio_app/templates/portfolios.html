@@ -35,7 +35,7 @@
                         <!-- Name + chevron -->
                         <div class="col-lg-3 col-md-3 d-flex align-items-center gap-2 portfolio-identity">
                             <i class="bi bi-chevron-right portfolio-chevron" id="chevron-{{ item.portfolio.id }}"></i>
-                            <span class="fw-600 portfolio-name">{{ item.portfolio.name }}</span>
+                            <span class="portfolio-name">{{ item.portfolio.name }}</span>
                         </div>
 
                         <!-- Metrics -->
@@ -100,17 +100,17 @@
                 </div>
 
                 <!-- Capital log table (collapsed by default) -->
-                <div class="portfolio-transactions portfolio-cash-events" id="events-{{ item.portfolio.id }}" style="display: none;">
+                <div class="portfolio-transactions portfolio-cash-events" id="events-{{ item.portfolio.id }}" hidden>
                     {% if item.events %}
                     <div class="table-responsive">
                         <table class="table table-sm table-hover align-middle mb-0 transactions-table dashboard-actions-table portfolio-events-table">
                             <thead class="table-light">
                                 <tr>
-                                    <th class="small" style="width:120px;">Date</th>
-                                    <th class="small" style="width:110px;">Type</th>
-                                    <th class="small text-end" style="width:150px;">Amount</th>
+                                    <th class="small">Date</th>
+                                    <th class="small">Type</th>
+                                    <th class="small text-end">Amount</th>
                                     <th class="small">Notes</th>
-                                    <th class="small text-center" style="width:90px;">Actions</th>
+                                    <th class="small text-center">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -242,7 +242,7 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="submit" class="btn btn-primary">Record Deposit</button>
+                    <button type="submit" class="btn btn-success">Record Deposit</button>
                 </div>
             </form>
         </div>
@@ -306,7 +306,7 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="submit" class="btn btn-primary">Record Withdraw</button>
+                    <button type="submit" class="btn btn-danger">Record Withdraw</button>
                 </div>
             </form>
         </div>
@@ -643,7 +643,7 @@
     openSet.forEach(function (id) {
         var d = document.getElementById('events-' + id);
         var c = document.getElementById('chevron-' + id);
-        if (d) d.style.display = 'block';
+        if (d) d.hidden = false;
         if (c) { c.classList.replace('bi-chevron-right', 'bi-chevron-down'); }
         if (window.initPortfolioPagination) window.initPortfolioPagination(id);
     });
@@ -657,13 +657,13 @@
         var d = document.getElementById('events-' + portfolioId);
         var c = document.getElementById('chevron-' + portfolioId);
         if (!d || !c) return;
-        if (d.style.display === 'none') {
-            d.style.display = 'block';
+        if (d.hidden) {
+            d.hidden = false;
             c.classList.replace('bi-chevron-right', 'bi-chevron-down');
             openSet.add(String(portfolioId));
             if (window.initPortfolioPagination) window.initPortfolioPagination(String(portfolioId));
         } else {
-            d.style.display = 'none';
+            d.hidden = true;
             c.classList.replace('bi-chevron-down', 'bi-chevron-right');
             openSet.delete(String(portfolioId));
         }

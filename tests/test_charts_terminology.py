@@ -137,39 +137,43 @@ def test_charts_page_uses_dashboard_cards_and_current_terminology(app):
     text = _visible_text(html)
 
     for label in (
-        'Portfolio Allocation',
         'By Book Value',
+        'By Capital',
+    ):
+        assert label in text
+
+    for removed_label in (
+        'Portfolio Allocation',
         'Portfolio Performance',
         'Portfolio Performance Over Time',
         'Asset Performance',
         'Asset Performance Over Time',
-        'Realized P&L',
-        'Return',
-        'Income',
         'Best Month',
         'Worst Month',
         'Best Asset',
         'Worst Asset',
         'Assets performance, income, and return',
     ):
-        assert label in text
+        assert removed_label not in text
 
-    assert '<canvas id="allocationChart"></canvas>' in html
-    assert '<canvas id="portfolioPerformanceChart"></canvas>' in html
-    assert '<canvas id="assetPerformanceChart"></canvas>' in html
-    assert "label: 'BOOK VALUE'" in html
-    assert 'Other Portfolios' not in data['donut_categories']
+    assert '<canvas id="bookValueChart"' in html
+    assert '<canvas id="bookCapitalChart"' in html
+    assert '<canvas id="portfolioPerformanceChart"' not in html
+    assert '<canvas id="assetPerformanceChart"' not in html
+    assert "centerLabel: 'BOOK VALUE'" in html
+    assert "centerLabel: 'CAPITAL'" in html
+    assert 'Other Portfolios' not in data['book_value_chart']['categories']
+    assert 'Other Portfolios' not in data['capital_chart']['categories']
 
     assert 'id="portfolioTrendChart"' not in html
-    assert 'data-asset-summary-table' in html
+    assert 'data-asset-summary-table' not in html
     assert 'comparison-track' not in html
     assert 'data-comparison-table=' not in html
     assert 'data-leaderboard=' not in html
     assert 'bar_width' not in html
-    assert 'renderAreaChart' in html
-    assert "fill: true" in html
-    assert "yAxisID: 'yPnl'" in html
-    assert "yAxisID: 'yReturn'" in html
+    assert 'renderAreaChart' not in html
+    assert "yAxisID: 'yPnl'" not in html
+    assert "yAxisID: 'yReturn'" not in html
     assert 'data-heatmap' not in html
     assert 'Heatmap' not in html
     assert 'Treemap' not in html
@@ -186,15 +190,13 @@ def test_charts_page_uses_dashboard_cards_and_current_terminology(app):
     assert 'Showing all portfolios.' not in text
     assert 'Showing all assets.' not in text
 
-    assert all('realized_pnl' in item and 'return_percent' in item for item in data['portfolio_performance'])
-    assert all('realized_pnl' in item and 'return_percent' in item for item in data['asset_performance'])
-    assert set(('realized_pnl', 'return_percent', 'income', 'best_month', 'worst_month')).issubset(data['portfolio_stats'])
-    assert set(('realized_pnl', 'return_percent', 'income', 'best_asset', 'worst_asset')).issubset(data['asset_stats'])
-    assert set(('months', 'realized_pnl', 'return_percent', 'income', 'stats')).issubset(data['portfolio_trend'])
-    assert set(('months', 'realized_pnl', 'return_percent', 'income', 'stats')).issubset(data['asset_trend'])
-
-    assert any(item['name'] == 'النمو Growth' for item in data['portfolio_performance'])
-    assert any(item['name'] == 'AAPL' for item in data['asset_performance'])
+    assert set(data) == {'book_value_chart', 'capital_chart'}
+    assert data['book_value_chart']['categories'] == ['النمو Growth']
+    assert data['capital_chart']['categories'] == ['النمو Growth']
+    assert data['book_value_chart']['values'] == [5025.0]
+    assert data['capital_chart']['values'] == [5000.0]
+    assert data['book_value_chart']['total'] == 5025.0
+    assert data['capital_chart']['total'] == 5000.0
 
     for old_label in (
         'Symbol Performance',
@@ -234,82 +236,34 @@ def test_portfolio_allocation_uses_other_portfolios_only_after_seven(app):
     seven_data = _chart_data(seven_html)
     eight_data = _chart_data(eight_html)
 
-    assert 'Other Portfolios' not in seven_data['donut_categories']
-    assert 'Other Portfolios' in eight_data['donut_categories']
-    assert eight_data['donut_categories'][-1] == 'Other Portfolios'
-    assert len(eight_data['donut_categories']) == 8
-    assert sum(1 for name in eight_data['donut_categories'] if name.startswith('Allocated ')) == 7
+    assert 'Other Portfolios' not in seven_data['book_value_chart']['categories']
+    assert 'Other Portfolios' not in seven_data['capital_chart']['categories']
+    assert 'Other Portfolios' in eight_data['book_value_chart']['categories']
+    assert 'Other Portfolios' in eight_data['capital_chart']['categories']
+    assert eight_data['book_value_chart']['categories'][-1] == 'Other Portfolios'
+    assert eight_data['capital_chart']['categories'][-1] == 'Other Portfolios'
+    assert len(eight_data['book_value_chart']['categories']) == 8
+    assert len(eight_data['capital_chart']['categories']) == 8
+    assert sum(1 for name in eight_data['book_value_chart']['categories'] if name.startswith('Allocated ')) == 7
 
 
-def test_asset_summary_groups_long_lists_with_other_assets_row(app):
+def test_charts_page_handles_empty_chart_data(app):
     with app.app_context():
-        uid = _seed_user('many_performance')
-        for idx in range(10):
-            _seed_portfolio_with_asset(
-                uid,
-                portfolio_name=f'Perf {idx + 1}',
-                symbol=f'P{idx + 1}',
-                sell_price=str(80 + idx * 5),
-            )
-
-        svc = Services(user_id=uid)
-        asset_portfolio = svc.portfolio_service.create_portfolio('Asset Bucket', user_id=uid)
-        svc.portfolio_service.deposit_funds(
-            asset_portfolio.id, _dec('20000'), date=datetime(2024, 1, 1),
-        )
-        for idx in range(21):
-            _seed_asset(
-                uid,
-                asset_portfolio.id,
-                symbol=f'AS{idx + 1}',
-                sell_price=str(70 + idx * 5),
-            )
+        uid = _seed_user('empty_charts')
 
     html = _get_charts_html(app, uid)
     data = _chart_data(html)
-    asset_block = _asset_table_block(html)
+    text = _visible_text(html)
 
-    assert len(data['portfolio_performance']) == 11
-    assert len(data['asset_performance']) > 20
-    assert len(data['asset_performance_display']) == 8
-    assert data['asset_performance_limited'] is True
-    assert data['asset_performance_display'][-1]['name'] == 'Other Assets'
-    assert data['asset_performance_display'][-1]['portfolio_names'] == ['Multiple']
-    assert data['asset_performance_display'][-1]['is_other'] is True
-    assert data['asset_performance_display'][-1]['return_percent'] is not None
-    assert 'Showing top 7 assets and grouping the rest as Other Assets.' in asset_block
-
-    assert 'Other Assets' in html
-    assert 'Other</' not in html
-    assert 'Other Portfolios' in html
-
-
-def test_area_dashboard_renders_negative_values_and_ranges(app):
-    with app.app_context():
-        uid = _seed_user('negative_comparison')
-        _seed_portfolio_with_asset(
-            uid,
-            portfolio_name='Loss Portfolio',
-            symbol='LOSS',
-            sell_price='75',
-        )
-
-    html = _get_charts_html(app, uid)
-    data = _chart_data(html)
-    asset_row = next(item for item in data['asset_performance_display'] if item['name'] == 'LOSS')
-
-    assert data['portfolio_stats']['realized_pnl'] < 0
-    assert data['portfolio_stats']['return_percent'] < 0
-    assert data['asset_stats']['realized_pnl'] < 0
-    assert data['asset_stats']['return_percent'] < 0
-    assert any(value < 0 for value in data['portfolio_trend']['realized_pnl'])
-    assert any(value < 0 for value in data['portfolio_trend']['return_percent'])
-    assert any(value < 0 for value in data['asset_trend']['realized_pnl'])
-    assert any(value < 0 for value in data['asset_trend']['return_percent'])
-    assert asset_row['realized_pnl'] < 0
-    assert asset_row['return_percent'] < 0
-    assert data['asset_stats']['worst_asset']['label'] == 'LOSS'
-    assert 'class="mini-stat-value loss"' in html
-    assert 'class="asset-number loss"' in html
-    assert 'min: pnlBounds.min' in html
-    assert 'max: returnBounds.max' in html
+    assert 'By Book Value' in text
+    assert 'By Capital' in text
+    assert 'No book value data available.' in text
+    assert 'No total capital data available.' in text
+    assert data['book_value_chart']['categories'] == []
+    assert data['book_value_chart']['allocations'] == []
+    assert data['book_value_chart']['values'] == []
+    assert data['book_value_chart']['total'] == 0.0
+    assert data['capital_chart']['categories'] == []
+    assert data['capital_chart']['allocations'] == []
+    assert data['capital_chart']['values'] == []
+    assert data['capital_chart']['total'] == 0.0

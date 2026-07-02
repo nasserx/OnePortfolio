@@ -684,7 +684,17 @@ def reset_password(token):
 @login_required
 def settings():
     """User settings page with profile, security, and account tabs."""
-    return render_template('auth/settings.html')
+    svc = get_services()
+    google_identity_linked = (
+        svc.oauth_identity_repo.get_for_user_and_provider(
+            current_user.id,
+            _GOOGLE_OAUTH_PROVIDER,
+        ) is not None
+    )
+    return render_template(
+        'auth/settings.html',
+        google_identity_linked=google_identity_linked,
+    )
 
 
 # ---------------------------------------------------------------------------

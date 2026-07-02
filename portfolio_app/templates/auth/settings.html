@@ -99,17 +99,22 @@
                         <i class="bi bi-shield-lock me-2" aria-hidden="true"></i>Security
                     </h3>
 
-                    <div class="settings-action-desc mb-3">Sign-in methods</div>
+                    <div class="settings-action-desc mb-3">Connected sign-in methods</div>
 
-                    <!-- Google sign-in placeholder -->
+                    <!-- Google sign-in status -->
                     <div class="settings-action-row">
                         <div>
                             <div class="settings-action-title">
                                 <i class="bi bi-google me-2" aria-hidden="true"></i>Google
                             </div>
-                            <div class="settings-action-desc">Coming soon / Not connected</div>
+                            <div class="settings-action-desc">
+                                {% if google_identity_linked %}
+                                    Connected
+                                {% else %}
+                                    Not connected
+                                {% endif %}
+                            </div>
                         </div>
-                        <button class="btn btn-outline-secondary btn-sm" disabled>Coming soon</button>
                     </div>
 
                     <hr class="my-3">

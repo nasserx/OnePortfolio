@@ -4,13 +4,15 @@ user settings, and account deletion.
 """
 
 import logging
+from collections.abc import Mapping
 from functools import wraps
 from urllib.parse import urlparse
-from flask import Blueprint, current_app, render_template, request, redirect, url_for, flash, jsonify, session
+from flask import Blueprint, abort, current_app, render_template, request, redirect, url_for, flash, jsonify, session
 from flask_login import login_user, logout_user, login_required, current_user
 from flask_limiter.util import get_remote_address
+from authlib.integrations.base_client import MismatchingStateError, OAuthError
 
-from portfolio_app import limiter
+from portfolio_app import get_oauth, limiter
 from portfolio_app.services import get_services
 from portfolio_app.utils.constants import DEMO_USERNAME
 from portfolio_app.forms.auth_forms import (
@@ -35,6 +37,37 @@ logger = logging.getLogger(__name__)
 
 auth_bp = Blueprint('auth', __name__)
 _DELETION_VERIFIED_SESSION_KEY = 'deletion_verified_user_id'
+_GOOGLE_OAUTH_NEXT_SESSION_KEY = 'google_oauth_next'
+
+
+def _safe_local_redirect(target):
+    """Return a safe local redirect path, or None for unsafe values."""
+    if not target:
+        return None
+    parsed = urlparse(target)
+    if (
+        parsed.scheme
+        or parsed.netloc
+        or not target.startswith('/')
+        or target.startswith('//')
+        or target.startswith('/\\')
+    ):
+        return None
+    return target
+
+
+def _google_oauth_client_or_404():
+    if not current_app.config.get('GOOGLE_OAUTH_ENABLED'):
+        abort(404)
+    google = get_oauth().create_client('google')
+    if google is None:
+        abort(404)
+    return google
+
+
+def _redirect_to_login_with_google_failure(message_key='GOOGLE_SIGNIN_FAILED'):
+    flash(MESSAGES[message_key], 'warning')
+    return redirect(url_for('auth.login'))
 
 
 def demo_restricted(f):
@@ -113,7 +146,6 @@ def login():
             elif result:
                 remember = request.form.get('remember') == 'on'
                 login_user(result, remember=remember)
-                next_page = request.args.get('next')
                 # Open-redirect / dangerous-scheme defence. Accept ONLY a
                 # plain relative path: starts with '/', is not protocol-
                 # relative ('//evil.com'), is not backslash-prefixed
@@ -121,16 +153,7 @@ def login():
                 # no scheme/netloc. The previous netloc-only check let
                 # 'javascript:alert(1)' through (empty netloc) — Safari
                 # historically followed that as a Location header.
-                if next_page:
-                    parsed = urlparse(next_page)
-                    if (
-                        parsed.scheme
-                        or parsed.netloc
-                        or not next_page.startswith('/')
-                        or next_page.startswith('//')
-                        or next_page.startswith('/\\')
-                    ):
-                        next_page = None
+                next_page = _safe_local_redirect(request.args.get('next'))
                 redirect_url = next_page or url_for('dashboard.index')
                 if from_modal:
                     return jsonify({'ok': True, 'redirect': redirect_url})
@@ -230,26 +253,54 @@ def register():
 
 
 @auth_bp.route('/auth/google')
+@limiter.limit("10 per 5 minutes", key_func=get_remote_address, error_message=MESSAGES['ACCOUNT_LOCKED'])
 def google_signin():
-    """Placeholder route for future Google OAuth sign-in."""
-    target = request.args.get('next')
-    redirect_endpoint = 'auth.register' if target == 'register' else 'auth.login'
+    """Begin Google OAuth sign-in for existing accounts only."""
+    google = _google_oauth_client_or_404()
+    next_page = _safe_local_redirect(request.args.get('next'))
+    if next_page:
+        session[_GOOGLE_OAUTH_NEXT_SESSION_KEY] = next_page
+    else:
+        session.pop(_GOOGLE_OAUTH_NEXT_SESSION_KEY, None)
 
-    if not current_app.config.get('GOOGLE_OAUTH_ENABLED'):
-        flash(MESSAGES['GOOGLE_SIGNIN_COMING_SOON'], 'info')
-        return redirect(url_for(redirect_endpoint))
+    redirect_uri = current_app.config['GOOGLE_REDIRECT_URI']
+    return google.authorize_redirect(redirect_uri)
 
-    has_credentials = all([
-        current_app.config.get('GOOGLE_CLIENT_ID'),
-        current_app.config.get('GOOGLE_CLIENT_SECRET'),
-        current_app.config.get('GOOGLE_REDIRECT_URI'),
-    ])
-    if not has_credentials:
-        flash(MESSAGES['GOOGLE_SIGNIN_NOT_CONFIGURED'], 'warning')
-        return redirect(url_for(redirect_endpoint))
 
-    flash(MESSAGES['GOOGLE_SIGNIN_COMING_SOON'], 'info')
-    return redirect(url_for(redirect_endpoint))
+@auth_bp.route('/auth/google/callback')
+def google_callback():
+    """Complete Google OAuth sign-in for an existing verified local account."""
+    google = _google_oauth_client_or_404()
+    next_page = _safe_local_redirect(
+        session.pop(_GOOGLE_OAUTH_NEXT_SESSION_KEY, None)
+    )
+
+    try:
+        token = google.authorize_access_token()
+        if not isinstance(token, Mapping):
+            return _redirect_to_login_with_google_failure()
+        identity = token.get('userinfo')
+    except (OAuthError, MismatchingStateError, TypeError, ValueError) as exc:
+        logger.info(
+            'Google OAuth authorization failed: %s',
+            type(exc).__name__,
+        )
+        return _redirect_to_login_with_google_failure()
+
+    if not isinstance(identity, Mapping):
+        return _redirect_to_login_with_google_failure()
+
+    email = (identity.get('email') or '').strip().lower()
+    if not email or identity.get('email_verified') is not True:
+        return _redirect_to_login_with_google_failure()
+
+    svc = get_services()
+    user = svc.user_repo.get_by_email(email)
+    if not user or not user.is_verified:
+        return _redirect_to_login_with_google_failure('GOOGLE_SIGNIN_NO_ACCOUNT')
+
+    login_user(user, remember=False)
+    return redirect(next_page or url_for('dashboard.index'))
 
 
 @auth_bp.route('/verify-code', methods=['GET', 'POST'])

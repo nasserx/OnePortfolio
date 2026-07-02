@@ -153,6 +153,8 @@ MESSAGES = {
     'RATE_LIMIT_RESEND':           "Too many resend requests. Please try again later.",
     'GOOGLE_SIGNIN_COMING_SOON':   "Google sign-in is coming soon.",
     'GOOGLE_SIGNIN_NOT_CONFIGURED': "Google sign-in is not configured yet.",
+    'GOOGLE_SIGNIN_FAILED':        "Google sign-in could not be completed. Please try again.",
+    'GOOGLE_SIGNIN_NO_ACCOUNT':    "No existing account matches that Google email. Please sign in with email and password.",
 
     'VERIFICATION_CODE_REQUIRED':  "Verification code is required.",
     'VERIFICATION_CODE_INVALID_FORMAT': "Please enter the 6-digit code sent to your email.",

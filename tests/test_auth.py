@@ -479,12 +479,9 @@ class TestAuthUiAndGoogle:
         assert app.config['GOOGLE_CLIENT_SECRET'] == ''
         assert app.config['GOOGLE_REDIRECT_URI'] == ''
 
-    def test_google_placeholder_disabled_does_not_break(self, client):
-        resp = client.get('/auth/google', follow_redirects=True)
-        assert resp.status_code == 200
-        body = resp.get_data(as_text=True)
-        assert 'Google sign-in is coming soon.' in body
-        assert 'Welcome back' in body
+    def test_google_oauth_disabled_route_is_unavailable(self, client):
+        resp = client.get('/auth/google')
+        assert resp.status_code == 404
 
     def test_reset_password_request_keeps_generic_response(self, client, email_log):
         resp = client.post(

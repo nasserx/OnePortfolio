@@ -3,6 +3,7 @@ from types import SimpleNamespace
 
 from portfolio_app.calculators.financial_math import (
     calculate_cash_balance,
+    calculate_portfolio_metrics,
     calculate_quantity_held,
     calculate_return,
     calculate_symbol_transaction_summary,
@@ -25,6 +26,11 @@ def _tx(transaction_type, price, quantity, fees='0'):
 def _assert_decimal(value, expected):
     assert isinstance(value, Decimal)
     assert value == _dec(expected)
+
+
+def _assert_metric_decimals(result):
+    for key in ('book_value', 'return_amount', 'return_percent'):
+        assert isinstance(result[key], Decimal)
 
 
 def test_single_buy_includes_fees_in_cost_basis_and_average_cost():
@@ -280,3 +286,90 @@ def test_quantity_held_unsupported_transaction_type_is_ignored():
     ])
 
     _assert_decimal(quantity, '3')
+
+
+def test_portfolio_metrics_cash_plus_positions_produces_book_value():
+    result = calculate_portfolio_metrics('1000', '250.5', '0', '0', '1000')
+
+    _assert_metric_decimals(result)
+    _assert_decimal(result['book_value'], '1250.5')
+    _assert_decimal(result['return_amount'], '0')
+    assert result['return_display'] == '+0.00%'
+
+
+def test_portfolio_metrics_positive_realized_return():
+    result = calculate_portfolio_metrics('1000', '500', '75', '0', '1500')
+
+    _assert_metric_decimals(result)
+    _assert_decimal(result['book_value'], '1500')
+    _assert_decimal(result['return_amount'], '75')
+    _assert_decimal(result['return_percent'], '5.00')
+    assert result['return_display'] == '+5.00%'
+
+
+def test_portfolio_metrics_negative_realized_return():
+    result = calculate_portfolio_metrics('1000', '500', '-30', '0', '1500')
+
+    _assert_metric_decimals(result)
+    _assert_decimal(result['book_value'], '1500')
+    _assert_decimal(result['return_amount'], '-30')
+    _assert_decimal(result['return_percent'], '-2.00')
+    assert result['return_display'] == '-2.00%'
+
+
+def test_portfolio_metrics_income_contributes_to_return_amount():
+    result = calculate_portfolio_metrics('1000', '500', '0', '45', '1500')
+
+    _assert_metric_decimals(result)
+    _assert_decimal(result['return_amount'], '45')
+    _assert_decimal(result['return_percent'], '3.00')
+    assert result['return_display'] == '+3.00%'
+
+
+def test_portfolio_metrics_combines_realized_pnl_and_income():
+    result = calculate_portfolio_metrics('1058', '303', '36', '25', '1500')
+
+    _assert_metric_decimals(result)
+    _assert_decimal(result['book_value'], '1361')
+    _assert_decimal(result['return_amount'], '61')
+    assert result['return_percent'] == _dec('61') / _dec('1500') * _dec('100')
+    assert result['return_display'] == '+4.07%'
+
+
+def test_portfolio_metrics_zero_return_denominator_displays_dash():
+    result = calculate_portfolio_metrics('100', '50', '10', '5', '0')
+
+    _assert_metric_decimals(result)
+    _assert_decimal(result['book_value'], '150')
+    _assert_decimal(result['return_amount'], '15')
+    _assert_decimal(result['return_percent'], '0')
+    assert result['return_display'] == '—'
+
+
+def test_portfolio_metrics_negative_denominator_uses_abs_base():
+    result = calculate_portfolio_metrics('100', '50', '10', '5', '-300')
+
+    _assert_metric_decimals(result)
+    _assert_decimal(result['return_amount'], '15')
+    _assert_decimal(result['return_percent'], '5.00')
+    assert result['return_display'] == '+5.00%'
+
+
+def test_portfolio_metrics_exact_decimal_precision_without_float_conversion():
+    result = calculate_portfolio_metrics('0.10', '0.20', '0.03', '0.04', '0.70')
+
+    _assert_metric_decimals(result)
+    _assert_decimal(result['book_value'], '0.30')
+    _assert_decimal(result['return_amount'], '0.07')
+    _assert_decimal(result['return_percent'], '10.0')
+    assert result['return_display'] == '+10.00%'
+
+
+def test_portfolio_metrics_all_zero_values():
+    result = calculate_portfolio_metrics('0', '0', '0', '0', '0')
+
+    _assert_metric_decimals(result)
+    _assert_decimal(result['book_value'], '0')
+    _assert_decimal(result['return_amount'], '0')
+    _assert_decimal(result['return_percent'], '0')
+    assert result['return_display'] == '—'

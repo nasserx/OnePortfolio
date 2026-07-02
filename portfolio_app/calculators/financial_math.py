@@ -104,6 +104,21 @@ def calculate_return(realized_pnl, total_income, base):
     }
 
 
+def calculate_portfolio_metrics(total_cash, positions, realized_pnl, total_income, return_base):
+    """Calculate portfolio-level book value and return metrics."""
+    total_cash = to_decimal(total_cash)
+    positions = to_decimal(positions)
+    book_value = total_cash + positions
+    return_result = calculate_return(realized_pnl, total_income, return_base)
+
+    return {
+        'book_value': book_value,
+        'return_amount': return_result['return_amount'],
+        'return_percent': return_result['return_percent'],
+        'return_display': return_result['return_display'],
+    }
+
+
 def calculate_cash_balance(total_capital, transactions, total_income):
     """Calculate total cash from capital, buy/sell cash flows, and income."""
     cash = to_decimal(total_capital)

@@ -5,6 +5,7 @@ from sqlalchemy import case, func
 from portfolio_app import db
 from portfolio_app.calculators.financial_math import (
     calculate_cash_balance,
+    calculate_portfolio_metrics,
     calculate_quantity_held,
     calculate_return,
     calculate_symbol_transaction_summary,
@@ -158,10 +159,10 @@ class PortfolioCalculator:
             cost_basis = _to_decimal(transactions_summary['cost_basis'] or 0)
 
             cash = PortfolioCalculator.get_available_cash_for_portfolio(portfolio.id, user_id=user_id)
-            book_value = cost_basis + cash
-            total_portfolio_value += book_value
-
-            return_result = calculate_return(realized_pnl, total_income, total_contributed)
+            metrics = calculate_portfolio_metrics(
+                cash, cost_basis, realized_pnl, total_income, total_contributed,
+            )
+            total_portfolio_value += metrics['book_value']
 
             portfolio_rows.append({
                 'portfolio': portfolio,
@@ -171,10 +172,10 @@ class PortfolioCalculator:
                 'cost_basis': cost_basis,
                 'positions': cost_basis,
                 'cash': cash,
-                'book_value': book_value,
-                'return_amount': return_result['return_amount'],
-                'return_percent': return_result['return_percent'],
-                'return_display': return_result['return_display'],
+                'book_value': metrics['book_value'],
+                'return_amount': metrics['return_amount'],
+                'return_percent': metrics['return_percent'],
+                'return_display': metrics['return_display'],
                 'total_income': total_income,
             })
 
@@ -290,9 +291,9 @@ class PortfolioCalculator:
             aggregate_realized_pnl += realized_perf['realized_pnl']
             total_income += realized_perf['total_income']
 
-        total_value = total_cost_basis + total_cash
-
-        return_result = calculate_return(aggregate_realized_pnl, total_income, total_contributed)
+        metrics = calculate_portfolio_metrics(
+            total_cash, total_cost_basis, aggregate_realized_pnl, total_income, total_contributed,
+        )
 
         return {
             'total_contributed': total_contributed,
@@ -301,10 +302,10 @@ class PortfolioCalculator:
             'total_positions': total_cost_basis,
             'realized_pnl': aggregate_realized_pnl,
             'total_income': total_income,
-            'return_amount': return_result['return_amount'],
-            'total_value': total_value,
-            'return_percent': return_result['return_percent'],
-            'return_display': return_result['return_display'],
+            'return_amount': metrics['return_amount'],
+            'total_value': metrics['book_value'],
+            'return_percent': metrics['return_percent'],
+            'return_display': metrics['return_display'],
         }
 
     # ------------------------------------------------------------------

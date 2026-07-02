@@ -23,6 +23,7 @@ from decimal import Decimal
 from config import Config
 from pathlib import Path
 import pytest
+import tempfile
 
 ZERO = Decimal('0')
 
@@ -43,9 +44,6 @@ def _seed_user(username: str = 'tester') -> int:
 class TestConfig(Config):
     TESTING = True
     WTF_CSRF_ENABLED = False
-    SQLALCHEMY_DATABASE_URI = (
-        f"sqlite:///{(Path(__file__).resolve().parent / 'test_portfolio.db').as_posix()}"
-    )
 
 
 # ---------------------------------------------------------------------------
@@ -749,34 +747,38 @@ if __name__ == '__main__':
     print("  OnePortfolio – FULL TEST SUITE")
     print("=" * 60)
 
-    app = create_app(TestConfig)
-    passed = 0
-    failed = 0
+    with tempfile.TemporaryDirectory(prefix='oneportfolio-test-app-') as tmpdir:
+        class _DirectRunConfig(TestConfig):
+            SQLALCHEMY_DATABASE_URI = f"sqlite:///{(Path(tmpdir) / 'test.sqlite').as_posix()}"
 
-    tests = [
-        ('Transaction Calculations',  test_transaction_calculations),
-        ('Fund Events Logic',          test_fund_events),
-        ('Initial Event Regression',   test_initial_event_remains_accounting_deposit),
-        ('Category Summary',           test_category_summary),
-        ('Dashboard Totals',           test_dashboard_totals),
-        ('Application Routes',         test_routes),
-        ('Dividend Feature',           test_dividends),
-        ('Symbol Performance',         test_symbol_performance),
-    ]
+        app = create_app(_DirectRunConfig)
+        passed = 0
+        failed = 0
 
-    for name, fn in tests:
-        try:
-            fn(app)
-            passed += 1
-        except Exception as exc:
-            failed += 1
-            print(f"\n  FAIL {name}: {exc}")
-            import traceback
-            traceback.print_exc()
+        tests = [
+            ('Transaction Calculations',  test_transaction_calculations),
+            ('Fund Events Logic',          test_fund_events),
+            ('Initial Event Regression',   test_initial_event_remains_accounting_deposit),
+            ('Category Summary',           test_category_summary),
+            ('Dashboard Totals',           test_dashboard_totals),
+            ('Application Routes',         test_routes),
+            ('Dividend Feature',           test_dividends),
+            ('Symbol Performance',         test_symbol_performance),
+        ]
 
-    print("\n" + "=" * 60)
-    total = passed + failed
-    print(f"  Results: {passed}/{total} tests passed")
-    if failed:
-        print(f"  ({failed} FAILED)")
-    print("=" * 60 + "\n")
+        for name, fn in tests:
+            try:
+                fn(app)
+                passed += 1
+            except Exception as exc:
+                failed += 1
+                print(f"\n  FAIL {name}: {exc}")
+                import traceback
+                traceback.print_exc()
+
+        print("\n" + "=" * 60)
+        total = passed + failed
+        print(f"  Results: {passed}/{total} tests passed")
+        if failed:
+            print(f"  ({failed} FAILED)")
+        print("=" * 60 + "\n")

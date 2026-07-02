@@ -18,7 +18,6 @@ The mail layer is monkey-patched (``send_verification_email`` /
 
 from datetime import datetime, timedelta, timezone
 import html
-from pathlib import Path
 
 import pytest
 
@@ -39,9 +38,7 @@ class _BaseTestConfig(Config):
     SECRET_KEY = 'test-secret-key'
     MAIL_SUPPRESS_SEND = True
     RATELIMIT_ENABLED = False
-    SQLALCHEMY_DATABASE_URI = (
-        f"sqlite:///{(Path(__file__).resolve().parent / 'test_auth.db').as_posix()}"
-    )
+    SQLALCHEMY_DATABASE_URI = None
 
 
 class _RateLimitedTestConfig(_BaseTestConfig):
@@ -106,13 +103,15 @@ def email_log(monkeypatch):
 
 
 @pytest.fixture
-def app():
+def app(_isolate_db):
     """Build a fresh Flask app with rate limiting OFF for the bulk of tests."""
     app = create_app(_BaseTestConfig)
     with app.app_context():
         db.drop_all()
         db.create_all()
     yield app
+    with app.app_context():
+        db.session.remove()
 
 
 @pytest.fixture
@@ -121,7 +120,7 @@ def client(app):
 
 
 @pytest.fixture
-def rate_limited_app():
+def rate_limited_app(_isolate_db):
     """Same as ``app`` but with rate limiting ENABLED for the limit tests."""
     app = create_app(_RateLimitedTestConfig)
     with app.app_context():
@@ -132,6 +131,8 @@ def rate_limited_app():
     except Exception:
         pass
     yield app
+    with app.app_context():
+        db.session.remove()
 
 
 @pytest.fixture

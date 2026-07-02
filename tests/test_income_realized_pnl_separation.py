@@ -1,32 +1,11 @@
 from datetime import datetime
 from decimal import Decimal
-from pathlib import Path
 
-import pytest
-
-from config import Config
-from portfolio_app import create_app, db
+from portfolio_app import db
 from portfolio_app.calculators import PortfolioCalculator
 from portfolio_app.models.user import User
 from portfolio_app.routes.charts import _asset_performance_rows
 from portfolio_app.services.factory import Services
-
-
-class _TestConfig(Config):
-    TESTING = True
-    WTF_CSRF_ENABLED = False
-    SQLALCHEMY_DATABASE_URI = (
-        f"sqlite:///{(Path(__file__).resolve().parent / 'test_income_realized.db').as_posix()}"
-    )
-
-
-@pytest.fixture
-def app():
-    app = create_app(_TestConfig)
-    with app.app_context():
-        db.drop_all()
-        db.create_all()
-    yield app
 
 
 def _dec(value):

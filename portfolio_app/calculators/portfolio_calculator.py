@@ -3,6 +3,10 @@
 from decimal import Decimal
 from sqlalchemy import case, func
 from portfolio_app import db
+from portfolio_app.calculators.financial_math import (
+    calculate_return,
+    calculate_symbol_transaction_summary,
+)
 from portfolio_app.models import Portfolio, Transaction, PortfolioEvent, Dividend
 from portfolio_app.utils.decimal_utils import ZERO, to_decimal as _to_decimal, safe_divide as _safe_divide
 
@@ -10,19 +14,6 @@ from portfolio_app.utils.decimal_utils import ZERO, to_decimal as _to_decimal, s
 # intentionally no snapshot table — a single source of truth eliminates the
 # class of bugs where a stored snapshot drifts from the underlying trades
 # (e.g., orphan rows surviving a deletion under FK-OFF SQLite).
-
-
-def _return_display(amount: Decimal, base: Decimal) -> tuple:
-    """Compute return percentage and display string.
-
-    Returns:
-        (return_percent, return_display) — both ZERO/'—' when base is zero.
-    """
-    if base == 0:
-        return ZERO, '—'
-    return_percent = (amount / abs(base)) * 100
-    return return_percent, f"{return_percent:+,.2f}%"
-
 
 class PortfolioCalculator:
     """Utility class for portfolio calculations.
@@ -188,8 +179,7 @@ class PortfolioCalculator:
             book_value = cost_basis + cash
             total_portfolio_value += book_value
 
-            return_amount = realized_pnl + total_income
-            return_percent, return_display = _return_display(return_amount, total_contributed)
+            return_result = calculate_return(realized_pnl, total_income, total_contributed)
 
             portfolio_rows.append({
                 'portfolio': portfolio,
@@ -200,9 +190,9 @@ class PortfolioCalculator:
                 'positions': cost_basis,
                 'cash': cash,
                 'book_value': book_value,
-                'return_amount': return_amount,
-                'return_percent': return_percent,
-                'return_display': return_display,
+                'return_amount': return_result['return_amount'],
+                'return_percent': return_result['return_percent'],
+                'return_display': return_result['return_display'],
                 'total_income': total_income,
             })
 
@@ -320,8 +310,7 @@ class PortfolioCalculator:
 
         total_value = total_cost_basis + total_cash
 
-        return_amount = aggregate_realized_pnl + total_income
-        return_percent, return_display = _return_display(return_amount, total_contributed)
+        return_result = calculate_return(aggregate_realized_pnl, total_income, total_contributed)
 
         return {
             'total_contributed': total_contributed,
@@ -330,10 +319,10 @@ class PortfolioCalculator:
             'total_positions': total_cost_basis,
             'realized_pnl': aggregate_realized_pnl,
             'total_income': total_income,
-            'return_amount': return_amount,
+            'return_amount': return_result['return_amount'],
             'total_value': total_value,
-            'return_percent': return_percent,
-            'return_display': return_display,
+            'return_percent': return_result['return_percent'],
+            'return_display': return_result['return_display'],
         }
 
     # ------------------------------------------------------------------
@@ -445,22 +434,21 @@ class PortfolioCalculator:
     def _build_symbol_performance_row(*, portfolio, symbol, trading_pnl, dividends,
                                       total_buy_cost, realized_cost_basis, held_cost_basis):
         """Shape a single symbol-performance row with derived return fields."""
-        return_amount = trading_pnl + dividends
+        return_result = calculate_return(trading_pnl, dividends, total_buy_cost)
         return_base = total_buy_cost
-        return_percent, return_display = _return_display(return_amount, return_base)
         return {
             'portfolio_id':         portfolio.id,
             'portfolio_name':       portfolio.name,
             'symbol':               symbol,
             'realized_pnl':         trading_pnl,
             'total_income':         dividends,
-            'return_amount':        return_amount,
+            'return_amount':        return_result['return_amount'],
             'total_buy_cost':       total_buy_cost,
             'realized_cost_basis':  realized_cost_basis,
             'held_cost_basis':      held_cost_basis,
             'return_base':          return_base,
-            'return_percent':       return_percent,
-            'return_display':       return_display,
+            'return_percent':       return_result['return_percent'],
+            'return_display':       return_result['return_display'],
         }
 
     # ------------------------------------------------------------------
@@ -534,61 +522,7 @@ class PortfolioCalculator:
         Uses average-cost method: each sell realizes P&L based on the
         weighted-average cost of the remaining position at time of sale.
         """
-        total_buy_cost = ZERO
-        total_buy_fees = ZERO
-        total_buy_quantity = ZERO
-        total_sell_cost = ZERO
-        total_sell_fees = ZERO
-        total_sell_quantity = ZERO
-
-        realized_pnl = ZERO
-        realized_cost_basis = ZERO
-        realized_proceeds = ZERO
-        running_quantity = ZERO
-        running_cost = ZERO
-
-        for t in transactions:
-            price = _to_decimal(t.price)
-            quantity = _to_decimal(t.quantity)
-            fees = _to_decimal(t.fees)
-
-            if t.transaction_type == 'Buy':
-                cost = (price * quantity) + fees
-                total_buy_cost += cost
-                total_buy_fees += fees
-                total_buy_quantity += quantity
-                running_cost += cost
-                running_quantity += quantity
-
-            elif t.transaction_type == 'Sell':
-                proceeds = (price * quantity) - fees
-                total_sell_cost += proceeds
-                total_sell_fees += fees
-                total_sell_quantity += quantity
-                realized_proceeds += proceeds
-
-                avg_cost = _safe_divide(running_cost, running_quantity)
-                realized_pnl += (price - avg_cost) * quantity - fees
-                realized_cost_basis += avg_cost * quantity
-
-                running_quantity -= quantity
-                running_cost -= avg_cost * quantity
-
-        return {
-            'total_buy_cost': total_buy_cost,
-            'total_buy_fees': total_buy_fees,
-            'total_buy_quantity': total_buy_quantity,
-            'total_sell_cost': total_sell_cost,
-            'total_sell_fees': total_sell_fees,
-            'total_sell_quantity': total_sell_quantity,
-            'total_quantity_held': running_quantity,
-            'average_cost': _safe_divide(running_cost, running_quantity),
-            'transaction_count': len(transactions),
-            'realized_pnl': realized_pnl,
-            'realized_cost_basis': realized_cost_basis,
-            'realized_proceeds': realized_proceeds,
-            'cost_basis': running_cost,
-        }
+        return calculate_symbol_transaction_summary(transactions)
 
     # ------------------------------------------------------------------
     # Recalculation (after add/edit/delete transaction)

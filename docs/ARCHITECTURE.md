@@ -50,7 +50,7 @@ The user-facing term is Income even though the model is still named `Dividend`.
 
 ## Calculators
 
-`portfolio_app/calculators/portfolio_calculator.py` derives totals from source records:
+`portfolio_app/calculators/portfolio_calculator.py` is the database-facing calculator facade. It derives totals from source records:
 
 - total capital
 - total cash
@@ -60,6 +60,8 @@ The user-facing term is Income even though the model is still named `Dividend`.
 - total income
 - return amount and return percent
 - asset-level summaries
+
+`portfolio_app/calculators/financial_math.py` contains pure deterministic financial calculations, including Average Cost Method transaction-list math and return percentage/display math. It has no Flask, SQLAlchemy, repository, service, or model dependency.
 
 Calculators should use `Decimal` for financial math and should not introduce cached financial totals without a clear invalidation strategy.
 
@@ -97,7 +99,8 @@ See [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md) for UI constraints.
 - `portfolio_app/services/factory.py`: per-request services container.
 - `portfolio_app/services/transaction_service.py`: asset entries, income, symbols, chronology, and cash/quantity rules.
 - `portfolio_app/services/portfolio_service.py`: portfolios and capital entries.
-- `portfolio_app/calculators/portfolio_calculator.py`: financial calculations.
+- `portfolio_app/calculators/portfolio_calculator.py`: database-backed financial aggregation.
+- `portfolio_app/calculators/financial_math.py`: pure financial math.
 - `portfolio_app/routes/`: HTTP endpoints.
 - `tests/`: regression and behavior tests.
 

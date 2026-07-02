@@ -46,6 +46,7 @@ For exact formulas, see [docs/DOMAIN_AND_CALCULATIONS.md](docs/DOMAIN_AND_CALCUL
 - Flask-WTF CSRF support plus custom validation
 - Flask-Mail for email delivery
 - Flask-Limiter for auth rate limits
+- Authlib OAuth client foundation
 - Bootstrap 5, Bootstrap Icons, vanilla JavaScript
 - pytest
 
@@ -97,10 +98,10 @@ Supported environment variables are defined in [config.py](config.py):
 | `SESSION_COOKIE_SECURE` | Set to `1` when served over HTTPS. Defaults secure outside debug/test contexts. |
 | `DEV_AUTO_LOGIN` | Development-only first-user auto-login. Never enable in production. |
 | `FLASK_DEBUG` | Enables Flask debug mode when set by your run environment. Also allows the dev-only secret fallback. |
-| `GOOGLE_OAUTH_ENABLED` | Optional placeholder flag. Google OAuth is disabled by default. |
-| `GOOGLE_CLIENT_ID` | Optional Google OAuth client ID. |
-| `GOOGLE_CLIENT_SECRET` | Optional Google OAuth client secret. |
-| `GOOGLE_REDIRECT_URI` | Optional Google OAuth callback URI. |
+| `GOOGLE_OAUTH_ENABLED` | Optional backend OAuth foundation flag. Google OAuth is disabled by default; Google sign-in routes and callback handling are not implemented yet. |
+| `GOOGLE_CLIENT_ID` | Optional Google OAuth client ID, required only when `GOOGLE_OAUTH_ENABLED=1`. |
+| `GOOGLE_CLIENT_SECRET` | Optional Google OAuth client secret, required only when `GOOGLE_OAUTH_ENABLED=1`. |
+| `GOOGLE_REDIRECT_URI` | Optional Google OAuth callback URI, required only when `GOOGLE_OAUTH_ENABLED=1`. |
 
 Gmail requires an app password, not the regular account password.
 

@@ -1,12 +1,13 @@
 import sqlite3
 
-from flask import Flask
+from flask import Flask, current_app
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf.csrf import CSRFProtect, CSRFError
 from flask_login import LoginManager
 from flask_mail import Mail
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from authlib.integrations.flask_client import OAuth
 from sqlalchemy import event
 from sqlalchemy.engine import Engine
 from config import Config
@@ -22,6 +23,7 @@ db = SQLAlchemy()
 csrf = CSRFProtect()
 login_manager = LoginManager()
 mail = Mail()
+ONEPORTFOLIO_OAUTH_EXTENSION_KEY = 'oneportfolio_oauth'
 # In-memory backend — fine for a single-worker deployment. For multi-worker
 # scale, point ``RATELIMIT_STORAGE_URI`` at a Redis instance.
 limiter = Limiter(
@@ -29,6 +31,40 @@ limiter = Limiter(
     default_limits=[],
     storage_uri="memory://",
 )
+
+
+def get_oauth():
+    """Return the app-scoped Authlib OAuth registry."""
+    return current_app.extensions[ONEPORTFOLIO_OAUTH_EXTENSION_KEY]
+
+
+def _register_google_oauth_client(app, oauth_client):
+    """Register Google OpenID Connect only when explicitly enabled."""
+    if not app.config.get('GOOGLE_OAUTH_ENABLED'):
+        return
+
+    missing = [
+        name for name in (
+            'GOOGLE_CLIENT_ID',
+            'GOOGLE_CLIENT_SECRET',
+            'GOOGLE_REDIRECT_URI',
+        )
+        if not app.config.get(name)
+    ]
+    if missing:
+        raise RuntimeError(
+            'Google OAuth is enabled but required configuration is missing: '
+            + ', '.join(missing)
+        )
+
+    oauth_client.register(
+        name='google',
+        client_id=app.config['GOOGLE_CLIENT_ID'],
+        client_secret=app.config['GOOGLE_CLIENT_SECRET'],
+        server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
+        client_kwargs={'scope': 'openid email profile'},
+        redirect_uri=app.config['GOOGLE_REDIRECT_URI'],
+    )
 
 
 @event.listens_for(Engine, "connect")
@@ -73,6 +109,10 @@ def create_app(config_class=Config):
     csrf.init_app(app)
     login_manager.init_app(app)
     mail.init_app(app)
+    oauth = OAuth()
+    oauth.init_app(app)
+    app.extensions[ONEPORTFOLIO_OAUTH_EXTENSION_KEY] = oauth
+    _register_google_oauth_client(app, oauth)
     # Rate limiting is on by default; the test config flips
     # ``RATELIMIT_ENABLED`` off so the bulk of the suite can run without
     # bumping into per-IP limits, and re-enables it just for the

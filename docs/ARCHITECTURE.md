@@ -4,7 +4,7 @@ OnePortfolio is a Flask application built around an application factory and laye
 
 ## Application Factory
 
-`portfolio_app/__init__.py` defines `create_app(config_class=Config)`. The factory loads configuration, initializes extensions, registers blueprints, wires context processors and error handlers, calls the SQLite migration runner in `portfolio_app/migrations.py`, and creates missing tables.
+`portfolio_app/__init__.py` defines `create_app(config_class=Config)`. The factory loads configuration, initializes extensions, conditionally registers the Google OAuth client foundation, registers blueprints, wires context processors and error handlers, calls the SQLite migration runner in `portfolio_app/migrations.py`, and creates missing tables.
 
 The same factory is used by `app.py`, `wsgi.py`, and tests.
 
@@ -21,6 +21,8 @@ Supporting layers:
 - **Templates** render the current state.
 
 Routes should stay thin: they parse HTTP concerns, call forms/services/calculators, and select templates or JSON responses.
+
+The Google OAuth backend foundation uses Authlib and is disabled by default. When enabled with complete configuration, the app registers a Google OpenID Connect client during app creation. Google sign-in routes, callback handling, account linking, and token persistence are not implemented yet.
 
 ## Services Container
 

@@ -4,7 +4,7 @@ from portfolio_app import db
 # Bumped whenever a new migration step is added below. Stored in the SQLite
 # header (PRAGMA user_version) after a successful migration so subsequent
 # boots can short-circuit the whole inspection pass.
-TARGET_SCHEMA_VERSION = 28
+TARGET_SCHEMA_VERSION = 29
 
 
 def run_migrations(app):
@@ -504,6 +504,31 @@ def _apply_migration_steps(conn, sa):
                 'ALTER TABLE "user" ADD COLUMN password_reset_jti VARCHAR(32)'
             ))
             conn.commit()
+
+    # ── Step 29: OAuth identity links ───────────────────────────────────
+    # Stores stable provider subject identifiers linked to local users.
+    # Tokens, authorization codes, provider payloads, and client secrets are
+    # intentionally not persisted.
+    tables = set(inspector.get_table_names())
+    if 'oauth_identity' not in tables:
+        conn.execute(sa.text('''
+            CREATE TABLE oauth_identity (
+                id               INTEGER NOT NULL PRIMARY KEY,
+                user_id          INTEGER NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+                provider         VARCHAR(50) NOT NULL,
+                provider_subject VARCHAR(255) NOT NULL,
+                created_at       DATETIME NOT NULL,
+                updated_at       DATETIME NOT NULL,
+                CONSTRAINT uq_oauth_identity_provider_subject
+                    UNIQUE (provider, provider_subject),
+                CONSTRAINT uq_oauth_identity_user_provider
+                    UNIQUE (user_id, provider)
+            )
+        '''))
+        conn.execute(sa.text(
+            'CREATE INDEX ix_oauth_identity_user_id ON oauth_identity (user_id)'
+        ))
+        conn.commit()
 
     # ── Step 24: rebuild tables with stale FK constraints / dropped cols ─
     # Older databases were created when the parent table was named

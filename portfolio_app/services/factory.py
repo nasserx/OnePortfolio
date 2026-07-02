@@ -5,12 +5,14 @@ from flask import g
 from portfolio_app import db
 from portfolio_app.models import Portfolio, PortfolioEvent, Transaction, Symbol, Dividend
 from portfolio_app.models.user import User
+from portfolio_app.models.oauth_identity import OAuthIdentity
 from portfolio_app.repositories import (
     PortfolioRepository,
     PortfolioEventRepository,
     TransactionRepository,
     SymbolRepository,
     DividendRepository,
+    OAuthIdentityRepository,
 )
 from portfolio_app.repositories.user_repository import UserRepository
 from portfolio_app.repositories.pending_registration_repository import (
@@ -29,6 +31,7 @@ class Services:
     __slots__ = (
         'portfolio_repo', 'portfolio_event_repo', 'transaction_repo', 'symbol_repo',
         'dividend_repo', 'user_repo', 'pending_registration_repo',
+        'oauth_identity_repo',
         'portfolio_service', 'transaction_service', 'overview_service',
         'auth_service',
     )
@@ -41,6 +44,7 @@ class Services:
         self.dividend_repo = DividendRepository(Dividend, db, user_id=user_id)
         self.user_repo = UserRepository(User, db)
         self.pending_registration_repo = PendingRegistrationRepository(PendingRegistration, db)
+        self.oauth_identity_repo = OAuthIdentityRepository(OAuthIdentity, db)
 
         self.portfolio_service = PortfolioService(self.portfolio_repo, self.portfolio_event_repo)
         self.transaction_service = TransactionService(

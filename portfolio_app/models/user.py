@@ -73,6 +73,12 @@ class User(UserMixin, db.Model):
         lazy='dynamic',
         cascade='all, delete-orphan',
     )
+    oauth_identities = db.relationship(
+        'OAuthIdentity',
+        backref='user',
+        lazy='dynamic',
+        cascade='all, delete-orphan',
+    )
 
     def set_password(self, password: str) -> None:
         """Hash and store ``password`` using bcrypt over a SHA-256 prehash."""

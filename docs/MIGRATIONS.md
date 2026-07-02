@@ -53,6 +53,7 @@ When adding a migration:
 - Add a narrowly scoped, idempotent step.
 - Inspect schema state before each alteration.
 - Preserve user data.
+- For OAuth identity storage, keep provider subjects separate from tokens or secrets; never add token persistence casually.
 - Consider old databases and partially migrated databases.
 - Keep foreign-key behavior explicit.
 - Add or update tests that cover startup against representative schema states.

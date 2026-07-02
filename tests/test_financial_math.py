@@ -3,6 +3,7 @@ from types import SimpleNamespace
 
 from portfolio_app.calculators.financial_math import (
     calculate_cash_balance,
+    calculate_quantity_held,
     calculate_return,
     calculate_symbol_transaction_summary,
 )
@@ -207,3 +208,75 @@ def test_cash_balance_zero_values():
     ], _dec('0'))
 
     _assert_decimal(cash, '0')
+
+
+def test_quantity_held_empty_transaction_list():
+    quantity = calculate_quantity_held([])
+
+    _assert_decimal(quantity, '0')
+
+
+def test_quantity_held_single_buy():
+    quantity = calculate_quantity_held([
+        _tx('Buy', '0', '3.5'),
+    ])
+
+    _assert_decimal(quantity, '3.5')
+
+
+def test_quantity_held_multiple_buys():
+    quantity = calculate_quantity_held([
+        _tx('Buy', '0', '1.25'),
+        _tx('Buy', '0', '2.75'),
+    ])
+
+    _assert_decimal(quantity, '4.00')
+
+
+def test_quantity_held_buy_and_partial_sell():
+    quantity = calculate_quantity_held([
+        _tx('Buy', '0', '10'),
+        _tx('Sell', '0', '3.25'),
+    ])
+
+    _assert_decimal(quantity, '6.75')
+
+
+def test_quantity_held_multiple_buy_sell_records():
+    quantity = calculate_quantity_held([
+        _tx('Buy', '0', '10'),
+        _tx('Sell', '0', '4'),
+        _tx('Buy', '0', '2.5'),
+        _tx('Sell', '0', '1.25'),
+    ])
+
+    _assert_decimal(quantity, '7.25')
+
+
+def test_quantity_held_full_liquidation_returns_zero():
+    quantity = calculate_quantity_held([
+        _tx('Buy', '0', '4.0000'),
+        _tx('Sell', '0', '4.0000'),
+    ])
+
+    _assert_decimal(quantity, '0.0000')
+
+
+def test_quantity_held_exact_decimal_precision_without_float_conversion():
+    quantity = calculate_quantity_held([
+        _tx('Buy', '0', '0.10'),
+        _tx('Buy', '0', '0.20'),
+        _tx('Sell', '0', '0.03'),
+    ])
+
+    _assert_decimal(quantity, '0.27')
+
+
+def test_quantity_held_unsupported_transaction_type_is_ignored():
+    quantity = calculate_quantity_held([
+        _tx('Buy', '0', '5'),
+        _tx('Dividend', '0', '99'),
+        _tx('Sell', '0', '2'),
+    ])
+
+    _assert_decimal(quantity, '3')

@@ -5,6 +5,7 @@ from sqlalchemy import case, func
 from portfolio_app import db
 from portfolio_app.calculators.financial_math import (
     calculate_cash_balance,
+    calculate_quantity_held,
     calculate_return,
     calculate_symbol_transaction_summary,
 )
@@ -68,15 +69,7 @@ class PortfolioCalculator:
             query = query.filter(Transaction.id != exclude_transaction_id)
         transactions = query.order_by(Transaction.date.asc()).all()
 
-        running_quantity = ZERO
-        for t in transactions:
-            qty = _to_decimal(t.quantity)
-            if t.transaction_type == 'Buy':
-                running_quantity += qty
-            elif t.transaction_type == 'Sell':
-                running_quantity -= qty
-
-        return running_quantity
+        return calculate_quantity_held(transactions)
 
     # ------------------------------------------------------------------
     # Portfolio-level aggregates

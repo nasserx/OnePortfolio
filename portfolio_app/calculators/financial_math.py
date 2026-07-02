@@ -10,6 +10,20 @@ from decimal import Decimal
 from portfolio_app.utils.decimal_utils import ZERO, safe_divide, to_decimal
 
 
+def calculate_quantity_held(transactions):
+    """Calculate held quantity from pre-filtered transaction records."""
+    quantity_held = ZERO
+
+    for transaction in transactions:
+        quantity = to_decimal(transaction.quantity)
+        if transaction.transaction_type == 'Buy':
+            quantity_held += quantity
+        elif transaction.transaction_type == 'Sell':
+            quantity_held -= quantity
+
+    return quantity_held
+
+
 def calculate_symbol_transaction_summary(transactions):
     """Summarize a pre-sorted transaction list using the Average Cost Method."""
     total_buy_cost = ZERO

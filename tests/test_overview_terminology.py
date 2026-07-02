@@ -137,16 +137,20 @@ def test_overview_uses_current_health_metrics_and_terminology(app):
         assert item['positions'] == _dec('1500.0000000000')
         assert item['book_value'] == _dec('8675.0000000000')
         assert item['total_income'] == _dec('75.0000000000')
-        assert item['realized_pnl'] == _dec('175.0000000000')
-        assert item['realized_roi_display'] == '+1.75%'
+        assert item['realized_pnl'] == _dec('100.0000000000')
+        assert item['return_amount'] == _dec('175.0000000000')
+        assert item['return_display'] == '+1.75%'
 
         assert totals['total_capital'] == _dec('8500.00')
         assert totals['total_cash'] == _dec('7175.0000000000')
         assert totals['total_positions'] == _dec('1500.0000000000')
         assert totals['total_value'] == _dec('8675.0000000000')
         assert totals['total_income'] == _dec('75.0000000000')
-        assert totals['total_realized_pnl'] == _dec('175.0000000000')
-        assert totals['realized_roi_display'] == '+1.75%'
+        assert totals['realized_pnl'] == _dec('100.0000000000')
+        assert totals['return_amount'] == _dec('175.0000000000')
+        assert totals['return_display'] == '+1.75%'
+        assert 'total_realized_pnl' not in totals
+        assert 'realized_roi_display' not in totals
 
     client = app.test_client()
     _login(client, uid)
@@ -208,6 +212,6 @@ def test_overview_uses_current_health_metrics_and_terminology(app):
     assert '7,175.00' in text
     assert '8,675.00' in card_text
     assert '+75.00' in card_text
-    assert '+175.00' in card_text
+    assert '+100.00' in card_text
     assert '+1.75%' in card_text
     assert f'href="/transactions/?portfolio={quote_plus(portfolio.name)}"' in html

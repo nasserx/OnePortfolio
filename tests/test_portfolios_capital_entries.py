@@ -71,7 +71,7 @@ def test_deposit_and_withdraw_create_capital_entries_and_update_accounting(app):
 
         performance = PortfolioCalculator.get_realized_performance_for_portfolio(portfolio.id)
         assert performance['realized_pnl'] == _dec('0')
-        assert performance['total_dividends'] == _dec('0')
+        assert performance['total_income'] == _dec('0')
 
 
 def test_portfolios_page_renders_capital_metrics_and_log(app):

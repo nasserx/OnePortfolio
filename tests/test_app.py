@@ -157,7 +157,7 @@ def test_transaction_calculations(app):
         assert e1.net_pnl is None
         assert e1.net_pnl_percent is None
         _apply_summary_roi(etha)
-        _assert('ETHA transaction summary ROI uses Total Spent', 6.0, etha['roi_percent'])
+        _assert('ETHA transaction summary return uses Total Spent', 6.0, etha['return_percent'])
         # Buy 10@10 → sell 5 (remaining cost=50) → buy 5@10 → total=100/10 = 10.0
         _assert('ETHA average cost', 10.0, etha['average_cost'])
 
@@ -361,7 +361,7 @@ def test_category_summary(app):
 
         # Overview ROI = net realized P&L / Total Contributed * 100.
         expected_roi = _dec('2498.50') / _dec('11000') * 100
-        _assert('Realized ROI % (base=total contributed)', round(expected_roi, 2), cat['realized_roi_percent'])
+        _assert('Return % (base=total contributed)', round(expected_roi, 2), cat['return_percent'])
 
         print("  All category summary checks passed.")
 
@@ -420,7 +420,7 @@ def test_dashboard_totals(app):
         # Total Value = cash + invested = 26,585 + remaining cost basis 505
         _assert('Total Value', 27_090, totals['total_value'])
         # Realized P&L = (120 - 101) * 5 - 5 = 90; Overview ROI = 90 / 32,000 * 100.
-        _assert('Dashboard realized ROI % (base=total contributed)', _dec('0.28'), totals['realized_roi_percent'])
+        _assert('Dashboard return % (base=total contributed)', _dec('0.28'), totals['return_percent'])
 
         print("  All dashboard totals checks passed.")
 
@@ -469,7 +469,7 @@ def test_dividends(app):
     """
     Verify dividend income is correctly:
       - Stored and retrieved per fund
-      - Added to realized P&L
+      - Kept separate from realized P&L
       - Added to cash balance
       - Protected by ownership checks (update/delete reject wrong fund)
     """
@@ -511,10 +511,11 @@ def test_dividends(app):
         # net_deposits = 10,000; no buy/sell; dividends = 150 → cash = 10,150
         _assert('Cash includes dividend income', _dec('10150'), cash)
 
-        # ── 6c: dividends added to realized P&L ──
-        print("\n  6c – dividends reflected in realized P&L")
+        # ── 6c: dividends kept separate from realized P&L ──
+        print("\n  6c – dividends separate from realized P&L")
         perf = PortfolioCalculator.get_realized_performance_for_portfolio(fund1.id)
-        _assert('Realized P&L includes dividends', _dec('150'), perf['realized_pnl'])
+        _assert('Realized P&L excludes dividends', _dec('0'), perf['realized_pnl'])
+        _assert('Total income remains separate', _dec('150'), perf['total_income'])
 
         # ── 6d: fund2 has zero dividends (no cross-contamination) ──
         print("\n  6d – no cross-fund contamination")
@@ -663,57 +664,57 @@ def test_symbol_performance(app):
         # ── 7b: AAPL realized P&L and ROI ──
         aapl = by_key[('Trading', 'AAPL')]
         _assert('AAPL trading P&L',         _dec('100'),  aapl['realized_pnl'])
-        _assert('AAPL dividend total',      _dec('0'),    aapl['dividend_total'])
-        _assert('AAPL total realized P&L',  _dec('100'),  aapl['total_realized_pnl'])
+        _assert('AAPL income',              _dec('0'),    aapl['total_income'])
+        _assert('AAPL return amount',       _dec('100'),  aapl['return_amount'])
         _assert('AAPL total buy cost',      _dec('1000'), aapl['total_buy_cost'])
         _assert('AAPL realized cost basis', _dec('500'),  aapl['realized_cost_basis'])
-        _assert('AAPL ROI% uses total buy cost', _dec('10'), aapl['roi_percent'])
+        _assert('AAPL Return% uses total buy cost', _dec('10'), aapl['return_percent'])
 
         aapl_lt = by_key[('Long-term', 'AAPL')]
         _assert('Long-term AAPL trading P&L',         _dec('10'),  aapl_lt['realized_pnl'])
         _assert('Long-term AAPL total buy cost',      _dec('1000'), aapl_lt['total_buy_cost'])
         _assert('Long-term AAPL realized cost basis', _dec('100'), aapl_lt['realized_cost_basis'])
-        _assert('Long-term AAPL ROI% uses total buy cost', _dec('1'), aapl_lt['roi_percent'])
+        _assert('Long-term AAPL Return% uses total buy cost', _dec('1'), aapl_lt['return_percent'])
 
         # ── 7c: MSFT — dividend only, ROI uses total buy cost ──
         msft = by_key[('Long-term', 'MSFT')]
         _assert('MSFT trading P&L',        _dec('0'),    msft['realized_pnl'])
-        _assert('MSFT dividends',          _dec('75'),   msft['dividend_total'])
-        _assert('MSFT total realized P&L', _dec('75'),   msft['total_realized_pnl'])
+        _assert('MSFT income',             _dec('75'),   msft['total_income'])
+        _assert('MSFT return amount',      _dec('75'),   msft['return_amount'])
         _assert('MSFT total buy cost',     _dec('2000'), msft['total_buy_cost'])
         _assert('MSFT held cost basis',    _dec('2000'), msft['held_cost_basis'])
-        _assert('MSFT ROI base',           _dec('2000'), msft['roi_base'])
-        _assert('MSFT ROI%',               _dec('3.75'), msft['roi_percent'])
+        _assert('MSFT return base',        _dec('2000'), msft['return_base'])
+        _assert('MSFT Return%',            _dec('3.75'), msft['return_percent'])
 
         # ── 7d: TRSF — dividend with no transactions (no cost basis at all) ──
         trsf = by_key[('Long-term', 'TRSF')]
-        _assert('TRSF total realized P&L', _dec('20'), trsf['total_realized_pnl'])
-        _assert('TRSF roi_base',           _dec('0'),  trsf['roi_base'])
-        assert trsf['roi_display'] == '—', f"Expected '—', got {trsf['roi_display']!r}"
+        _assert('TRSF return amount',      _dec('20'), trsf['return_amount'])
+        _assert('TRSF return_base',        _dec('0'),  trsf['return_base'])
+        assert trsf['return_display'] == '—', f"Expected '—', got {trsf['return_display']!r}"
         print("  PASS  dividend-only with no cost basis displays '—'")
 
         # ── 7e: u2 sees only their own rows ──
         u2_rows = svc2.overview_service.get_symbol_performance()
         assert len(u2_rows) == 1, f"u2 should have 1 row, got {len(u2_rows)}"
         assert u2_rows[0]['symbol'] == 'NVDA'
-        _assert('NVDA P&L (u2)', _dec('100'), u2_rows[0]['total_realized_pnl'])
+        _assert('NVDA return amount (u2)', _dec('100'), u2_rows[0]['return_amount'])
 
         # ── 7f: treemap projection drops zero-P&L rows ──
         # Build a synthetic row with zero pnl alongside real ones — should be filtered.
         zero_row = {
             'portfolio_id': trading.id, 'portfolio_name': 'Trading', 'symbol': 'ZERO',
-            'realized_pnl': ZERO, 'dividend_total': ZERO, 'total_realized_pnl': ZERO,
+            'realized_pnl': ZERO, 'total_income': ZERO, 'return_amount': ZERO,
             'total_buy_cost': ZERO,
             'realized_cost_basis': ZERO, 'held_cost_basis': ZERO,
-            'roi_base': ZERO, 'roi_percent': ZERO, 'roi_display': '—',
+            'return_base': ZERO, 'return_percent': ZERO, 'return_display': '—',
         }
         treemap = _symbol_treemap(rows + [zero_row])
-        assert all(t['pnl'] != 0 for t in treemap), 'zero-P&L row leaked into treemap'
+        assert all(t['pnl'] != 0 or t.get('income', 0) != 0 for t in treemap), 'zero-performance row leaked into treemap'
         assert all('abs_pnl' in t and 'name' in t for t in treemap), 'treemap shape broken'
         aapl_tile = next(t for t in treemap if t['name'] == 'AAPL')
         _assert('AAPL heatmap aggregates P&L across portfolios', _dec('110'), _dec(str(aapl_tile['pnl'])))
-        _assert('AAPL heatmap recomputes ROI from aggregate total buy cost', _dec('5.5'),
-                _dec(str(aapl_tile['roi_percent'])))
+        _assert('AAPL heatmap recomputes Return from aggregate total buy cost', _dec('5.5'),
+                _dec(str(aapl_tile['return_percent'])))
         assert aapl_tile['portfolio_count'] == 2
         assert aapl_tile['portfolio_names'] == ['Trading', 'Long-term']
         print("  PASS  treemap shape and zero-row filtering")
@@ -724,12 +725,12 @@ def test_symbol_performance(app):
         for i in range(TOP_N_SYMBOLS + 3):
             synthetic.append({
                 'portfolio_id': 1, 'portfolio_name': 'P', 'symbol': f'SYM{i}',
-                'realized_pnl': _dec(str(100 - i)), 'dividend_total': ZERO,
-                'total_realized_pnl': _dec(str(100 - i)),
+                'realized_pnl': _dec(str(100 - i)), 'total_income': ZERO,
+                'return_amount': _dec(str(100 - i)),
                 'total_buy_cost': _dec('1000'),
                 'realized_cost_basis': _dec('1000'), 'held_cost_basis': _dec('1000'),
-                'roi_base': _dec('1000'),
-                'roi_percent': _dec(str((100 - i) / 10)), 'roi_display': '',
+                'return_base': _dec('1000'),
+                'return_percent': _dec(str((100 - i) / 10)), 'return_display': '',
             })
         agg = _symbol_treemap(synthetic)
         assert len(agg) == TOP_N_SYMBOLS + 1, f"Expected {TOP_N_SYMBOLS + 1} tiles, got {len(agg)}"

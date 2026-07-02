@@ -144,7 +144,7 @@ def test_assets_page_uses_asset_terminology_and_total_buy_cost(app):
         assert old_label not in text
     assert 'Search symbol...' not in html
 
-    assert re.search(r'REALIZED P&L\s+\+100\.00\s+REALIZED RETURN\s+\+10\.00%', text)
+    assert re.search(r'REALIZED P&L\s+\+100\.00\s+REALIZED RETURN\s+\+17\.50%', text)
     assert not re.search(r'REALIZED P&L\s+\+100\.00\s+\+10\.00%', text)
     assert '1,000.00' in text
     assert '500.00' not in text
@@ -167,8 +167,11 @@ def test_asset_entry_and_income_financial_behavior_is_unchanged(app):
 
         assert tx_summary['realized_pnl'] == _dec('100.0000000000')
         assert tx_summary['cost_basis'] == _dec('500.0000000000')
-        assert performance['total_dividends'] == _dec('75.0000000000')
-        assert performance['realized_pnl'] == _dec('175.0000000000')
+        assert performance['total_income'] == _dec('75.0000000000')
+        assert performance['realized_pnl'] == _dec('100.0000000000')
+        assert performance['return_amount'] == _dec('175.0000000000')
+        assert 'total_dividends' not in performance
+        assert 'return_numerator' not in performance
         assert cash == _dec('4675.0000000000')
 
 

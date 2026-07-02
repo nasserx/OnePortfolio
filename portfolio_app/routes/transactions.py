@@ -58,19 +58,23 @@ def _decimal_places(value) -> int:
     return len(fractional)
 
 
-def _apply_summary_roi(summary):
-    """Attach transaction-summary ROI fields using total buy cost as the base."""
+def _apply_summary_roi(summary, income=ZERO):
+    """Attach asset return fields using total buy cost as the base."""
     realized_pnl = Decimal(str(summary.get('realized_pnl', 0) or 0))
+    total_income = Decimal(str(income or 0))
     total_spent = Decimal(str(summary.get('total_buy_cost', 0) or 0))
 
     if total_spent == ZERO:
-        summary['roi_percent'] = None
-        summary['roi_percent_display'] = '—'
+        summary['return_amount'] = realized_pnl + total_income
+        summary['return_percent'] = None
+        summary['return_display'] = '—'
         return summary
 
-    roi = safe_divide(realized_pnl, total_spent) * Decimal('100')
-    summary['roi_percent'] = roi
-    summary['roi_percent_display'] = f"{roi:+,.2f}%"
+    return_amount = realized_pnl + total_income
+    return_percent = safe_divide(return_amount, total_spent) * Decimal('100')
+    summary['return_amount'] = return_amount
+    summary['return_percent'] = return_percent
+    summary['return_display'] = f"{return_percent:+,.2f}%"
     return summary
 
 
@@ -118,7 +122,6 @@ def _get_transactions_page_context(portfolio_filter=''):
 
             avg_cost_decimal_places = max(2, price_decimal_places)
             summary = PortfolioCalculator.get_symbol_transactions_summary_from_list(transactions)
-            _apply_summary_roi(summary)
 
             html_group_id = safe_html_id(portfolio.id, sym_norm)
             tracked = tracked_by_ticker.get(sym_norm)
@@ -145,6 +148,10 @@ def _get_transactions_page_context(portfolio_filter=''):
         key = (div.portfolio_id, sym)
         dividends_by_symbol.setdefault(key, []).append(div)
         dividend_totals[key] = dividend_totals.get(key, ZERO) + Decimal(str(div.amount))
+
+    for item in holdings:
+        key = (item['portfolio'].id, item['symbol'])
+        _apply_summary_roi(item['summary'], dividend_totals.get(key, ZERO))
 
     return {
         'holdings': holdings,

@@ -64,30 +64,36 @@ def _aggregate_with_others(
 
 def _portfolio_row(portfolio: Dict[str, Any]) -> Dict[str, Any]:
     """Project a portfolio_summary item to the shape consumed by the templates."""
+    realized_pnl = Decimal(str(portfolio['realized_pnl']))
+    income = Decimal(str(portfolio.get('total_income', ZERO)))
+    return_percent = Decimal(str(portfolio.get('return_percent') or ZERO))
     return {
         'name':        portfolio['name'],
         'allocation':  float(portfolio['allocation']),
-        'pnl':         float(portfolio['realized_pnl']),
+        'pnl':         float(realized_pnl),
+        'income':      float(income),
         'contributed': float(portfolio['total_contributed']),
-        'roi_percent': float(portfolio['realized_roi_percent'] or 0),
+        'return_percent': float(return_percent),
     }
 
 
 def _portfolio_others(tail: List[Dict[str, Any]]) -> Dict[str, Any]:
     """Aggregate a tail of portfolios into a single 'Others' row.
 
-    ROI is recomputed from the totals (sum of P&L over sum of contributions),
-    not averaged — averaging ROIs across different-sized portfolios is meaningless.
+    Return is recomputed from the totals, not averaged across different-sized
+    portfolios.
     """
     pnl = sum((Decimal(str(p['realized_pnl'])) for p in tail), ZERO)
+    income = sum((Decimal(str(p.get('total_income', ZERO))) for p in tail), ZERO)
     contributed = sum((Decimal(str(p['total_contributed'])) for p in tail), ZERO)
-    roi = safe_divide(pnl, contributed) * Decimal('100') if contributed != ZERO else ZERO
+    return_percent = safe_divide(pnl + income, contributed) * Decimal('100') if contributed != ZERO else ZERO
     return {
         'name':        OTHERS_LABEL,
         'allocation':  float(sum((Decimal(str(p['allocation'])) for p in tail), ZERO)),
         'pnl':         float(pnl),
+        'income':      float(income),
         'contributed': float(contributed),
-        'roi_percent': float(roi),
+        'return_percent': float(return_percent),
     }
 
 
@@ -155,8 +161,9 @@ def _portfolio_performance_rows(portfolio_summary: List[Dict[str, Any]]) -> List
             'name': portfolio['name'],
             'realized_pnl': float(portfolio['realized_pnl']),
             'pnl': float(portfolio['realized_pnl']),
-            'return_percent': float(portfolio['realized_roi_percent'] or 0),
-            'roi_percent': float(portfolio['realized_roi_percent'] or 0),
+            'return_amount': float(portfolio['return_amount']),
+            'return_percent': float(portfolio['return_percent'] or 0),
+            'income': float(portfolio.get('total_income', ZERO)),
             'book_value': float(portfolio['book_value']),
             'total_contributed': float(portfolio['total_contributed']),
             'is_other': False,
@@ -194,10 +201,11 @@ def _portfolio_leaderboard_rows(rows: List[Dict[str, Any]]) -> List[Dict[str, An
     top = [row.copy() for row in ranked[:PORTFOLIO_LEADERBOARD_TOP_N]]
     tail = ranked[PORTFOLIO_LEADERBOARD_TOP_N:]
     pnl = sum((Decimal(str(row['realized_pnl'])) for row in tail), ZERO)
+    income = sum((Decimal(str(row.get('income', ZERO))) for row in tail), ZERO)
     book_value = sum((Decimal(str(row['book_value'])) for row in tail), ZERO)
     contributed = sum((Decimal(str(row.get('total_contributed', ZERO))) for row in tail), ZERO)
     return_percent = (
-        safe_divide(pnl, contributed) * Decimal('100')
+        safe_divide(pnl + income, contributed) * Decimal('100')
         if contributed != ZERO else None
     )
     top.append({
@@ -205,7 +213,7 @@ def _portfolio_leaderboard_rows(rows: List[Dict[str, Any]]) -> List[Dict[str, An
         'realized_pnl': float(pnl),
         'pnl': float(pnl),
         'return_percent': float(return_percent) if return_percent is not None else None,
-        'roi_percent': float(return_percent) if return_percent is not None else None,
+        'income': float(income),
         'book_value': float(book_value),
         'total_contributed': float(contributed),
         'is_other': True,
@@ -233,7 +241,7 @@ def _asset_leaderboard_rows(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     income = sum((Decimal(str(row.get('income', ZERO))) for row in tail), ZERO)
     buy_cost = sum((Decimal(str(row.get('buy_cost', ZERO))) for row in tail), ZERO)
     return_percent = (
-        safe_divide(pnl, buy_cost) * Decimal('100')
+        safe_divide(pnl + income, buy_cost) * Decimal('100')
         if buy_cost != ZERO else None
     )
     top.append({
@@ -242,10 +250,9 @@ def _asset_leaderboard_rows(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         'portfolio_count': len(tail),
         'realized_pnl': float(pnl),
         'abs_pnl': float(abs(pnl)),
-        'abs_roi': float(abs(return_percent)) if return_percent is not None else 0.0,
+        'abs_return': float(abs(return_percent)) if return_percent is not None else 0.0,
         'pnl': float(pnl),
         'return_percent': float(return_percent) if return_percent is not None else None,
-        'roi_percent': float(return_percent) if return_percent is not None else None,
         'income': float(income),
         'buy_cost': float(buy_cost),
         'is_other': True,
@@ -254,7 +261,7 @@ def _asset_leaderboard_rows(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 
 
 def _portfolio_treemap(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Tile size = |P&L| (default) or |ROI%| (toggled by client).
+    """Tile size = |P&L| (default) or |Return%| (toggled by client).
 
     Both magnitudes are exposed so the treemap dataset is self-contained
     and the client just swaps the sizing key.
@@ -263,9 +270,9 @@ def _portfolio_treemap(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         {
             'name':        r['name'],
             'abs_pnl':     abs(r['pnl']),
-            'abs_roi':     abs(r['roi_percent']),
+            'abs_return':  abs(r['return_percent']),
             'pnl':         r['pnl'],
-            'roi_percent': r['roi_percent'],
+            'return_percent': r['return_percent'],
         }
         for r in rows if r['pnl'] != 0
     ]
@@ -280,8 +287,9 @@ def _symbol_tile(
     name: str,
     portfolio_names: List[str],
     pnl: float,
-    roi_percent: float,
+    return_percent: Optional[float],
     buy_cost: float = 0.0,
+    income: float = 0.0,
 ) -> Dict[str, Any]:
     """Final treemap-tile shape for a user-level symbol row."""
     return {
@@ -290,11 +298,11 @@ def _symbol_tile(
         'portfolio_count': len(portfolio_names),
         'realized_pnl':    pnl,
         'abs_pnl':        abs(pnl),
-        'abs_roi':        abs(roi_percent),
+        'abs_return':     abs(return_percent) if return_percent is not None else 0.0,
         'pnl':            pnl,
-        'return_percent':  roi_percent,
-        'roi_percent':    roi_percent,
-        'income':          0.0,
+        'return_percent':  return_percent,
+        'income':          income,
+        'return_amount':   pnl + income,
         'buy_cost':        buy_cost,
         'is_other':        False,
     }
@@ -303,8 +311,8 @@ def _symbol_tile(
 def _symbol_rows(symbol_performance: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Aggregate per-(portfolio, symbol) rows into one row per symbol.
 
-    ROI is recomputed from summed P&L and summed total buy cost. We intentionally
-    do not average per-portfolio ROI values because that overweights small
+    Return is recomputed from summed P&L and summed total buy cost. We intentionally
+    do not average per-portfolio return values because that overweights small
     positions and understates large ones.
     """
     grouped: Dict[str, Dict[str, Any]] = {}
@@ -313,16 +321,20 @@ def _symbol_rows(symbol_performance: List[Dict[str, Any]]) -> List[Dict[str, Any
         symbol = item['symbol']
         row = grouped.setdefault(symbol, {
             'symbol': symbol,
-            'total_realized_pnl': ZERO,
+            'realized_pnl': ZERO,
+            'return_amount': ZERO,
             'total_buy_cost': ZERO,
             'income': ZERO,
             'portfolio_names': [],
             '_portfolio_ids': set(),
         })
 
-        row['total_realized_pnl'] += Decimal(str(item['total_realized_pnl']))
+        trading_pnl = Decimal(str(item.get('realized_pnl', ZERO)))
+        income = Decimal(str(item.get('total_income', ZERO)))
+        row['realized_pnl'] += trading_pnl
+        row['return_amount'] += trading_pnl + income
         row['total_buy_cost'] += Decimal(str(item['total_buy_cost']))
-        row['income'] += Decimal(str(item.get('dividend_total', ZERO)))
+        row['income'] += income
 
         portfolio_id = item.get('portfolio_id')
         if portfolio_id not in row['_portfolio_ids']:
@@ -331,16 +343,17 @@ def _symbol_rows(symbol_performance: List[Dict[str, Any]]) -> List[Dict[str, Any
 
     rows = []
     for row in grouped.values():
-        roi = (
-            safe_divide(row['total_realized_pnl'], row['total_buy_cost']) * Decimal('100')
-            if row['total_buy_cost'] != ZERO else ZERO
+        return_percent = (
+            safe_divide(row['return_amount'], row['total_buy_cost']) * Decimal('100')
+            if row['total_buy_cost'] != ZERO else None
         )
         rows.append({
             'symbol': row['symbol'],
-            'total_realized_pnl': row['total_realized_pnl'],
+            'realized_pnl': row['realized_pnl'],
+            'return_amount': row['return_amount'],
             'total_buy_cost': row['total_buy_cost'],
             'income': row['income'],
-            'roi_percent': roi,
+            'return_percent': return_percent,
             'portfolio_names': row['portfolio_names'],
         })
     return rows
@@ -351,27 +364,30 @@ def _symbol_row(item: Dict[str, Any]) -> Dict[str, Any]:
     return _symbol_tile(
         name           = item['symbol'],
         portfolio_names= item['portfolio_names'],
-        pnl            = float(item['total_realized_pnl']),
-        roi_percent    = float(item['roi_percent'] or 0),
+        pnl            = float(item['realized_pnl']),
+        return_percent = float(item['return_percent']) if item['return_percent'] is not None else None,
         buy_cost       = float(item.get('total_buy_cost', ZERO)),
-    ) | {'income': float(item.get('income', ZERO))}
+        income         = float(item.get('income', ZERO)),
+    ) | {'return_amount': float(item.get('return_amount', ZERO))}
 
 
 def _symbol_others(tail: List[Dict[str, Any]]) -> Dict[str, Any]:
     """Aggregate a tail of (portfolio, symbol) rows into 'Others'.
 
-    ROI is recomputed from total P&L over total buy cost. Averaging ROIs
+    Return is recomputed from total P&L over total buy cost. Averaging returns
     across positions of different sizes would be misleading.
     """
-    pnl = sum((Decimal(str(item['total_realized_pnl'])) for item in tail), ZERO)
+    pnl = sum((Decimal(str(item['realized_pnl'])) for item in tail), ZERO)
+    income = sum((Decimal(str(item.get('income', ZERO))) for item in tail), ZERO)
     base = sum((Decimal(str(item['total_buy_cost'])) for item in tail), ZERO)
-    roi = safe_divide(pnl, base) * Decimal('100') if base != ZERO else ZERO
+    return_percent = safe_divide(pnl + income, base) * Decimal('100') if base != ZERO else None
     return _symbol_tile(
         name           = OTHERS_LABEL,
         portfolio_names= [],
         pnl            = float(pnl),
-        roi_percent    = float(roi),
+        return_percent = float(return_percent) if return_percent is not None else None,
         buy_cost       = float(base),
+        income         = float(income),
     )
 
 
@@ -380,12 +396,12 @@ def _symbol_treemap(symbol_performance: List[Dict[str, Any]]) -> List[Dict[str, 
     symbol_rows = _symbol_rows(symbol_performance)
     tiles = _aggregate_with_others(
         symbol_rows,
-        sort_key=lambda r: abs(Decimal(str(r['total_realized_pnl']))),
+        sort_key=lambda r: abs(Decimal(str(r['return_amount']))),
         project=_symbol_row,
         build_others=_symbol_others,
         top_n=TOP_N_SYMBOLS,
     )
-    return [t for t in tiles if t['pnl'] != 0]
+    return [t for t in tiles if t['pnl'] != 0 or t.get('income', 0) != 0]
 
 
 def _asset_performance_rows(symbol_performance: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -447,7 +463,7 @@ def _portfolio_stats(
         ZERO,
     )
     return_percent = (
-        safe_divide(realized_pnl, contributed) * Decimal('100')
+        safe_divide(realized_pnl + income, contributed) * Decimal('100')
         if contributed != ZERO else None
     )
     trend_stats = trend.get('stats', {})
@@ -475,7 +491,7 @@ def _asset_stats(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
         ZERO,
     )
     return_percent = (
-        safe_divide(realized_pnl, buy_cost) * Decimal('100')
+        safe_divide(realized_pnl + income, buy_cost) * Decimal('100')
         if buy_cost != ZERO else None
     )
     return {
@@ -493,13 +509,8 @@ def _monthly_performance_trend(
     user_id: int,
     year: int,
 ) -> Dict[str, Any]:
-    """Build a current-year cumulative realized performance trend.
-
-    The monthly P&L source is manual Sell rows plus manual income records.
-    Return uses the same contribution base as the existing charts return
-    values, keeping presentation consistent without changing accounting.
-    """
-    monthly = [ZERO for _ in range(12)]
+    """Build a current-year cumulative realized P&L and return trend."""
+    monthly_realized_pnl = [ZERO for _ in range(12)]
     monthly_income = [ZERO for _ in range(12)]
 
     sell_rows = (
@@ -514,7 +525,7 @@ def _monthly_performance_trend(
     for transaction in sell_rows:
         if not transaction.date or transaction.date.year != year:
             continue
-        monthly[transaction.date.month - 1] += PortfolioCalculator._to_decimal(transaction.net_pnl or 0)
+        monthly_realized_pnl[transaction.date.month - 1] += PortfolioCalculator._to_decimal(transaction.net_pnl or 0)
 
     income_rows = (
         Dividend.query
@@ -526,7 +537,6 @@ def _monthly_performance_trend(
         if not income.date or income.date.year != year:
             continue
         amount = PortfolioCalculator._to_decimal(income.amount)
-        monthly[income.date.month - 1] += amount
         monthly_income[income.date.month - 1] += amount
 
     contribution_base = sum(
@@ -535,15 +545,18 @@ def _monthly_performance_trend(
     )
     cumulative = []
     returns = []
-    running = ZERO
-    for amount in monthly:
-        running += amount
-        cumulative.append(float(running))
-        returns.append(float(safe_divide(running, contribution_base) * Decimal('100')) if contribution_base else 0.0)
+    running_realized = ZERO
+    running_income = ZERO
+    for idx, amount in enumerate(monthly_realized_pnl):
+        running_realized += amount
+        running_income += monthly_income[idx]
+        cumulative.append(float(running_realized))
+        return_amount = running_realized + running_income
+        returns.append(float(safe_divide(return_amount, contribution_base) * Decimal('100')) if contribution_base else 0.0)
 
-    ytd_pnl = sum(monthly, ZERO)
+    ytd_pnl = sum(monthly_realized_pnl, ZERO)
     ytd_income = sum(monthly_income, ZERO)
-    ytd_return = safe_divide(ytd_pnl, contribution_base) * Decimal('100') if contribution_base else ZERO
+    ytd_return = safe_divide(ytd_pnl + ytd_income, contribution_base) * Decimal('100') if contribution_base else ZERO
 
     return {
         'year': year,
@@ -555,8 +568,8 @@ def _monthly_performance_trend(
             'ytd_realized_pnl': float(ytd_pnl),
             'ytd_return': float(ytd_return),
             'ytd_income': float(ytd_income),
-            'best_month': _meaningful_month(monthly, best=True),
-            'worst_month': _meaningful_month(monthly, best=False),
+            'best_month': _meaningful_month(monthly_realized_pnl, best=True),
+            'worst_month': _meaningful_month(monthly_realized_pnl, best=False),
         },
     }
 
@@ -568,7 +581,7 @@ def _asset_monthly_performance_trend(
     year: int,
 ) -> Dict[str, Any]:
     """Build a current-year cumulative asset performance trend for display."""
-    monthly = [ZERO for _ in range(12)]
+    monthly_realized_pnl = [ZERO for _ in range(12)]
     monthly_income = [ZERO for _ in range(12)]
 
     sell_rows = (
@@ -583,7 +596,7 @@ def _asset_monthly_performance_trend(
     for transaction in sell_rows:
         if not transaction.date or transaction.date.year != year:
             continue
-        monthly[transaction.date.month - 1] += PortfolioCalculator._to_decimal(transaction.net_pnl or 0)
+        monthly_realized_pnl[transaction.date.month - 1] += PortfolioCalculator._to_decimal(transaction.net_pnl or 0)
 
     income_rows = (
         Dividend.query
@@ -595,7 +608,6 @@ def _asset_monthly_performance_trend(
         if not income.date or income.date.year != year:
             continue
         amount = PortfolioCalculator._to_decimal(income.amount)
-        monthly[income.date.month - 1] += amount
         monthly_income[income.date.month - 1] += amount
 
     buy_cost = sum(
@@ -604,15 +616,18 @@ def _asset_monthly_performance_trend(
     )
     cumulative = []
     returns = []
-    running = ZERO
-    for amount in monthly:
-        running += amount
-        cumulative.append(float(running))
-        returns.append(float(safe_divide(running, buy_cost) * Decimal('100')) if buy_cost else 0.0)
+    running_realized = ZERO
+    running_income = ZERO
+    for idx, amount in enumerate(monthly_realized_pnl):
+        running_realized += amount
+        running_income += monthly_income[idx]
+        cumulative.append(float(running_realized))
+        return_amount = running_realized + running_income
+        returns.append(float(safe_divide(return_amount, buy_cost) * Decimal('100')) if buy_cost else 0.0)
 
-    ytd_pnl = sum(monthly, ZERO)
+    ytd_pnl = sum(monthly_realized_pnl, ZERO)
     ytd_income = sum(monthly_income, ZERO)
-    ytd_return = safe_divide(ytd_pnl, buy_cost) * Decimal('100') if buy_cost else ZERO
+    ytd_return = safe_divide(ytd_pnl + ytd_income, buy_cost) * Decimal('100') if buy_cost else ZERO
 
     return {
         'year': year,
@@ -624,8 +639,8 @@ def _asset_monthly_performance_trend(
             'ytd_realized_pnl': float(ytd_pnl),
             'ytd_return': float(ytd_return),
             'ytd_income': float(ytd_income),
-            'best_month': _meaningful_month(monthly, best=True),
-            'worst_month': _meaningful_month(monthly, best=False),
+            'best_month': _meaningful_month(monthly_realized_pnl, best=True),
+            'worst_month': _meaningful_month(monthly_realized_pnl, best=False),
         },
     }
 

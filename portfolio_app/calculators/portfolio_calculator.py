@@ -12,16 +12,16 @@ from portfolio_app.utils.decimal_utils import ZERO, to_decimal as _to_decimal, s
 # (e.g., orphan rows surviving a deletion under FK-OFF SQLite).
 
 
-def _roi_display(pnl: Decimal, base: Decimal) -> tuple:
-    """Compute ROI percentage and display string.
+def _return_display(amount: Decimal, base: Decimal) -> tuple:
+    """Compute return percentage and display string.
 
     Returns:
-        (roi_percent, roi_display) — both ZERO/'—' when base is zero.
+        (return_percent, return_display) — both ZERO/'—' when base is zero.
     """
     if base == 0:
         return ZERO, '—'
-    roi = (pnl / abs(base)) * 100
-    return roi, f"{roi:+,.2f}%"
+    return_percent = (amount / abs(base)) * 100
+    return return_percent, f"{return_percent:+,.2f}%"
 
 
 class PortfolioCalculator:
@@ -137,7 +137,7 @@ class PortfolioCalculator:
 
     @staticmethod
     def get_available_cash_for_portfolio(portfolio_id, *, user_id=None, exclude_transaction_id=None) -> Decimal:
-        """Available cash: net deposits − buy_outflows + sell_inflows + dividends."""
+        """Available cash: net deposits - buy_outflows + sell_inflows + income."""
         cash = PortfolioCalculator.get_net_deposits_for_portfolio(portfolio_id, user_id=user_id)
         query = Transaction.query.filter_by(portfolio_id=portfolio_id)
         query = PortfolioCalculator._scope_to_user(query, Transaction, user_id)
@@ -179,7 +179,7 @@ class PortfolioCalculator:
 
             realized_perf = PortfolioCalculator.get_realized_performance_for_portfolio(portfolio.id, user_id=user_id)
             realized_pnl = realized_perf['realized_pnl']
-            total_dividends = realized_perf['total_dividends']
+            total_income = realized_perf['total_income']
 
             transactions_summary = PortfolioCalculator.get_portfolio_transactions_summary(portfolio.id, user_id=user_id)
             cost_basis = _to_decimal(transactions_summary['cost_basis'] or 0)
@@ -188,7 +188,8 @@ class PortfolioCalculator:
             book_value = cost_basis + cash
             total_portfolio_value += book_value
 
-            realized_roi_percent, realized_roi_display = _roi_display(realized_pnl, total_contributed)
+            return_amount = realized_pnl + total_income
+            return_percent, return_display = _return_display(return_amount, total_contributed)
 
             portfolio_rows.append({
                 'portfolio': portfolio,
@@ -199,10 +200,10 @@ class PortfolioCalculator:
                 'positions': cost_basis,
                 'cash': cash,
                 'book_value': book_value,
-                'realized_roi_percent': realized_roi_percent,
-                'realized_roi_display': realized_roi_display,
-                'total_dividends': total_dividends,
-                'total_income': total_dividends,
+                'return_amount': return_amount,
+                'return_percent': return_percent,
+                'return_display': return_display,
+                'total_income': total_income,
             })
 
         summary = []
@@ -220,9 +221,9 @@ class PortfolioCalculator:
                 'positions': row['positions'],
                 'book_value': row['book_value'],
                 'cash': row['cash'],
-                'realized_roi_percent': row['realized_roi_percent'],
-                'realized_roi_display': row['realized_roi_display'],
-                'total_dividends': row['total_dividends'],
+                'return_amount': row['return_amount'],
+                'return_percent': row['return_percent'],
+                'return_display': row['return_display'],
                 'total_income': row['total_income'],
             })
 
@@ -250,7 +251,7 @@ class PortfolioCalculator:
 
     @staticmethod
     def get_realized_performance_for_portfolio(portfolio_id, *, user_id=None):
-        """Return realized P&L (including dividends), cost basis, and proceeds for a portfolio.
+        """Return trading-only realized P&L, cost basis, proceeds, and income.
 
         Computed by walking the transactions table per symbol with the
         average-cost method — no snapshot table involved, so deleting a
@@ -276,14 +277,14 @@ class PortfolioCalculator:
             realized_cost_basis += _to_decimal(s['realized_cost_basis'])
             realized_proceeds   += _to_decimal(s['realized_proceeds'])
 
-        dividends = PortfolioCalculator.get_dividend_total_for_portfolio(portfolio_id, user_id=user_id)
-        realized_pnl += dividends
+        total_income = PortfolioCalculator.get_dividend_total_for_portfolio(portfolio_id, user_id=user_id)
 
         return {
             'realized_pnl':        realized_pnl,
             'realized_cost_basis': realized_cost_basis,
             'realized_proceeds':   realized_proceeds,
-            'total_dividends':     dividends,
+            'total_income':        total_income,
+            'return_amount':       realized_pnl + total_income,
         }
 
     # ------------------------------------------------------------------
@@ -292,7 +293,7 @@ class PortfolioCalculator:
 
     @staticmethod
     def get_portfolio_dashboard_totals(user_id=None):
-        """Dashboard totals: investment, cash, ROI."""
+        """Dashboard totals: investment, cash, return."""
         q = Portfolio.query
         if user_id is not None:
             q = q.filter_by(user_id=user_id)
@@ -302,8 +303,8 @@ class PortfolioCalculator:
         total_capital = ZERO
         total_cash = ZERO
         total_cost_basis = ZERO
-        total_realized_pnl = ZERO
-        total_dividends = ZERO
+        aggregate_realized_pnl = ZERO
+        total_income = ZERO
 
         for portfolio in portfolios:
             total_contributed += PortfolioCalculator.get_total_deposits_for_portfolio(portfolio.id, user_id=user_id)
@@ -314,24 +315,25 @@ class PortfolioCalculator:
             total_cost_basis += _to_decimal(tx_summary['cost_basis'] or 0)
 
             realized_perf = PortfolioCalculator.get_realized_performance_for_portfolio(portfolio.id, user_id=user_id)
-            total_realized_pnl += realized_perf['realized_pnl']
-            total_dividends += realized_perf['total_dividends']
+            aggregate_realized_pnl += realized_perf['realized_pnl']
+            total_income += realized_perf['total_income']
 
         total_value = total_cost_basis + total_cash
 
-        realized_roi_percent, realized_roi_display = _roi_display(total_realized_pnl, total_contributed)
+        return_amount = aggregate_realized_pnl + total_income
+        return_percent, return_display = _return_display(return_amount, total_contributed)
 
         return {
             'total_contributed': total_contributed,
             'total_capital': total_capital,
             'total_cash': total_cash,
             'total_positions': total_cost_basis,
-            'total_realized_pnl': total_realized_pnl,
-            'total_dividends': total_dividends,
-            'total_income': total_dividends,
+            'realized_pnl': aggregate_realized_pnl,
+            'total_income': total_income,
+            'return_amount': return_amount,
             'total_value': total_value,
-            'realized_roi_percent': realized_roi_percent,
-            'realized_roi_display': realized_roi_display,
+            'return_percent': return_percent,
+            'return_display': return_display,
         }
 
     # ------------------------------------------------------------------
@@ -347,12 +349,12 @@ class PortfolioCalculator:
         unique constraint on Symbol is per-portfolio, not per-user, and the
         consequence of that duplication belongs to the user.
 
-        ``total_realized_pnl`` combines:
+        ``realized_pnl`` is trading P&L only. ``return_amount`` combines:
           * trading P&L from Sells (average-cost method, computed per
             (portfolio, symbol) so cross-portfolio lots stay independent), and
-          * dividends attributed to the symbol via Dividend.symbol.
+          * income attributed to the symbol via Dividend.symbol.
 
-        ROI uses ``total_buy_cost`` so symbol heatmaps match the Transactions
+        Return uses ``total_buy_cost`` so symbol heatmaps match the Transactions
         section summary and represent the whole symbol position, not only
         the cost basis of closed lots.
 
@@ -442,23 +444,23 @@ class PortfolioCalculator:
     @staticmethod
     def _build_symbol_performance_row(*, portfolio, symbol, trading_pnl, dividends,
                                       total_buy_cost, realized_cost_basis, held_cost_basis):
-        """Shape a single symbol-performance row with derived ROI fields."""
-        total_pnl = trading_pnl + dividends
-        roi_base = total_buy_cost
-        roi_percent, roi_display = _roi_display(total_pnl, roi_base)
+        """Shape a single symbol-performance row with derived return fields."""
+        return_amount = trading_pnl + dividends
+        return_base = total_buy_cost
+        return_percent, return_display = _return_display(return_amount, return_base)
         return {
             'portfolio_id':         portfolio.id,
             'portfolio_name':       portfolio.name,
             'symbol':               symbol,
             'realized_pnl':         trading_pnl,
-            'dividend_total':       dividends,
-            'total_realized_pnl':   total_pnl,
+            'total_income':         dividends,
+            'return_amount':        return_amount,
             'total_buy_cost':       total_buy_cost,
             'realized_cost_basis':  realized_cost_basis,
             'held_cost_basis':      held_cost_basis,
-            'roi_base':             roi_base,
-            'roi_percent':          roi_percent,
-            'roi_display':          roi_display,
+            'return_base':          return_base,
+            'return_percent':       return_percent,
+            'return_display':       return_display,
         }
 
     # ------------------------------------------------------------------

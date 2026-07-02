@@ -40,15 +40,18 @@ def _get_portfolios_page_context():
         book_value = cash + positions
 
         total_capital = PortfolioCalculator.get_total_capital_for_portfolio(portfolio.id, user_id=uid)
+        total_deposits = PortfolioCalculator.get_total_deposits_for_portfolio(portfolio.id, user_id=uid)
 
         realized_perf = PortfolioCalculator.get_realized_performance_for_portfolio(portfolio.id, user_id=uid)
         realized_pnl = realized_perf['realized_pnl']
-        if total_capital != ZERO:
-            roi_percent = (realized_pnl / total_capital) * 100
-            roi_display = f"{roi_percent:+,.2f}%"
+        total_income = realized_perf['total_income']
+        return_amount = realized_pnl + total_income
+        if total_deposits != ZERO:
+            return_percent = (return_amount / total_deposits) * 100
+            return_display = f"{return_percent:+,.2f}%"
         else:
-            roi_percent = ZERO
-            roi_display = '—'
+            return_percent = ZERO
+            return_display = '—'
 
         portfolio_details.append({
             'portfolio': portfolio,
@@ -58,8 +61,10 @@ def _get_portfolios_page_context():
             'positions': positions,
             'book_value': book_value,
             'realized_pnl': realized_pnl,
-            'roi_percent': roi_percent,
-            'roi_display': roi_display,
+            'total_income': total_income,
+            'return_amount': return_amount,
+            'return_percent': return_percent,
+            'return_display': return_display,
         })
 
     return {

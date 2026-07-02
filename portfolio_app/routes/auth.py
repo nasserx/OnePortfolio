@@ -11,6 +11,7 @@ from flask import Blueprint, abort, current_app, render_template, request, redir
 from flask_login import login_user, logout_user, login_required, current_user
 from flask_limiter.util import get_remote_address
 from authlib.integrations.base_client import MismatchingStateError, OAuthError
+from sqlalchemy.exc import IntegrityError
 
 from portfolio_app import get_oauth, limiter
 from portfolio_app.services import get_services
@@ -38,6 +39,7 @@ logger = logging.getLogger(__name__)
 auth_bp = Blueprint('auth', __name__)
 _DELETION_VERIFIED_SESSION_KEY = 'deletion_verified_user_id'
 _GOOGLE_OAUTH_NEXT_SESSION_KEY = 'google_oauth_next'
+_GOOGLE_OAUTH_PROVIDER = 'google'
 
 
 def _safe_local_redirect(target):
@@ -74,6 +76,50 @@ def _google_oauth_available():
 def _redirect_to_login_with_google_failure(message_key='GOOGLE_SIGNIN_FAILED'):
     flash(MESSAGES[message_key], 'warning')
     return redirect(url_for('auth.login'))
+
+
+def _login_google_linked_user(identity, next_page):
+    user = identity.user
+    if not user or not user.is_verified:
+        return _redirect_to_login_with_google_failure()
+
+    login_user(user, remember=False)
+    return redirect(next_page or url_for('dashboard.index'))
+
+
+def _identity_links_same_user_and_subject(identity, user_id, subject):
+    return (
+        identity is not None
+        and identity.user_id == user_id
+        and identity.provider_subject == subject
+    )
+
+
+def _create_google_identity_or_resolve_race(svc, user, subject):
+    identity_repo = svc.oauth_identity_repo
+    identity_repo.create(user.id, _GOOGLE_OAUTH_PROVIDER, subject)
+    try:
+        identity_repo.commit()
+    except IntegrityError:
+        identity_repo.db.session.rollback()
+        by_subject = identity_repo.get_by_provider_subject(
+            _GOOGLE_OAUTH_PROVIDER,
+            subject,
+        )
+        by_user = identity_repo.get_for_user_and_provider(
+            user.id,
+            _GOOGLE_OAUTH_PROVIDER,
+        )
+        if (
+            by_subject is not None
+            and by_user is not None
+            and by_subject.id == by_user.id
+            and _identity_links_same_user_and_subject(by_subject, user.id, subject)
+        ):
+            return by_subject
+        return None
+
+    return identity_repo.get_by_provider_subject(_GOOGLE_OAUTH_PROVIDER, subject)
 
 
 def demo_restricted(f):
@@ -298,14 +344,38 @@ def google_callback():
     if not isinstance(identity, Mapping):
         return _redirect_to_login_with_google_failure()
 
+    subject = identity.get('sub')
+    if not isinstance(subject, str) or not subject:
+        return _redirect_to_login_with_google_failure()
+
     email = (identity.get('email') or '').strip().lower()
     if not email or identity.get('email_verified') is not True:
         return _redirect_to_login_with_google_failure()
 
     svc = get_services()
+    identity_link = svc.oauth_identity_repo.get_by_provider_subject(
+        _GOOGLE_OAUTH_PROVIDER,
+        subject,
+    )
+    if identity_link is not None:
+        return _login_google_linked_user(identity_link, next_page)
+
     user = svc.user_repo.get_by_email(email)
     if not user or not user.is_verified:
         return _redirect_to_login_with_google_failure('GOOGLE_SIGNIN_NO_ACCOUNT')
+
+    existing_user_link = svc.oauth_identity_repo.get_for_user_and_provider(
+        user.id,
+        _GOOGLE_OAUTH_PROVIDER,
+    )
+    if existing_user_link is not None:
+        if existing_user_link.provider_subject == subject:
+            return _login_google_linked_user(existing_user_link, next_page)
+        return _redirect_to_login_with_google_failure()
+
+    identity_link = _create_google_identity_or_resolve_race(svc, user, subject)
+    if not _identity_links_same_user_and_subject(identity_link, user.id, subject):
+        return _redirect_to_login_with_google_failure()
 
     login_user(user, remember=False)
     return redirect(next_page or url_for('dashboard.index'))

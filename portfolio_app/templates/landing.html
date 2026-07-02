@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OnePortfolio - Manual portfolio tracking</title>
+
+    <link rel="icon" href="{{ url_for('static', filename='icons/favicon.svg') }}" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/apple-touch-icon.png') }}">
+    <link rel="manifest" href="{{ url_for('static', filename='icons/site.webmanifest') }}">
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v='20260611-1') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css', v='20260701-2') }}">
+</head>
+<body class="landing-page">
+
+    <nav class="landing-nav" aria-label="Landing page navigation">
+        <div class="landing-container">
+            <a href="/" class="landing-brand" aria-label="OnePortfolio home">
+                <span class="landing-logo-mark" aria-hidden="true">
+                    <svg viewBox="0 0 32 32" focusable="false">
+                        <circle cx="11" cy="11" r="3.2" class="logo-mark-dot" />
+                        <circle cx="21" cy="21" r="3.2" class="logo-mark-dot" />
+                        <rect x="14.35" y="5.8" width="3.3" height="20.4" rx="1.65" class="logo-mark-line" transform="rotate(45 16 16)" />
+                    </svg>
+                </span>
+                <span>OnePortfolio</span>
+            </a>
+
+            <div class="landing-nav-links">
+                <a href="#features">Features</a>
+                <a href="#how">How it works</a>
+            </div>
+
+            <div class="landing-nav-actions">
+                <a class="btn-nav-login" href="{{ url_for('auth.login') }}">Log In</a>
+                <a class="btn-nav-signup" href="{{ url_for('auth.register') }}">Sign Up</a>
+            </div>
+        </div>
+    </nav>
+
+    <main>
+        <section class="landing-hero">
+            <div class="landing-container hero-grid">
+                <div class="hero-copy">
+                    <h1 class="landing-headline">Track your portfolios with clarity.</h1>
+                    <p class="landing-subtext">
+                        Record deposits, withdrawals, asset entries, income, and realized performance in one clean place without broker sync or pricing noise.
+                    </p>
+
+                    <div class="landing-cta-group">
+                        <a class="btn-cta-secondary" href="{{ url_for('auth.login') }}">Log In</a>
+                        <a class="btn-cta-primary" href="{{ url_for('auth.register') }}">Sign Up</a>
+                    </div>
+
+                    <ul class="hero-points" aria-label="OnePortfolio principles">
+                        <li>Manual tracking</li>
+                        <li>Transparent math</li>
+                        <li>Private by default</li>
+                    </ul>
+                </div>
+
+                <div class="hero-support" aria-label="Product principles">
+                    <article class="support-card">
+                        <h2>Manual records</h2>
+                        <p>Every entry is intentional and under your control.</p>
+                    </article>
+                    <article class="support-card">
+                        <h2>No broker sync</h2>
+                        <p>No integrations, account permissions, or background imports.</p>
+                    </article>
+                    <article class="support-card">
+                        <h2>Clear summaries</h2>
+                        <p>Review book value, cash, income, and realized performance from your own records.</p>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <section class="landing-section" id="features">
+            <div class="landing-container">
+                <div class="section-head">
+                    <h2>Built for practical tracking</h2>
+                    <p>Small, focused tools for keeping portfolio records readable.</p>
+                </div>
+
+                <div class="feature-grid">
+                    <article class="landing-card">
+                        <h3>Manual tracking</h3>
+                        <p>Record portfolio activity as it happens, with no automated data feed changing the picture.</p>
+                    </article>
+                    <article class="landing-card">
+                        <h3>Transparent math</h3>
+                        <p>Keep calculations understandable, with portfolio summaries based on your entries.</p>
+                    </article>
+                    <article class="landing-card">
+                        <h3>Private by default</h3>
+                        <p>Your records stay under your control, without broker permissions or sync access.</p>
+                    </article>
+                    <article class="landing-card">
+                        <h3>Focused records</h3>
+                        <p>Track deposits, withdrawals, buys, sells, income, book value, and realized performance.</p>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <section class="landing-section" id="how">
+            <div class="landing-container">
+                <div class="section-head">
+                    <h2>How it works</h2>
+                    <p>Start with a portfolio, add entries, then review the results.</p>
+                </div>
+
+                <div class="steps-grid">
+                    <article class="landing-card step-card">
+                        <span class="step-num">01</span>
+                        <h3>Create a portfolio</h3>
+                        <p>Set up one or more portfolios for the way you organize your records.</p>
+                    </article>
+                    <article class="landing-card step-card">
+                        <span class="step-num">02</span>
+                        <h3>Add assets and entries</h3>
+                        <p>Log deposits, withdrawals, buys, sells, income, dates, and notes.</p>
+                    </article>
+                    <article class="landing-card step-card">
+                        <span class="step-num">03</span>
+                        <h3>Review your records</h3>
+                        <p>Check book value, cash, income, and realized performance from manual data.</p>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <section class="landing-final-cta">
+            <div class="landing-container">
+                <div class="final-cta-card">
+                    <h2>Keep portfolio tracking simple.</h2>
+                    <p>Use a clean manual record instead of syncing accounts or chasing noisy price feeds.</p>
+                    <div class="landing-cta-group">
+                        <a class="btn-cta-secondary" href="{{ url_for('auth.login') }}">Log In</a>
+                        <a class="btn-cta-primary" href="{{ url_for('auth.register') }}">Sign Up</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="landing-footer">
+        <div class="landing-container">
+            <span>&copy; 2026 OnePortfolio</span>
+            <div class="landing-footer-links">
+                <a href="#features">Features</a>
+                <a href="#how">How it works</a>
+                <a href="{{ url_for('auth.login') }}">Log In</a>
+                <a href="{{ url_for('auth.register') }}">Sign Up</a>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>

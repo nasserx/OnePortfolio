@@ -1,0 +1,854 @@
+{% extends "base.html" %}
+
+{% set _add_errs = (form_errors.get('portfolios_add', {}) if form_errors else {}) %}
+{% set _add_vals = (form_values.get('portfolios_add', {}) if form_values else {}) %}
+{% set _dep_errs = (form_errors.get('portfolios_deposit', {}) if form_errors else {}) %}
+{% set _dep_vals = (form_values.get('portfolios_deposit', {}) if form_values else {}) %}
+{% set _with_errs = (form_errors.get('portfolios_withdraw', {}) if form_errors else {}) %}
+{% set _with_vals = (form_values.get('portfolios_withdraw', {}) if form_values else {}) %}
+
+{% block title %}Portfolios - OnePortfolio{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
+{% endblock %}
+
+{% block content %}
+<div class="portfolios-page">
+<header class="page-header portfolios-page-header">
+    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newPortfolioModal">
+        New Portfolio
+    </button>
+</header>
+
+<div class="row portfolios-list">
+    <div class="col-12">
+        {% if portfolio_details %}
+            {% for item in portfolio_details %}
+            <div class="card mb-2 portfolio-card portfolio-list-card">
+
+                <!-- Clickable header -->
+                <div class="card-header py-2 px-3 portfolio-header portfolio-primary-header page-accent-surface"
+                     onclick="togglePortfolioEvents('{{ item.portfolio.id }}')">
+                    <div class="row align-items-center g-1 summary-row portfolio-primary-row">
+
+                        <!-- Name + chevron -->
+                        <div class="col-lg-3 col-md-3 d-flex align-items-center gap-2 portfolio-identity">
+                            <i class="bi bi-chevron-right portfolio-chevron" id="chevron-{{ item.portfolio.id }}"></i>
+                            <span class="fw-600 portfolio-name">{{ item.portfolio.name }}</span>
+                        </div>
+
+                        <!-- Metrics -->
+                        <div class="col-lg-7 col-md-5 portfolio-primary-metrics">
+                            <div class="portfolio-summary columns-5">
+                                <div class="summary-item">
+                                    <div class="summary-label">CAPITAL ENTRIES</div>
+                                    <div class="summary-value">{{ item.events|length }}</div>
+                                </div>
+                                <div class="summary-item">
+                                    <div class="summary-label">TOTAL CAPITAL</div>
+                                    <div class="summary-value" title="{{ item.total_capital|fmt_money }}">{{ item.total_capital|fmt_display_money }}</div>
+                                </div>
+                                <div class="summary-item">
+                                    <div class="summary-label">TOTAL CASH</div>
+                                    <div class="summary-value" title="{{ item.withdrawable_cash|fmt_money }}">{{ item.withdrawable_cash|fmt_display_money }}</div>
+                                </div>
+                                <div class="summary-item">
+                                    <div class="summary-label">POSITIONS</div>
+                                    <div class="summary-value" title="{{ item.positions|fmt_money }}">{{ item.positions|fmt_display_money }}</div>
+                                </div>
+                                <div class="summary-item">
+                                    <div class="summary-label">BOOK VALUE</div>
+                                    <div class="summary-value" title="{{ item.book_value|fmt_money }}">{{ item.book_value|fmt_display_money }}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Actions -->
+                        <div class="col-lg-2 col-md-4 text-end portfolio-summary-actions">
+                            <div class="btn-group btn-group-sm row-actions" role="group">
+                                <button type="button"
+                                        class="btn btn-outline-success btn-icon js-deposit-funds-btn"
+                                        data-portfolio-id="{{ item.portfolio.id }}"
+                                        data-name="{{ item.portfolio.name|e }}"
+                                        title="Deposit"
+                                        data-bs-toggle="tooltip" data-bs-placement="top">
+                                    <i class="bi bi-arrow-down-circle"></i>
+                                </button>
+                                <button type="button"
+                                        class="btn btn-outline-danger btn-icon js-withdraw-funds-btn"
+                                        data-portfolio-id="{{ item.portfolio.id }}"
+                                        data-name="{{ item.portfolio.name|e }}"
+                                        data-withdrawable-cash="{{ item.withdrawable_cash|fmt_money }}"
+                                        data-withdrawable-cash-input="{{ item.withdrawable_cash|fmt_money }}"
+                                        title="Withdraw"
+                                        data-bs-toggle="tooltip" data-bs-placement="top">
+                                    <i class="bi bi-arrow-up-circle"></i>
+                                </button>
+                                <button type="button"
+                                        class="btn btn-outline-danger btn-icon js-delete-portfolio-btn"
+                                        data-portfolio-id="{{ item.portfolio.id }}"
+                                        data-name="{{ item.portfolio.name|e }}"
+                                        title="Remove Portfolio"
+                                        data-bs-toggle="tooltip" data-bs-placement="top">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- Capital log table (collapsed by default) -->
+                <div class="portfolio-transactions portfolio-cash-events" id="events-{{ item.portfolio.id }}" style="display: none;">
+                    {% if item.events %}
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover align-middle mb-0 transactions-table dashboard-actions-table portfolio-events-table">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="small" style="width:120px;">Date</th>
+                                    <th class="small" style="width:110px;">Type</th>
+                                    <th class="small text-end" style="width:150px;">Amount</th>
+                                    <th class="small">Notes</th>
+                                    <th class="small text-center" style="width:90px;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for event in item.events %}
+                                <tr>
+                                    <td><small class="text-muted">{{ event.date_short }}</small></td>
+                                    <td>
+                                        {% if event.event_type in ('Deposit', 'Initial') %}
+                                            <span class="tx-type-label tx-type-buy type-deposit">Deposit</span>
+                                        {% else %}
+                                            <span class="tx-type-label tx-type-sell type-withdrawal">Withdraw</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">
+                                        <small class="{% if event.amount_delta > 0 %}profit{% elif event.amount_delta < 0 %}loss{% else %}neutral{% endif %}" title="{% if event.amount_delta > 0 %}+{% endif %}{{ event.amount_delta|fmt_money }}">
+                                            {% if event.amount_delta > 0 %}+{% endif %}{{ event.amount_delta|fmt_display_money }}
+                                        </small>
+                                    </td>
+                                    {% set event_notes = event.notes or '' %}
+                                    <td class="portfolio-event-notes"{% if event_notes %} title="{{ event_notes }}"{% endif %}>
+                                        <small class="text-muted">{{ event_notes if event_notes else '—' }}</small>
+                                    </td>
+                                    <td class="text-center actions-cell">
+                                        <div class="btn-group btn-group-sm row-actions" role="group">
+                                            <button type="button"
+                                                    class="btn btn-outline-primary btn-icon btn-sm js-edit-portfolio-event-btn"
+                                                    data-event='{{ {
+                                                        "id": event.id,
+                                                        "type": event.event_type,
+                                                        "amount": ("%.2f"|format(event.amount_delta|abs)),
+                                                        "notes": (event.notes or ""),
+                                                        "date": event.date_short
+                                                    }|tojson|e }}'
+                                                    title="Edit"
+                                                    data-bs-toggle="tooltip" data-bs-placement="top">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                            <button type="button"
+                                                    class="btn btn-outline-danger btn-icon btn-sm js-delete-portfolio-event-btn"
+                                                    data-event-id="{{ event.id }}"
+                                                    data-event-type="{{ event.event_type }}"
+                                                    title="Remove"
+                                                    data-bs-toggle="tooltip" data-bs-placement="top">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="tx-pagination-bar" id="pgbar-ev-{{ item.portfolio.id }}"></div>
+                    {% else %}
+                    <div class="portfolio-inline-empty page-accent-surface">
+                        <small>No capital entries yet. Use Deposit to add funds.</small>
+                    </div>
+                    {% endif %}
+                </div>
+
+            </div>
+            {% endfor %}
+        <div id="outer-pg-bar-portfolios" class="tx-pagination-bar mt-1 px-1"></div>
+        {% else %}
+        <div class="empty-state portfolios-empty-state">
+            <div class="portfolios-empty-icon" aria-hidden="true">
+                <i class="bi bi-folder-plus"></i>
+            </div>
+            <h2 class="empty-state-title">No portfolios yet</h2>
+            <p class="empty-state-text">Create your first portfolio to start recording capital entries and transactions manually.</p>
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newPortfolioModal">
+                <i class="bi bi-plus-lg" aria-hidden="true"></i>
+                <span>Create Portfolio</span>
+            </button>
+        </div>
+        {% endif %}
+    </div>
+</div>
+</div>
+
+<!-- ── Deposit Modal ───────────────────────────────────────────────── -->
+<div class="modal fade" id="depositFundsModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" id="depositFundsForm" autocomplete="off" novalidate>
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="user_timezone" value="">
+                <div class="modal-header">
+                    <h5 class="modal-title">Deposit to <span id="deposit_portfolio_title"></span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Portfolio</label>
+                        <input type="text" class="form-control" id="deposit_portfolio_name" readonly>
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <div class="mb-3">
+                                <label for="add_funds_amount" class="form-label">Amount</label>
+                                <input type="text" inputmode="decimal"
+                                       class="form-control {% if _dep_errs.get('amount_delta') %}is-invalid{% endif %}"
+                                       id="add_funds_amount" name="amount_delta"
+                                       placeholder="0.00"
+                                       value="{{ _dep_vals.get('amount_delta', '') }}">
+                                {% if _dep_errs.get('amount_delta') %}
+                                <div class="invalid-feedback">{{ _dep_errs.get('amount_delta') }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="mb-3">
+                                <label for="deposit_date" class="form-label">Date</label>
+                                <input type="text"
+                                       class="form-control {% if _dep_errs.get('deposit_date') %}is-invalid{% endif %}"
+                                       id="deposit_date" name="deposit_date" placeholder="YYYY-MM-DD"
+                                       value="{{ _dep_vals.get('deposit_date', '') }}">
+                                {% if _dep_errs.get('deposit_date') %}
+                                <div class="invalid-feedback d-block">{{ _dep_errs.get('deposit_date') }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="add_funds_notes" class="form-label">Notes (optional)</label>
+                        <textarea class="form-control js-notes-input" id="add_funds_notes" name="notes"
+                                  rows="2" maxlength="300">{{ _dep_vals.get('notes', '') }}</textarea>
+                        <small class="notes-counter">0 / 300</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Record Deposit</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ── Withdraw Modal ─────────────────────────────────────────────── -->
+<div class="modal fade" id="withdrawFundsModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" id="withdrawFundsForm" autocomplete="off" novalidate>
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="user_timezone" value="">
+                <div class="modal-header">
+                    <h5 class="modal-title">Withdraw from <span id="withdraw_portfolio_title"></span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Portfolio</label>
+                        <input type="text" class="form-control" id="withdraw_portfolio_name" readonly>
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <div class="mb-3">
+                                <label for="withdraw_funds_amount" class="form-label">Amount</label>
+                                <div class="position-relative">
+                                    <input type="text" inputmode="decimal"
+                                           class="form-control {% if _with_errs.get('amount_delta') %}is-invalid{% endif %} pe-5"
+                                           id="withdraw_funds_amount" name="amount_delta"
+                                           placeholder="0.00"
+                                           value="{{ _with_vals.get('amount_delta', '') }}">
+                                    <span class="sell-max-inline">
+                                        <button type="button" class="btn btn-link btn-sm p-0 sell-max-btn" id="withdraw_max_btn">Max</button>
+                                    </span>
+                                </div>
+                                {% if _with_errs.get('amount_delta') %}
+                                <div class="invalid-feedback">{{ _with_errs.get('amount_delta') }}</div>
+                                {% endif %}
+                                <small class="text-muted withdraw-available-hint">Available to withdraw: <span id="withdraw_available_cash">0.00</span></small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="mb-3">
+                                <label for="withdraw_date" class="form-label">Date</label>
+                                <input type="text"
+                                       class="form-control {% if _with_errs.get('withdraw_date') %}is-invalid{% endif %}"
+                                       id="withdraw_date" name="withdraw_date" placeholder="YYYY-MM-DD"
+                                       value="{{ _with_vals.get('withdraw_date', '') }}">
+                                {% if _with_errs.get('withdraw_date') %}
+                                <div class="invalid-feedback d-block">{{ _with_errs.get('withdraw_date') }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="withdraw_funds_notes" class="form-label">Notes (optional)</label>
+                        <textarea class="form-control js-notes-input" id="withdraw_funds_notes" name="notes"
+                                  rows="2" maxlength="300">{{ _with_vals.get('notes', '') }}</textarea>
+                        <small class="notes-counter">0 / 300</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Record Withdraw</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ── New Portfolio Modal ────────────────────────────────────────── -->
+<div class="modal fade" id="newPortfolioModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('portfolios.portfolios_add') }}" autocomplete="off" novalidate>
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-header">
+                    <h5 class="modal-title">New Portfolio</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    {% if _add_errs.get('__all__') %}
+                    <div class="alert alert-danger d-flex align-items-center mb-3">
+                        <i class="bi bi-exclamation-circle me-2"></i>{{ _add_errs.get('__all__') }}
+                    </div>
+                    {% endif %}
+                    <div class="mb-3">
+                        <label for="portfolio_name" class="form-label">Portfolio Name</label>
+                        <input type="text"
+                               class="form-control {% if _add_errs.get('name') %}is-invalid{% endif %}"
+                               id="portfolio_name" name="name"
+                               placeholder="e.g., Stocks, Gold, Crypto"
+                               maxlength="20"
+                               value="{{ _add_vals.get('name', '') }}"
+                               autofocus>
+                        {% if _add_errs.get('name') %}
+                        <div class="invalid-feedback">{{ _add_errs.get('name') }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Create</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ── Remove Portfolio Modal ─────────────────────────────────────── -->
+<div class="modal fade" id="deletePortfolioModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" id="deletePortfolioForm" novalidate>
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-header">
+                    <h5 class="modal-title d-flex align-items-center gap-2">
+                        <i class="bi bi-trash modal-title-icon"></i>
+                        Confirm Remove
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Remove portfolio <span class="text-emphasis" id="delete_portfolio_name"></span>?</p>
+                    <div class="alert alert-warning mb-0">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        This will also remove all transactions and history for this portfolio.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash me-1"></i>Remove
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ── Edit Portfolio Event Modal ─────────────────────────────────── -->
+{% set _ev_errs = (form_errors.get('portfolio_event_edit', {}) if form_errors else {}) %}
+<div class="modal fade" id="editPortfolioEventModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" id="editPortfolioEventForm" autocomplete="off" novalidate>
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="user_timezone" value="">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Transaction</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    {% if _ev_errs.get('__all__') %}
+                    <div class="alert alert-danger d-flex align-items-center mb-3">
+                        <i class="bi bi-exclamation-circle me-2"></i>{{ _ev_errs.get('__all__') }}
+                    </div>
+                    {% endif %}
+                    <div class="mb-3">
+                        <label class="form-label">Type</label>
+                        <input type="text" class="form-control" id="edit_event_type_display" readonly>
+                        <input type="hidden" id="edit_event_type_hidden">
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <div class="mb-3">
+                                <label for="edit_cash_event_amount" class="form-label">Amount</label>
+                                <input type="text" inputmode="decimal"
+                                       class="form-control {% if _ev_errs.get('edit_cash_event_amount') %}is-invalid{% endif %}"
+                                       id="edit_cash_event_amount" name="edit_cash_event_amount"
+                                       placeholder="0.00">
+                                {% if _ev_errs.get('edit_cash_event_amount') %}
+                                <div class="invalid-feedback">{{ _ev_errs.get('edit_cash_event_amount') }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="mb-3">
+                                <label for="edit_event_date" class="form-label">Date</label>
+                                <input type="text"
+                                       class="form-control {% if _ev_errs.get('date') %}is-invalid{% endif %}"
+                                       id="edit_event_date" name="date"
+                                       placeholder="YYYY-MM-DD">
+                                {% if _ev_errs.get('date') %}
+                                <div class="invalid-feedback d-block">{{ _ev_errs.get('date') }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_cash_event_notes" class="form-label">Notes (optional)</label>
+                        <textarea class="form-control js-notes-input {% if _ev_errs.get('edit_cash_event_notes') %}is-invalid{% endif %}"
+                                  id="edit_cash_event_notes" name="edit_cash_event_notes"
+                                  rows="2" maxlength="300"></textarea>
+                        <small class="notes-counter">0 / 300</small>
+                        {% if _ev_errs.get('edit_cash_event_notes') %}
+                        <div class="invalid-feedback">{{ _ev_errs.get('edit_cash_event_notes') }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ── Remove Portfolio Event Modal ──────────────────────────────── -->
+<div class="modal fade" id="deletePortfolioEventModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" id="deletePortfolioEventForm" novalidate>
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-header">
+                    <h5 class="modal-title d-flex align-items-center gap-2">
+                        <i class="bi bi-trash modal-title-icon"></i>
+                        Confirm Remove
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Remove this <span class="text-emphasis" id="delete_event_type_name"></span> capital entry?</p>
+                    <div class="alert alert-warning mb-0">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        This will reverse the effect on portfolio capital and cash.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash me-1"></i>Remove
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
+<script>
+
+// ── Inner event-row pagination (per portfolio) ────────────────────
+(function setupPortfolioInnerPagination() {
+    var PAGE_SIZE = 10;
+    var state = {};
+
+    function getRows(portfolioId) {
+        var tbody = document.querySelector('#events-' + portfolioId + ' tbody');
+        return tbody ? Array.from(tbody.querySelectorAll('tr')) : [];
+    }
+
+    function renderBar(portfolioId) {
+        var rows = getRows(portfolioId);
+        var bar  = document.getElementById('pgbar-ev-' + portfolioId);
+
+        if (rows.length <= PAGE_SIZE) {
+            rows.forEach(function(r) { r.style.display = ''; });
+            if (bar) bar.style.display = 'none';
+            return;
+        }
+
+        if (!state[portfolioId]) state[portfolioId] = { page: 1 };
+        var totalPages = Math.ceil(rows.length / PAGE_SIZE);
+        state[portfolioId].page = Math.min(Math.max(state[portfolioId].page, 1), totalPages);
+        var page  = state[portfolioId].page;
+        var start = (page - 1) * PAGE_SIZE;
+        var end   = Math.min(start + PAGE_SIZE, rows.length);
+
+        rows.forEach(function(r, i) {
+            r.style.display = (i >= start && i < end) ? '' : 'none';
+        });
+
+        if (!bar) return;
+
+        var winStart = Math.max(1, page - 1);
+        var winEnd   = Math.min(totalPages, winStart + 2);
+        if (winEnd - winStart < 2) winStart = Math.max(1, winEnd - 2);
+
+        var nums = '';
+        for (var p = winStart; p <= winEnd; p++) {
+            nums += '<span class="tx-pg-num' + (p === page ? ' active' : '') + '" data-ev-gid="' + portfolioId + '" data-page="' + p + '">' + p + '</span>';
+        }
+
+        bar.style.display = 'flex';
+        bar.innerHTML =
+            '<div class="tx-pg-indicator">' +
+                '<button class="btn btn-sm px-1 py-0 border-0 text-secondary ev-pg-prev"' + (page <= 1 ? ' disabled' : '') + ' data-ev-gid="' + portfolioId + '">&#8249;</button>' +
+                nums +
+                '<button class="btn btn-sm px-1 py-0 border-0 text-secondary ev-pg-next"' + (page >= totalPages ? ' disabled' : '') + ' data-ev-gid="' + portfolioId + '">&#8250;</button>' +
+            '</div>';
+    }
+
+    document.addEventListener('click', function(e) {
+        var prev = e.target.closest ? e.target.closest('.ev-pg-prev') : null;
+        if (prev) {
+            var gid = prev.getAttribute('data-ev-gid');
+            if (state[gid] && state[gid].page > 1) { state[gid].page--; renderBar(gid); }
+            return;
+        }
+        var next = e.target.closest ? e.target.closest('.ev-pg-next') : null;
+        if (next) {
+            var gid = next.getAttribute('data-ev-gid');
+            if (!state[gid]) state[gid] = { page: 1 };
+            state[gid].page++;
+            renderBar(gid);
+            return;
+        }
+        var num = e.target.closest ? e.target.closest('[data-ev-gid]') : null;
+        if (num && num.classList.contains('tx-pg-num')) {
+            var gid = num.getAttribute('data-ev-gid');
+            var pg  = parseInt(num.getAttribute('data-page'), 10);
+            if (gid && pg) { if (!state[gid]) state[gid] = { page: 1 }; state[gid].page = pg; renderBar(gid); }
+        }
+    });
+
+    window.initPortfolioPagination = function(portfolioId) {
+        if (!state[portfolioId]) state[portfolioId] = { page: 1 };
+        renderBar(portfolioId);
+    };
+}());
+
+// ── Outer portfolio-card pagination ───────────────────────────────
+(function setupPortfolioOuterPagination() {
+    var PAGE_SIZE = 100;
+    var currentPage = 1;
+
+    function getCards() {
+        return Array.from(document.querySelectorAll('.portfolio-card'));
+    }
+
+    function render() {
+        var cards      = getCards();
+        var totalPages = Math.max(1, Math.ceil(cards.length / PAGE_SIZE));
+        currentPage    = Math.min(Math.max(currentPage, 1), totalPages);
+
+        var start = (currentPage - 1) * PAGE_SIZE;
+        var end   = start + PAGE_SIZE;
+
+        cards.forEach(function(c, i) {
+            c.style.display = (i >= start && i < end) ? '' : 'none';
+        });
+
+        var bar = document.getElementById('outer-pg-bar-portfolios');
+        if (!bar) return;
+
+        if (cards.length <= PAGE_SIZE) {
+            bar.style.display = 'none';
+            return;
+        }
+
+        var winStart = Math.max(1, currentPage - 1);
+        var winEnd   = Math.min(totalPages, winStart + 2);
+        if (winEnd - winStart < 2) winStart = Math.max(1, winEnd - 2);
+
+        var nums = '';
+        for (var p = winStart; p <= winEnd; p++) {
+            nums += '<span class="tx-pg-num' + (p === currentPage ? ' active' : '') + '" data-outer-pf-page="' + p + '">' + p + '</span>';
+        }
+
+        bar.style.display = 'flex';
+        bar.innerHTML =
+            '<div class="tx-pg-indicator">' +
+                '<button class="btn btn-sm px-1 py-0 border-0 text-secondary outer-pf-prev"' + (currentPage <= 1 ? ' disabled' : '') + '>&#8249;</button>' +
+                nums +
+                '<button class="btn btn-sm px-1 py-0 border-0 text-secondary outer-pf-next"' + (currentPage >= totalPages ? ' disabled' : '') + '>&#8250;</button>' +
+            '</div>';
+    }
+
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.outer-pf-prev')) { if (currentPage > 1) { currentPage--; render(); } return; }
+        if (e.target.closest('.outer-pf-next')) { currentPage++; render(); return; }
+        var num = e.target.closest('[data-outer-pf-page]');
+        if (num) { currentPage = parseInt(num.getAttribute('data-outer-pf-page'), 10); render(); }
+    });
+
+    render();
+}());
+
+// ── Expand / Collapse ─────────────────────────────────────────────
+(function () {
+    var SK = 'portfoliosOpen', RK = 'portfoliosOpenRef';
+
+    var openSet = (function () {
+        try {
+            var saved = JSON.parse(sessionStorage.getItem(SK) || 'null');
+            var ref   = sessionStorage.getItem(RK) || '';
+            if (saved && ref && document.referrer.indexOf(ref) !== -1)
+                return new Set(saved);
+        } catch (e) {}
+        sessionStorage.removeItem(SK);
+        sessionStorage.removeItem(RK);
+        return new Set();
+    }());
+
+    openSet.forEach(function (id) {
+        var d = document.getElementById('events-' + id);
+        var c = document.getElementById('chevron-' + id);
+        if (d) d.style.display = 'block';
+        if (c) { c.classList.replace('bi-chevron-right', 'bi-chevron-down'); }
+        if (window.initPortfolioPagination) window.initPortfolioPagination(id);
+    });
+
+    function save() {
+        sessionStorage.setItem(SK, JSON.stringify([...openSet]));
+        sessionStorage.setItem(RK, window.location.href);
+    }
+
+    window.togglePortfolioEvents = function (portfolioId) {
+        var d = document.getElementById('events-' + portfolioId);
+        var c = document.getElementById('chevron-' + portfolioId);
+        if (!d || !c) return;
+        if (d.style.display === 'none') {
+            d.style.display = 'block';
+            c.classList.replace('bi-chevron-right', 'bi-chevron-down');
+            openSet.add(String(portfolioId));
+            if (window.initPortfolioPagination) window.initPortfolioPagination(String(portfolioId));
+        } else {
+            d.style.display = 'none';
+            c.classList.replace('bi-chevron-down', 'bi-chevron-right');
+            openSet.delete(String(portfolioId));
+        }
+        save();
+    };
+}());
+
+// ── Deposit / Withdraw / Delete Portfolio ─────────────────────────
+function depositFunds(id, name, opts) {
+    opts = opts || {};
+    document.getElementById('depositFundsForm').action = `/portfolios/deposit/${id}`;
+    document.getElementById('deposit_portfolio_name').value = name || '';
+    document.getElementById('deposit_portfolio_title').textContent = name || '';
+    document.getElementById('add_funds_amount').value = (opts.amount != null ? String(opts.amount) : '');
+    document.getElementById('deposit_date').value = (opts.date || todayStr());
+    document.getElementById('add_funds_notes').value = (opts.notes || '');
+    initFlatpickr('deposit_date');
+    new bootstrap.Modal(document.getElementById('depositFundsModal')).show();
+}
+
+function withdrawFunds(id, name, opts) {
+    opts = opts || {};
+    document.getElementById('withdrawFundsForm').action = `/portfolios/withdraw/${id}`;
+    document.getElementById('withdraw_portfolio_name').value = name || '';
+    document.getElementById('withdraw_portfolio_title').textContent = name || '';
+    document.getElementById('withdraw_available_cash').textContent = opts.withdrawableCash || '0.00';
+    document.getElementById('withdraw_max_btn').dataset.maxAmount = opts.withdrawableCashInput || '';
+    document.getElementById('withdraw_funds_amount').value = (opts.amount != null ? String(opts.amount) : '');
+    document.getElementById('withdraw_date').value = (opts.date || todayStr());
+    document.getElementById('withdraw_funds_notes').value = (opts.notes || '');
+    initFlatpickr('withdraw_date');
+    new bootstrap.Modal(document.getElementById('withdrawFundsModal')).show();
+}
+
+(function setupWithdrawMax() {
+    const btn = document.getElementById('withdraw_max_btn');
+    const amountInput = document.getElementById('withdraw_funds_amount');
+    if (!btn || !amountInput) return;
+
+    btn.addEventListener('click', function() {
+        const maxAmount = btn.dataset.maxAmount || '';
+        if (!maxAmount) return;
+        amountInput.value = maxAmount;
+        amountInput.dispatchEvent(new Event('input'));
+    });
+})();
+
+function deletePortfolio(id, name) {
+    document.getElementById('deletePortfolioForm').action = `/portfolios/delete/${id}`;
+    document.getElementById('delete_portfolio_name').textContent = name || '';
+    new bootstrap.Modal(document.getElementById('deletePortfolioModal')).show();
+}
+
+// ── Edit / Delete Portfolio Event ─────────────────────────────────
+function portfolioEventTypeLabel(type) {
+    if (type === 'Initial' || type === 'Deposit') return 'Deposit';
+    if (type === 'Withdrawal') return 'Withdraw';
+    return type || '';
+}
+
+function editPortfolioEvent(id, type, amount, notes, date) {
+    document.getElementById('editPortfolioEventForm').action = `/portfolios/events/edit/${id}`;
+    document.getElementById('edit_event_type_display').value = portfolioEventTypeLabel(type);
+    document.getElementById('edit_event_type_hidden').value = type || '';
+    document.getElementById('edit_cash_event_amount').value = amount || '';
+    document.getElementById('edit_cash_event_notes').value = notes || '';
+    document.getElementById('edit_event_date').value = date || todayStr();
+    initFlatpickr('edit_event_date');
+    new bootstrap.Modal(document.getElementById('editPortfolioEventModal')).show();
+}
+
+function deletePortfolioEvent(id, type) {
+    document.getElementById('deletePortfolioEventForm').action = `/portfolios/events/delete/${id}`;
+    document.getElementById('delete_event_type_name').textContent = portfolioEventTypeLabel(type) || 'portfolio';
+    new bootstrap.Modal(document.getElementById('deletePortfolioEventModal')).show();
+}
+
+// ── Re-open modal after server-side validation errors ────────────
+(function reopenModalFromServerErrors() {
+    const which = {{ (active_modal or '') | tojson }};
+    const payload = {{ (modal_data or {}) | tojson }};
+
+    if (!which) return;
+
+    document.addEventListener('DOMContentLoaded', function() {
+        try {
+            if (which === 'depositFundsModal' && payload && payload.portfolio_id) {
+                depositFunds(payload.portfolio_id, payload.name || '', {
+                    amount: {{ (_dep_vals.get('amount_delta', '') if form_values and form_values.get('portfolios_deposit') else '') | tojson }},
+                    date:   {{ (_dep_vals.get('deposit_date', '') if form_values and form_values.get('portfolios_deposit') else '') | tojson }},
+                    notes:  {{ (_dep_vals.get('notes', '') if form_values and form_values.get('portfolios_deposit') else '') | tojson }},
+                });
+            }
+            if (which === 'withdrawFundsModal' && payload && payload.portfolio_id) {
+                withdrawFunds(payload.portfolio_id, payload.name || '', {
+                    amount: {{ (_with_vals.get('amount_delta', '') if form_values and form_values.get('portfolios_withdraw') else '') | tojson }},
+                    date:   {{ (_with_vals.get('withdraw_date', '') if form_values and form_values.get('portfolios_withdraw') else '') | tojson }},
+                    notes:  {{ (_with_vals.get('notes', '') if form_values and form_values.get('portfolios_withdraw') else '') | tojson }},
+                    withdrawableCash: payload.withdrawable_cash || '0.00',
+                    withdrawableCashInput: payload.withdrawable_cash_input || '',
+                });
+            }
+            if (which === 'newPortfolioModal') {
+                new bootstrap.Modal(document.getElementById('newPortfolioModal')).show();
+            }
+            if (which === 'editPortfolioEventModal') {
+                // Form action gets set when the user clicks "Edit"; on a
+                // server-side re-render the modal_data carries the event id
+                // so the form can target the right route again.
+                if (payload && payload.event_id) {
+                    document.getElementById('editPortfolioEventForm').action =
+                        '/portfolios/events/edit/' + payload.event_id;
+                }
+                new bootstrap.Modal(document.getElementById('editPortfolioEventModal')).show();
+            }
+        } catch (e) {}
+    });
+})();
+
+// ── Event delegation for all action buttons ──────────────────────
+(function wireActionButtons() {
+    document.addEventListener('click', function(ev) {
+
+        // Deposit
+        const depBtn = ev.target && ev.target.closest ? ev.target.closest('.js-deposit-funds-btn') : null;
+        if (depBtn) {
+            ev.preventDefault(); ev.stopPropagation(); ev.stopImmediatePropagation();
+            const id = parseInt(depBtn.getAttribute('data-portfolio-id') || '0', 10);
+            const name = depBtn.getAttribute('data-name') || '';
+            if (id) depositFunds(id, name);
+            return;
+        }
+
+        // Withdraw
+        const withBtn = ev.target && ev.target.closest ? ev.target.closest('.js-withdraw-funds-btn') : null;
+        if (withBtn) {
+            ev.preventDefault(); ev.stopPropagation(); ev.stopImmediatePropagation();
+            const id = parseInt(withBtn.getAttribute('data-portfolio-id') || '0', 10);
+            const name = withBtn.getAttribute('data-name') || '';
+            const withdrawableCash = withBtn.getAttribute('data-withdrawable-cash') || '0.00';
+            const withdrawableCashInput = withBtn.getAttribute('data-withdrawable-cash-input') || '';
+            if (id) withdrawFunds(id, name, {
+                withdrawableCash: withdrawableCash,
+                withdrawableCashInput: withdrawableCashInput,
+            });
+            return;
+        }
+
+        // Delete portfolio
+        const delPortfolioBtn = ev.target && ev.target.closest ? ev.target.closest('.js-delete-portfolio-btn') : null;
+        if (delPortfolioBtn) {
+            ev.preventDefault(); ev.stopPropagation(); ev.stopImmediatePropagation();
+            const id = parseInt(delPortfolioBtn.getAttribute('data-portfolio-id') || '0', 10);
+            const name = delPortfolioBtn.getAttribute('data-name') || '';
+            if (id) deletePortfolio(id, name);
+            return;
+        }
+
+        // Edit event
+        const editEvBtn = ev.target && ev.target.closest ? ev.target.closest('.js-edit-portfolio-event-btn') : null;
+        if (editEvBtn) {
+            ev.preventDefault(); ev.stopPropagation(); ev.stopImmediatePropagation();
+            try {
+                const ev_data = JSON.parse(editEvBtn.getAttribute('data-event') || '{}');
+                editPortfolioEvent(ev_data.id, ev_data.type, ev_data.amount, ev_data.notes, ev_data.date);
+            } catch (e) {}
+            return;
+        }
+
+        // Delete event
+        const delEvBtn = ev.target && ev.target.closest ? ev.target.closest('.js-delete-portfolio-event-btn') : null;
+        if (delEvBtn) {
+            ev.preventDefault(); ev.stopPropagation(); ev.stopImmediatePropagation();
+            const id = parseInt(delEvBtn.getAttribute('data-event-id') || '0', 10);
+            const type = delEvBtn.getAttribute('data-event-type') || '';
+            if (id) deletePortfolioEvent(id, type);
+            return;
+        }
+
+    }, true);
+})();
+
+// ── Init tooltips ─────────────────────────────────────────────────
+document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el) {
+    new bootstrap.Tooltip(el, { trigger: 'hover focus' });
+});
+</script>
+{% endblock %}

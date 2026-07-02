@@ -1,0 +1,32 @@
+"""User repository for database operations on User model."""
+
+from typing import Optional
+from portfolio_app.repositories.base import BaseRepository
+from portfolio_app.models.user import User
+
+
+class UserRepository(BaseRepository[User]):
+    """Repository for User model database operations."""
+
+    def get_by_username(self, username: str) -> Optional[User]:
+        """Get user by username (case-sensitive)."""
+        return self.model.query.filter_by(username=username).first()
+
+    def get_by_email(self, email: str) -> Optional[User]:
+        """Get user by email address (case-insensitive)."""
+        return self.model.query.filter(
+            self.model.email == email.lower()
+        ).first()
+
+    def get_by_username_or_email(self, identifier: str) -> Optional[User]:
+        """Get user by username or email address."""
+        return self.model.query.filter(
+            (self.model.username == identifier) |
+            (self.model.email == identifier.lower())
+        ).first()
+
+    def get_by_pending_email(self, email: str) -> Optional[User]:
+        """Get a verified user who has a pending email change to this address."""
+        return self.model.query.filter(
+            self.model.pending_email == email.lower()
+        ).first()

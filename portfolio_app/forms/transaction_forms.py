@@ -1,0 +1,273 @@
+"""Forms for transaction-related operations."""
+
+from decimal import Decimal
+from typing import List
+from portfolio_app.forms.base_form import BaseForm, NOTES_MAX_LENGTH, SYMBOL_MAX_LENGTH
+from portfolio_app.models.portfolio import Portfolio
+from portfolio_app.utils.messages import MESSAGES
+from config import Config
+
+
+class TransactionAddForm(BaseForm):
+    """Form for adding a new transaction."""
+
+    def __init__(self, data: dict, portfolios: List[Portfolio]):
+        super().__init__(data)
+        self.portfolios = portfolios
+
+    def validate(self) -> bool:
+        portfolio_id_str = (self.data.get('portfolio_id') or '').strip()
+        try:
+            portfolio_id = int(portfolio_id_str) if portfolio_id_str else 0
+            if portfolio_id <= 0:
+                self.errors['portfolio_id'] = MESSAGES['PORTFOLIO_SELECT_REQUIRED']
+            else:
+                portfolio = next((p for p in self.portfolios if p.id == portfolio_id), None)
+                if not portfolio:
+                    self.errors['portfolio_id'] = MESSAGES['PORTFOLIO_NOT_FOUND']
+                else:
+                    self.cleaned_data['portfolio_id'] = portfolio_id
+                    self.cleaned_data['portfolio'] = portfolio
+        except (ValueError, TypeError):
+            self.errors['portfolio_id'] = MESSAGES['PORTFOLIO_SELECTION_INVALID']
+
+        raw_type = (self.data.get('transaction_type') or '').strip()
+        transaction_type = raw_type if raw_type in Config.TRANSACTION_TYPES else Config.TRANSACTION_TYPES[0]
+        self.cleaned_data['transaction_type'] = transaction_type
+
+        symbol = self._validate_required_string('symbol', MESSAGES['SYMBOL_REQUIRED'])
+        if symbol:
+            if self._validate_max_length(
+                'symbol', symbol, SYMBOL_MAX_LENGTH, MESSAGES['SYMBOL_TOO_LONG']
+            ):
+                self.cleaned_data['symbol'] = symbol.upper()
+
+        price = self._validate_decimal('price', allow_zero=False)
+        if price is not None:
+            self.cleaned_data['price'] = price
+
+        quantity = self._validate_decimal('quantity', allow_zero=False)
+        if quantity is not None:
+            self.cleaned_data['quantity'] = quantity
+
+        fees = self._validate_decimal('fees', allow_zero=True, allow_blank=True)
+        if fees is not None:
+            self.cleaned_data['fees'] = fees
+        elif 'fees' not in self.errors:
+            self.cleaned_data['fees'] = Decimal('0')
+
+        notes = self._get_string('notes', default='')
+        if self._validate_max_length('notes', notes, NOTES_MAX_LENGTH, MESSAGES['NOTES_TOO_LONG']):
+            self.cleaned_data['notes'] = notes
+
+        date_str = self._get_string('date', default='')
+        parsed = self._parse_date_not_future(date_str, 'date')
+        if parsed is not None:
+            self.cleaned_data['date'] = parsed
+
+        return not self.has_errors()
+
+
+class TransactionEditForm(BaseForm):
+    """Form for editing an existing transaction."""
+
+    def __init__(self, data: dict, transaction_id: int, current_transaction_type: str):
+        super().__init__(data)
+        self.transaction_id = transaction_id
+        self.current_transaction_type = current_transaction_type
+
+    def validate(self) -> bool:
+        self.cleaned_data['transaction_id'] = self.transaction_id
+
+        symbol = self._get_string('edit_symbol', default='')
+        if symbol:
+            if self._validate_max_length(
+                'edit_symbol', symbol, SYMBOL_MAX_LENGTH, MESSAGES['SYMBOL_TOO_LONG']
+            ):
+                self.cleaned_data['symbol'] = symbol.upper()
+
+        price_str = self._get_string('edit_price', default='')
+        if price_str:
+            price = self._validate_decimal('edit_price', allow_zero=False)
+            if price is not None:
+                self.cleaned_data['price'] = price
+
+        quantity_str = self._get_string('edit_quantity', default='')
+        if quantity_str:
+            quantity = self._validate_decimal('edit_quantity', allow_zero=False)
+            if quantity is not None:
+                self.cleaned_data['quantity'] = quantity
+
+        fees_str = self._get_string('edit_fees', default='')
+        if fees_str:
+            fees = self._validate_decimal('edit_fees', allow_zero=True, allow_blank=False)
+            if fees is not None:
+                self.cleaned_data['fees'] = fees
+
+        notes = self._get_string('edit_notes', default=None)
+        if notes is not None:
+            if self._validate_max_length(
+                'edit_notes', notes, NOTES_MAX_LENGTH, MESSAGES['NOTES_TOO_LONG']
+            ):
+                self.cleaned_data['notes'] = notes
+
+        # Date is optional on edit; only validate when provided.
+        date_str = self._get_string('edit_date', default='')
+        if date_str:
+            parsed = self._parse_date_not_future(date_str, 'edit_date')
+            if parsed is not None:
+                self.cleaned_data['date'] = parsed
+
+        return not self.has_errors()
+
+
+class DividendAddForm(BaseForm):
+    """Form for adding a new dividend income record."""
+
+    def __init__(self, data: dict, portfolios: List[Portfolio]):
+        super().__init__(data)
+        self.portfolios = portfolios
+
+    def validate(self) -> bool:
+        portfolio_id_str = (self.data.get('portfolio_id') or '').strip()
+        try:
+            portfolio_id = int(portfolio_id_str) if portfolio_id_str else 0
+            if portfolio_id <= 0:
+                self.errors['portfolio_id'] = MESSAGES['PORTFOLIO_SELECT_REQUIRED']
+            else:
+                portfolio = next((p for p in self.portfolios if p.id == portfolio_id), None)
+                if not portfolio:
+                    self.errors['portfolio_id'] = MESSAGES['PORTFOLIO_NOT_FOUND']
+                else:
+                    self.cleaned_data['portfolio_id'] = portfolio_id
+        except (ValueError, TypeError):
+            self.errors['portfolio_id'] = MESSAGES['PORTFOLIO_SELECTION_INVALID']
+
+        symbol = (self.data.get('div_symbol') or '').strip().upper()
+        if not symbol:
+            self.errors['div_symbol'] = MESSAGES['SYMBOL_REQUIRED']
+        elif self._validate_max_length(
+            'div_symbol', symbol, SYMBOL_MAX_LENGTH, MESSAGES['SYMBOL_TOO_LONG']
+        ):
+            self.cleaned_data['symbol'] = symbol
+
+        amount_str = (self.data.get('amount') or '').strip()
+        if not amount_str:
+            self.errors['amount'] = MESSAGES['FIELD_REQUIRED']
+        else:
+            try:
+                amount = Decimal(amount_str.replace(',', '.'))
+                if amount <= 0:
+                    self.errors['amount'] = MESSAGES['INVALID_AMOUNT']
+                else:
+                    self.cleaned_data['amount'] = amount
+            except Exception:
+                self.errors['amount'] = MESSAGES['INVALID_NUMBER']
+
+        notes = self._get_string('notes', default='')
+        if self._validate_max_length('notes', notes, NOTES_MAX_LENGTH, MESSAGES['NOTES_TOO_LONG']):
+            self.cleaned_data['notes'] = notes
+
+        date_str = self._get_string('date', default='')
+        parsed = self._parse_date_not_future(date_str, 'date')
+        if parsed is not None:
+            self.cleaned_data['date'] = parsed
+
+        return not self.has_errors()
+
+
+class DividendEditForm(BaseForm):
+    """Form for editing an existing dividend income record."""
+
+    def __init__(self, data: dict, dividend_id: int):
+        super().__init__(data)
+        self.dividend_id = dividend_id
+
+    def validate(self) -> bool:
+        self.cleaned_data['dividend_id'] = self.dividend_id
+
+        amount_str = (self.data.get('edit_amount') or '').strip()
+        if not amount_str:
+            self.errors['edit_amount'] = MESSAGES['FIELD_REQUIRED']
+        else:
+            try:
+                amount = Decimal(amount_str.replace(',', '.'))
+                if amount <= 0:
+                    self.errors['edit_amount'] = MESSAGES['INVALID_AMOUNT']
+                else:
+                    self.cleaned_data['amount'] = amount
+            except Exception:
+                self.errors['edit_amount'] = MESSAGES['INVALID_NUMBER']
+
+        notes = self._get_string('edit_notes', default=None)
+        if notes is not None:
+            if self._validate_max_length(
+                'edit_notes', notes, NOTES_MAX_LENGTH, MESSAGES['NOTES_TOO_LONG']
+            ):
+                self.cleaned_data['notes'] = notes
+
+        date_str = self._get_string('edit_date', default='')
+        parsed = self._parse_date_not_future(date_str, 'edit_date')
+        if parsed is not None:
+            self.cleaned_data['date'] = parsed
+
+        return not self.has_errors()
+
+
+class SymbolAddForm(BaseForm):
+    """Form for tracking a new symbol."""
+
+    def __init__(self, data: dict, portfolios: List[Portfolio]):
+        super().__init__(data)
+        self.portfolios = portfolios
+
+    def validate(self) -> bool:
+        portfolio_id_str = (self.data.get('symbol_portfolio_id') or '').strip()
+        try:
+            portfolio_id = int(portfolio_id_str) if portfolio_id_str else 0
+            if portfolio_id <= 0:
+                self.errors['symbol_portfolio_id'] = MESSAGES['PORTFOLIO_SELECT_REQUIRED']
+            else:
+                portfolio = next((p for p in self.portfolios if p.id == portfolio_id), None)
+                if not portfolio:
+                    self.errors['symbol_portfolio_id'] = MESSAGES['PORTFOLIO_NOT_FOUND']
+                else:
+                    self.cleaned_data['portfolio_id'] = portfolio_id
+        except (ValueError, TypeError):
+            self.errors['symbol_portfolio_id'] = MESSAGES['PORTFOLIO_SELECTION_INVALID']
+
+        symbol = self._validate_required_string('symbol_ticker', MESSAGES['SYMBOL_REQUIRED'])
+        if symbol:
+            if self._validate_max_length(
+                'symbol_ticker', symbol, SYMBOL_MAX_LENGTH, MESSAGES['SYMBOL_TOO_LONG']
+            ):
+                self.cleaned_data['symbol'] = symbol.upper()
+
+        return not self.has_errors()
+
+
+class SymbolDeleteForm(BaseForm):
+    """Form for deleting a tracked symbol."""
+
+    def __init__(self, data: dict):
+        super().__init__(data)
+
+    def validate(self) -> bool:
+        portfolio_id_str = (self.data.get('delete_symbol_portfolio_id') or '').strip()
+        try:
+            portfolio_id = int(portfolio_id_str) if portfolio_id_str else 0
+            if portfolio_id <= 0:
+                self.errors['delete_symbol_portfolio_id'] = MESSAGES['INVALID_PORTFOLIO_ID']
+            else:
+                self.cleaned_data['portfolio_id'] = portfolio_id
+        except (ValueError, TypeError):
+            self.errors['delete_symbol_portfolio_id'] = MESSAGES['INVALID_PORTFOLIO_ID']
+
+        symbol = self._validate_required_string('delete_symbol_ticker', MESSAGES['SYMBOL_REQUIRED'])
+        if symbol:
+            if self._validate_max_length(
+                'delete_symbol_ticker', symbol, SYMBOL_MAX_LENGTH, MESSAGES['SYMBOL_TOO_LONG']
+            ):
+                self.cleaned_data['symbol'] = symbol.upper()
+
+        return not self.has_errors()

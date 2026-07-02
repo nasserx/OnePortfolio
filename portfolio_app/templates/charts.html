@@ -1,0 +1,831 @@
+{% extends "base.html" %}
+
+{% block title %}Charts - OnePortfolio{% endblock %}
+
+{% block extra_css %}
+<style>
+.charts-page {
+    display: grid;
+    gap: 1rem;
+}
+.charts-grid {
+    display: grid;
+    grid-template-columns: minmax(320px, 0.78fr) minmax(0, 1.22fr);
+    gap: 1rem;
+    align-items: stretch;
+}
+.charts-card {
+    border-radius: var(--radius-lg) !important;
+    outline: 1px solid var(--border-card) !important;
+    box-shadow: none !important;
+}
+.charts-card .card-body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+    padding: 1.15rem !important;
+}
+.charts-card-wide {
+    grid-column: 1 / -1;
+}
+.charts-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 0.9rem;
+}
+.charts-title-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+}
+.charts-title {
+    margin: 0;
+    color: var(--text-1);
+    font-size: var(--font-size-card-title);
+    font-weight: 500;
+}
+.charts-subtitle,
+.charts-helper {
+    color: var(--text-3);
+    font-size: var(--font-size-helper);
+    line-height: 1.35;
+}
+.allocation-wrap {
+    display: grid;
+    grid-template-columns: minmax(164px, 220px) minmax(0, 1fr);
+    align-items: center;
+    gap: 1.1rem;
+}
+.allocation-canvas-wrap {
+    width: 100%;
+    max-width: 220px;
+    aspect-ratio: 1 / 1;
+}
+.allocation-legend {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    grid-template-columns: 10px minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: 0.625rem;
+    row-gap: 0.5rem;
+    color: var(--text-2);
+    font-size: var(--font-size-helper);
+    font-weight: 500;
+}
+.allocation-legend li {
+    display: contents;
+}
+.allocation-legend .swatch,
+.allocation-legend .name,
+.allocation-legend .pct {
+    cursor: pointer;
+    user-select: none;
+    transition: opacity 0.15s ease;
+}
+.allocation-legend li.is-hidden .swatch {
+    opacity: 0.3;
+}
+.allocation-legend li.is-hidden .name,
+.allocation-legend li.is-hidden .pct {
+    color: var(--text-3);
+    opacity: 0.6;
+    text-decoration: line-through;
+}
+.allocation-legend .swatch {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+.allocation-legend .name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.allocation-legend .pct {
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+}
+.allocation-note,
+.table-note {
+    margin-top: 0.75rem;
+}
+.analytics-card {
+    gap: 0.9rem;
+}
+.stat-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0.55rem;
+}
+.mini-stat {
+    min-width: 0;
+    padding: 0.58rem 0.62rem;
+    background: var(--surface-2);
+    border-radius: var(--radius-md) !important;
+    outline: 1px solid var(--border-card) !important;
+}
+.mini-stat-label {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    color: var(--text-3);
+    font-size: var(--font-size-chart-label);
+    font-weight: 500;
+    letter-spacing: var(--letter-spacing-label);
+    line-height: 1.2;
+    text-overflow: ellipsis;
+    text-transform: none;
+    white-space: nowrap;
+}
+.mini-stat-value {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    margin-top: 0.24rem;
+    color: var(--text-1);
+    font-size: var(--font-size-helper);
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.25;
+    text-overflow: clip;
+    white-space: nowrap;
+}
+.mini-stat-sub {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    margin-top: 0.08rem;
+    color: var(--text-3);
+    font-size: var(--font-size-chart-label);
+    font-weight: 500;
+    line-height: 1.2;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.chart-panel {
+    min-width: 0;
+    padding-top: 0.15rem;
+}
+.chart-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 0.4rem;
+}
+.chart-caption {
+    color: var(--text-3);
+    font-size: var(--font-size-helper);
+    line-height: 1.35;
+}
+.chart-legend {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.85rem;
+    color: var(--text-3);
+    font-size: var(--font-size-chart-label);
+    font-weight: 500;
+    white-space: nowrap;
+}
+.chart-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+.chart-legend-dot {
+    width: 18px;
+    height: 3px;
+    border-radius: var(--radius-pill) !important;
+    background: var(--legend-color);
+}
+.area-chart-shell {
+    height: 244px;
+    min-height: 244px;
+}
+.asset-dashboard {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(360px, 0.82fr);
+    gap: 1rem;
+    align-items: start;
+}
+.asset-chart-stack {
+    min-width: 0;
+}
+.asset-table-wrap {
+    min-width: 0;
+    overflow: hidden;
+}
+.asset-table {
+    width: 100%;
+    display: grid;
+}
+.asset-table-row {
+    display: grid;
+    grid-template-columns: minmax(5rem, 0.95fr) minmax(5rem, 0.85fr) minmax(5.6rem, 0.8fr) minmax(4.4rem, 0.65fr) minmax(5rem, 0.7fr);
+    align-items: center;
+    column-gap: 0.65rem;
+    min-height: 34px;
+    padding: 0.2rem 0;
+    border-bottom: 1px solid var(--border-subtle) !important;
+}
+.asset-table-row:last-child {
+    border-bottom: 0 !important;
+}
+.asset-table-row.header {
+    min-height: auto;
+    padding-top: 0;
+    padding-bottom: 0.35rem;
+    color: var(--text-3);
+    font-size: var(--font-size-table-head);
+    font-weight: 500;
+    letter-spacing: var(--letter-spacing-label);
+    text-transform: none;
+    white-space: nowrap;
+}
+.asset-table-row.header span:nth-child(n+3) {
+    text-align: right;
+}
+.asset-table-row.is-other {
+    background: linear-gradient(90deg, var(--surface-hover), transparent);
+}
+.asset-name,
+.asset-portfolio,
+.asset-number {
+    min-width: 0;
+    overflow: hidden;
+    font-size: var(--font-size-table-nested-body);
+    font-weight: 500;
+    line-height: 1.25;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.asset-name {
+    color: var(--text-1);
+}
+.asset-portfolio {
+    color: var(--text-2);
+}
+.asset-number {
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+}
+.charts-page .profit { color: var(--color-profit) !important; }
+.charts-page .loss { color: var(--color-loss) !important; }
+.charts-page .text-income { color: var(--color-income) !important; }
+.charts-page .neutral { color: var(--text-3) !important; }
+
+@media (max-width: 1250px) {
+    .charts-grid,
+    .asset-dashboard {
+        grid-template-columns: 1fr;
+    }
+    .charts-card-wide {
+        grid-column: auto;
+    }
+}
+@media (max-width: 900px) {
+    .stat-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .chart-toolbar {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+    .chart-legend {
+        justify-content: flex-start;
+    }
+}
+@media (max-width: 760px) {
+    .charts-card-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .allocation-wrap {
+        grid-template-columns: 1fr;
+        justify-items: center;
+    }
+    .allocation-legend {
+        width: 100%;
+    }
+    .area-chart-shell {
+        height: 220px;
+        min-height: 220px;
+    }
+    .asset-table-row.header {
+        display: none;
+    }
+    .asset-table-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.4rem 0.8rem;
+        min-height: auto;
+        padding: 0.65rem 0;
+    }
+    .asset-table-row > span::before {
+        content: attr(data-label);
+        display: block;
+        margin-bottom: 0.12rem;
+        color: var(--text-3);
+        font-size: var(--font-size-chart-label);
+        font-weight: 500;
+        letter-spacing: var(--letter-spacing-label);
+        text-transform: none;
+    }
+    .asset-name::before {
+        display: none !important;
+    }
+    .asset-number {
+        text-align: left;
+    }
+}
+</style>
+{% endblock %}
+
+{% macro signed_money(value) -%}
+{% if value > 0 %}+{% endif %}{{ value|fmt_display_money }}
+{%- endmacro %}
+
+{% macro signed_money_title(value) -%}
+{% if value > 0 %}+{% endif %}{{ value|fmt_money }}
+{%- endmacro %}
+
+{% macro percent_value(value) -%}
+{% if value is none %}&mdash;{% else %}{{ value|fmt_display_percent(signed=True) }}{% endif %}
+{%- endmacro %}
+
+{% macro percent_title(value) -%}
+{% if value is none %}No return base{% else %}{% if value > 0 %}+{% endif %}{{ '%.2f'|format(value) }}%{% endif %}
+{%- endmacro %}
+
+{% macro value_state(value) -%}
+{% if value > 0 %}profit{% elif value < 0 %}loss{% else %}neutral{% endif %}
+{%- endmacro %}
+
+{% macro return_state(value) -%}
+{% if value is none %}neutral{% elif value > 0 %}profit{% elif value < 0 %}loss{% else %}neutral{% endif %}
+{%- endmacro %}
+
+{% macro stat_card(label, value, state='neutral', title='', sub='') -%}
+<div class="mini-stat">
+    <span class="mini-stat-label">{{ label }}</span>
+    <span class="mini-stat-value {{ state }}"{% if title %} title="{{ title }}"{% endif %}>{{ value }}</span>
+    {% if sub %}<span class="mini-stat-sub">{{ sub }}</span>{% endif %}
+</div>
+{%- endmacro %}
+
+{% macro month_value(month) -%}
+{% if month %}
+    {% set state = value_state(month.value) %}
+    <span class="{{ state }}" title="{{ signed_money_title(month.value) }}">{{ month.label }} {{ signed_money(month.value) }}</span>
+{% else %}
+    <span class="neutral">&mdash;</span>
+{% endif %}
+{%- endmacro %}
+
+{% macro asset_extreme(asset) -%}
+{% if asset %}
+    {% set state = value_state(asset.value) %}
+    <span class="{{ state }}" title="{{ signed_money_title(asset.value) }}">{{ asset.label }} {{ signed_money(asset.value) }}</span>
+{% else %}
+    <span class="neutral">&mdash;</span>
+{% endif %}
+{%- endmacro %}
+
+{% block content %}
+{% set portfolio_stats = chart_data.portfolio_stats %}
+{% set asset_stats = chart_data.asset_stats %}
+<div class="charts-page">
+
+{% if chart_data.donut_categories %}
+<div class="charts-grid">
+    <section class="card page-accent-surface charts-card">
+        <div class="card-body">
+            <div class="charts-card-header">
+                <div class="charts-title-stack">
+                    <h2 class="charts-title">Portfolio Allocation</h2>
+                    <span class="charts-subtitle">By Book Value</span>
+                </div>
+            </div>
+            <div class="allocation-wrap">
+                <div class="allocation-canvas-wrap">
+                    <canvas id="allocationChart"></canvas>
+                </div>
+                <ul class="allocation-legend" id="allocationLegend"></ul>
+            </div>
+            {% if chart_data.allocation_grouped %}
+            <div class="charts-helper allocation-note">Showing top 7 portfolios and grouping the rest as Other Portfolios.</div>
+            {% endif %}
+        </div>
+    </section>
+
+    <section class="card page-accent-surface charts-card">
+        <div class="card-body analytics-card">
+            <div class="charts-card-header">
+                <div class="charts-title-stack">
+                    <h2 class="charts-title">Portfolio Performance</h2>
+                    <span class="charts-subtitle">Visual performance summary of your portfolios</span>
+                </div>
+            </div>
+            <div class="stat-grid">
+                {{ stat_card('Realized P&L', signed_money(portfolio_stats.realized_pnl), value_state(portfolio_stats.realized_pnl), signed_money_title(portfolio_stats.realized_pnl)) }}
+                {{ stat_card('Return', percent_value(portfolio_stats.return_percent), return_state(portfolio_stats.return_percent), percent_title(portfolio_stats.return_percent)) }}
+                {{ stat_card('Income', signed_money(portfolio_stats.income), 'text-income', signed_money_title(portfolio_stats.income)) }}
+                {{ stat_card('Best Month', month_value(portfolio_stats.best_month)) }}
+                {{ stat_card('Worst Month', month_value(portfolio_stats.worst_month)) }}
+            </div>
+            <div class="chart-panel">
+                <div class="chart-toolbar">
+                    <span class="chart-caption">Portfolio Performance Over Time</span>
+                    <div class="chart-legend" aria-label="Portfolio performance chart legend">
+                        <span class="chart-legend-item"><span class="chart-legend-dot" data-legend-color="pnl"></span>Realized P&amp;L</span>
+                        <span class="chart-legend-item"><span class="chart-legend-dot" data-legend-color="return"></span>Return</span>
+                    </div>
+                </div>
+                <div class="area-chart-shell">
+                    <canvas id="portfolioPerformanceChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="card page-accent-surface charts-card charts-card-wide">
+        <div class="card-body analytics-card">
+            <div class="charts-card-header">
+                <div class="charts-title-stack">
+                    <h2 class="charts-title">Asset Performance</h2>
+                    <span class="charts-subtitle">Assets performance, income, and return</span>
+                </div>
+            </div>
+            <div class="stat-grid">
+                {{ stat_card('Realized P&L', signed_money(asset_stats.realized_pnl), value_state(asset_stats.realized_pnl), signed_money_title(asset_stats.realized_pnl)) }}
+                {{ stat_card('Return', percent_value(asset_stats.return_percent), return_state(asset_stats.return_percent), percent_title(asset_stats.return_percent)) }}
+                {{ stat_card('Income', signed_money(asset_stats.income), 'text-income', signed_money_title(asset_stats.income)) }}
+                {{ stat_card('Best Asset', asset_extreme(asset_stats.best_asset)) }}
+                {{ stat_card('Worst Asset', asset_extreme(asset_stats.worst_asset)) }}
+            </div>
+            <div class="asset-dashboard">
+                <div class="asset-chart-stack">
+                    <div class="chart-toolbar">
+                        <span class="chart-caption">Asset Performance Over Time</span>
+                        <div class="chart-legend" aria-label="Asset performance chart legend">
+                            <span class="chart-legend-item"><span class="chart-legend-dot" data-legend-color="pnl"></span>Realized P&amp;L</span>
+                            <span class="chart-legend-item"><span class="chart-legend-dot" data-legend-color="return"></span>Return</span>
+                        </div>
+                    </div>
+                    <div class="area-chart-shell">
+                        <canvas id="assetPerformanceChart"></canvas>
+                    </div>
+                </div>
+                <div class="asset-table-wrap">
+                    <div class="asset-table" data-asset-summary-table>
+                        <div class="asset-table-row header">
+                            <span>Asset</span>
+                            <span>Portfolio</span>
+                            <span>Realized P&amp;L</span>
+                            <span>Return</span>
+                            <span>Income</span>
+                        </div>
+                        {% for row in chart_data.asset_performance_display %}
+                        {% set pnl_state = value_state(row.realized_pnl) %}
+                        {% set return_state_value = return_state(row.return_percent) %}
+                        {% set portfolio_names = row.portfolio_names|join(', ') %}
+                        <div class="asset-table-row{% if row.is_other %} is-other{% endif %}">
+                            <span class="asset-name" data-label="Asset" title="{{ row.name }}">{{ row.name }}</span>
+                            <span class="asset-portfolio" data-label="Portfolio" title="{{ portfolio_names }}">{{ portfolio_names }}</span>
+                            <span class="asset-number {{ pnl_state }}" data-label="Realized P&amp;L" title="{{ signed_money_title(row.realized_pnl) }}">{{ signed_money(row.realized_pnl) }}</span>
+                            <span class="asset-number {{ return_state_value }}" data-label="Return" title="{{ percent_title(row.return_percent) }}">{{ percent_value(row.return_percent) }}</span>
+                            <span class="asset-number text-income" data-label="Income" title="{{ signed_money_title(row.income) }}">{{ signed_money(row.income) }}</span>
+                        </div>
+                        {% else %}
+                        <div class="charts-helper">No asset performance data available.</div>
+                        {% endfor %}
+                    </div>
+                    {% if chart_data.asset_performance_limited %}
+                    <div class="charts-helper table-note">Showing top 7 assets and grouping the rest as Other Assets.</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+{% else %}
+<div class="alert alert-info charts-empty-state">
+    <i class="bi bi-info-circle me-2"></i>No data available. <a href="{{ url_for('portfolios.portfolios_list') }}">Add a portfolio</a> to get started.
+</div>
+{% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const chartData = {{ chart_data | tojson }};
+
+    function cssVar(name, fallback) {
+        const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+        return value || fallback;
+    }
+    function textColor() { return cssVar('--text-1', '#e8eaed'); }
+    function mutedColor() { return cssVar('--text-3', '#9aa0a6'); }
+    function pnlColor() { return cssVar('--chart-pnl-bar', '#60a5fa'); }
+    function returnColor() { return cssVar('--chart-return-bar', '#34d399'); }
+    function pnlFill() { return cssVar('--chart-pnl-fill', 'rgba(96, 165, 250, 0.16)'); }
+    function returnFill() { return cssVar('--chart-return-fill', 'rgba(52, 211, 153, 0.14)'); }
+    function otherColor() { return cssVar('--chart-allocation-other', '#64748b'); }
+    function gridColor() { return cssVar('--chart-grid-line', 'rgba(255, 255, 255, 0.08)'); }
+    function zeroColor() { return cssVar('--chart-zero-line', 'rgba(255, 255, 255, 0.18)'); }
+    function chartNumber(name, fallback) {
+        const value = parseFloat(cssVar(name, ''));
+        return Number.isFinite(value) ? value : fallback;
+    }
+
+    const allocationPalette = [
+        cssVar('--chart-allocation-1', '#7dd3fc'),
+        cssVar('--chart-allocation-2', '#a78bfa'),
+        cssVar('--chart-allocation-3', '#34d399'),
+        cssVar('--chart-allocation-4', '#f0abfc'),
+        cssVar('--chart-allocation-5', '#38bdf8'),
+        cssVar('--chart-allocation-6', '#c4b5fd'),
+        cssVar('--chart-allocation-7', '#5eead4'),
+    ];
+    function colorFor(name, index) {
+        return name === 'Other Portfolios'
+            ? otherColor()
+            : allocationPalette[index % allocationPalette.length];
+    }
+    function truncate(name, maxLength) {
+        return name && name.length > maxLength ? name.slice(0, maxLength) + '...' : (name || '');
+    }
+
+    const standardNumber = new Intl.NumberFormat('en-US', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2,
+    });
+    function displayNumber(value) {
+        const number = Number(value) || 0;
+        const absValue = Math.abs(number);
+        if (absValue >= 1000000) {
+            return (number / 1000000).toFixed(2) + 'M';
+        }
+        return standardNumber.format(number);
+    }
+    function signedDisplayNumber(value) {
+        const number = Number(value) || 0;
+        const prefix = number > 0 ? '+' : number < 0 ? '-' : '';
+        return prefix + displayNumber(Math.abs(number));
+    }
+    function signedPercent(value) {
+        const number = Number(value) || 0;
+        return (number > 0 ? '+' : '') + number.toFixed(2) + '%';
+    }
+    function axisBounds(values, fallbackSpan, paddingRatio) {
+        const numbers = (values || []).map(Number).filter(Number.isFinite);
+        const rawMin = numbers.length ? Math.min(...numbers) : 0;
+        const rawMax = numbers.length ? Math.max(...numbers) : 0;
+        let min = Math.min(rawMin, 0);
+        let max = Math.max(rawMax, 0);
+        if (min === max) {
+            min -= fallbackSpan;
+            max += fallbackSpan;
+        } else {
+            const padding = (max - min) * paddingRatio;
+            min -= padding;
+            max += padding;
+        }
+        return { min, max };
+    }
+
+    Chart.defaults.color = textColor();
+
+    document.querySelectorAll('[data-legend-color="pnl"]').forEach(function(el) {
+        el.style.setProperty('--legend-color', pnlColor());
+    });
+    document.querySelectorAll('[data-legend-color="return"]').forEach(function(el) {
+        el.style.setProperty('--legend-color', returnColor());
+    });
+
+    const centerTextPlugin = {
+        id: 'centerText',
+        afterDraw: function(chart) {
+            if (chart.config.type !== 'doughnut') return;
+            const opts = chart.config.options.plugins.centerText;
+            if (!opts || !opts.value) return;
+            const arc = chart.getDatasetMeta(0).data[0];
+            if (!arc) return;
+            const ctx = chart.ctx;
+            ctx.save();
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = textColor();
+            ctx.globalAlpha = 0.65;
+            ctx.font = '600 ' + chartNumber('--font-size-chart-center-label', 10) + 'px Inter, sans-serif';
+            ctx.fillText(opts.label || 'BOOK VALUE', arc.x, arc.y - 11);
+            ctx.globalAlpha = 1;
+            ctx.font = '600 ' + chartNumber('--font-size-chart-center-value', 13) + 'px Inter, sans-serif';
+            ctx.fillText(opts.value, arc.x, arc.y + 9);
+            ctx.restore();
+        }
+    };
+
+    const allocationCanvas = document.getElementById('allocationChart');
+    if (allocationCanvas && chartData.donut_categories && chartData.donut_categories.length) {
+        const allocationChart = new Chart(allocationCanvas, {
+            type: 'doughnut',
+            data: {
+                labels: chartData.donut_categories,
+                datasets: [{
+                    data: chartData.donut_allocations,
+                    backgroundColor: chartData.donut_categories.map(colorFor),
+                    borderColor: cssVar('--surface-card', '#111113'),
+                    borderWidth: 2,
+                    hoverOffset: 5,
+                }]
+            },
+            plugins: [centerTextPlugin],
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '64%',
+                layout: { padding: 8 },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(ctx) {
+                                return ' ' + ctx.label + ': ' + ctx.parsed.toFixed(1) + '%';
+                            }
+                        }
+                    },
+                    centerText: {
+                        label: 'BOOK VALUE',
+                        value: displayNumber(chartData.total_book_value || 0),
+                    }
+                }
+            }
+        });
+
+        const legend = document.getElementById('allocationLegend');
+        if (legend) {
+            const frag = document.createDocumentFragment();
+            chartData.donut_categories.forEach(function(name, index) {
+                const li = document.createElement('li');
+                li.title = name;
+                li.dataset.idx = String(index);
+                li.setAttribute('role', 'button');
+                li.setAttribute('tabindex', '0');
+                li.setAttribute('aria-pressed', 'false');
+
+                const swatch = document.createElement('span');
+                swatch.className = 'swatch';
+                swatch.style.background = colorFor(name, index);
+
+                const nameEl = document.createElement('span');
+                nameEl.className = 'name';
+                nameEl.textContent = truncate(name, 22);
+
+                const pctEl = document.createElement('span');
+                pctEl.className = 'pct';
+                pctEl.textContent = chartData.donut_allocations[index].toFixed(1) + '%';
+
+                li.append(swatch, nameEl, pctEl);
+                frag.appendChild(li);
+            });
+            legend.appendChild(frag);
+
+            function toggleLegendRow(row) {
+                const index = parseInt(row.dataset.idx, 10);
+                if (Number.isNaN(index)) return;
+                const hidden = !row.classList.contains('is-hidden');
+                row.classList.toggle('is-hidden', hidden);
+                row.setAttribute('aria-pressed', hidden ? 'true' : 'false');
+                allocationChart.toggleDataVisibility(index);
+                allocationChart.update();
+            }
+            legend.addEventListener('click', function(event) {
+                const target = event.target.closest && event.target.closest('[data-idx]');
+                if (target && legend.contains(target)) toggleLegendRow(target);
+            });
+            legend.addEventListener('keydown', function(event) {
+                if (event.key !== 'Enter' && event.key !== ' ') return;
+                const target = event.target.closest && event.target.closest('[data-idx]');
+                if (target && legend.contains(target)) {
+                    event.preventDefault();
+                    toggleLegendRow(target);
+                }
+            });
+        }
+    }
+
+    function renderAreaChart(canvasId, trend) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas || !trend) return;
+        const pnlBounds = axisBounds(trend.realized_pnl || [], 1, 0.12);
+        const returnBounds = axisBounds(trend.return_percent || [], 1, 0.2);
+        new Chart(canvas, {
+            type: 'line',
+            data: {
+                labels: trend.months || [],
+                datasets: [
+                    {
+                        label: 'Realized P&L',
+                        data: trend.realized_pnl || [],
+                        yAxisID: 'yPnl',
+                        borderColor: pnlColor(),
+                        backgroundColor: pnlFill(),
+                        pointBackgroundColor: pnlColor(),
+                        pointBorderColor: cssVar('--surface-card', '#111113'),
+                        pointBorderWidth: 1,
+                        pointRadius: 1.8,
+                        pointHoverRadius: 3.2,
+                        borderWidth: 2,
+                        tension: 0.35,
+                        fill: true,
+                    },
+                    {
+                        label: 'Return',
+                        data: trend.return_percent || [],
+                        yAxisID: 'yReturn',
+                        borderColor: returnColor(),
+                        backgroundColor: returnFill(),
+                        pointBackgroundColor: returnColor(),
+                        pointBorderColor: cssVar('--surface-card', '#111113'),
+                        pointBorderWidth: 1,
+                        pointRadius: 1.8,
+                        pointHoverRadius: 3.2,
+                        borderWidth: 2,
+                        tension: 0.35,
+                        fill: true,
+                    },
+                ],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { intersect: false, mode: 'index' },
+                scales: {
+                    x: {
+                        grid: { display: false },
+                        ticks: {
+                            color: mutedColor(),
+                            font: { size: chartNumber('--font-size-chart-axis', 10) },
+                        },
+                    },
+                    yPnl: {
+                        position: 'left',
+                        min: pnlBounds.min,
+                        max: pnlBounds.max,
+                        grid: {
+                            color: function(ctx) {
+                                return ctx.tick.value === 0 ? zeroColor() : gridColor();
+                            },
+                        },
+                        ticks: {
+                            color: mutedColor(),
+                            font: { size: chartNumber('--font-size-chart-axis', 10) },
+                            callback: function(value) {
+                                return displayNumber(Number(value) || 0);
+                            },
+                        },
+                    },
+                    yReturn: {
+                        position: 'right',
+                        min: returnBounds.min,
+                        max: returnBounds.max,
+                        grid: { drawOnChartArea: false },
+                        ticks: {
+                            color: mutedColor(),
+                            font: { size: chartNumber('--font-size-chart-axis', 10) },
+                            callback: function(value) {
+                                return Number(value).toFixed(0) + '%';
+                            },
+                        },
+                    },
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        displayColors: true,
+                        callbacks: {
+                            label: function(ctx) {
+                                const metric = ctx.dataset.yAxisID === 'yReturn' ? 'return' : 'pnl';
+                                const value = Number(ctx.parsed.y) || 0;
+                                return ctx.dataset.label + ': ' + (metric === 'return' ? signedPercent(value) : signedDisplayNumber(value));
+                            },
+                        },
+                    },
+                },
+            },
+        });
+    }
+
+    renderAreaChart('portfolioPerformanceChart', chartData.portfolio_trend || chartData.performance_trend);
+    renderAreaChart('assetPerformanceChart', chartData.asset_trend);
+});
+</script>
+{% endblock %}

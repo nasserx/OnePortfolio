@@ -1,0 +1,159 @@
+"""Portfolio service for portfolio CRUD and cash-event business logic."""
+
+from decimal import Decimal
+from typing import Optional, Any
+from portfolio_app.models.portfolio import Portfolio
+from portfolio_app.models.portfolio_event import PortfolioEvent
+from portfolio_app.repositories.portfolio_repository import PortfolioRepository
+from portfolio_app.repositories.portfolio_event_repository import PortfolioEventRepository
+from portfolio_app.utils.constants import EventType
+from portfolio_app.utils.decimal_utils import ZERO
+from portfolio_app.utils.messages import MESSAGES
+from portfolio_app.calculators.portfolio_calculator import PortfolioCalculator
+
+
+class PortfolioService:
+    """Service for portfolio CRUD and cash-event business logic."""
+
+    def __init__(self, portfolio_repo: PortfolioRepository, portfolio_event_repo: PortfolioEventRepository):
+        self.portfolio_repo = portfolio_repo
+        self.portfolio_event_repo = portfolio_event_repo
+
+    # ------------------------------------------------------------------
+    # Portfolio CRUD
+    # ------------------------------------------------------------------
+
+    def create_portfolio(self, name: str, user_id: Optional[int] = None) -> Portfolio:
+        """Create a new portfolio."""
+        if self.portfolio_repo.get_by_name(name):
+            raise ValueError(MESSAGES['PORTFOLIO_NAME_TAKEN'])
+
+        portfolio = Portfolio(name=name, user_id=user_id)
+        self.portfolio_repo.add(portfolio)
+        self.portfolio_repo.commit()
+        return portfolio
+
+    def delete_portfolio(self, portfolio_id: int) -> str:
+        """Delete portfolio and cascade-delete its events and transactions."""
+        portfolio = self._require_portfolio(portfolio_id)
+        name = portfolio.name
+        self.portfolio_repo.delete(portfolio)
+        self.portfolio_repo.commit()
+        return name
+
+    # ------------------------------------------------------------------
+    # Deposit / Withdraw
+    # ------------------------------------------------------------------
+
+    def deposit_funds(self, portfolio_id: int, amount_delta: Decimal, notes: Optional[str] = None, date: Optional[Any] = None) -> Portfolio:
+        """Deposit funds into a portfolio."""
+        portfolio = self._require_portfolio(portfolio_id)
+        self._create_event(portfolio_id, EventType.DEPOSIT, amount_delta, notes, date)
+        self.portfolio_repo.commit()
+        return portfolio
+
+    def withdraw_funds(self, portfolio_id: int, amount_delta: Decimal, notes: Optional[str] = None, date: Optional[Any] = None) -> Portfolio:
+        """Withdraw funds from a portfolio (amount_delta is positive)."""
+        portfolio = self._require_portfolio(portfolio_id)
+        available_cash = PortfolioCalculator.get_available_cash_for_portfolio(
+            portfolio_id, user_id=self.portfolio_repo.user_id,
+        )
+        if amount_delta > available_cash:
+            raise ValueError(MESSAGES['WITHDRAWAL_EXCEEDS_CASH'])
+        self._create_event(portfolio_id, EventType.WITHDRAWAL, -amount_delta, notes, date)
+        self.portfolio_repo.commit()
+        return portfolio
+
+    # ------------------------------------------------------------------
+    # Cash-event operations
+    # ------------------------------------------------------------------
+
+    def update_portfolio_event(self, event_id: int, amount_delta: Decimal, notes: Optional[str] = None, date: Optional[Any] = None) -> PortfolioEvent:
+        """Update a portfolio event. Net deposits are derived on read.
+
+        Rejects an edit that would push live available cash below zero
+        (e.g. lowering a deposit below what's already been withdrawn or
+        spent on Buys). The create path (``deposit_funds``/``withdraw_funds``)
+        already enforces this; the edit path needs the same guard.
+        """
+        event = self._require_event(event_id)
+        self._require_portfolio(event.portfolio_id)
+
+        # available_cash already reflects this event at its current amount,
+        # so the post-edit cash equals current + (new − old).
+        current_cash = PortfolioCalculator.get_available_cash_for_portfolio(
+            event.portfolio_id, user_id=self.portfolio_repo.user_id,
+        )
+        delta_change = Decimal(str(amount_delta)) - Decimal(str(event.amount_delta))
+        if current_cash + delta_change < ZERO:
+            # Lowering a Deposit/Initial = clawback (money's been spent on
+            # later transactions). Raising a Withdrawal = genuine
+            # over-spend. The two scenarios call for different wording so
+            # the user knows whether to undo a *later* action or change
+            # the value they just typed.
+            if event.event_type in ('Deposit', 'Initial'):
+                raise ValueError(MESSAGES['CASH_ALREADY_SPENT'])
+            raise ValueError(MESSAGES['INSUFFICIENT_AMOUNT'])
+
+        event.amount_delta = amount_delta
+        if notes is not None:
+            event.notes = notes
+        if date is not None:
+            event.date = date
+
+        self.portfolio_repo.commit()
+        return event
+
+    def delete_portfolio_event(self, event_id: int) -> int:
+        """Delete a portfolio event. Net deposits are derived on read.
+
+        Rejects a delete that would push live available cash below zero —
+        e.g. removing a deposit that already covered later withdrawals or
+        Buys. Sister guard to the one in ``update_portfolio_event``.
+        """
+        event = self._require_event(event_id)
+        portfolio_id = event.portfolio_id
+        self._require_portfolio(portfolio_id)
+
+        # Removing the event subtracts its amount_delta from net deposits,
+        # which in turn subtracts the same value from available cash.
+        # Only triggers for Deposit/Initial deletions (Withdrawals have
+        # negative amount_delta, so removing them *raises* cash and the
+        # check passes trivially).
+        current_cash = PortfolioCalculator.get_available_cash_for_portfolio(
+            portfolio_id, user_id=self.portfolio_repo.user_id,
+        )
+        if current_cash - Decimal(str(event.amount_delta)) < ZERO:
+            raise ValueError(MESSAGES['CASH_ALREADY_SPENT'])
+
+        self.portfolio_event_repo.delete(event)
+        self.portfolio_repo.commit()
+        return portfolio_id
+
+    # ------------------------------------------------------------------
+    # Private helpers
+    # ------------------------------------------------------------------
+
+    def _require_portfolio(self, portfolio_id: int) -> Portfolio:
+        portfolio = self.portfolio_repo.get_by_id(portfolio_id)
+        if not portfolio:
+            raise ValueError(MESSAGES['PORTFOLIO_NOT_FOUND'])
+        return portfolio
+
+    def _require_event(self, event_id: int) -> PortfolioEvent:
+        event = self.portfolio_event_repo.get_by_id(event_id)
+        if not event:
+            raise ValueError(MESSAGES['CASH_EVENT_NOT_FOUND'])
+        return event
+
+    def _create_event(self, portfolio_id: int, event_type: str, amount_delta: Decimal, notes: Optional[str], date: Optional[Any] = None) -> PortfolioEvent:
+        event = PortfolioEvent(
+            portfolio_id=portfolio_id,
+            event_type=event_type,
+            amount_delta=amount_delta,
+            notes=notes
+        )
+        if date is not None:
+            event.date = date
+        self.portfolio_event_repo.add(event)
+        return event

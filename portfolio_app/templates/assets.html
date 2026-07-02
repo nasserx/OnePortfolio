@@ -1,0 +1,1652 @@
+{% extends "base.html" %}
+
+{% block title %}Assets - OnePortfolio{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
+{% endblock %}
+
+{% block content %}
+<div class="transactions-page">
+<header class="page-header transactions-page-header">
+    <div class="transactions-toolbar d-flex align-items-center gap-2">
+
+        <!-- Portfolio filter dropdown -->
+        <div class="dropdown">
+            <button class="btn btn-outline-secondary filter-dropdown-btn dropdown-toggle" type="button"
+                    data-bs-toggle="dropdown" aria-expanded="false">
+                {{ selected_portfolio or 'All Portfolios' }}
+                <i class="bi bi-chevron-down"></i>
+            </button>
+            <ul class="dropdown-menu">
+                <li>
+                    <a class="dropdown-item {% if not selected_portfolio %}active{% endif %}"
+                       href="{{ url_for('transactions.transaction_list') }}">
+                        All Portfolios
+                    </a>
+                </li>
+                {% if portfolios %}
+                <li><hr class="dropdown-divider"></li>
+                {% for portfolio in portfolios %}
+                <li>
+                    <a class="dropdown-item {% if selected_portfolio == portfolio.name %}active{% endif %}"
+                       href="{{ url_for('transactions.transaction_list', portfolio=portfolio.name) }}">
+                        {{ portfolio.name }}
+                    </a>
+                </li>
+                {% endfor %}
+                {% endif %}
+            </ul>
+        </div>
+
+        <!-- Asset search -->
+        <div class="position-relative transactions-search">
+            <span class="position-absolute top-50 start-0 translate-middle-y ps-3 text-muted">
+                <i class="bi bi-search icon-sm"></i>
+            </span>
+            <input type="text" class="form-control ps-5 transactions-search-input" id="symbolSearch"
+                   placeholder="Search asset..."
+                   oninput="this.value = this.value.toUpperCase(); filterBySymbol(this.value);"
+                   autocomplete="off">
+        </div>
+
+        {% if portfolios|length > 0 %}
+            <button type="button" class="btn btn-primary" onclick="openAddSymbolModal()">Add Asset</button>
+        {% else %}
+            <a class="btn btn-primary" href="{{ url_for('portfolios.portfolios_list') }}">Create a portfolio first</a>
+        {% endif %}
+    </div>
+</header>
+
+<!-- Assets -->
+<div class="row transactions-symbol-list">
+    <div class="col-12">
+        {% if holdings|length > 0 %}
+            {% for item in holdings %}
+            {% set symbol_key = (item.portfolio.id, item.symbol) %}
+            {% set symbol_dividends = dividends_by_symbol.get(symbol_key, []) %}
+            {% set symbol_dividend_total = dividend_totals.get(symbol_key, 0) %}
+            {% set show_dividend_rows = symbol_dividends|length > 0 %}
+            <div class="card mb-2 symbol-card transactions-symbol-card" data-symbol="{{ item.symbol }}">
+                 <div class="card-header py-2 px-3 portfolio-header transactions-symbol-header page-accent-surface"
+                     onclick="toggleSymbolTransactions('{{ item.html_group_id }}')">
+                    <div class="row align-items-center g-1 summary-row transactions-symbol-summary-row">
+                        <div class="col-lg-2 col-md-3 d-flex align-items-center gap-2 transactions-symbol-identity">
+                            <i class="bi bi-chevron-right portfolio-chevron" id="chevron-{{ item.html_group_id }}"></i>
+                            <span class="fw-600 text-dark transactions-symbol-name">{{ item.symbol }}</span>
+                            <span class="badge bg-light text-dark border">{{ item.portfolio.name }}</span>
+                        </div>
+                        <div class="col-lg-8 col-md-7 transactions-symbol-metrics">
+                            <div class="portfolio-summary columns-7">
+                                <div class="summary-item">
+                                    <div class="summary-label">ENTRIES</div>
+                                    <div class="summary-value">{{ item.summary.transaction_count + symbol_dividends|length }}</div>
+                                </div>
+                                <div class="summary-item">
+                                    <div class="summary-label">TOTAL BUY COST</div>
+                                    <div class="summary-value" title="{{ item.summary.total_buy_cost|fmt_money }}">{{ item.summary.total_buy_cost|fmt_display_money }}</div>
+                                </div>
+                                <div class="summary-item">
+                                    <div class="summary-label">QUANTITY</div>
+                                    <div class="summary-value" title="{{ item.summary.total_quantity_held|fmt_decimal }}">{{ item.summary.total_quantity_held|fmt_display_decimal }}</div>
+                                </div>
+                                <div class="summary-item">
+                                    <div class="summary-label">AVERAGE COST</div>
+                                    <div class="summary-value text-info-emphasis" title="{{ item.summary.average_cost|fmt_money(item.avg_cost_decimal_places) }}">{{ item.summary.average_cost|fmt_display_money(item.avg_cost_decimal_places) }}</div>
+                                </div>
+                                <div class="summary-item">
+                                    <div class="summary-label">REALIZED P&amp;L</div>
+                                    <div class="summary-value {% if item.summary.realized_pnl > 0 %}profit{% elif item.summary.realized_pnl < 0 %}loss{% else %}neutral{% endif %}" title="{% if item.summary.realized_pnl > 0 %}+{% endif %}{{ item.summary.realized_pnl|fmt_money }}">
+                                        {% if item.summary.realized_pnl > 0 %}+{% endif %}{{ item.summary.realized_pnl|fmt_display_money }}
+                                    </div>
+                                </div>
+                                <div class="summary-item">
+                                    <div class="summary-label">REALIZED RETURN</div>
+                                    <div class="summary-value {% if item.summary.roi_percent is not none and item.summary.roi_percent > 0 %}profit{% elif item.summary.roi_percent is not none and item.summary.roi_percent < 0 %}loss{% else %}neutral{% endif %}" title="{{ item.summary.roi_percent_display }}">
+                                        {{ '—' if item.summary.roi_percent_display == '—' else item.summary.roi_percent|fmt_display_percent(signed=True) }}
+                                    </div>
+                                </div>
+                                <div class="summary-item">
+                                    <div class="summary-label">INCOME</div>
+                                    <div class="summary-value dividend" title="{% if symbol_dividend_total > 0 %}+{% endif %}{{ symbol_dividend_total|fmt_money }}">
+                                        {% if symbol_dividend_total > 0 %}+{% endif %}{{ symbol_dividend_total|fmt_display_money }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-2 col-md-2 text-end transactions-symbol-actions">
+                            <div class="btn-group btn-group-sm row-actions" role="group">
+                                <button type="button"
+                                        class="btn btn-outline-primary btn-icon js-add-transaction-btn"
+                                        data-portfolio-id="{{ item.portfolio.id }}"
+                                        data-portfolio="{{ item.portfolio.name|e }}"
+                                        data-symbol="{{ item.symbol|e }}"
+                                        title="Add Asset Entry"
+                                        aria-label="Add Asset Entry"
+                                        data-bs-toggle="tooltip"
+                                        data-bs-placement="top">
+                                    <i class="bi bi-plus-lg"></i>
+                                </button>
+                                <button type="button"
+                                        class="btn btn-outline-success btn-icon js-add-dividend-btn"
+                                        data-portfolio-id="{{ item.portfolio.id }}"
+                                        data-symbol="{{ item.symbol|e }}"
+                                        title="Add Income"
+                                        aria-label="Add Income"
+                                        data-bs-toggle="tooltip"
+                                        data-bs-placement="top">
+                                    <i class="bi bi-cash-stack"></i>
+                                </button>
+                                <button type="button"
+                                        class="btn btn-outline-danger btn-icon js-delete-symbol-btn"
+                                        data-portfolio-id="{{ item.portfolio.id }}"
+                                        data-portfolio="{{ item.portfolio.name|e }}"
+                                        data-symbol="{{ item.symbol|e }}"
+                                        data-tx-count="{{ item.summary.transaction_count or 0 }}"
+                                        title="Remove Asset"
+                                        aria-label="Remove Asset"
+                                        data-bs-toggle="tooltip"
+                                        data-bs-placement="top">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="portfolio-transactions" id="transactions-{{ item.html_group_id }}" style="display: none;">
+                    {% if item.transactions|length > 0 or show_dividend_rows %}
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover align-middle mb-0 transactions-table dashboard-actions-table">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="small" style="width: 110px;">Date</th>
+                                    <th class="small" style="width: 90px;">Type</th>
+                                    <th class="small text-end" style="width: 130px;">Price</th>
+                                    <th class="small text-end" style="width: 100px;">Quantity</th>
+                                    <th class="small text-end" style="width: 100px;">Fee</th>
+                                    <th class="small text-end" style="width: 150px;">Total</th>
+                                    <th class="small text-end" style="width: 130px;">Realized P&amp;L</th>
+                                    <th class="small text-end" style="width: 110px;">Return</th>
+                                    <th class="small" style="width: 180px;">Notes</th>
+                                    <th class="small text-center" style="width: 100px;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for transaction in item.transactions|reverse %}
+                                <tr>
+                                    <td><small class="text-muted">{{ transaction.date_short }}</small></td>
+                                    <td>
+                                        {% if transaction.transaction_type == 'Buy' %}
+                                            <span class="tx-type-label tx-type-buy type-buy">Buy</span>
+                                        {% else %}
+                                            <span class="tx-type-label tx-type-sell type-sell">Sell</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end"><small title="{{ transaction.price|fmt_money(item.price_decimal_places) }}">{{ transaction.price|fmt_display_money(item.price_decimal_places) }}</small></td>
+                                    <td class="text-end"><small title="{{ transaction.quantity|fmt_decimal }}">{{ transaction.quantity|fmt_display_decimal }}</small></td>
+                                    <td class="text-end"><small class="text-danger" title="{{ transaction.fees|fmt_decimal }}">{{ transaction.fees|fmt_display_decimal }}</small></td>
+                                    <td class="text-end"><small class="text-primary" title="{{ transaction.net_amount|fmt_money }}">{{ transaction.net_amount|fmt_display_money }}</small></td>
+                                    {% if transaction.transaction_type == 'Sell' %}
+                                        {% set tx_net_pnl = transaction.net_pnl %}
+                                        {% set tx_net_pnl_pct = transaction.net_pnl_percent %}
+                                        <td class="text-end">
+                                            <small class="{% if tx_net_pnl > 0 %}profit{% elif tx_net_pnl < 0 %}loss{% else %}neutral{% endif %}" title="{% if tx_net_pnl > 0 %}+{% endif %}{{ tx_net_pnl|fmt_money }}">
+                                                {% if tx_net_pnl > 0 %}+{% endif %}{{ tx_net_pnl|fmt_display_money }}
+                                            </small>
+                                        </td>
+                                        <td class="text-end">
+                                            <small class="{% if tx_net_pnl_pct is not none and tx_net_pnl_pct > 0 %}profit{% elif tx_net_pnl_pct is not none and tx_net_pnl_pct < 0 %}loss{% else %}neutral{% endif %}"{% if tx_net_pnl_pct is not none %} title="{% if tx_net_pnl_pct > 0 %}+{% endif %}{{ tx_net_pnl_pct|fmt_money }}%"{% endif %}>
+                                                {% if tx_net_pnl_pct is not none %}{{ tx_net_pnl_pct|fmt_display_percent(signed=True) }}{% else %}—{% endif %}
+                                            </small>
+                                        </td>
+                                    {% else %}
+                                        <td class="text-end"><small class="text-muted">—</small></td>
+                                        <td class="text-end"><small class="text-muted">—</small></td>
+                                    {% endif %}
+                                    {% set tx_notes = transaction.notes or '' %}
+                                    <td class="tx-notes-cell"{% if tx_notes %} title="{{ tx_notes }}"{% endif %}>
+                                        <small class="text-muted">{{ tx_notes if tx_notes else '—' }}</small>
+                                    </td>
+                                    <td class="text-center actions-cell">
+                                        <div class="btn-group btn-group-sm row-actions" role="group">
+                                            <button type="button" class="btn btn-outline-primary btn-icon btn-sm js-edit-transaction-btn"
+                                                    data-tx='{{ {
+                                                        "id": transaction.id,
+                                                        "portfolioId": transaction.portfolio_id,
+                                                        "type": transaction.transaction_type,
+                                                        "symbol": (transaction.symbol or ""),
+                                                        "price": ("%.10f"|format(transaction.price)),
+                                                        "quantity": ("%.10f"|format(transaction.quantity)),
+                                                        "fees": ("%.10f"|format(transaction.fees)),
+                                                        "notes": (transaction.notes or ""),
+                                                        "dateShort": transaction.date_short
+                                                    }|tojson|e }}'
+                                                    title="Edit"
+                                                    aria-label="Edit"
+                                                    data-bs-toggle="tooltip"
+                                                    data-bs-placement="top">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-outline-danger btn-icon btn-sm js-delete-transaction-btn"
+                                                    data-tx-id="{{ transaction.id }}"
+                                                    title="Remove"
+                                                    aria-label="Remove"
+                                                    data-bs-toggle="tooltip"
+                                                    data-bs-placement="top">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                                {% if show_dividend_rows %}
+                                {% for div in symbol_dividends|reverse %}
+                                <tr>
+                                    <td><small class="text-muted">{{ div.date_short }}</small></td>
+                                    <td>
+                                        <span class="badge badge-dividend type-income">Income</span>
+                                    </td>
+                                    <td class="text-end"><small class="text-muted">—</small></td>
+                                    <td class="text-end"><small class="text-muted">—</small></td>
+                                    <td class="text-end"><small class="text-muted">—</small></td>
+                                    <td class="text-end"><small class="text-primary text-income" title="{{ div.amount|fmt_money }}">{{ div.amount|fmt_display_money }}</small></td>
+                                    <td class="text-end"><small class="text-muted">—</small></td>
+                                    <td class="text-end"><small class="text-muted">—</small></td>
+                                    {% set div_notes = div.notes or '' %}
+                                    <td class="tx-notes-cell"{% if div_notes %} title="{{ div_notes }}"{% endif %}>
+                                        <small class="text-muted">{{ div_notes if div_notes else '—' }}</small>
+                                    </td>
+                                    <td class="text-center actions-cell">
+                                        <div class="btn-group btn-group-sm row-actions" role="group">
+                                            <button type="button"
+                                                    class="btn btn-outline-primary btn-icon btn-sm js-edit-dividend-btn"
+                                                    data-div='{{ {"id": div.id, "portfolioId": div.portfolio_id, "amount": ("%.10f"|format(div.amount)), "dateShort": div.date_short, "notes": (div.notes or "")}|tojson|e }}'
+                                                    title="Edit" aria-label="Edit"
+                                                    data-bs-toggle="tooltip" data-bs-placement="top">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                            <button type="button"
+                                                    class="btn btn-outline-danger btn-icon btn-sm js-delete-dividend-btn"
+                                                    data-div-id="{{ div.id }}"
+                                                    title="Remove" aria-label="Remove"
+                                                    data-bs-toggle="tooltip" data-bs-placement="top">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="tx-pagination-bar" id="pgbar-{{ item.html_group_id }}"></div>
+                    {% else %}
+                    <div class="p-3 text-center help-message transactions-inline-empty page-accent-surface">
+                        <button type="button" class="btn btn-outline-secondary btn-sm js-add-transaction-btn"
+                                data-portfolio-id="{{ item.portfolio.id }}"
+                                data-portfolio="{{ item.portfolio.name|e }}"
+                                data-symbol="{{ item.symbol|e }}">
+                            <i class="bi bi-plus-lg"></i> Add Entry
+                        </button>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        <div id="outer-pg-bar" class="tx-pagination-bar mt-1 px-1"></div>
+        {% else %}
+        <div class="empty-state transactions-empty-state">
+            <div class="transactions-empty-icon" aria-hidden="true">
+                <i class="bi bi-plus-square"></i>
+            </div>
+            <h2 class="empty-state-title">No assets yet</h2>
+            <p class="empty-state-text">Add an asset, then record manual buy, sell, and income activity.</p>
+            {% if portfolios|length > 0 %}
+            <button type="button" class="btn btn-primary" onclick="openAddSymbolModal()">Add Asset</button>
+            {% else %}
+            <a class="btn btn-primary" href="{{ url_for('portfolios.portfolios_list') }}">Create a portfolio first</a>
+            {% endif %}
+        </div>
+        {% endif %}
+
+    </div>
+</div>
+</div>
+
+<!-- Add Asset Modal -->
+<div class="modal fade" id="addSymbolModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('transactions.symbol_add') }}" autocomplete="off" novalidate>
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add Asset</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <div class="mb-3">
+                                <label for="symbol_portfolio_id" class="form-label">Portfolio</label>
+                                {% set _symbol_errs = (form_errors.get('symbol_add', {}) if form_errors else {}) %}
+                                {% set _symbol_vals = (form_values.get('symbol_add', {}) if form_values else {}) %}
+                                <select class="form-select {% if _symbol_errs.get('symbol_portfolio_id') %}is-invalid{% endif %}" id="symbol_portfolio_id" name="symbol_portfolio_id">
+                                    <option value="">Select portfolio...</option>
+                                    {% for portfolio in portfolios %}
+                                    <option value="{{ portfolio.id }}" {% if (_symbol_vals.get('symbol_portfolio_id') and _symbol_vals.get('symbol_portfolio_id')|int == portfolio.id) or (not _symbol_vals.get('symbol_portfolio_id') and selected_portfolio == portfolio.name) %}selected{% endif %}>
+                                        {{ portfolio.name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                {% if _symbol_errs.get('symbol_portfolio_id') %}
+                                <div class="invalid-feedback">{{ _symbol_errs.get('symbol_portfolio_id') }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="mb-3">
+                                <label for="symbol_ticker" class="form-label">Asset Symbol</label>
+                                <input type="text" class="form-control {% if _symbol_errs.get('symbol_ticker') %}is-invalid{% endif %}" id="symbol_ticker" name="symbol_ticker" maxlength="20"
+                                    placeholder="e.g., AAPL" oninput="this.value = this.value.toUpperCase();">
+                                {% if _symbol_errs.get('symbol_ticker') %}
+                                <div class="invalid-feedback">{{ _symbol_errs.get('symbol_ticker') }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="alert alert-info mb-0">
+                        <i class="bi bi-info-circle"></i>
+                        Then use Add Entry to add buys and sells.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Add</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Add Asset Entry Modal -->
+<div class="modal fade" id="addTransactionModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-scrollable">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('transactions.transaction_add') }}" autocomplete="off" novalidate>
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="user_timezone" value="">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="add_tx_modal_title">Add Asset Entry</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    {% set _tx_add_errs = (form_errors.get('transaction_add', {}) if form_errors else {}) %}
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <div class="mb-3" id="add_tx_portfolio_group">
+                                <label for="portfolio_id" class="form-label">Portfolio</label>
+                                {% set _tx_add_vals = (form_values.get('transaction_add', {}) if form_values else {}) %}
+                                <select class="form-select {% if _tx_add_errs.get('portfolio_id') %}is-invalid{% endif %}" id="portfolio_id" name="portfolio_id">
+                                    <option value="">Select portfolio...</option>
+                                    {% for portfolio in portfolios %}
+                                    <option value="{{ portfolio.id }}">{{ portfolio.name }}</option>
+                                    {% endfor %}
+                                </select>
+                                {% if _tx_add_errs.get('portfolio_id') %}
+                                <div class="invalid-feedback">{{ _tx_add_errs.get('portfolio_id') }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="col-6">
+                            <div class="mb-3" id="add_tx_symbol_group">
+                                <label for="symbol" class="form-label">Asset Symbol</label>
+                                    <input type="text" class="form-control {% if _tx_add_errs.get('symbol') %}is-invalid{% endif %}" id="symbol" name="symbol" maxlength="20"
+                                       placeholder="e.g., AAPL" oninput="this.value = this.value.toUpperCase();">
+                                {% if _tx_add_errs.get('symbol') %}
+                                <div class="invalid-feedback">{{ _tx_add_errs.get('symbol') }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3" id="add_tx_type_group">
+                        <label for="transaction_type" class="form-label visually-hidden">Entry Type</label>
+                        <div class="tx-type-tabs">
+                            <button type="button" class="tx-type-tab tx-tab-buy" id="add_tx_type_buy_btn">
+                                Buy
+                            </button>
+                            <button type="button" class="tx-type-tab tx-tab-sell" id="add_tx_type_sell_btn">
+                                Sell
+                            </button>
+                        </div>
+
+                        <!-- Hidden select for Buy/Sell form submission -->
+                        <select class="form-select visually-hidden" id="transaction_type" name="transaction_type" tabindex="-1" aria-hidden="true">
+                            <option value="" selected></option>
+                            <option value="Buy">Buy</option>
+                            <option value="Sell">Sell</option>
+                        </select>
+
+                    </div>
+
+                    <!-- Buy/Sell fields -->
+                    <div id="add_buysell_fields">
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <div class="mb-3">
+                                    <label for="price" class="form-label">Price (per unit)</label>
+                                    <input type="text" inputmode="decimal" class="form-control {% if _tx_add_errs.get('price') %}is-invalid{% endif %}" id="price" name="price"
+                                        placeholder="0.0000">
+                                    {% if _tx_add_errs.get('price') %}
+                                    <div class="invalid-feedback">{{ _tx_add_errs.get('price') }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="mb-3">
+                                    <label for="quantity" class="form-label">Quantity</label>
+                                    <div class="position-relative">
+                                        <input type="text" inputmode="decimal" class="form-control {% if _tx_add_errs.get('quantity') %}is-invalid{% endif %} pe-5" id="quantity" name="quantity"
+                                            placeholder="0.0000">
+                                        <span id="add_sell_max_row" class="d-none sell-max-inline">
+                                            <button type="button" class="btn btn-link btn-sm p-0 sell-max-btn" id="add_sell_max_btn">Max</button>
+                                        </span>
+                                    </div>
+                                    {% if _tx_add_errs.get('quantity') %}
+                                    <div class="invalid-feedback d-block">{{ _tx_add_errs.get('quantity') }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <div class="mb-3">
+                                    <label for="fees" class="form-label">Fee (Optional)</label>
+                                    <input type="text" inputmode="decimal" autocomplete="off" class="form-control {% if _tx_add_errs.get('fees') %}is-invalid{% endif %}" id="fees" name="fees"
+                                        placeholder="0.00">
+                                    {% if _tx_add_errs.get('fees') %}
+                                    <div class="invalid-feedback">{{ _tx_add_errs.get('fees') }}</div>
+                                    {% endif %}
+                                    <div id="total_cost_preview" class="tx-preview"></div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="mb-3">
+                                    <label for="add_tx_date" class="form-label">Date</label>
+                                    <input type="text" class="form-control {% if _tx_add_errs.get('date') %}is-invalid{% endif %}" id="add_tx_date" name="date" placeholder="YYYY-MM-DD">
+                                    {% if _tx_add_errs.get('date') %}
+                                    <div class="invalid-feedback d-block">{{ _tx_add_errs.get('date') }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Notes (optional)</label>
+                        <textarea class="form-control js-notes-input" id="notes" name="notes" rows="2" maxlength="300"></textarea>
+                        <small class="notes-counter">0 / 300</small>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary" id="add_tx_submit_btn">Record Entry</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Asset Entry Modal -->
+<div class="modal fade" id="editTransactionModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-scrollable">
+        <div class="modal-content">
+            <form method="POST" id="editTransactionForm" autocomplete="off" novalidate>
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="user_timezone" value="">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Asset Entry</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    {% set _tx_edit_errs = (form_errors.get('transaction_edit', {}) if form_errors else {}) %}
+                    {% if _tx_edit_errs.get('__all__') %}
+                    <div class="alert alert-danger d-flex align-items-center mb-3">
+                        <i class="bi bi-exclamation-circle me-2"></i>{{ _tx_edit_errs.get('__all__') }}
+                    </div>
+                    {% endif %}
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <div class="mb-3">
+                                <label for="edit_portfolio_id_display" class="form-label">Portfolio</label>
+                                <select class="form-select" id="edit_portfolio_id_display" disabled>
+                                    <option value="">Select portfolio...</option>
+                                    {% for portfolio in portfolios %}
+                                    <option value="{{ portfolio.id }}">{{ portfolio.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="col-6">
+                            <div class="mb-3">
+                                <label for="edit_symbol" class="form-label">Asset Symbol</label>
+                                <input type="text" class="form-control" id="edit_symbol" name="edit_symbol" maxlength="20" readonly
+                                       placeholder="e.g., AAPL">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="edit_transaction_type_display" class="form-label">Entry Type</label>
+                        <select class="form-select" id="edit_transaction_type_display" disabled>
+                            <option value="">Select type...</option>
+                            <option value="Buy">Buy</option>
+                            <option value="Sell">Sell</option>
+                        </select>
+                    </div>
+
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <div class="mb-3">
+                                <label for="edit_price" class="form-label">Price (per unit)</label>
+                                {% set _tx_edit_errs = (form_errors.get('transaction_edit', {}) if form_errors else {}) %}
+                                {% set _tx_edit_vals = (form_values.get('transaction_edit', {}) if form_values else {}) %}
+                                <input type="text" inputmode="decimal" class="form-control {% if _tx_edit_errs.get('edit_price') %}is-invalid{% endif %}" id="edit_price" name="edit_price"
+                                    placeholder="0.0000">
+                                {% if _tx_edit_errs.get('edit_price') %}
+                                <div class="invalid-feedback">{{ _tx_edit_errs.get('edit_price') }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="mb-3">
+                                <label for="edit_quantity" class="form-label">Quantity</label>
+                                <input type="text" inputmode="decimal" class="form-control {% if _tx_edit_errs.get('edit_quantity') %}is-invalid{% endif %}" id="edit_quantity" name="edit_quantity"
+                                    placeholder="0.0000">
+                                {% if _tx_edit_errs.get('edit_quantity') %}
+                                <div class="invalid-feedback">{{ _tx_edit_errs.get('edit_quantity') }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <div class="mb-3">
+                                <label for="edit_fees" class="form-label">Fee (Optional)</label>
+                                <input type="text" inputmode="decimal" autocomplete="off" class="form-control {% if _tx_edit_errs.get('edit_fees') %}is-invalid{% endif %}" id="edit_fees" name="edit_fees"
+                                    placeholder="0.00">
+                                {% if _tx_edit_errs.get('edit_fees') %}
+                                <div class="invalid-feedback">{{ _tx_edit_errs.get('edit_fees') }}</div>
+                                {% endif %}
+                                <div id="edit_total_cost_preview" class="tx-preview"></div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="mb-3">
+                                <label for="edit_date" class="form-label">Date</label>
+                                <input type="text" class="form-control {% if _tx_edit_errs.get('edit_date') %}is-invalid{% endif %}" id="edit_date" name="edit_date" placeholder="YYYY-MM-DD">
+                                {% if _tx_edit_errs.get('edit_date') %}
+                                <div class="invalid-feedback">{{ _tx_edit_errs.get('edit_date') }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="edit_notes" class="form-label">Notes (optional)</label>
+                        <textarea class="form-control js-notes-input {% if _tx_edit_errs.get('edit_notes') %}is-invalid{% endif %}"
+                                  id="edit_notes" name="edit_notes" rows="2" maxlength="300"></textarea>
+                        <small class="notes-counter">0 / 300</small>
+                        {% if _tx_edit_errs.get('edit_notes') %}
+                        <div class="invalid-feedback">{{ _tx_edit_errs.get('edit_notes') }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Remove Asset Entry Modal -->
+<div class="modal fade" id="deleteTransactionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" id="deleteTransactionForm" novalidate>
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-header">
+                    <h5 class="modal-title d-flex align-items-center gap-2">
+                        <i class="bi bi-trash modal-title-icon"></i>
+                        Confirm Remove
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>{{ MESSAGES['CONFIRM_REMOVE_TRANSACTION'] }}</p>
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        This will recalculate average costs for this asset.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash me-1"></i>Remove
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Remove Asset Modal -->
+<div class="modal fade" id="deleteSymbolModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" id="deleteSymbolForm" action="{{ url_for('transactions.symbol_delete') }}" novalidate>
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="delete_symbol_portfolio_id" id="delete_symbol_portfolio_id">
+                <input type="hidden" name="delete_symbol_ticker" id="delete_symbol_ticker">
+                <div class="modal-header">
+                    <h5 class="modal-title d-flex align-items-center gap-2">
+                        <i class="bi bi-trash modal-title-icon"></i>
+                        Confirm Remove
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-2">Remove <span class="text-emphasis" id="delete_symbol_name"></span>?</p>
+                    <div id="delete_symbol_warning" class="alert alert-warning mb-2 d-none">
+                        <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                        <span id="delete_symbol_warning_text"></span>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash me-1"></i>Remove
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Add Income Modal (standalone — opened from the $ button on each asset row) -->
+<div class="modal fade" id="addDividendModal" tabindex="-1">
+    {% set _div_add_errs = (form_errors.get('dividend_add', {}) if form_errors else {}) %}
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('transactions.dividend_add') }}" autocomplete="off" novalidate>
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="user_timezone" value="">
+                <input type="hidden" name="portfolio_id" id="add_div_portfolio_id">
+                <input type="hidden" name="div_symbol" id="add_div_symbol">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add Income</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    {% if _div_add_errs.get('__all__') %}
+                    <div class="alert alert-danger d-flex align-items-center mb-3">
+                        <i class="bi bi-exclamation-circle me-2"></i>{{ _div_add_errs.get('__all__') }}
+                    </div>
+                    {% endif %}
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <div class="mb-3">
+                                <label for="add_div_amount" class="form-label">Amount</label>
+                                <input type="text" inputmode="decimal" autocomplete="off"
+                                       class="form-control {% if _div_add_errs.get('amount') %}is-invalid{% endif %}"
+                                       id="add_div_amount" name="amount" placeholder="0.00">
+                                {% if _div_add_errs.get('amount') %}
+                                <div class="invalid-feedback">{{ _div_add_errs.get('amount') }}</div>
+                                {% else %}
+                                <div id="add_div_amount_error" class="invalid-feedback"></div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="mb-3">
+                                <label for="add_div_date" class="form-label">Date</label>
+                                <input type="text"
+                                       class="form-control {% if _div_add_errs.get('date') %}is-invalid{% endif %}"
+                                       id="add_div_date" name="date" placeholder="YYYY-MM-DD">
+                                {% if _div_add_errs.get('date') %}
+                                <div class="invalid-feedback d-block">{{ _div_add_errs.get('date') }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="add_div_notes" class="form-label">Notes (optional)</label>
+                        <textarea class="form-control js-notes-input {% if _div_add_errs.get('notes') %}is-invalid{% endif %}"
+                                  id="add_div_notes" name="notes" rows="2" maxlength="300"></textarea>
+                        <small class="notes-counter">0 / 300</small>
+                        {% if _div_add_errs.get('notes') %}
+                        <div class="invalid-feedback">{{ _div_add_errs.get('notes') }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary" id="add_div_submit_btn">Record Income</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Income Modal -->
+{% set _div_edit_errs = (form_errors.get('dividend_edit', {}) if form_errors else {}) %}
+<div class="modal fade" id="editDividendModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-scrollable">
+        <div class="modal-content">
+            <form method="POST" id="editDividendForm" autocomplete="off" novalidate>
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="user_timezone" value="">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Income</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    {% if _div_edit_errs.get('__all__') %}
+                    <div class="alert alert-danger d-flex align-items-center mb-3">
+                        <i class="bi bi-exclamation-circle me-2"></i>{{ _div_edit_errs.get('__all__') }}
+                    </div>
+                    {% endif %}
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <div class="mb-3">
+                                <label for="edit_amount" class="form-label">Amount</label>
+                                <input type="text" inputmode="decimal" autocomplete="off"
+                                       class="form-control {% if _div_edit_errs.get('edit_amount') %}is-invalid{% endif %}"
+                                       id="edit_amount" name="edit_amount" placeholder="0.00">
+                                {% if _div_edit_errs.get('edit_amount') %}
+                                <div class="invalid-feedback">{{ _div_edit_errs.get('edit_amount') }}</div>
+                                {% else %}
+                                <div id="edit_amount_error" class="invalid-feedback"></div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="mb-3">
+                                <label for="edit_dividend_date" class="form-label">Date</label>
+                                <input type="text"
+                                       class="form-control {% if _div_edit_errs.get('edit_date') %}is-invalid{% endif %}"
+                                       id="edit_dividend_date" name="edit_date" placeholder="YYYY-MM-DD">
+                                {% if _div_edit_errs.get('edit_date') %}
+                                <div class="invalid-feedback">{{ _div_edit_errs.get('edit_date') }}</div>
+                                {% else %}
+                                <div id="edit_dividend_date_error" class="invalid-feedback"></div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_dividend_notes" class="form-label">Notes (optional)</label>
+                        <textarea class="form-control js-notes-input {% if _div_edit_errs.get('edit_notes') %}is-invalid{% endif %}"
+                                  id="edit_dividend_notes" name="edit_notes" rows="2" maxlength="300"></textarea>
+                        <small class="notes-counter">0 / 300</small>
+                        {% if _div_edit_errs.get('edit_notes') %}
+                        <div class="invalid-feedback">{{ _div_edit_errs.get('edit_notes') }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Remove Income Modal -->
+<div class="modal fade" id="deleteDividendModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" id="deleteDividendForm" novalidate>
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-header">
+                    <h5 class="modal-title d-flex align-items-center gap-2">
+                        <i class="bi bi-trash modal-title-icon"></i>
+                        Confirm Remove
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>{{ MESSAGES['CONFIRM_REMOVE_DIVIDEND'] }}</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash me-1"></i>Remove
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
+<script>
+function filterBySymbol(query) {
+    var q = query.trim().toUpperCase();
+    document.querySelectorAll('.symbol-card').forEach(function(card) {
+        var symbol = (card.getAttribute('data-symbol') || '').toUpperCase();
+        card.classList.toggle('sym-filter-hide', Boolean(q && !symbol.includes(q)));
+    });
+    if (window.refreshOuterPagination) window.refreshOuterPagination(true);
+}
+
+function ensureEditDatePicker() { initFlatpickr('edit_date'); }
+
+function openAddSymbolModal() {
+    const modalEl = document.getElementById('addSymbolModal');
+    const symbolInput = document.getElementById('symbol_ticker');
+    if (symbolInput) symbolInput.value = '';
+    new bootstrap.Modal(modalEl).show();
+}
+
+
+// Re-open modals after server-side validation errors and restore field values.
+(function reopenModalFromServerErrors() {
+    const which = {{ (active_modal or '') | tojson }};
+    const payload = {{ (modal_data or {}) | tojson }};
+
+    if (!which) return;
+
+    document.addEventListener('DOMContentLoaded', function() {
+        try {
+            if (which === 'addSymbolModal') {
+                openAddSymbolModal();
+                const portfolioVal = {{ (form_values.get('symbol_add', {}).get('symbol_portfolio_id', '') if form_values else '') | tojson }};
+                const symVal = {{ (form_values.get('symbol_add', {}).get('symbol_ticker', '') if form_values else '') | tojson }};
+                const portfolioEl = document.getElementById('symbol_portfolio_id');
+                const symEl = document.getElementById('symbol_ticker');
+                if (portfolioEl && portfolioVal) portfolioEl.value = String(portfolioVal);
+                if (symEl && symVal) symEl.value = String(symVal);
+            }
+
+            if (which === 'addTransactionModal') {
+                const vals = {{ (form_values.get('transaction_add', {}) if form_values else {}) | tojson }};
+
+                const portfolioEl = document.getElementById('portfolio_id');
+                const symEl = document.getElementById('symbol');
+                const typeEl = document.getElementById('transaction_type');
+                const priceEl = document.getElementById('price');
+                const qtyEl = document.getElementById('quantity');
+                const feesEl = document.getElementById('fees');
+                const notesEl = document.getElementById('notes');
+
+                if (portfolioEl && vals.portfolio_id) portfolioEl.value = String(vals.portfolio_id);
+                if (symEl && vals.symbol) symEl.value = String(vals.symbol).toUpperCase();
+                if (typeEl && vals.transaction_type) {
+                    typeEl.value = String(vals.transaction_type);
+                    typeEl.dispatchEvent(new Event('change'));
+                }
+                if (priceEl && vals.price != null) priceEl.value = String(vals.price);
+                if (qtyEl && vals.quantity != null) qtyEl.value = String(vals.quantity);
+                if (feesEl && vals.fees != null && String(vals.fees) !== '') feesEl.value = String(vals.fees);
+                if (notesEl && vals.notes != null) notesEl.value = String(vals.notes);
+
+                const dateEl = document.getElementById('add_tx_date');
+                dateEl.value = vals.date ? String(vals.date) : todayStr();
+
+                if (priceEl) priceEl.dispatchEvent(new Event('input'));
+                if (qtyEl) qtyEl.dispatchEvent(new Event('input'));
+                if (feesEl) feesEl.dispatchEvent(new Event('input'));
+
+                // Preserve the locked layout when the modal was opened from a symbol row.
+                const portfolioGroup = document.getElementById('add_tx_portfolio_group');
+                const symbolGroup = document.getElementById('add_tx_symbol_group');
+                const locked = Boolean(vals.portfolio_id) && Boolean(vals.symbol);
+
+                if (portfolioGroup) portfolioGroup.classList.toggle('d-none', locked);
+                if (symbolGroup) symbolGroup.classList.toggle('d-none', locked);
+
+                initFlatpickr('add_tx_date');
+                const modalEl = document.getElementById('addTransactionModal');
+                if (modalEl) new bootstrap.Modal(modalEl).show();
+            }
+
+            if (which === 'deleteTransactionModal' && payload && payload.tx_id) {
+                deleteTransaction(payload.tx_id);
+            }
+
+            if (which === 'deleteSymbolModal') {
+                const portfolioId = payload && payload.portfolio_id ? payload.portfolio_id : '';
+                const symbol = payload && payload.symbol ? payload.symbol : '';
+
+                const portfolioInput = document.getElementById('delete_symbol_portfolio_id');
+                const symbolInput = document.getElementById('delete_symbol_ticker');
+
+                if (portfolioInput) portfolioInput.value = portfolioId ? String(portfolioId) : '';
+                if (symbolInput) symbolInput.value = (symbol || '').toUpperCase();
+
+                new bootstrap.Modal(document.getElementById('deleteSymbolModal')).show();
+            }
+
+            if (which === 'editTransactionModal' && payload && payload.id) {
+                const vals = {{ (form_values.get('transaction_edit', {}) if form_values else {}) | tojson }};
+                editTransaction(
+                    payload.id,
+                    payload.portfolio_id,
+                    payload.type,
+                    payload.symbol,
+                    vals.edit_price,
+                    vals.edit_quantity,
+                    vals.edit_fees,
+                    vals.edit_notes,
+                    vals.edit_date,
+                );
+            }
+        } catch (e) {
+            // noop
+        }
+    });
+})();
+// ── Per-symbol inner-row pagination ──────────────────────────────────
+(function setupTablePagination() {
+    var PAGE_SIZE = 10;
+    var state = {};
+
+    function getRows(groupId) {
+        var tbody = document.querySelector('#transactions-' + groupId + ' tbody');
+        return tbody ? Array.from(tbody.querySelectorAll('tr')) : [];
+    }
+
+    function renderBar(groupId) {
+        var rows = getRows(groupId);
+        var bar = document.getElementById('pgbar-' + groupId);
+
+        if (rows.length <= PAGE_SIZE) {
+            rows.forEach(function(r) { r.style.display = ''; });
+            if (bar) bar.style.display = 'none';
+            return;
+        }
+
+        if (!state[groupId]) state[groupId] = { page: 1 };
+        var totalPages = Math.ceil(rows.length / PAGE_SIZE);
+        state[groupId].page = Math.min(Math.max(state[groupId].page, 1), totalPages);
+        var page = state[groupId].page;
+        var start = (page - 1) * PAGE_SIZE;
+        var end = Math.min(start + PAGE_SIZE, rows.length);
+
+        rows.forEach(function(r, i) {
+            r.style.display = (i >= start && i < end) ? '' : 'none';
+        });
+
+        if (!bar) return;
+
+        var winStart = Math.max(1, page - 1);
+        var winEnd   = Math.min(totalPages, winStart + 2);
+        if (winEnd - winStart < 2) winStart = Math.max(1, winEnd - 2);
+
+        var nums = '';
+        for (var p = winStart; p <= winEnd; p++) {
+            nums += '<span class="tx-pg-num' + (p === page ? ' active' : '') + '" data-gid="' + groupId + '" data-page="' + p + '">' + p + '</span>';
+        }
+
+        bar.style.display = 'flex';
+        bar.innerHTML =
+            '<div class="tx-pg-indicator">' +
+                '<button class="btn btn-sm tx-pg-prev px-1 py-0 border-0 text-secondary"' + (page <= 1 ? ' disabled' : '') + ' data-gid="' + groupId + '">&#8249;</button>' +
+                nums +
+                '<button class="btn btn-sm tx-pg-next px-1 py-0 border-0 text-secondary"' + (page >= totalPages ? ' disabled' : '') + ' data-gid="' + groupId + '">&#8250;</button>' +
+            '</div>';
+    }
+
+    document.addEventListener('click', function(e) {
+        var prev = e.target.closest ? e.target.closest('.tx-pg-prev') : null;
+        if (prev) {
+            var gid = prev.getAttribute('data-gid');
+            if (state[gid] && state[gid].page > 1) { state[gid].page--; renderBar(gid); }
+            return;
+        }
+        var next = e.target.closest ? e.target.closest('.tx-pg-next') : null;
+        if (next) {
+            var gid = next.getAttribute('data-gid');
+            if (!state[gid]) state[gid] = { page: 1 };
+            state[gid].page++;
+            renderBar(gid);
+            return;
+        }
+        var num = e.target.closest ? e.target.closest('.tx-pg-num') : null;
+        if (num) {
+            var gid = num.getAttribute('data-gid');
+            var pg = parseInt(num.getAttribute('data-page'), 10);
+            if (gid && pg) { if (!state[gid]) state[gid] = { page: 1 }; state[gid].page = pg; renderBar(gid); }
+        }
+    });
+
+    window.initSymbolPagination = function(groupId) {
+        if (!state[groupId]) state[groupId] = { page: 1 };
+        renderBar(groupId);
+    };
+}());
+
+// ── Outer symbol-card pagination ─────────────────────────────────────
+(function setupOuterPagination() {
+    var PAGE_SIZE = 100;
+    var currentPage = 1;
+
+    function getCards() {
+        return Array.from(document.querySelectorAll('.symbol-card'));
+    }
+
+    function render() {
+        var cards = getCards();
+        var visible = cards.filter(function(c) { return !c.classList.contains('sym-filter-hide'); });
+        var totalPages = Math.max(1, Math.ceil(visible.length / PAGE_SIZE));
+        currentPage = Math.min(Math.max(currentPage, 1), totalPages);
+
+        var start = (currentPage - 1) * PAGE_SIZE;
+        var end   = start + PAGE_SIZE;
+
+        cards.forEach(function(c) {
+            if (c.classList.contains('sym-filter-hide')) {
+                c.style.display = 'none';
+            } else {
+                var idx = visible.indexOf(c);
+                c.style.display = (idx >= start && idx < end) ? '' : 'none';
+            }
+        });
+
+        var bar = document.getElementById('outer-pg-bar');
+        if (!bar) return;
+
+        if (visible.length <= PAGE_SIZE) {
+            bar.style.display = 'none';
+            return;
+        }
+
+        var winStart = Math.max(1, currentPage - 1);
+        var winEnd   = Math.min(totalPages, winStart + 2);
+        if (winEnd - winStart < 2) winStart = Math.max(1, winEnd - 2);
+
+        var nums = '';
+        for (var p = winStart; p <= winEnd; p++) {
+            nums += '<span class="tx-pg-num' + (p === currentPage ? ' active' : '') + '" data-outer-page="' + p + '">' + p + '</span>';
+        }
+
+        bar.style.display = 'flex';
+        bar.innerHTML =
+            '<div class="tx-pg-indicator">' +
+                '<button class="btn btn-sm px-1 py-0 border-0 text-secondary outer-pg-prev"' + (currentPage <= 1 ? ' disabled' : '') + '>&#8249;</button>' +
+                nums +
+                '<button class="btn btn-sm px-1 py-0 border-0 text-secondary outer-pg-next"' + (currentPage >= totalPages ? ' disabled' : '') + '>&#8250;</button>' +
+            '</div>';
+    }
+
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.outer-pg-prev')) { if (currentPage > 1) { currentPage--; render(); } return; }
+        if (e.target.closest('.outer-pg-next')) { currentPage++; render(); return; }
+        var num = e.target.closest('[data-outer-page]');
+        if (num) { currentPage = parseInt(num.getAttribute('data-outer-page'), 10); render(); }
+    });
+
+    window.refreshOuterPagination = function(resetPage) {
+        if (resetPage) currentPage = 1;
+        render();
+    };
+
+    render();
+}());
+
+// ── Row expansion state ───────────────────────────────────────────────
+(function () {
+    var SK = 'txOpen', RK = 'txOpenRef';
+
+    var openSet = (function () {
+        try {
+            var saved = JSON.parse(sessionStorage.getItem(SK) || 'null');
+            var ref   = sessionStorage.getItem(RK) || '';
+            if (saved && ref && document.referrer.indexOf(ref) !== -1)
+                return new Set(saved);
+        } catch (e) {}
+        sessionStorage.removeItem(SK);
+        sessionStorage.removeItem(RK);
+        return new Set();
+    }());
+
+    // Apply immediately — no DOMContentLoaded needed, script is at end of body
+    openSet.forEach(function (id) {
+        var d = document.getElementById('transactions-' + id);
+        var c = document.getElementById('chevron-' + id);
+        if (d) d.style.display = 'block';
+        if (c) { c.classList.remove('bi-chevron-right'); c.classList.add('bi-chevron-down'); }
+        if (window.initSymbolPagination) window.initSymbolPagination(id);
+    });
+
+    function save() {
+        sessionStorage.setItem(SK, JSON.stringify([...openSet]));
+        sessionStorage.setItem(RK, window.location.href);
+    }
+
+    window.toggleSymbolTransactions = function (groupId) {
+        var d = document.getElementById('transactions-' + groupId);
+        var c = document.getElementById('chevron-' + groupId);
+        if (!d || !c) return;
+        if (d.style.display === 'none') {
+            d.style.display = 'block';
+            c.classList.replace('bi-chevron-right', 'bi-chevron-down');
+            openSet.add(groupId);
+            if (window.initSymbolPagination) window.initSymbolPagination(groupId);
+        } else {
+            d.style.display = 'none';
+            c.classList.replace('bi-chevron-down', 'bi-chevron-right');
+            openSet.delete(groupId);
+        }
+        save();
+    };
+}());
+
+function openAddTransactionModal(portfolioId, portfolioName, symbol, forcedType) {
+    const modalEl = document.getElementById('addTransactionModal');
+    const portfolioGroup = document.getElementById('add_tx_portfolio_group');
+    const symbolGroup = document.getElementById('add_tx_symbol_group');
+    const typeGroup = document.getElementById('add_tx_type_group');
+
+    const titleEl = document.getElementById('add_tx_modal_title');
+    const submitBtn = document.getElementById('add_tx_submit_btn');
+
+    const portfolioSelect = document.getElementById('portfolio_id');
+    const symbolInput = document.getElementById('symbol');
+    const typeSelect = document.getElementById('transaction_type');
+    const priceInput = document.getElementById('price');
+    const quantityInput = document.getElementById('quantity');
+    const feesInput = document.getElementById('fees');
+    const notesInput = document.getElementById('notes');
+
+    if (portfolioId) {
+        portfolioSelect.value = portfolioId;
+    } else {
+        portfolioSelect.value = '';
+    }
+
+    symbolInput.value = symbol ? (symbol || '').toUpperCase() : '';
+
+    const dateInput = document.getElementById('add_tx_date');
+
+    if (priceInput) priceInput.value = '';
+    if (quantityInput) quantityInput.value = '';
+    if (feesInput) feesInput.value = '';
+    if (notesInput) notesInput.value = '';
+    if (dateInput) dateInput.value = todayStr();
+
+    initFlatpickr('add_tx_date');
+
+    if (forcedType && typeSelect) {
+        typeSelect.value = forcedType;
+        if (typeGroup) typeGroup.classList.add('d-none');
+        if (titleEl) {
+            const isNewInvestment = (forcedType === 'Buy') && !portfolioId && !symbol;
+            titleEl.textContent = isNewInvestment ? 'New Investment' : ((forcedType === 'Buy') ? 'Add Buy' : 'Add Asset Entry');
+        }
+        if (submitBtn) submitBtn.textContent = (forcedType === 'Buy') ? 'Record Buy' : 'Record Entry';
+    } else {
+        if (typeSelect) typeSelect.value = 'Buy';
+        if (typeGroup) typeGroup.classList.remove('d-none');
+        if (titleEl) titleEl.textContent = 'Add Asset Entry';
+        if (submitBtn) submitBtn.textContent = 'Record Entry';
+    }
+
+    const locked = Boolean(portfolioId) && Boolean(symbol);
+    portfolioGroup.classList.toggle('d-none', locked);
+    symbolGroup.classList.toggle('d-none', locked);
+
+    // Trigger previews to recalculate after programmatic value changes
+    if (priceInput) priceInput.dispatchEvent(new Event('input'));
+    if (quantityInput) quantityInput.dispatchEvent(new Event('input'));
+    if (feesInput) feesInput.dispatchEvent(new Event('input'));
+    if (typeSelect) typeSelect.dispatchEvent(new Event('change'));
+
+    new bootstrap.Modal(modalEl).show();
+}
+
+function editTransaction(id, portfolioId, type, symbol, price, quantity, fees, notes, dateShort) {
+    document.getElementById('editTransactionForm').action = `/transactions/edit/${id}`;
+
+    function trimTrailingZeros(v) {
+        if (v == null) return '';
+        let s = String(v).trim();
+        if (!s) return '';
+        // Handle scientific notation (e.g. "0E-10" from Python Decimal for zero values).
+        if (/[Ee]/.test(s)) {
+            const n = parseFloat(s);
+            if (!isNaN(n)) s = n.toFixed(10);
+        }
+        if (!/^[-+]?\d*(?:\.\d+)?$/.test(s)) return s;
+        if (!s.includes('.')) return s;
+        const out = s.replace(/(?:\.0+|(?<=\.\d*?)0+)$/, '');
+        return out.endsWith('.') ? out.slice(0, -1) : out;
+    }
+
+    const portfolioSelect = document.getElementById('edit_portfolio_id_display');
+    const typeSelect = document.getElementById('edit_transaction_type_display');
+    const symbolInput = document.getElementById('edit_symbol');
+    const priceInput = document.getElementById('edit_price');
+    const quantityInput = document.getElementById('edit_quantity');
+    const feesInput = document.getElementById('edit_fees');
+    const notesInput = document.getElementById('edit_notes');
+    const dateInput = document.getElementById('edit_date');
+
+    if (portfolioSelect) portfolioSelect.value = portfolioId ? String(portfolioId) : '';
+    if (typeSelect) typeSelect.value = type || '';
+    if (symbolInput) symbolInput.value = (symbol || '').toUpperCase();
+    if (priceInput) priceInput.value = trimTrailingZeros(price);
+    if (quantityInput) quantityInput.value = trimTrailingZeros(quantity);
+    if (feesInput) feesInput.value = trimTrailingZeros(fees);
+    if (notesInput) notesInput.value = notes;
+    if (dateInput) dateInput.value = dateShort || '';
+
+    ensureEditDatePicker();
+
+    // Trigger preview recalculation after programmatic value changes
+    if (priceInput) priceInput.dispatchEvent(new Event('input'));
+    if (quantityInput) quantityInput.dispatchEvent(new Event('input'));
+    if (feesInput) feesInput.dispatchEvent(new Event('input'));
+    if (typeSelect) typeSelect.dispatchEvent(new Event('change'));
+
+    new bootstrap.Modal(document.getElementById('editTransactionModal')).show();
+}
+
+// Submit handling for #deleteTransactionForm is wired by ModalAjaxHandler
+// (main.js) so the error banner renders identically to every other
+// delete modal in the app — alert-danger banner with the warning icon,
+// injected at the top of .modal-body. This wrapper just sets the form
+// action for the row the user clicked and shows the modal.
+window.deleteTransaction = function(id) {
+    var form = document.getElementById('deleteTransactionForm');
+    form.action = '/transactions/delete/' + id;
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('deleteTransactionModal')).show();
+};
+
+// Submit handling for #deleteSymbolForm is wired by ModalAjaxHandler
+// (main.js). This wrapper just primes the hidden inputs + warning copy
+// for the row the user clicked, then opens the modal.
+window.openDeleteSymbolModal = function(portfolioId, portfolioName, symbol, txCount) {
+    var portfolioInput = document.getElementById('delete_symbol_portfolio_id');
+    var symbolInput = document.getElementById('delete_symbol_ticker');
+    if (portfolioInput) portfolioInput.value = portfolioId ? String(portfolioId) : '';
+    if (symbolInput) symbolInput.value = (symbol || '').toUpperCase();
+
+    var symbolName = document.getElementById('delete_symbol_name');
+    var warningDiv = document.getElementById('delete_symbol_warning');
+    var warningText = document.getElementById('delete_symbol_warning_text');
+
+    if (symbolName) symbolName.textContent = (symbol || '').toUpperCase();
+
+    if (txCount > 0 && warningDiv && warningText) {
+        warningText.textContent = 'This will also permanently remove ' + txCount +
+            ' asset entr' + (txCount !== 1 ? 'ies' : 'y') + ' for this asset.';
+        warningDiv.classList.remove('d-none');
+    } else if (warningDiv) {
+        warningDiv.classList.add('d-none');
+    }
+
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('deleteSymbolModal')).show();
+};
+
+(function setupAddSellMax() {
+    const modalEl = document.getElementById('addTransactionModal');
+    const typeSelect = document.getElementById('transaction_type');
+    const buyBtn = document.getElementById('add_tx_type_buy_btn');
+    const sellBtn = document.getElementById('add_tx_type_sell_btn');
+    const portfolioSelect = document.getElementById('portfolio_id');
+    const symbolInput = document.getElementById('symbol');
+    const quantityInput = document.getElementById('quantity');
+    const maxRow = document.getElementById('add_sell_max_row');
+    const maxBtn = document.getElementById('add_sell_max_btn');
+
+    if (!modalEl || !typeSelect || !portfolioSelect || !symbolInput || !quantityInput || !maxRow || !maxBtn || !buyBtn || !sellBtn) return;
+
+    let lastHeldQty = null;
+
+    function setState({ visible, enabled, heldQty }) {
+        maxRow.classList.toggle('d-none', !visible);
+        maxBtn.disabled = !enabled;
+        lastHeldQty = heldQty;
+    }
+
+    async function refresh() {
+        const isSell = typeSelect.value === 'Sell';
+        if (!isSell) {
+            setState({ visible: false, enabled: false, heldQty: null });
+            return;
+        }
+
+        const portfolioId = parseInt(portfolioSelect.value || '0', 10);
+        const symbol = (symbolInput.value || '').trim().toUpperCase();
+
+        if (!portfolioId || !symbol) {
+            setState({ visible: true, enabled: false, heldQty: null });
+            return;
+        }
+
+        setState({ visible: true, enabled: false, heldQty: null });
+
+        try {
+            const url = `/api/holdings?portfolio_id=${encodeURIComponent(String(portfolioId))}&symbol=${encodeURIComponent(symbol)}`;
+            const resp = await fetch(url, { headers: { 'Accept': 'application/json' } });
+            if (!resp.ok) {
+                throw new Error(`HTTP ${resp.status}`);
+            }
+            const data = await resp.json();
+            const heldQty = (data && data.held_quantity != null) ? String(data.held_quantity) : '0';
+            const heldNum = parseFloat(heldQty);
+            const enabled = Number.isFinite(heldNum) && heldNum > 0;
+            setState({ visible: true, enabled, heldQty });
+        } catch (e) {
+            setState({ visible: true, enabled: false, heldQty: null });
+        }
+    }
+
+    function setType(nextType) {
+        typeSelect.value = nextType;
+        typeSelect.dispatchEvent(new Event('change'));
+    }
+
+    function syncTypeButtons() {
+        const isBuy = typeSelect.value === 'Buy';
+        const isSell = typeSelect.value === 'Sell';
+
+        buyBtn.classList.toggle('active', isBuy);
+        sellBtn.classList.toggle('active', isSell);
+
+        buyBtn.setAttribute('aria-pressed', isBuy ? 'true' : 'false');
+        sellBtn.setAttribute('aria-pressed', isSell ? 'true' : 'false');
+
+        modalEl.classList.toggle('tx-theme-buy', isBuy);
+        modalEl.classList.toggle('tx-theme-sell', isSell);
+    }
+
+    maxBtn.addEventListener('click', function() {
+        if (!lastHeldQty) return;
+        quantityInput.value = lastHeldQty;
+        quantityInput.dispatchEvent(new Event('input'));
+    });
+
+    buyBtn.addEventListener('click', function() {
+        setType('Buy');
+    });
+
+    sellBtn.addEventListener('click', function() {
+        setType('Sell');
+    });
+
+    typeSelect.addEventListener('change', function() {
+        syncTypeButtons();
+        refresh();
+    });
+    portfolioSelect.addEventListener('change', refresh);
+    symbolInput.addEventListener('input', refresh);
+
+    if (!typeSelect.value) typeSelect.value = 'Buy';
+    syncTypeButtons();
+
+    refresh();
+
+    modalEl.addEventListener('show.bs.modal', function() {
+        modalEl.querySelectorAll('.is-invalid').forEach(function(el) { el.classList.remove('is-invalid'); });
+        modalEl.querySelectorAll('.invalid-feedback').forEach(function(el) { el.textContent = ''; el.classList.remove('d-block'); });
+    });
+
+    modalEl.addEventListener('hidden.bs.modal', function() {
+        typeSelect.value = 'Buy';
+        syncTypeButtons();
+    });
+})();
+
+// Ensure header action buttons don't trigger row expand/collapse.
+(function wireHeaderActionButtons() {
+    document.addEventListener('click', function(ev) {
+        const editBtn = ev.target && ev.target.closest ? ev.target.closest('.js-edit-transaction-btn') : null;
+        if (editBtn) {
+            ev.preventDefault();
+            ev.stopPropagation();
+            if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
+
+            try {
+                const payload = editBtn.getAttribute('data-tx') || '{}';
+                const tx = JSON.parse(payload);
+                editTransaction(tx.id, tx.portfolioId, tx.type, tx.symbol, tx.price, tx.quantity, tx.fees, tx.notes, tx.dateShort);
+            } catch (e) {
+                // Fallback: do nothing (keeps page functional)
+            }
+            return;
+        }
+
+        const delTxBtn = ev.target && ev.target.closest ? ev.target.closest('.js-delete-transaction-btn') : null;
+        if (delTxBtn) {
+            ev.preventDefault();
+            ev.stopPropagation();
+            if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
+
+            const id = parseInt(delTxBtn.getAttribute('data-tx-id') || '0', 10);
+            if (id) deleteTransaction(id);
+            return;
+        }
+
+        const addBtn = ev.target && ev.target.closest ? ev.target.closest('.js-add-transaction-btn') : null;
+        if (addBtn) {
+            ev.preventDefault();
+            ev.stopPropagation();
+            if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
+
+            const portfolioId = parseInt(addBtn.getAttribute('data-portfolio-id') || '0', 10) || null;
+            const portfolioName = addBtn.getAttribute('data-portfolio') || '';
+            const symbol = addBtn.getAttribute('data-symbol') || '';
+            openAddTransactionModal(portfolioId, portfolioName, symbol);
+            return;
+        }
+
+        const delBtn = ev.target && ev.target.closest ? ev.target.closest('.js-delete-symbol-btn') : null;
+        if (delBtn) {
+            ev.preventDefault();
+            ev.stopPropagation();
+            if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
+
+            const portfolioId = parseInt(delBtn.getAttribute('data-portfolio-id') || '0', 10) || null;
+            const portfolioName = delBtn.getAttribute('data-portfolio') || '';
+            const symbol = delBtn.getAttribute('data-symbol') || '';
+            const txCount = parseInt(delBtn.getAttribute('data-tx-count') || '0', 10) || 0;
+            openDeleteSymbolModal(portfolioId, portfolioName, symbol, txCount);
+        }
+
+        // Standalone income button — opens the dedicated Add Income modal
+        const addDivBtn = ev.target && ev.target.closest ? ev.target.closest('.js-add-dividend-btn') : null;
+        if (addDivBtn) {
+            ev.preventDefault();
+            ev.stopPropagation();
+            if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
+
+            const portfolioId = parseInt(addDivBtn.getAttribute('data-portfolio-id') || '0', 10) || null;
+            const symbol = addDivBtn.getAttribute('data-symbol') || '';
+            openStandaloneDividendModal(portfolioId, symbol);
+        }
+
+        // Edit dividend button
+        const editDivBtn = ev.target && ev.target.closest ? ev.target.closest('.js-edit-dividend-btn') : null;
+        if (editDivBtn) {
+            ev.preventDefault();
+            ev.stopPropagation();
+            if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
+
+            try {
+                const payload = editDivBtn.getAttribute('data-div') || '{}';
+                const div = JSON.parse(payload);
+                openEditDividendModal(div.id, div.amount, div.dateShort, div.notes);
+            } catch (e) { /* noop */ }
+        }
+
+        // Delete dividend button
+        const delDivBtn = ev.target && ev.target.closest ? ev.target.closest('.js-delete-dividend-btn') : null;
+        if (delDivBtn) {
+            ev.preventDefault();
+            ev.stopPropagation();
+            if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
+
+            const divId = parseInt(delDivBtn.getAttribute('data-div-id') || '0', 10);
+            if (divId) deleteDividend(divId);
+        }
+    }, true);
+})();
+
+// -----------------------------------------------------------------------
+// Standalone Add Income Modal (opened from the $ button on asset rows)
+// -----------------------------------------------------------------------
+function openStandaloneDividendModal(portfolioId, symbol) {
+    // Pre-fill the modal and reset any leftover validation state, then
+    // open it. Submission itself is handled by ModalAjaxHandler.
+    const portfolioInput = document.getElementById('add_div_portfolio_id');
+    const symInput       = document.getElementById('add_div_symbol');
+    const amountEl       = document.getElementById('add_div_amount');
+    const dateEl         = document.getElementById('add_div_date');
+    const notesEl        = document.getElementById('add_div_notes');
+    const submitBtn      = document.getElementById('add_div_submit_btn');
+
+    if (portfolioInput) portfolioInput.value = portfolioId ? String(portfolioId) : '';
+    if (symInput)       symInput.value       = (symbol || '').toUpperCase();
+    if (amountEl)       { amountEl.value = ''; amountEl.classList.remove('is-invalid'); }
+    if (dateEl)         dateEl.value = todayStr();
+    if (notesEl)        notesEl.value = '';
+    if (submitBtn)      submitBtn.disabled = false;
+
+    initFlatpickr('add_div_date');
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('addDividendModal')).show();
+}
+
+// addDividendModal submission is wired by the central ModalAjaxHandler
+// (see static/js/main.js). The earlier per-form XMLHttpRequest handler
+// here was a duplicate — having both attached caused every dividend to
+// be POSTed twice, which the user reported as "operation duplicated"
+// (added 100, total showed 200).
+
+
+// -----------------------------------------------------------------------
+// Edit Dividend Modal
+// -----------------------------------------------------------------------
+function openEditDividendModal(id, amount, dateShort, notes) {
+    function trimTrailingZeros(v) {
+        if (v == null) return '';
+        let s = String(v).trim();
+        if (!s) return '';
+        if (/[Ee]/.test(s)) { const n = parseFloat(s); if (!isNaN(n)) s = n.toFixed(10); }
+        if (!/^[-+]?\d*(?:\.\d+)?$/.test(s)) return s;
+        if (!s.includes('.')) return s;
+        const out = s.replace(/(?:\.0+|(?<=\.\d*?)0+)$/, '');
+        return out.endsWith('.') ? out.slice(0, -1) : out;
+    }
+
+    document.getElementById('editDividendForm').action = '/transactions/dividends/edit/' + id;
+    const amountEl = document.getElementById('edit_amount');
+    const dateEl   = document.getElementById('edit_dividend_date');
+    const notesEl  = document.getElementById('edit_dividend_notes');
+    const errEl    = document.getElementById('edit_dividend_error');
+
+    if (amountEl) amountEl.value = trimTrailingZeros(amount);
+    if (dateEl)   dateEl.value   = dateShort || '';
+    if (notesEl)  notesEl.value  = notes || '';
+    if (errEl)    { errEl.textContent = ''; errEl.classList.add('d-none'); }
+
+    initFlatpickr('edit_dividend_date');
+    new bootstrap.Modal(document.getElementById('editDividendModal')).show();
+}
+
+// Setup Edit Dividend AJAX
+(function setupEditDividend() {
+    var form      = document.getElementById('editDividendForm');
+    var errEl     = document.getElementById('edit_dividend_error');
+    var amountEl  = document.getElementById('edit_amount');
+    var amountErr = document.getElementById('edit_amount_error');
+    var submitBtn = form ? form.querySelector('button[type="submit"]') : null;
+    var modalEl   = document.getElementById('editDividendModal');
+    if (!form) return;
+
+    function validateAmount() {
+        var val = String(amountEl ? amountEl.value || '' : '').trim();
+        var n   = parseFloat(val);
+        if (!val || !isFinite(n) || n <= 0) {
+            if (amountEl)  amountEl.classList.add('is-invalid');
+            if (amountErr) { amountErr.textContent = 'Must be more than 0.'; amountErr.style.display = 'block'; }
+            return false;
+        }
+        if (amountEl)  amountEl.classList.remove('is-invalid');
+        if (amountErr) { amountErr.textContent = ''; amountErr.style.display = 'none'; }
+        return true;
+    }
+
+    if (amountEl) {
+        amountEl.addEventListener('blur',  validateAmount);
+        amountEl.addEventListener('input', function() {
+            if (amountEl.classList.contains('is-invalid')) validateAmount();
+        });
+    }
+
+    // Clear inline errors when modal is hidden
+    if (modalEl) {
+        modalEl.addEventListener('hidden.bs.modal', function() {
+            if (amountEl)  amountEl.classList.remove('is-invalid');
+            if (amountErr) { amountErr.textContent = ''; amountErr.style.display = 'none'; }
+            if (errEl)     { errEl.textContent = ''; errEl.classList.add('d-none'); }
+        });
+    }
+
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        if (!validateAmount()) return;
+        if (submitBtn && submitBtn.disabled) return;
+        if (submitBtn) submitBtn.disabled = true;
+        if (errEl) { errEl.textContent = ''; errEl.classList.add('d-none'); }
+
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', form.action, true);
+        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+        xhr.onload = function() {
+            if (submitBtn) submitBtn.disabled = false;
+            try {
+                var data = JSON.parse(xhr.responseText);
+                if (data.success) {
+                    sessionStorage.setItem('flashMessage', data.message || 'Income updated');
+                    sessionStorage.setItem('flashType', 'success');
+                    var modal = bootstrap.Modal.getInstance(modalEl);
+                    if (modal) modal.hide();
+                    location.reload();
+                } else {
+                    var msg = Utils.extractAjaxError(data, 'Could not update the income. Please try again.');
+                    if (errEl) { errEl.textContent = msg; errEl.classList.remove('d-none'); }
+                }
+            } catch (ex) {
+                if (errEl) { errEl.textContent = 'Could not update the income. Please try again.'; errEl.classList.remove('d-none'); }
+            }
+        };
+        xhr.onerror = function() {
+            if (submitBtn) submitBtn.disabled = false;
+            if (errEl) { errEl.textContent = 'Network error'; errEl.classList.remove('d-none'); }
+        };
+        xhr.send(new FormData(form));
+    });
+})();
+
+// Submit handling for #deleteDividendForm is wired by ModalAjaxHandler
+// (main.js). This wrapper just sets the form action for the row the
+// user clicked and shows the modal.
+window.deleteDividend = function(id) {
+    var form = document.getElementById('deleteDividendForm');
+    if (!form) return;
+    form.action = '/transactions/dividends/delete/' + id;
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('deleteDividendModal')).show();
+};
+</script>
+{% endblock %}

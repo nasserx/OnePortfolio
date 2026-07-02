@@ -1,0 +1,776 @@
+"""Authentication test suite — sign-up, login, OTP, sessions, rate limits.
+
+Covers the ``feat/auth-refactor`` flow:
+
+* Sign-ups stage in ``pending_registration``; the live ``user`` row is only
+  created after the 6-digit OTP is confirmed.
+* Login is blocked for unverified accounts, lets verified accounts in,
+  hides the existence of accounts behind a single generic error, and
+  trips a 30-minute lockout after 5 consecutive wrong passwords.
+* Rate limiting protects ``/register`` (5/h/IP) and ``/resend-code``
+  (3/h/email).
+
+The test file is self-contained: it builds its own Flask app per test so
+DB state, the rate-limiter store, and email mocks never leak across tests.
+The mail layer is monkey-patched (``send_verification_email`` /
+``send_reset_email``) so no SMTP is ever attempted.
+"""
+
+from datetime import datetime, timedelta, timezone
+import html
+from pathlib import Path
+
+import pytest
+
+from config import Config
+from portfolio_app import create_app, db, limiter
+from portfolio_app.models.user import User
+from portfolio_app.models.pending_registration import PendingRegistration
+
+
+# ---------------------------------------------------------------------------
+# Test configuration
+# ---------------------------------------------------------------------------
+
+class _BaseTestConfig(Config):
+    """Shared base: in-process SQLite file, CSRF off, rate limiting off."""
+    TESTING = True
+    WTF_CSRF_ENABLED = False
+    SECRET_KEY = 'test-secret-key'
+    MAIL_SUPPRESS_SEND = True
+    RATELIMIT_ENABLED = False
+    SQLALCHEMY_DATABASE_URI = (
+        f"sqlite:///{(Path(__file__).resolve().parent / 'test_auth.db').as_posix()}"
+    )
+
+
+class _RateLimitedTestConfig(_BaseTestConfig):
+    """Used only by the rate-limit tests so the rest of the suite is fast."""
+    RATELIMIT_ENABLED = True
+
+
+# ---------------------------------------------------------------------------
+# Fixtures
+# ---------------------------------------------------------------------------
+
+@pytest.fixture(autouse=True)
+def _isolate_db(tmp_path, monkeypatch):
+    """Point each test at its own SQLite file and reset the limiter store.
+
+    autouse so any test that builds an app in this module gets fresh state.
+    """
+    db_path = tmp_path / 'auth.db'
+    monkeypatch.setenv('DATABASE_URL', f"sqlite:///{db_path.as_posix()}")
+    _BaseTestConfig.SQLALCHEMY_DATABASE_URI = f"sqlite:///{db_path.as_posix()}"
+    _RateLimitedTestConfig.SQLALCHEMY_DATABASE_URI = f"sqlite:///{db_path.as_posix()}"
+    # Drain any leftover counters from a previous test.
+    try:
+        limiter.reset()
+    except Exception:
+        pass
+    yield
+
+
+@pytest.fixture
+def email_log(monkeypatch):
+    """Capture every (email, code) pair the app would have sent.
+
+    The app calls ``send_verification_email`` from
+    ``portfolio_app.routes.auth`` (and the email module). Patch that
+    binding to push into a list and return success.
+    """
+    captured = []
+
+    def _fake_send_verification(to_email, code):
+        captured.append((to_email, code))
+        return True
+
+    def _fake_send_reset(to_email, token):
+        captured.append((to_email, f'reset:{token}'))
+        return True
+
+    def _fake_send_deletion(to_email, code):
+        captured.append((to_email, f'deletion:{code}'))
+        return True
+
+    monkeypatch.setattr(
+        'portfolio_app.routes.auth.send_verification_email', _fake_send_verification
+    )
+    monkeypatch.setattr(
+        'portfolio_app.routes.auth.send_reset_email', _fake_send_reset
+    )
+    monkeypatch.setattr(
+        'portfolio_app.routes.auth.send_deletion_confirmation_email', _fake_send_deletion
+    )
+    return captured
+
+
+@pytest.fixture
+def app():
+    """Build a fresh Flask app with rate limiting OFF for the bulk of tests."""
+    app = create_app(_BaseTestConfig)
+    with app.app_context():
+        db.drop_all()
+        db.create_all()
+    yield app
+
+
+@pytest.fixture
+def client(app):
+    return app.test_client()
+
+
+@pytest.fixture
+def rate_limited_app():
+    """Same as ``app`` but with rate limiting ENABLED for the limit tests."""
+    app = create_app(_RateLimitedTestConfig)
+    with app.app_context():
+        db.drop_all()
+        db.create_all()
+    try:
+        limiter.reset()
+    except Exception:
+        pass
+    yield app
+
+
+@pytest.fixture
+def rate_limited_client(rate_limited_app):
+    return rate_limited_app.test_client()
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _register(client, **overrides):
+    payload = {
+        'email': 'alice@example.com',
+        'password': 'CorrectHorse9',
+    }
+    payload.update(overrides)
+    return client.post('/register', data=payload, follow_redirects=False)
+
+
+def _last_pending(app, email):
+    with app.app_context():
+        return PendingRegistration.query.filter_by(email=email.lower()).first()
+
+
+def _expire_pending_otp(app, email):
+    """Push the OTP expiry into the past so we can exercise the expiry branch."""
+    with app.app_context():
+        row = PendingRegistration.query.filter_by(email=email.lower()).first()
+        assert row is not None
+        row.verification_code_expires_at = datetime.now(timezone.utc) - timedelta(minutes=1)
+        db.session.commit()
+
+
+# ---------------------------------------------------------------------------
+# Sign-up tests
+# ---------------------------------------------------------------------------
+
+class TestSignup:
+
+    def test_valid_signup_creates_pending_only(self, app, client, email_log):
+        resp = _register(client)
+        assert resp.status_code in (302, 303)
+
+        with app.app_context():
+            assert User.query.count() == 0, "no user row should exist before OTP"
+            pending = PendingRegistration.query.filter_by(email='alice@example.com').first()
+            assert pending is not None
+            assert pending.username == 'alice'
+            # Stored hash is bcrypt — never plaintext.
+            assert pending.password_hash.startswith('$2')
+            assert pending.password_hash != 'CorrectHorse9'
+            assert len(pending.verification_code) == 6
+
+        # Exactly one verification email was queued.
+        assert len(email_log) == 1
+        assert email_log[0][0] == 'alice@example.com'
+
+    def test_signup_does_not_require_username_or_confirm_password(self, app, client, email_log):
+        resp = client.post(
+            '/register',
+            data={'email': 'simple@example.com', 'password': 'CorrectHorse9'},
+            follow_redirects=False,
+        )
+        assert resp.status_code in (302, 303)
+        with app.app_context():
+            pending = PendingRegistration.query.filter_by(email='simple@example.com').one()
+            assert pending.username == 'simple'
+        assert email_log[-1][0] == 'simple@example.com'
+
+    def test_duplicate_email_blocked_before_db_write(self, app, client, email_log):
+        # First sign-up succeeds and verifies, becoming a real user.
+        _register(client)
+        pending_code = email_log[-1][1]
+        client.post('/verify-code?email=alice@example.com', data={'code': pending_code})
+        client.post('/logout')  # verify auto-logs-in; drop the session
+
+        # Second sign-up with the same email is rejected before any DB write
+        # happens for the new attempt.
+        resp = _register(
+            client, email='alice@example.com', password='AnotherPw9999',
+        )
+        assert resp.status_code == 200  # form re-rendered with error
+        with app.app_context():
+            # Still exactly one user, no pending rows.
+            assert User.query.count() == 1
+            assert PendingRegistration.query.count() == 0
+
+    def test_generated_username_gets_suffix_on_collision(self, app, client, email_log):
+        _register(client)
+        pending_code = email_log[-1][1]
+        client.post('/verify-code?email=alice@example.com', data={'code': pending_code})
+        client.post('/logout')
+
+        resp = _register(
+            client, email='alice@different.example',
+            password='AnotherPw9999',
+        )
+        assert resp.status_code in (302, 303)
+        with app.app_context():
+            assert User.query.count() == 1
+            pending = PendingRegistration.query.filter_by(email='alice@different.example').one()
+            assert pending.username == 'alice_2'
+
+    def test_weak_password_rejected_at_form_layer(self, app, client, email_log):
+        resp = _register(client, password='short')
+        assert resp.status_code == 200  # form rendered with error, not a redirect
+        with app.app_context():
+            assert PendingRegistration.query.count() == 0
+            assert User.query.count() == 0
+        # Email service was never invoked.
+        assert email_log == []
+
+    def test_expired_otp_rejected(self, app, client, email_log):
+        _register(client)
+        _expire_pending_otp(app, 'alice@example.com')
+        code = email_log[-1][1]
+
+        resp = client.post('/verify-code?email=alice@example.com', data={'code': code})
+        # Verification page re-rendered with the expiry error.
+        assert resp.status_code == 200
+        body = resp.get_data(as_text=True)
+        assert 'expired' in body.lower()
+        with app.app_context():
+            # Still pending, no user created.
+            assert User.query.count() == 0
+            assert PendingRegistration.query.count() == 1
+
+    def test_valid_otp_creates_user_deletes_pending(self, app, client, email_log):
+        _register(client)
+        code = email_log[-1][1]
+
+        resp = client.post(
+            '/verify-code?email=alice@example.com',
+            data={'code': code},
+            follow_redirects=False,
+        )
+        assert resp.status_code in (302, 303)
+
+        with app.app_context():
+            assert PendingRegistration.query.count() == 0
+            user = User.query.filter_by(email='alice@example.com').first()
+            assert user is not None
+            assert user.is_verified is True
+            assert user.password_hash.startswith('$2')
+
+    def test_resignup_invalidates_previous_token(self, app, client, email_log):
+        _register(client)
+        first_code = email_log[-1][1]
+
+        # Same email signs up again — old OTP must no longer work.
+        _register(client, email='alice@example.com', password='SecondPw9999')
+        new_code = email_log[-1][1]
+        assert new_code != first_code  # very high probability — 1-in-900k otherwise
+
+        # Old code is rejected.
+        resp = client.post(
+            '/verify-code?email=alice@example.com',
+            data={'code': first_code},
+        )
+        assert resp.status_code == 200
+        with app.app_context():
+            assert User.query.count() == 0
+            assert PendingRegistration.query.count() == 1
+
+        # New code works.
+        resp = client.post(
+            '/verify-code?email=alice@example.com',
+            data={'code': new_code},
+            follow_redirects=False,
+        )
+        assert resp.status_code in (302, 303)
+        with app.app_context():
+            assert User.query.count() == 1
+            assert PendingRegistration.query.count() == 0
+
+
+# ---------------------------------------------------------------------------
+# Login tests
+# ---------------------------------------------------------------------------
+
+def _signup_and_verify(app, client, email_log, **kw):
+    """Register → verify → logout, leaving a clean unauthenticated client."""
+    _register(client, **kw)
+    code = email_log[-1][1]
+    email = kw.get('email', 'alice@example.com')
+    client.post(f'/verify-code?email={email}', data={'code': code})
+    # Verification auto-logs the user in; drop the session so callers start
+    # from an unauthenticated state.
+    client.post('/logout')
+    return 'alice'
+
+
+class TestLogin:
+
+    def test_correct_credentials_logs_in(self, app, client, email_log):
+        _signup_and_verify(app, client, email_log)
+        resp = client.post(
+            '/login',
+            data={'username': 'alice@example.com', 'password': 'CorrectHorse9'},
+            follow_redirects=False,
+        )
+        assert resp.status_code in (302, 303)
+        # Session cookie was issued.
+        with client.session_transaction() as sess:
+            assert sess.get('_user_id') is not None
+
+    def test_existing_username_login_still_works(self, app, client, email_log):
+        _signup_and_verify(app, client, email_log)
+        resp = client.post(
+            '/login',
+            data={'username': 'alice', 'password': 'CorrectHorse9'},
+            follow_redirects=False,
+        )
+        assert resp.status_code in (302, 303)
+
+    def test_wrong_password_returns_generic_error(self, app, client, email_log):
+        _signup_and_verify(app, client, email_log)
+        resp = client.post(
+            '/login',
+            data={'username': 'alice@example.com', 'password': 'WrongPw9999'},
+        )
+        assert resp.status_code == 200
+        body = resp.get_data(as_text=True).lower()
+        # Generic "invalid email or password" — no leak about which.
+        assert 'invalid' in body
+        assert 'password' in body
+        assert 'no account' not in body
+
+    def test_nonexistent_user_returns_same_error(self, app, client):
+        resp = client.post(
+            '/login',
+            data={'username': 'ghost', 'password': 'WhateverPw9'},
+        )
+        assert resp.status_code == 200
+        body = resp.get_data(as_text=True).lower()
+        # Same generic invalid-credentials message; no "user not found".
+        assert 'invalid' in body
+        assert 'no account' not in body
+
+    def test_unverified_login_returns_generic_error_no_redirect(self, app, client, email_log):
+        # Sign up but don't verify — no User row yet, only a pending record.
+        # We deliberately do NOT redirect to /verify-code here: that would
+        # leak that the email exists in pending state (account enumeration).
+        _register(client)
+        resp = client.post(
+            '/login',
+            data={'username': 'alice@example.com', 'password': 'CorrectHorse9'},
+            follow_redirects=False,
+        )
+        # Same shape as test_nonexistent_user_returns_same_error: the
+        # response is the form with the generic "invalid credentials"
+        # message — no Location header to verify-code.
+        assert resp.status_code == 200
+        body = resp.get_data(as_text=True).lower()
+        assert 'invalid' in body
+        assert 'verify-code' not in body
+        # Header must not redirect into the OTP page either.
+        assert 'Location' not in resp.headers
+
+    def test_lockout_after_five_failed_attempts(self, app, client, email_log):
+        _signup_and_verify(app, client, email_log)
+
+        # Five consecutive wrong-password attempts must trip the lockout.
+        for _ in range(5):
+            client.post('/login', data={'username': 'alice@example.com', 'password': 'Bad9999999'})
+
+        # The 6th attempt — even with the *correct* password — is locked.
+        resp = client.post(
+            '/login',
+            data={'username': 'alice@example.com', 'password': 'CorrectHorse9'},
+        )
+        assert resp.status_code == 200
+        body = resp.get_data(as_text=True).lower()
+        assert 'too many' in body or 'locked' in body or 'try again' in body
+
+        with app.app_context():
+            user = User.query.filter_by(username='alice').one()
+            assert user.locked_until is not None
+
+
+# ---------------------------------------------------------------------------
+# Auth UI and Google placeholder tests
+# ---------------------------------------------------------------------------
+
+class TestAuthUiAndGoogle:
+
+    def test_landing_auth_actions_link_to_dedicated_pages(self, client):
+        resp = client.get('/')
+        assert resp.status_code == 200
+        body = resp.get_data(as_text=True)
+
+        assert 'class="btn-nav-login" href="/login"' in body
+        assert 'class="btn-nav-signup" href="/register"' in body
+        assert 'class="btn-cta-secondary" href="/login"' in body
+        assert 'class="btn-cta-primary" href="/register"' in body
+        assert 'Log In' in body
+        assert 'Sign Up' in body
+        assert 'Create Account' not in body
+        assert 'dashboard-mockup' not in body
+        assert 'Symbol Performance' not in body
+        assert 'heatmap' not in body
+
+    def test_landing_no_longer_renders_auth_modal(self, client):
+        resp = client.get('/')
+        assert resp.status_code == 200
+        body = resp.get_data(as_text=True)
+
+        assert 'id="authModal"' not in body
+        assert 'data-bs-target="#authModal"' not in body
+        assert 'id="loginForm"' not in body
+        assert 'id="registerForm"' not in body
+
+    def test_register_page_uses_email_password_only(self, client):
+        resp = client.get('/register')
+        assert resp.status_code == 200
+        body = resp.get_data(as_text=True)
+        assert 'Continue with Google' in body
+        assert 'Email address' in body
+        assert 'name="username"' not in body
+        assert 'name="confirm_password"' not in body
+
+    def test_login_page_uses_email_label_and_reset_password_text(self, client):
+        resp = client.get('/login')
+        assert resp.status_code == 200
+        body = resp.get_data(as_text=True)
+        assert 'Continue with Google' in body
+        assert 'Email address' in body
+        assert 'Reset password' in body
+        assert 'Forgot password?' not in body
+
+    def test_dedicated_auth_pages_still_render(self, client):
+        login_resp = client.get('/login')
+        register_resp = client.get('/register')
+
+        assert login_resp.status_code == 200
+        assert register_resp.status_code == 200
+        assert 'Welcome back' in login_resp.get_data(as_text=True)
+        assert 'Create your account' in register_resp.get_data(as_text=True)
+
+    def test_google_config_defaults_disabled(self, app):
+        assert app.config['GOOGLE_OAUTH_ENABLED'] is False
+        assert app.config['GOOGLE_CLIENT_ID'] == ''
+        assert app.config['GOOGLE_CLIENT_SECRET'] == ''
+        assert app.config['GOOGLE_REDIRECT_URI'] == ''
+
+    def test_google_placeholder_disabled_does_not_break(self, client):
+        resp = client.get('/auth/google', follow_redirects=True)
+        assert resp.status_code == 200
+        body = resp.get_data(as_text=True)
+        assert 'Google sign-in is coming soon.' in body
+        assert 'Welcome back' in body
+
+    def test_reset_password_request_keeps_generic_response(self, client, email_log):
+        resp = client.post(
+            '/forgot-password',
+            data={'email': 'nobody@example.com'},
+            follow_redirects=True,
+        )
+        assert resp.status_code == 200
+        body = resp.get_data(as_text=True)
+        assert "If an account with that email exists" in body
+        assert email_log == []
+
+
+# ---------------------------------------------------------------------------
+# Settings and account deletion tests
+# ---------------------------------------------------------------------------
+
+class TestSettingsAndDeletion:
+
+    def test_profile_labels_name_not_username(self, app, client, email_log):
+        _signup_and_verify(app, client, email_log)
+        client.post(
+            '/login',
+            data={'username': 'alice@example.com', 'password': 'CorrectHorse9'},
+        )
+
+        resp = client.get('/settings')
+        assert resp.status_code == 200
+        body = resp.get_data(as_text=True)
+        assert '>Name<' in body
+        assert '>Username<' not in body
+        assert 'Cannot be changed.' not in body
+
+    def test_account_page_initially_hides_final_deletion_form(self, app, client, email_log):
+        _signup_and_verify(app, client, email_log)
+        client.post(
+            '/login',
+            data={'username': 'alice@example.com', 'password': 'CorrectHorse9'},
+        )
+
+        resp = client.get('/settings?tab=account')
+        assert resp.status_code == 200
+        body = resp.get_data(as_text=True)
+        assert 'id="delete-code"' not in body
+        assert 'name="delete_confirm"' not in body
+        assert 'Delete permanently' not in body
+
+    def test_after_sending_deletion_code_shows_code_only(self, app, client, email_log):
+        _signup_and_verify(app, client, email_log)
+        client.post(
+            '/login',
+            data={'username': 'alice@example.com', 'password': 'CorrectHorse9'},
+        )
+
+        resp = client.post('/settings/delete/request')
+        assert resp.status_code in (302, 303)
+        resp = client.get(resp.headers['Location'])
+        assert resp.status_code == 200
+        body = resp.get_data(as_text=True)
+        assert 'id="delete-code"' in body
+        assert 'Verify code' in body
+        assert 'name="delete_confirm"' not in body
+        assert 'Delete permanently' not in body
+
+    def test_final_deletion_cannot_happen_before_code_verification(self, app, client, email_log):
+        _signup_and_verify(app, client, email_log)
+        client.post(
+            '/login',
+            data={'username': 'alice@example.com', 'password': 'CorrectHorse9'},
+        )
+        client.post('/settings/delete/request')
+
+        resp = client.post(
+            '/settings/delete/confirm',
+            data={'delete_confirm': 'delete'},
+            follow_redirects=True,
+        )
+        assert resp.status_code == 200
+        assert 'Please verify the confirmation code first.' in resp.get_data(as_text=True)
+        with app.app_context():
+            assert User.query.filter_by(email='alice@example.com').count() == 1
+
+    def test_after_code_verification_shows_delete_confirmation(self, app, client, email_log):
+        _signup_and_verify(app, client, email_log)
+        client.post(
+            '/login',
+            data={'username': 'alice@example.com', 'password': 'CorrectHorse9'},
+        )
+        client.post('/settings/delete/request')
+        deletion_code = [
+            value.split(':', 1)[1]
+            for _, value in email_log
+            if value.startswith('deletion:')
+        ][-1]
+
+        resp = client.post(
+            '/settings/delete/verify',
+            data={'code': deletion_code},
+            follow_redirects=True,
+        )
+        assert resp.status_code == 200
+        body = resp.get_data(as_text=True)
+        assert 'id="delete-code"' not in body
+        assert 'name="delete_confirm"' in body
+        assert 'Type "delete" to permanently delete your account' in body
+        assert 'Delete permanently' in body
+        with app.app_context():
+            assert User.query.filter_by(email='alice@example.com').count() == 1
+
+    def test_final_deletion_requires_exact_lowercase_delete(self, app, client, email_log):
+        _signup_and_verify(app, client, email_log)
+        client.post(
+            '/login',
+            data={'username': 'alice@example.com', 'password': 'CorrectHorse9'},
+        )
+        client.post('/settings/delete/request')
+        deletion_code = [
+            value.split(':', 1)[1]
+            for _, value in email_log
+            if value.startswith('deletion:')
+        ][-1]
+        client.post('/settings/delete/verify', data={'code': deletion_code})
+
+        resp = client.post(
+            '/settings/delete/confirm',
+            data={'delete_confirm': 'DELETE'},
+            follow_redirects=True,
+        )
+        assert resp.status_code == 200
+        body = html.unescape(resp.get_data(as_text=True))
+        assert 'Type "delete" to confirm account deletion.' in body
+        with app.app_context():
+            assert User.query.filter_by(email='alice@example.com').count() == 1
+
+    def test_account_deletion_with_verified_code_and_lowercase_delete_succeeds(
+        self, app, client, email_log,
+    ):
+        _signup_and_verify(app, client, email_log)
+        client.post(
+            '/login',
+            data={'username': 'alice@example.com', 'password': 'CorrectHorse9'},
+        )
+        client.post('/settings/delete/request')
+        deletion_code = [
+            value.split(':', 1)[1]
+            for _, value in email_log
+            if value.startswith('deletion:')
+        ][-1]
+        verify_resp = client.post(
+            '/settings/delete/verify',
+            data={'code': deletion_code},
+            follow_redirects=False,
+        )
+        assert verify_resp.status_code in (302, 303)
+
+        resp = client.post(
+            '/settings/delete/confirm',
+            data={'delete_confirm': 'delete'},
+            follow_redirects=False,
+        )
+        assert resp.status_code in (302, 303)
+        assert resp.headers.get('Location', '').endswith('/login')
+        with app.app_context():
+            assert User.query.filter_by(email='alice@example.com').count() == 0
+
+
+# ---------------------------------------------------------------------------
+# Token & session tests
+# ---------------------------------------------------------------------------
+
+class TestTokenAndSession:
+
+    def test_otp_is_single_use(self, app, client, email_log):
+        _register(client)
+        code = email_log[-1][1]
+
+        # First use: succeeds.
+        resp1 = client.post(
+            '/verify-code?email=alice@example.com',
+            data={'code': code},
+            follow_redirects=False,
+        )
+        assert resp1.status_code in (302, 303)
+
+        # Second use: pending record is gone, so the same code should fail.
+        resp2 = client.post(
+            '/verify-code?email=alice@example.com',
+            data={'code': code},
+        )
+        assert resp2.status_code == 200
+        # We are not redirected back to dashboard — the response renders an
+        # error in-page.
+        body = resp2.get_data(as_text=True).lower()
+        assert 'verified' in body or 'no account' in body or 'expired' in body
+
+    def test_logout_invalidates_session(self, app, client, email_log):
+        _signup_and_verify(app, client, email_log)
+        client.post('/login', data={'username': 'alice@example.com', 'password': 'CorrectHorse9'})
+
+        with client.session_transaction() as sess:
+            assert sess.get('_user_id') is not None
+
+        client.post('/logout')
+
+        with client.session_transaction() as sess:
+            assert sess.get('_user_id') is None
+
+    def test_remember_me_sets_persistent_cookie(self, app, client, email_log):
+        _signup_and_verify(app, client, email_log)
+        resp = client.post(
+            '/login',
+            data={'username': 'alice@example.com', 'password': 'CorrectHorse9', 'remember': 'on'},
+            follow_redirects=False,
+        )
+        assert resp.status_code in (302, 303)
+        # Flask-Login emits a "remember_token" cookie when remember=True.
+        cookies = resp.headers.getlist('Set-Cookie')
+        assert any('remember_token' in c for c in cookies), \
+            f"expected remember_token cookie, got {cookies}"
+
+    def test_session_without_remember_has_no_persistent_cookie(self, app, client, email_log):
+        _signup_and_verify(app, client, email_log)
+        resp = client.post(
+            '/login',
+            data={'username': 'alice@example.com', 'password': 'CorrectHorse9'},
+            follow_redirects=False,
+        )
+        cookies = resp.headers.getlist('Set-Cookie')
+        assert not any('remember_token' in c for c in cookies)
+
+
+# ---------------------------------------------------------------------------
+# Rate limiting tests
+# ---------------------------------------------------------------------------
+
+class TestRateLimits:
+
+    def test_signup_blocked_after_five_per_hour(self, rate_limited_client, email_log):
+        # Five attempts succeed; the 6th comes back 429.
+        for i in range(5):
+            resp = rate_limited_client.post(
+                '/register',
+                data={
+                    'email': f'user{i}@example.com',
+                    'password': 'CorrectHorse9',
+                },
+            )
+            assert resp.status_code in (200, 302, 303), f"attempt {i}: {resp.status_code}"
+
+        resp = rate_limited_client.post(
+            '/register',
+            data={
+                'email': 'user6@example.com',
+                'password': 'CorrectHorse9',
+            },
+        )
+        assert resp.status_code == 429
+
+    def test_resend_blocked_after_three_per_email(
+        self, rate_limited_app, rate_limited_client, email_log,
+    ):
+        # Stage a pending sign-up so the resend has something to refresh.
+        rate_limited_client.post(
+            '/register',
+            data={
+                'email': 'bob@example.com',
+                'password': 'CorrectHorse9',
+            },
+        )
+        # 1 verification email was sent during registration.
+        emails_for_bob_before = sum(1 for row in email_log if row[0] == 'bob@example.com')
+
+        # Three resends are allowed.
+        for i in range(3):
+            resp = rate_limited_client.get('/resend-code?email=bob@example.com')
+            assert resp.status_code in (200, 302, 303), f"resend {i}: {resp.status_code}"
+
+        # The 4th is rate-limited. The 429 handler is route-aware: for
+        # /resend-code (a GET-only endpoint) it flashes a warning and
+        # redirects back to /verify-code instead of returning a bare 429
+        # page, so the user lands on a real screen with feedback.
+        resp = rate_limited_client.get(
+            '/resend-code?email=bob@example.com', follow_redirects=False,
+        )
+        assert resp.status_code in (302, 303)
+        assert '/verify-code' in resp.headers.get('Location', '')
+
+        # And the rate-limited 4th attempt did NOT actually send a 4th code.
+        emails_for_bob_after = sum(1 for row in email_log if row[0] == 'bob@example.com')
+        assert emails_for_bob_after - emails_for_bob_before == 3

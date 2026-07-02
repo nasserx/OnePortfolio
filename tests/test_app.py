@@ -1,0 +1,781 @@
+#!/usr/bin/env python3
+"""
+Comprehensive test suite for the OnePortfolio application.
+
+Tests cover:
+  - Transaction calculations (average cost, realized P&L)
+  - Fund events: Total Funds = deposits only (withdrawals excluded)
+  - Cash balance calculation (deposits - withdrawals - buys + sells)
+  - Category summary (Overview cards): correct amounts and ROI
+  - Portfolio dashboard totals
+  - Application routes (HTTP 200 checks)
+"""
+
+from portfolio_app import create_app, db
+from portfolio_app.models import Transaction, PortfolioEvent
+from portfolio_app.models.user import User
+from portfolio_app.calculators import PortfolioCalculator
+from portfolio_app.routes.transactions import _apply_summary_roi
+from portfolio_app.services.factory import Services
+from portfolio_app.utils.messages import MESSAGES
+from datetime import datetime
+from decimal import Decimal
+from config import Config
+from pathlib import Path
+import pytest
+
+ZERO = Decimal('0')
+
+
+def _seed_user(username: str = 'tester') -> int:
+    """Insert a verified test user and return its id.
+
+    Required because portfolio.user_id is NOT NULL — every test needs an
+    owner before it can create a portfolio.
+    """
+    user = User(username=username, email=f'{username}@example.com', is_verified=True)
+    user.set_password('test-password')
+    db.session.add(user)
+    db.session.commit()
+    return user.id
+
+
+class TestConfig(Config):
+    TESTING = True
+    WTF_CSRF_ENABLED = False
+    SQLALCHEMY_DATABASE_URI = (
+        f"sqlite:///{(Path(__file__).resolve().parent / 'test_portfolio.db').as_posix()}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _dec(v) -> Decimal:
+    return Decimal(str(v))
+
+
+def _assert(label: str, expected, actual, tol=_dec('0.01')):
+    ok = abs(_dec(str(expected)) - _dec(str(actual))) < tol
+    status = 'PASS' if ok else 'FAIL'
+    print(f"  {status}  {label}")
+    print(f"         expected={expected}  actual={actual}")
+    if not ok:
+        raise AssertionError(f"{label}: expected {expected}, got {actual}")
+
+
+# ---------------------------------------------------------------------------
+# Test 1 – Transaction calculations (unchanged logic)
+# ---------------------------------------------------------------------------
+
+def test_transaction_calculations(app):
+    """Verify average cost and realized P&L for buy/sell transactions."""
+    with app.app_context():
+        db.drop_all()
+        db.create_all()
+
+        uid = _seed_user()
+        svc = Services(user_id=uid)
+
+        # --- Commodities: XAU (2 buys, no sell) ---
+        comm = svc.portfolio_service.create_portfolio('Commodities', user_id=uid)
+        svc.portfolio_service.deposit_funds(comm.id, _dec(25000))
+        t1 = Transaction(portfolio_id=comm.id, transaction_type='Buy',
+                         date=datetime(2026, 1, 10), symbol='XAU',
+                         price=2000, quantity=1.5, fees=50)
+        t1.calculate_net_amount()
+        t2 = Transaction(portfolio_id=comm.id, transaction_type='Buy',
+                         date=datetime(2026, 1, 15), symbol='XAU',
+                         price=2050, quantity=1.0, fees=30)
+        t2.calculate_net_amount()
+
+        # --- Stocks: AAPL (2 buys) + MSFT (1 buy) ---
+        stocks = svc.portfolio_service.create_portfolio('Stocks', user_id=uid)
+        svc.portfolio_service.deposit_funds(stocks.id, _dec(40000))
+        t3 = Transaction(portfolio_id=stocks.id, transaction_type='Buy',
+                         date=datetime(2026, 1, 8), symbol='AAPL',
+                         price=100, quantity=50, fees=25)
+        t3.calculate_net_amount()
+        t4 = Transaction(portfolio_id=stocks.id, transaction_type='Buy',
+                         date=datetime(2026, 1, 12), symbol='AAPL',
+                         price=105, quantity=30, fees=15)
+        t4.calculate_net_amount()
+        t5 = Transaction(portfolio_id=stocks.id, transaction_type='Buy',
+                         date=datetime(2026, 1, 9), symbol='MSFT',
+                         price=200, quantity=10, fees=10)
+        t5.calculate_net_amount()
+
+        # --- ETFs: ETHA (buy, partial sell, buy again) ---
+        etfs = svc.portfolio_service.create_portfolio('ETFs', user_id=uid)
+        svc.portfolio_service.deposit_funds(etfs.id, _dec(200))
+        e1 = Transaction(portfolio_id=etfs.id, transaction_type='Buy',
+                         date=datetime(2026, 1, 1), symbol='ETHA',
+                         price=10, quantity=10, fees=0)
+        e1.calculate_net_amount()
+        e2 = Transaction(portfolio_id=etfs.id, transaction_type='Sell',
+                         date=datetime(2026, 1, 2), symbol='ETHA',
+                         price=12, quantity=5, fees=1)
+        e2.calculate_net_amount()
+        e3 = Transaction(portfolio_id=etfs.id, transaction_type='Buy',
+                         date=datetime(2026, 1, 3), symbol='ETHA',
+                         price=10, quantity=5, fees=0)
+        e3.calculate_net_amount()
+
+        db.session.add_all([t1, t2, t3, t4, t5, e1, e2, e3])
+        db.session.commit()
+
+        PortfolioCalculator.recalculate_all_averages_for_symbol(comm.id, 'XAU')
+        PortfolioCalculator.recalculate_all_averages_for_symbol(stocks.id, 'AAPL')
+        PortfolioCalculator.recalculate_all_averages_for_symbol(stocks.id, 'MSFT')
+        PortfolioCalculator.recalculate_all_averages_for_symbol(etfs.id, 'ETHA')
+        db.session.commit()
+
+        print("\n" + "=" * 60)
+        print("TEST 1 – TRANSACTION CALCULATIONS")
+        print("=" * 60)
+
+        # XAU average cost
+        xau = PortfolioCalculator.get_symbol_transactions_summary(comm.id, 'XAU')
+        expected_xau_avg = (1.5 * 2000 + 50 + 1.0 * 2050 + 30) / (1.5 + 1.0)
+        _assert('XAU average cost', round(expected_xau_avg, 4), xau['average_cost'])
+
+        # AAPL average cost
+        aapl = PortfolioCalculator.get_symbol_transactions_summary(stocks.id, 'AAPL')
+        expected_aapl_avg = (50 * 100 + 25 + 30 * 105 + 15) / (50 + 30)
+        _assert('AAPL average cost', round(expected_aapl_avg, 4), aapl['average_cost'])
+
+        # MSFT must not mix with AAPL
+        msft = PortfolioCalculator.get_symbol_transactions_summary(stocks.id, 'MSFT')
+        _assert('MSFT average cost (isolated)', (10 * 200 + 10) / 10, msft['average_cost'])
+
+        # ETHA: buy 10@10, sell 5@12 (-1 fee), buy 5@10
+        etha = PortfolioCalculator.get_symbol_transactions_summary(etfs.id, 'ETHA')
+        _assert('ETHA realized P&L', 9.0, etha['realized_pnl'])   # (12-10)*5 - 1 fee
+        _assert('ETHA sell row Net P&L', 9.0, e2.net_pnl)
+        _assert('ETHA sell row Net P&L %', 18.0, e2.net_pnl_percent)
+        assert e1.net_pnl is None
+        assert e1.net_pnl_percent is None
+        _apply_summary_roi(etha)
+        _assert('ETHA transaction summary ROI uses Total Spent', 6.0, etha['roi_percent'])
+        # Buy 10@10 → sell 5 (remaining cost=50) → buy 5@10 → total=100/10 = 10.0
+        _assert('ETHA average cost', 10.0, etha['average_cost'])
+
+        print("  All transaction calculation checks passed.")
+
+
+# ---------------------------------------------------------------------------
+# Test 2 – Fund events: Total Funds = deposits only
+# ---------------------------------------------------------------------------
+
+def test_fund_events(app):
+    """
+    Verify that get_total_deposits_for_portfolio() returns the sum of Initial +
+    Deposit events only, and that withdrawals do NOT inflate Total Funds.
+    """
+    with app.app_context():
+        db.drop_all()
+        db.create_all()
+
+        uid = _seed_user()
+        svc = Services(user_id=uid)
+
+        print("\n" + "=" * 60)
+        print("TEST 2 – FUND EVENTS (Total Funds = deposits only)")
+        print("=" * 60)
+
+        # ── Scenario A: deposits only, no withdrawals ──
+        #   Initial=10,000  Deposit=5,000  → Total Funds=15,000
+        fund_a = svc.portfolio_service.create_portfolio('Stocks', user_id=uid)
+        svc.portfolio_service.deposit_funds(fund_a.id, _dec(10_000))
+        svc.portfolio_service.deposit_funds(fund_a.id, _dec(5_000))
+
+        tf_a = PortfolioCalculator.get_total_deposits_for_portfolio(fund_a.id)
+        cash_a = PortfolioCalculator.get_available_cash_for_portfolio(fund_a.id)
+        net_a = PortfolioCalculator.get_net_deposits_for_portfolio(fund_a.id)
+
+        print("\n  Scenario A – deposits only")
+        _assert('Total Funds (deposits only)', 15_000, tf_a)
+        _assert('Cash (no transactions)', 15_000, cash_a)
+        _assert('Net deposits equals cash when no transactions', cash_a, net_a)
+
+        # ── Scenario B: deposits + withdrawals, no transactions ──
+        #   Initial=10,000  Deposit=1,000  Withdraw=4,999  Withdraw=5,999
+        #   Total Funds = 10,000+1,000 = 11,000
+        #   Net deposits = 10,000+1,000-4,999-5,999 = 2
+        #   Cash = net deposits = 2 (no buys/sells)
+        fund_b = svc.portfolio_service.create_portfolio('ETFs', user_id=uid)
+        svc.portfolio_service.deposit_funds(fund_b.id, _dec(10_000))
+        svc.portfolio_service.deposit_funds(fund_b.id, _dec(1_000))
+        svc.portfolio_service.withdraw_funds(fund_b.id, _dec(4_999))
+        svc.portfolio_service.withdraw_funds(fund_b.id, _dec(5_999))
+
+        tf_b = PortfolioCalculator.get_total_deposits_for_portfolio(fund_b.id)
+        cash_b = PortfolioCalculator.get_available_cash_for_portfolio(fund_b.id)
+        net_b = PortfolioCalculator.get_net_deposits_for_portfolio(fund_b.id)
+
+        print("\n  Scenario B – deposits + withdrawals, no transactions")
+        _assert('Total Funds (deposits only, ignores withdrawals)', 11_000, tf_b)
+        _assert('Net deposits (net after withdrawals)', 2, net_b)
+        _assert('Cash = net deposits when no transactions', 2, cash_b)
+
+        # ── Scenario C: deposits + withdrawals + transactions ──
+        #   Initial=10,000  Withdraw=4,999  Deposit=1,000  Withdraw=5,999
+        #   Net deposits = 2
+        #   Buy  5000 AAPL @ $1 fees=1 → outflow=5,001
+        #   Sell 2500 AAPL @ $2 fees=1 → inflow=4,999
+        #   Cash = 2 - 5,001 + 4,999 = 0
+        #   current_invested = cost basis of 2500 remaining = 5,001 * (2500/5000) = 2,500.50
+        #   realized_pnl = (2*2500 - 1) - (5001 * 2500/5000) = 4,999 - 2,500.50 = 2,498.50
+        #   Total Funds = 10,000 + 1,000 = 11,000
+        #   Total Value = cash + invested = 0 + 2,500.50 = 2,500.50
+        #   ROI base = 11,000  →  ROI = 2,498.50 / 11,000 = ~22.71%
+        fund_c = svc.portfolio_service.create_portfolio('Crypto', user_id=uid)
+        svc.portfolio_service.deposit_funds(fund_c.id, _dec(10_000))
+        svc.portfolio_service.withdraw_funds(fund_c.id, _dec(4_999))
+        svc.portfolio_service.deposit_funds(fund_c.id, _dec(1_000))
+        svc.portfolio_service.withdraw_funds(fund_c.id, _dec(5_999))
+
+        buy = Transaction(portfolio_id=fund_c.id, transaction_type='Buy',
+                          date=datetime(2026, 1, 1), symbol='AAPL',
+                          price=1, quantity=5000, fees=1)
+        buy.calculate_net_amount()
+        sell = Transaction(portfolio_id=fund_c.id, transaction_type='Sell',
+                           date=datetime(2026, 1, 2), symbol='AAPL',
+                           price=2, quantity=2500, fees=1)
+        sell.calculate_net_amount()
+        db.session.add_all([buy, sell])
+        db.session.commit()
+        PortfolioCalculator.recalculate_all_averages_for_symbol(fund_c.id, 'AAPL')
+        db.session.commit()
+
+        tf_c = PortfolioCalculator.get_total_deposits_for_portfolio(fund_c.id)
+        cash_c = PortfolioCalculator.get_available_cash_for_portfolio(fund_c.id)
+        net_c = PortfolioCalculator.get_net_deposits_for_portfolio(fund_c.id)
+        tx_c = PortfolioCalculator.get_portfolio_transactions_summary(fund_c.id)
+        realized_c = PortfolioCalculator.get_realized_performance_for_portfolio(fund_c.id)
+
+        print("\n  Scenario C – deposits + withdrawals + transactions")
+        _assert('Total Funds (deposits only)', 11_000, tf_c)
+        _assert('Net deposits', 2, net_c)
+        _assert('Cash (after buys/sells)', 0, cash_c)
+        _assert('Cost Basis (2500 remaining)', _dec('2500.50'), tx_c['cost_basis'])
+        _assert('Realized P&L', _dec('2498.50'), realized_c['realized_pnl'])
+
+        print("  All fund event checks passed.")
+
+
+def test_initial_event_remains_accounting_deposit(app):
+    """Legacy Initial rows are display-renamed only; accounting treats them
+    exactly like deposits for totals, cash, and clawback guards."""
+    with app.app_context():
+        db.drop_all()
+        db.create_all()
+
+        uid = _seed_user()
+        svc = Services(user_id=uid)
+        fund = svc.portfolio_service.create_portfolio('Legacy Initial', user_id=uid)
+
+        initial = PortfolioEvent(
+            portfolio_id=fund.id,
+            event_type='Initial',
+            amount_delta=_dec(1000),
+            date=datetime(2026, 1, 1),
+        )
+        db.session.add(initial)
+        db.session.commit()
+        svc.portfolio_service.deposit_funds(fund.id, _dec(500), date=datetime(2026, 1, 2))
+        svc.portfolio_service.withdraw_funds(fund.id, _dec(300), date=datetime(2026, 1, 3))
+        svc.transaction_service.add_transaction(
+            portfolio_id=fund.id,
+            transaction_type='Buy',
+            symbol='AAPL',
+            price=_dec(100),
+            quantity=_dec(10),
+            fees=ZERO,
+            date=datetime(2026, 1, 4),
+        )
+
+        _assert('Initial included in total deposits', 1500,
+                PortfolioCalculator.get_total_deposits_for_portfolio(fund.id))
+        _assert('Initial included in net deposits', 1200,
+                PortfolioCalculator.get_net_deposits_for_portfolio(fund.id))
+        _assert('Initial included in available cash after buy', 200,
+                PortfolioCalculator.get_available_cash_for_portfolio(fund.id))
+
+        with pytest.raises(ValueError) as excinfo:
+            svc.portfolio_service.delete_portfolio_event(initial.id)
+        assert str(excinfo.value) == MESSAGES['CASH_ALREADY_SPENT']
+
+
+# ---------------------------------------------------------------------------
+# Test 3 – Category summary (Overview cards)
+# ---------------------------------------------------------------------------
+
+def test_category_summary(app):
+    """
+    Verify get_portfolio_summary() uses deposits-only Total Funds
+    and computes correct Total Value and ROI.
+    """
+    with app.app_context():
+        db.drop_all()
+        db.create_all()
+
+        uid = _seed_user()
+        svc = Services(user_id=uid)
+
+        # Fund: Initial=10,000  Withdraw=4,999  Deposit=1,000  Withdraw=5,999
+        # Buy 5000 AAPL @ $1 fees=1 | Sell 2500 AAPL @ $2 fees=1
+        fund = svc.portfolio_service.create_portfolio('Stocks', user_id=uid)
+        svc.portfolio_service.deposit_funds(fund.id, _dec(10_000))
+        svc.portfolio_service.withdraw_funds(fund.id, _dec(4_999))
+        svc.portfolio_service.deposit_funds(fund.id, _dec(1_000))
+        svc.portfolio_service.withdraw_funds(fund.id, _dec(5_999))
+
+        buy = Transaction(portfolio_id=fund.id, transaction_type='Buy',
+                          date=datetime(2026, 1, 1), symbol='AAPL',
+                          price=1, quantity=5000, fees=1)
+        buy.calculate_net_amount()
+        sell = Transaction(portfolio_id=fund.id, transaction_type='Sell',
+                           date=datetime(2026, 1, 2), symbol='AAPL',
+                           price=2, quantity=2500, fees=1)
+        sell.calculate_net_amount()
+        db.session.add_all([buy, sell])
+        db.session.commit()
+        PortfolioCalculator.recalculate_all_averages_for_symbol(fund.id, 'AAPL')
+        db.session.commit()
+
+        summary, _ = PortfolioCalculator.get_portfolio_summary(user_id=uid)
+        assert len(summary) == 1
+        cat = summary[0]
+
+        print("\n" + "=" * 60)
+        print("TEST 3 – CATEGORY SUMMARY (Overview cards)")
+        print("=" * 60)
+
+        _assert('Total Contributed (deposits only)', 11_000, cat['total_contributed'])
+        _assert('Cash', 0, cat['cash'])
+        _assert('Cost Basis', _dec('2500.50'), cat['cost_basis'])
+        _assert('Book Value = cash + cost_basis', _dec('2500.50'), cat['book_value'])
+        _assert('Realized P&L', _dec('2498.50'), cat['realized_pnl'])
+
+        # Overview ROI = net realized P&L / Total Contributed * 100.
+        expected_roi = _dec('2498.50') / _dec('11000') * 100
+        _assert('Realized ROI % (base=total contributed)', round(expected_roi, 2), cat['realized_roi_percent'])
+
+        print("  All category summary checks passed.")
+
+
+# ---------------------------------------------------------------------------
+# Test 4 – Portfolio dashboard totals
+# ---------------------------------------------------------------------------
+
+def test_dashboard_totals(app):
+    """
+    Verify get_portfolio_dashboard_totals() sums Total Funds from deposits
+    only across all categories.
+    """
+    with app.app_context():
+        db.drop_all()
+        db.create_all()
+
+        uid = _seed_user()
+        svc = Services(user_id=uid)
+
+        # Fund A: Initial=20,000  Withdraw=5,000 → total_funds=20,000  net_deposits=15,000
+        fa = svc.portfolio_service.create_portfolio('Stocks', user_id=uid)
+        svc.portfolio_service.deposit_funds(fa.id, _dec(20_000))
+        svc.portfolio_service.withdraw_funds(fa.id, _dec(5_000))
+
+        # Fund B: Initial=10,000  Deposit=2,000 → total_funds=12,000  net_deposits=12,000
+        fb = svc.portfolio_service.create_portfolio('ETFs', user_id=uid)
+        svc.portfolio_service.deposit_funds(fb.id, _dec(10_000))
+        svc.portfolio_service.deposit_funds(fb.id, _dec(2_000))
+
+        buy = Transaction(portfolio_id=fb.id, transaction_type='Buy',
+                          date=datetime(2026, 1, 1), symbol='AAPL',
+                          price=100, quantity=10, fees=10)
+        buy.calculate_net_amount()
+        sell = Transaction(portfolio_id=fb.id, transaction_type='Sell',
+                           date=datetime(2026, 1, 2), symbol='AAPL',
+                           price=120, quantity=5, fees=5)
+        sell.calculate_net_amount()
+        db.session.add_all([buy, sell])
+        db.session.commit()
+        PortfolioCalculator.recalculate_all_averages_for_symbol(fb.id, 'AAPL')
+        db.session.commit()
+
+        totals = PortfolioCalculator.get_portfolio_dashboard_totals(user_id=uid)
+
+        print("\n" + "=" * 60)
+        print("TEST 4 – PORTFOLIO DASHBOARD TOTALS")
+        print("=" * 60)
+
+        # Total Contributed = 20,000 + 12,000 = 32,000 (deposits only)
+        _assert('Total Contributed (sum of deposits)', 32_000, totals['total_contributed'])
+
+        # Cash: net_deposits(A)=15,000 + net_deposits(B)=12,000 - buy(1,010) + sell(595)
+        _assert('Total Cash (after transactions)', 26_585, totals['total_cash'])
+
+        # Total Value = cash + invested = 26,585 + remaining cost basis 505
+        _assert('Total Value', 27_090, totals['total_value'])
+        # Realized P&L = (120 - 101) * 5 - 5 = 90; Overview ROI = 90 / 32,000 * 100.
+        _assert('Dashboard realized ROI % (base=total contributed)', _dec('0.28'), totals['realized_roi_percent'])
+
+        print("  All dashboard totals checks passed.")
+
+
+# ---------------------------------------------------------------------------
+# Test 5 – Application routes (HTTP)
+# ---------------------------------------------------------------------------
+
+def test_routes(app):
+    """Verify key pages return HTTP 200."""
+    with app.app_context():
+        db.drop_all()
+        db.create_all()
+        from portfolio_app.models.user import User
+        user = User(username='testuser', is_verified=True)
+        user.set_password('testpassword123')
+        db.session.add(user)
+        db.session.commit()
+
+    client = app.test_client()
+    client.post('/login', data={'username': 'testuser', 'password': 'testpassword123'})
+
+    print("\n" + "=" * 60)
+    print("TEST 5 – APPLICATION ROUTES")
+    print("=" * 60)
+
+    routes = [
+        ('GET', '/',               'Dashboard'),
+        ('GET', '/transactions/',  'Transactions'),
+        ('GET', '/portfolios/',    'Portfolios'),
+    ]
+    for method, path, label in routes:
+        r = client.get(path)
+        status = 'PASS' if r.status_code == 200 else 'FAIL'
+        print(f"  {status}  {method} {path} -> {r.status_code}  ({label})")
+        assert r.status_code == 200, f"{label} route returned {r.status_code}"
+
+    print("  All route checks passed.")
+
+
+# ---------------------------------------------------------------------------
+# Test 6 – Dividend feature
+# ---------------------------------------------------------------------------
+
+def test_dividends(app):
+    """
+    Verify dividend income is correctly:
+      - Stored and retrieved per fund
+      - Added to realized P&L
+      - Added to cash balance
+      - Protected by ownership checks (update/delete reject wrong fund)
+    """
+    with app.app_context():
+        db.drop_all()
+        db.create_all()
+
+        from portfolio_app.models.user import User
+        from portfolio_app.services.factory import Services
+
+        # Create two users with separate funds
+        u1 = User(username='alice', is_verified=True); u1.set_password('pw')
+        u2 = User(username='bob',   is_verified=True); u2.set_password('pw')
+        db.session.add_all([u1, u2]); db.session.commit()
+
+        svc1 = Services(user_id=u1.id)
+        svc2 = Services(user_id=u2.id)
+
+        fund1 = svc1.portfolio_service.create_portfolio('Stocks', user_id=u1.id)
+        svc1.portfolio_service.deposit_funds(fund1.id, _dec(10_000))
+        fund2 = svc2.portfolio_service.create_portfolio('ETFs', user_id=u2.id)
+        svc2.portfolio_service.deposit_funds(fund2.id, _dec(5_000))
+
+        print("\n" + "=" * 60)
+        print("TEST 6 – DIVIDEND FEATURE")
+        print("=" * 60)
+
+        # ── 6a: add dividends and verify total ──
+        print("\n  6a – dividend total calculation")
+        svc1.transaction_service.add_dividend(fund1.id, 'AAPL', _dec('100'), datetime(2026, 1, 10))
+        svc1.transaction_service.add_dividend(fund1.id, 'AAPL', _dec('50'),  datetime(2026, 1, 20))
+
+        total = PortfolioCalculator.get_dividend_total_for_portfolio(fund1.id)
+        _assert('Dividend total for fund1', _dec('150'), total)
+
+        # ── 6b: dividends added to cash balance ──
+        print("\n  6b – dividends reflected in cash")
+        cash = PortfolioCalculator.get_available_cash_for_portfolio(fund1.id)
+        # net_deposits = 10,000; no buy/sell; dividends = 150 → cash = 10,150
+        _assert('Cash includes dividend income', _dec('10150'), cash)
+
+        # ── 6c: dividends added to realized P&L ──
+        print("\n  6c – dividends reflected in realized P&L")
+        perf = PortfolioCalculator.get_realized_performance_for_portfolio(fund1.id)
+        _assert('Realized P&L includes dividends', _dec('150'), perf['realized_pnl'])
+
+        # ── 6d: fund2 has zero dividends (no cross-contamination) ──
+        print("\n  6d – no cross-fund contamination")
+        total2 = PortfolioCalculator.get_dividend_total_for_portfolio(fund2.id)
+        _assert('Dividend total for fund2 (none added)', _dec('0'), total2)
+
+        # ── 6e: update dividend ──
+        print("\n  6e – update dividend")
+        divs = svc1.dividend_repo.get_by_portfolio_id(fund1.id)
+        d = divs[0]
+        svc1.transaction_service.update_dividend(d.id, amount=_dec('200'))
+        new_total = PortfolioCalculator.get_dividend_total_for_portfolio(fund1.id)
+        # get_by_fund_id returns newest first → divs[0] is the 50 dividend → updated to 200
+        # other (100) stays → total = 100 + 200 = 300
+        _assert('Total after update', _dec('300'), new_total)
+
+        # ── 6f: ownership check – user2 cannot delete user1's dividend ──
+        print("\n  6f – ownership check (cross-user delete rejected)")
+        try:
+            svc2.transaction_service.delete_dividend(d.id)
+            raise AssertionError('Should have raised ValueError for wrong owner')
+        except ValueError:
+            print("  PASS  cross-user delete correctly rejected")
+
+        # ── 6g: delete dividend ──
+        print("\n  6g – delete dividend")
+        svc1.transaction_service.delete_dividend(d.id)
+        final_total = PortfolioCalculator.get_dividend_total_for_portfolio(fund1.id)
+        # divs[0] (the 200 one) deleted → only the original 100 remains
+        _assert('Total after delete (one removed)', _dec('100'), final_total)
+
+        print("\n  All dividend checks passed.")
+
+
+# ---------------------------------------------------------------------------
+# Test 7 – Symbol performance (per-symbol heatmap aggregation)
+# ---------------------------------------------------------------------------
+
+def test_symbol_performance(app):
+    """Verify per-(portfolio, symbol) realized performance for the heatmap.
+
+    Covers:
+      - Symbol with sells: realized P&L and ROI use total buy cost so the
+        percentage matches the Transactions section symbol summary
+      - Symbol with dividends only (held, never sold): ROI uses total buy
+        cost so dividends are measured against the whole symbol position
+      - Dividend recorded against a symbol with no transaction history
+        still surfaces (rare, but real for transferred-in holdings)
+      - Cross-user isolation: another user sees only their own rows
+      - Zero-P&L rows are dropped from the treemap projection
+    """
+    from portfolio_app.routes.charts import _symbol_treemap, TOP_N_SYMBOLS
+
+    with app.app_context():
+        db.drop_all()
+        db.create_all()
+
+        u1 = _seed_user('alice')
+        u2 = _seed_user('bob')
+        svc1 = Services(user_id=u1)
+        svc2 = Services(user_id=u2)
+
+        # u1: two portfolios, mixed symbols
+        trading = svc1.portfolio_service.create_portfolio('Trading', user_id=u1)
+        long_term = svc1.portfolio_service.create_portfolio('Long-term', user_id=u1)
+        svc1.portfolio_service.deposit_funds(trading.id, _dec(10_000))
+        svc1.portfolio_service.deposit_funds(long_term.id, _dec(10_000))
+
+        # AAPL in Trading: buy 10@100, sell 5@120 → realized P&L = 100,
+        # realized cost basis = 500, total buy cost = 1000. The heatmap
+        # and Transactions summary should use 100/1000 = 10%, not 100/500 = 20%.
+        b1 = Transaction(portfolio_id=trading.id, transaction_type='Buy',
+                         date=datetime(2026, 1, 1), symbol='AAPL',
+                         price=100, quantity=10, fees=0)
+        b1.calculate_net_amount()
+        s1 = Transaction(portfolio_id=trading.id, transaction_type='Sell',
+                         date=datetime(2026, 1, 5), symbol='AAPL',
+                         price=120, quantity=5, fees=0)
+        s1.calculate_net_amount()
+
+        # AAPL in Long-term: same ticker, different portfolio and ROI.
+        # buy 100@10, sell 10@11 → realized P&L = 10, total buy cost = 1000.
+        # The charts heatmap must combine this with Trading/AAPL as one
+        # user-level AAPL tile and recompute ROI from total P&L / total buy cost.
+        b1_lt = Transaction(portfolio_id=long_term.id, transaction_type='Buy',
+                            date=datetime(2026, 1, 1), symbol='AAPL',
+                            price=10, quantity=100, fees=0)
+        b1_lt.calculate_net_amount()
+        s1_lt = Transaction(portfolio_id=long_term.id, transaction_type='Sell',
+                            date=datetime(2026, 1, 6), symbol='AAPL',
+                            price=11, quantity=10, fees=0)
+        s1_lt.calculate_net_amount()
+
+        # MSFT in Long-term: buy 10@200, no sell → trading P&L = 0, but
+        # one dividend of 75 → total P&L = 75, total buy cost = 2000 → ROI = 3.75%
+        b2 = Transaction(portfolio_id=long_term.id, transaction_type='Buy',
+                         date=datetime(2026, 1, 2), symbol='MSFT',
+                         price=200, quantity=10, fees=0)
+        b2.calculate_net_amount()
+
+        db.session.add_all([b1, s1, b1_lt, s1_lt, b2])
+        db.session.commit()
+        PortfolioCalculator.recalculate_all_averages_for_symbol(trading.id, 'AAPL')
+        PortfolioCalculator.recalculate_all_averages_for_symbol(long_term.id, 'AAPL')
+        PortfolioCalculator.recalculate_all_averages_for_symbol(long_term.id, 'MSFT')
+        db.session.commit()
+
+        svc1.transaction_service.add_dividend(long_term.id, 'MSFT', _dec('75'),
+                                              datetime(2026, 2, 1))
+        # Dividend on a symbol with no transactions — captures transferred-in holdings.
+        svc1.transaction_service.add_dividend(long_term.id, 'TRSF', _dec('20'),
+                                              datetime(2026, 2, 10))
+
+        # u2: completely separate data — no rows should leak across users
+        bob_p = svc2.portfolio_service.create_portfolio('Bob', user_id=u2)
+        svc2.portfolio_service.deposit_funds(bob_p.id, _dec(1_000))
+        bb = Transaction(portfolio_id=bob_p.id, transaction_type='Buy',
+                         date=datetime(2026, 1, 1), symbol='NVDA',
+                         price=50, quantity=10, fees=0)
+        bb.calculate_net_amount()
+        bs = Transaction(portfolio_id=bob_p.id, transaction_type='Sell',
+                         date=datetime(2026, 1, 4), symbol='NVDA',
+                         price=60, quantity=10, fees=0)
+        bs.calculate_net_amount()
+        db.session.add_all([bb, bs])
+        db.session.commit()
+        PortfolioCalculator.recalculate_all_averages_for_symbol(bob_p.id, 'NVDA')
+        db.session.commit()
+
+        print("\n" + "=" * 60)
+        print("TEST 7 – SYMBOL PERFORMANCE")
+        print("=" * 60)
+
+        # ── 7a: u1 sees AAPL/MSFT/TRSF and nothing of u2 ──
+        rows = svc1.overview_service.get_symbol_performance()
+        by_key = {(r['portfolio_name'], r['symbol']): r for r in rows}
+
+        print("\n  7a – row coverage and isolation")
+        assert ('Trading', 'AAPL') in by_key, "Missing Trading/AAPL"
+        assert ('Long-term', 'AAPL') in by_key, "Missing Long-term/AAPL"
+        assert ('Long-term', 'MSFT') in by_key, "Missing Long-term/MSFT"
+        assert ('Long-term', 'TRSF') in by_key, "Missing Long-term/TRSF (dividend-only)"
+        assert all(r['symbol'] != 'NVDA' for r in rows), "NVDA leaked from u2"
+        print("  PASS  rows cover own symbols and isolate from u2")
+
+        # ── 7b: AAPL realized P&L and ROI ──
+        aapl = by_key[('Trading', 'AAPL')]
+        _assert('AAPL trading P&L',         _dec('100'),  aapl['realized_pnl'])
+        _assert('AAPL dividend total',      _dec('0'),    aapl['dividend_total'])
+        _assert('AAPL total realized P&L',  _dec('100'),  aapl['total_realized_pnl'])
+        _assert('AAPL total buy cost',      _dec('1000'), aapl['total_buy_cost'])
+        _assert('AAPL realized cost basis', _dec('500'),  aapl['realized_cost_basis'])
+        _assert('AAPL ROI% uses total buy cost', _dec('10'), aapl['roi_percent'])
+
+        aapl_lt = by_key[('Long-term', 'AAPL')]
+        _assert('Long-term AAPL trading P&L',         _dec('10'),  aapl_lt['realized_pnl'])
+        _assert('Long-term AAPL total buy cost',      _dec('1000'), aapl_lt['total_buy_cost'])
+        _assert('Long-term AAPL realized cost basis', _dec('100'), aapl_lt['realized_cost_basis'])
+        _assert('Long-term AAPL ROI% uses total buy cost', _dec('1'), aapl_lt['roi_percent'])
+
+        # ── 7c: MSFT — dividend only, ROI uses total buy cost ──
+        msft = by_key[('Long-term', 'MSFT')]
+        _assert('MSFT trading P&L',        _dec('0'),    msft['realized_pnl'])
+        _assert('MSFT dividends',          _dec('75'),   msft['dividend_total'])
+        _assert('MSFT total realized P&L', _dec('75'),   msft['total_realized_pnl'])
+        _assert('MSFT total buy cost',     _dec('2000'), msft['total_buy_cost'])
+        _assert('MSFT held cost basis',    _dec('2000'), msft['held_cost_basis'])
+        _assert('MSFT ROI base',           _dec('2000'), msft['roi_base'])
+        _assert('MSFT ROI%',               _dec('3.75'), msft['roi_percent'])
+
+        # ── 7d: TRSF — dividend with no transactions (no cost basis at all) ──
+        trsf = by_key[('Long-term', 'TRSF')]
+        _assert('TRSF total realized P&L', _dec('20'), trsf['total_realized_pnl'])
+        _assert('TRSF roi_base',           _dec('0'),  trsf['roi_base'])
+        assert trsf['roi_display'] == '—', f"Expected '—', got {trsf['roi_display']!r}"
+        print("  PASS  dividend-only with no cost basis displays '—'")
+
+        # ── 7e: u2 sees only their own rows ──
+        u2_rows = svc2.overview_service.get_symbol_performance()
+        assert len(u2_rows) == 1, f"u2 should have 1 row, got {len(u2_rows)}"
+        assert u2_rows[0]['symbol'] == 'NVDA'
+        _assert('NVDA P&L (u2)', _dec('100'), u2_rows[0]['total_realized_pnl'])
+
+        # ── 7f: treemap projection drops zero-P&L rows ──
+        # Build a synthetic row with zero pnl alongside real ones — should be filtered.
+        zero_row = {
+            'portfolio_id': trading.id, 'portfolio_name': 'Trading', 'symbol': 'ZERO',
+            'realized_pnl': ZERO, 'dividend_total': ZERO, 'total_realized_pnl': ZERO,
+            'total_buy_cost': ZERO,
+            'realized_cost_basis': ZERO, 'held_cost_basis': ZERO,
+            'roi_base': ZERO, 'roi_percent': ZERO, 'roi_display': '—',
+        }
+        treemap = _symbol_treemap(rows + [zero_row])
+        assert all(t['pnl'] != 0 for t in treemap), 'zero-P&L row leaked into treemap'
+        assert all('abs_pnl' in t and 'name' in t for t in treemap), 'treemap shape broken'
+        aapl_tile = next(t for t in treemap if t['name'] == 'AAPL')
+        _assert('AAPL heatmap aggregates P&L across portfolios', _dec('110'), _dec(str(aapl_tile['pnl'])))
+        _assert('AAPL heatmap recomputes ROI from aggregate total buy cost', _dec('5.5'),
+                _dec(str(aapl_tile['roi_percent'])))
+        assert aapl_tile['portfolio_count'] == 2
+        assert aapl_tile['portfolio_names'] == ['Trading', 'Long-term']
+        print("  PASS  treemap shape and zero-row filtering")
+
+        # ── 7g: top-N + Others aggregation ──
+        # Build a synthetic dataset of N+3 rows so the tail must collapse.
+        synthetic = []
+        for i in range(TOP_N_SYMBOLS + 3):
+            synthetic.append({
+                'portfolio_id': 1, 'portfolio_name': 'P', 'symbol': f'SYM{i}',
+                'realized_pnl': _dec(str(100 - i)), 'dividend_total': ZERO,
+                'total_realized_pnl': _dec(str(100 - i)),
+                'total_buy_cost': _dec('1000'),
+                'realized_cost_basis': _dec('1000'), 'held_cost_basis': _dec('1000'),
+                'roi_base': _dec('1000'),
+                'roi_percent': _dec(str((100 - i) / 10)), 'roi_display': '',
+            })
+        agg = _symbol_treemap(synthetic)
+        assert len(agg) == TOP_N_SYMBOLS + 1, f"Expected {TOP_N_SYMBOLS + 1} tiles, got {len(agg)}"
+        assert agg[-1]['name'] == 'Others', "Tail must collapse into 'Others'"
+        print(f"  PASS  top-{TOP_N_SYMBOLS} + Others aggregation")
+
+        print("\n  All symbol performance checks passed.")
+
+
+# ---------------------------------------------------------------------------
+# Runner
+# ---------------------------------------------------------------------------
+
+if __name__ == '__main__':
+    print("\n" + "=" * 60)
+    print("  OnePortfolio – FULL TEST SUITE")
+    print("=" * 60)
+
+    app = create_app(TestConfig)
+    passed = 0
+    failed = 0
+
+    tests = [
+        ('Transaction Calculations',  test_transaction_calculations),
+        ('Fund Events Logic',          test_fund_events),
+        ('Initial Event Regression',   test_initial_event_remains_accounting_deposit),
+        ('Category Summary',           test_category_summary),
+        ('Dashboard Totals',           test_dashboard_totals),
+        ('Application Routes',         test_routes),
+        ('Dividend Feature',           test_dividends),
+        ('Symbol Performance',         test_symbol_performance),
+    ]
+
+    for name, fn in tests:
+        try:
+            fn(app)
+            passed += 1
+        except Exception as exc:
+            failed += 1
+            print(f"\n  FAIL {name}: {exc}")
+            import traceback
+            traceback.print_exc()
+
+    print("\n" + "=" * 60)
+    total = passed + failed
+    print(f"  Results: {passed}/{total} tests passed")
+    if failed:
+        print(f"  ({failed} FAILED)")
+    print("=" * 60 + "\n")

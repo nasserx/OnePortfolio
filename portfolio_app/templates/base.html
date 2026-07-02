@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>{% block title %}OnePortfolio{% endblock %}</title>
+
+    <link rel="icon" href="{{ url_for('static', filename='icons/favicon.svg') }}" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/apple-touch-icon.png') }}">
+    <link rel="manifest" href="{{ url_for('static', filename='icons/site.webmanifest') }}">
+    <meta name="theme-color" content="#f97316">
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v='20260611-2') }}">
+
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+<div class="app-layout">
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- Sidebar -->
+    <!-- ═══════════════════════════════════════ -->
+    <aside class="app-sidebar" id="appSidebar" aria-label="Main navigation">
+
+        <!-- Brand -->
+        <a class="sidebar-brand" href="{{ url_for('dashboard.index') }}">
+            <img src="{{ url_for('static', filename='icons/favicon.svg') }}" alt="OnePortfolio">
+            OnePortfolio
+        </a>
+
+        <!-- Nav links -->
+        <nav class="sidebar-nav">
+            <a class="sidebar-nav-link {% if request.endpoint == 'dashboard.index' %}active{% endif %}"
+               href="{{ url_for('dashboard.index') }}"
+               {% if request.endpoint == 'dashboard.index' %}aria-current="page"{% endif %}>
+                <i class="bi bi-grid-1x2" aria-hidden="true"></i>
+                Overview
+            </a>
+            <a class="sidebar-nav-link {% if request.endpoint == 'portfolios.portfolios_list' %}active{% endif %}"
+               href="{{ url_for('portfolios.portfolios_list') }}"
+               {% if request.endpoint == 'portfolios.portfolios_list' %}aria-current="page"{% endif %}>
+                <i class="bi bi-wallet2" aria-hidden="true"></i>
+                Portfolios
+            </a>
+            <a class="sidebar-nav-link {% if request.endpoint == 'transactions.transaction_list' %}active{% endif %}"
+               href="{{ url_for('transactions.transaction_list') }}"
+               {% if request.endpoint == 'transactions.transaction_list' %}aria-current="page"{% endif %}>
+                <i class="bi bi-arrow-left-right" aria-hidden="true"></i>
+                Assets
+            </a>
+            <a class="sidebar-nav-link {% if request.endpoint == 'charts.charts' %}active{% endif %}"
+               href="{{ url_for('charts.charts') }}"
+               {% if request.endpoint == 'charts.charts' %}aria-current="page"{% endif %}>
+                <i class="bi bi-bar-chart-line" aria-hidden="true"></i>
+                Charts
+            </a>
+
+            {% if current_user.is_admin %}
+            <div class="sidebar-divider"></div>
+            <a class="sidebar-nav-link {% if request.endpoint == 'admin.users' %}active{% endif %}"
+               href="{{ url_for('admin.users') }}"
+               {% if request.endpoint == 'admin.users' %}aria-current="page"{% endif %}>
+                <i class="bi bi-shield-check" aria-hidden="true"></i>
+                Users
+            </a>
+            {% endif %}
+        </nav>
+
+        {% if current_user.is_authenticated %}
+        <!-- Sidebar user menu (drops up) -->
+        <div class="dropup sidebar-user-menu">
+            <button class="sidebar-user-trigger" type="button"
+                    data-bs-toggle="dropdown" data-bs-auto-close="true"
+                    data-bs-offset="0,6"
+                    aria-expanded="false" aria-label="User menu">
+                <span class="user-avatar" aria-hidden="true">{{ current_user.username[0].upper() }}</span>
+                <span class="sidebar-user-name">{{ current_user.username }}</span>
+                {% if current_user.is_admin %}
+                    <span class="badge nav-admin-badge">Admin</span>
+                {% endif %}
+                <i class="bi bi-chevron-up sidebar-user-chevron" aria-hidden="true"></i>
+            </button>
+            <ul class="dropdown-menu sidebar-user-dropdown">
+                <li>
+                    <a class="settings-item d-flex align-items-center gap-2"
+                       href="{{ url_for('auth.settings') }}">
+                        <i class="bi bi-gear" aria-hidden="true"></i> Settings
+                    </a>
+                </li>
+                <li><hr class="dropdown-divider"></li>
+                <li>
+                    <form method="post" action="{{ url_for('auth.logout') }}" class="m-0">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit"
+                                class="settings-item btn-logout d-flex align-items-center gap-2">
+                            <i class="bi bi-box-arrow-right" aria-hidden="true"></i> Sign out
+                        </button>
+                    </form>
+                </li>
+            </ul>
+        </div>
+        {% endif %}
+
+    </aside>
+
+    <button class="sidebar-backdrop" id="sidebarBackdrop" type="button" aria-label="Close navigation"></button>
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- Main -->
+    <!-- ═══════════════════════════════════════ -->
+    <div class="app-main">
+
+        <!-- Top Bar -->
+        <header class="app-topbar">
+            <div class="topbar-left">
+                <!-- Mobile menu toggle -->
+                <button class="btn btn-sm btn-outline-secondary topbar-menu-btn d-lg-none" id="sidebarToggle"
+                        aria-label="Toggle menu" aria-controls="appSidebar" aria-expanded="false">
+                    <i class="bi bi-list" aria-hidden="true"></i>
+                </button>
+                <span class="topbar-title">
+                    {% block topbar_title %}{% endblock %}
+                </span>
+            </div>
+            <div class="topbar-right">
+                {% if not current_user.is_authenticated %}
+                    <a href="{{ url_for('auth.login') }}" class="btn-nav-login">Log In</a>
+                    <a href="{{ url_for('auth.register') }}" class="btn-nav-signup">Sign Up</a>
+                {% endif %}
+            </div>
+        </header>
+
+        <!-- Page Content -->
+        <main class="app-content">
+            {% block content %}{% endblock %}
+        </main>
+
+    </div><!-- /.app-main -->
+
+</div><!-- /.app-layout -->
+
+<!-- Flash Messages — outside app-layout so position:fixed works correctly -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="flash-container" aria-live="polite">
+        {% for category, message in messages %}
+        {% set cat = 'danger' if category == 'error' else category %}
+        {% set icon = {
+            'success': 'bi-check-circle-fill',
+            'danger':  'bi-exclamation-circle-fill',
+            'warning': 'bi-exclamation-triangle-fill',
+            'info':    'bi-info-circle-fill'
+        }.get(cat, 'bi-info-circle-fill') %}
+        <div class="flash-alert flash-alert--{{ cat }}" role="alert">
+            <i class="bi {{ icon }} flash-alert__icon" aria-hidden="true"></i>
+            <span class="flash-alert__msg">{{ message }}</span>
+            <button type="button" class="flash-alert__close" aria-label="Close">
+                <i class="bi bi-x" aria-hidden="true"></i>
+            </button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+{% endwith %}
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- Sidebar Script -->
+<script>
+(function() {
+    const sidebarToggle  = document.getElementById('sidebarToggle');
+    const sidebar        = document.getElementById('appSidebar');
+    const sidebarBackdrop = document.getElementById('sidebarBackdrop');
+
+    // ── Toast system ──────────────────────────────────────────
+    var TOAST_ICONS = {
+        success: 'bi-check-circle-fill',
+        danger:  'bi-exclamation-circle-fill',
+        warning: 'bi-exclamation-triangle-fill',
+        info:    'bi-info-circle-fill'
+    };
+
+    function getOrCreateContainer() {
+        var c = document.querySelector('.flash-container');
+        if (!c) {
+            c = document.createElement('div');
+            c.className = 'flash-container';
+            c.setAttribute('aria-live', 'polite');
+            document.body.appendChild(c);
+        }
+        return c;
+    }
+
+    function dismissToast(el) {
+        el.style.transition = 'opacity 0.22s ease, transform 0.22s ease';
+        el.style.opacity = '0';
+        el.style.transform = 'translateY(8px)';
+        setTimeout(function() { if (el.parentNode) el.remove(); }, 240);
+    }
+
+    function wireToast(el) {
+        var btn = el.querySelector('.flash-alert__close');
+        if (btn) btn.addEventListener('click', function() { dismissToast(el); });
+        setTimeout(function() { if (el.parentNode) dismissToast(el); }, 4000);
+    }
+
+    // Wire server-rendered toasts
+    document.querySelectorAll('.flash-alert').forEach(wireToast);
+
+    // Global helper for AJAX-triggered toasts
+    window.showToast = function(message, type) {
+        var cat  = type || 'info';
+        var icon = TOAST_ICONS[cat] || TOAST_ICONS.info;
+        var el   = document.createElement('div');
+        el.className = 'flash-alert flash-alert--' + cat;
+        el.setAttribute('role', 'alert');
+
+        var iconEl = document.createElement('i');
+        iconEl.className = 'bi ' + icon + ' flash-alert__icon';
+        iconEl.setAttribute('aria-hidden', 'true');
+
+        var msgEl = document.createElement('span');
+        msgEl.className = 'flash-alert__msg';
+        msgEl.textContent = message;
+
+        var closeIcon = document.createElement('i');
+        closeIcon.className = 'bi bi-x';
+        closeIcon.setAttribute('aria-hidden', 'true');
+        var closeBtn = document.createElement('button');
+        closeBtn.type = 'button';
+        closeBtn.className = 'flash-alert__close';
+        closeBtn.setAttribute('aria-label', 'Close');
+        closeBtn.appendChild(closeIcon);
+
+        el.appendChild(iconEl);
+        el.appendChild(msgEl);
+        el.appendChild(closeBtn);
+        getOrCreateContainer().appendChild(el);
+        wireToast(el);
+    };
+
+    // Mobile sidebar toggle
+    if (sidebarToggle && sidebar) {
+        function setSidebarOpen(open) {
+            sidebar.classList.toggle('open', open);
+            document.body.classList.toggle('sidebar-open', open);
+            sidebarToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        }
+
+        sidebarToggle.addEventListener('click', function() {
+            setSidebarOpen(!sidebar.classList.contains('open'));
+        });
+        if (sidebarBackdrop) {
+            sidebarBackdrop.addEventListener('click', function() {
+                setSidebarOpen(false);
+            });
+        }
+        document.addEventListener('click', function(e) {
+            if (!sidebar.contains(e.target) && !sidebarToggle.contains(e.target)) {
+                setSidebarOpen(false);
+            }
+        });
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') setSidebarOpen(false);
+        });
+    }
+})();
+</script>
+
+<script src="{{ url_for('static', filename='js/main.js', v='20260509-2') }}"></script>
+
+{% block extra_js %}{% endblock %}
+</body>
+</html>

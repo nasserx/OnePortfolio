@@ -1,0 +1,85 @@
+{% extends 'auth_base.html' %}
+
+{% block title %}Verify Your Email — OnePortfolio{% endblock %}
+
+{% block auth_content %}
+
+    <div class="text-center mb-4">
+        <div class="icon-circle">
+            <i class="bi bi-shield-lock fs-2" aria-hidden="true"></i>
+        </div>
+        <h1 class="h4 fw-500 mb-1">Check your inbox</h1>
+        <p class="auth-subtitle mb-0">
+            We sent a 6-digit code to<br>
+            <span class="text-emphasis">{{ email }}</span>
+        </p>
+    </div>
+
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+            <div class="alert alert-{{ category }} py-2 mb-3" role="alert">{{ message }}</div>
+        {% endfor %}
+    {% endwith %}
+
+    <!-- General error (e.g. rate-limit hit) -->
+    {% if form_errors.get('__all__') %}
+        <div class="alert alert-danger flash-alert mb-3">
+            <i class="bi bi-exclamation-circle me-2"></i>{{ form_errors['__all__'] }}
+        </div>
+    {% endif %}
+
+    <form method="POST" action="{{ url_for('auth.verify_code', email=email) }}" novalidate>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <div class="mb-4">
+            <input
+                type="text"
+                name="code"
+                id="code"
+                class="form-control otp-input {% if form_errors.get('code') %}is-invalid{% endif %}"
+                placeholder="000000"
+                maxlength="6"
+                inputmode="numeric"
+                autocomplete="one-time-code"
+                autofocus
+            >
+            {% if form_errors.get('code') %}
+                <div class="invalid-feedback text-center">{{ form_errors['code'] }}</div>
+            {% endif %}
+        </div>
+
+        <button type="submit" class="btn btn-primary w-100 mb-3">
+            Verify Account
+        </button>
+    </form>
+
+    <p class="text-center auth-subtitle mb-0">
+        Didn't receive the code? Check your spam folder, or
+        <a href="{{ url_for('auth.resend_code', email=email) }}">send a new code</a>.
+    </p>
+
+    <hr class="my-4">
+
+    <div class="d-grid gap-2">
+        <a href="{{ url_for('auth.login') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-box-arrow-in-right me-1" aria-hidden="true"></i>Sign in instead
+        </a>
+        <a href="{{ url_for('auth.register') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i>Register again
+        </a>
+    </div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Auto-submit when 6 digits are entered
+    document.getElementById('code').addEventListener('input', function () {
+        if (this.value.replace(/\D/g, '').length === 6) {
+            this.value = this.value.replace(/\D/g, '');
+            this.closest('form').submit();
+        }
+    });
+</script>
+{% endblock %}

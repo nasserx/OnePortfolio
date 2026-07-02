@@ -119,6 +119,11 @@ def calculate_portfolio_metrics(total_cash, positions, realized_pnl, total_incom
     }
 
 
+def calculate_asset_return(realized_pnl, total_income, total_buy_cost):
+    """Calculate asset-level return metrics."""
+    return calculate_return(realized_pnl, total_income, total_buy_cost)
+
+
 def calculate_cash_balance(total_capital, transactions, total_income):
     """Calculate total cash from capital, buy/sell cash flows, and income."""
     cash = to_decimal(total_capital)

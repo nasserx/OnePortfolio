@@ -4,10 +4,10 @@ from decimal import Decimal
 from sqlalchemy import case, func
 from portfolio_app import db
 from portfolio_app.calculators.financial_math import (
+    calculate_asset_return,
     calculate_cash_balance,
     calculate_portfolio_metrics,
     calculate_quantity_held,
-    calculate_return,
     calculate_symbol_transaction_summary,
 )
 from portfolio_app.models import Portfolio, Transaction, PortfolioEvent, Dividend
@@ -417,7 +417,7 @@ class PortfolioCalculator:
     def _build_symbol_performance_row(*, portfolio, symbol, trading_pnl, dividends,
                                       total_buy_cost, realized_cost_basis, held_cost_basis):
         """Shape a single symbol-performance row with derived return fields."""
-        return_result = calculate_return(trading_pnl, dividends, total_buy_cost)
+        return_result = calculate_asset_return(trading_pnl, dividends, total_buy_cost)
         return_base = total_buy_cost
         return {
             'portfolio_id':         portfolio.id,

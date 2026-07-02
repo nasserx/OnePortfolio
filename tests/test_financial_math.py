@@ -2,6 +2,7 @@ from decimal import Decimal
 from types import SimpleNamespace
 
 from portfolio_app.calculators.financial_math import (
+    calculate_asset_return,
     calculate_cash_balance,
     calculate_portfolio_metrics,
     calculate_quantity_held,
@@ -30,6 +31,11 @@ def _assert_decimal(value, expected):
 
 def _assert_metric_decimals(result):
     for key in ('book_value', 'return_amount', 'return_percent'):
+        assert isinstance(result[key], Decimal)
+
+
+def _assert_return_decimals(result):
+    for key in ('return_amount', 'return_percent'):
         assert isinstance(result[key], Decimal)
 
 
@@ -370,6 +376,78 @@ def test_portfolio_metrics_all_zero_values():
 
     _assert_metric_decimals(result)
     _assert_decimal(result['book_value'], '0')
+    _assert_decimal(result['return_amount'], '0')
+    _assert_decimal(result['return_percent'], '0')
+    assert result['return_display'] == '—'
+
+
+def test_asset_return_positive_realized_pnl():
+    result = calculate_asset_return('50', '0', '1000')
+
+    _assert_return_decimals(result)
+    _assert_decimal(result['return_amount'], '50')
+    _assert_decimal(result['return_percent'], '5.00')
+    assert result['return_display'] == '+5.00%'
+
+
+def test_asset_return_negative_realized_pnl():
+    result = calculate_asset_return('-25', '0', '500')
+
+    _assert_return_decimals(result)
+    _assert_decimal(result['return_amount'], '-25')
+    _assert_decimal(result['return_percent'], '-5.00')
+    assert result['return_display'] == '-5.00%'
+
+
+def test_asset_return_income_contributes_to_return_amount():
+    result = calculate_asset_return('0', '30', '600')
+
+    _assert_return_decimals(result)
+    _assert_decimal(result['return_amount'], '30')
+    _assert_decimal(result['return_percent'], '5.00')
+    assert result['return_display'] == '+5.00%'
+
+
+def test_asset_return_combines_realized_pnl_and_income():
+    result = calculate_asset_return('36', '25', '505')
+
+    _assert_return_decimals(result)
+    _assert_decimal(result['return_amount'], '61')
+    assert result['return_percent'] == _dec('61') / _dec('505') * _dec('100')
+    assert result['return_display'] == '+12.08%'
+
+
+def test_asset_return_zero_total_buy_cost_displays_dash():
+    result = calculate_asset_return('0', '12.34', '0')
+
+    _assert_return_decimals(result)
+    _assert_decimal(result['return_amount'], '12.34')
+    _assert_decimal(result['return_percent'], '0')
+    assert result['return_display'] == '—'
+
+
+def test_asset_return_negative_denominator_uses_abs_base():
+    result = calculate_asset_return('10', '5', '-300')
+
+    _assert_return_decimals(result)
+    _assert_decimal(result['return_amount'], '15')
+    _assert_decimal(result['return_percent'], '5.00')
+    assert result['return_display'] == '+5.00%'
+
+
+def test_asset_return_exact_decimal_precision_without_float_conversion():
+    result = calculate_asset_return('0.03', '0.04', '0.70')
+
+    _assert_return_decimals(result)
+    _assert_decimal(result['return_amount'], '0.07')
+    _assert_decimal(result['return_percent'], '10.0')
+    assert result['return_display'] == '+10.00%'
+
+
+def test_asset_return_all_zero_values():
+    result = calculate_asset_return('0', '0', '0')
+
+    _assert_return_decimals(result)
     _assert_decimal(result['return_amount'], '0')
     _assert_decimal(result['return_percent'], '0')
     assert result['return_display'] == '—'

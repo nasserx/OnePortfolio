@@ -12,6 +12,26 @@ Formula per sell:
 
 Average cost uses the Average Cost Method over chronological asset entries. Income is never added to Realized P&L.
 
+### Average Cost Method Ordering
+
+Asset entries are processed per portfolio and symbol in chronological order. When multiple entries share the same calendar date, buys are processed before sells, then rows are ordered by database id. This preserves deterministic average-cost behavior for same-day entries.
+
+For buys:
+
+`running cost += price * quantity + buy fees`
+
+`running quantity += quantity`
+
+For sells:
+
+`average cost = running cost / running quantity`
+
+`realized P&L += (sell price - average cost) * sold quantity - sell fees`
+
+`running cost -= average cost * sold quantity`
+
+`running quantity -= sold quantity`
+
 ## Total Income
 
 Total Income is the sum of Income records only. It remains separate from Realized P&L everywhere.

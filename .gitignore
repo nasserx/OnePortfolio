@@ -10,6 +10,7 @@ __pycache__/
 venv/
 .venv/
 env/
+ENV/
 
 # Test and tooling caches
 .pytest_cache/
@@ -22,10 +23,17 @@ htmlcov/
 *.db
 *.sqlite
 *.sqlite3
+*.sqlite-journal
+*.sqlite-shm
+*.sqlite-wal
+*.sqlite3-journal
+*.sqlite3-shm
+*.sqlite3-wal
 
 # Flask instance folder and runtime files
 instance/
 *.log
+logs/
 *.pid
 
 # Environment variables — contains secrets, never commit
@@ -35,6 +43,9 @@ instance/
 .DS_Store
 Thumbs.db
 .vscode/
+.idea/
+*.swp
+*.swo
 
 # Environment variants
 .env.*

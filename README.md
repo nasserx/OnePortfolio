@@ -1,256 +1,160 @@
 # OnePortfolio
 
-![CI](https://github.com/nasserx/OnePortfolio/actions/workflows/ci.yml/badge.svg)
-![Python](https://img.shields.io/badge/python-3.8+-blue.svg)
-![Flask](https://img.shields.io/badge/flask-3.0.0-green.svg)
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Status](https://img.shields.io/badge/status-active-success.svg)
+OnePortfolio is a Flask web app for manual portfolio record keeping. It tracks portfolios, capital entries, assets, buy/sell asset entries, and income records from data you enter yourself.
 
-> A Flask web app for organizing your investments and managing your capital by creating multiple portfolios under custom names of your choice — *Stocks*, *Gold*, *ETFs*, or whatever fits the way you think about your money. Each portfolio holds its own capital entries, assets, asset entries, and income; the app derives total capital, total cash, average cost, and realized P&L straight from those records. No external price feeds or broker integrations.
->
-> Try it on the [live demo](https://oneportfolio.pythonanywhere.com/), or self-host your own instance.
+It does not fetch live prices, calculate market value, calculate unrealized P&L, connect to brokers, or provide financial advice.
 
-## Table of Contents
+## What It Tracks
 
-- [How It Works](#-how-it-works)
-- [Features](#-features)
-- [Tech Stack](#️-tech-stack)
-- [Live Demo](#-live-demo)
-- [Quick Start](#-quick-start)
-- [Configuration](#-configuration)
-- [Project Structure](#-project-structure)
-- [Architecture](#-architecture)
-- [Testing](#-testing)
-- [Deployment](#-deployment)
-- [License](#-license)
+- **Portfolios**: user-defined buckets such as Stocks, ETFs, Gold, or any other name.
+- **Capital entries**: deposits and withdrawals.
+- **Assets**: symbols tracked inside a portfolio.
+- **Asset entries**: buy and sell records with price, quantity, fees, date, and notes.
+- **Income**: income records attributed to an asset symbol.
 
-## 🧭 How It Works
+## Current Terminology
 
-The data model centres on the **Portfolio** as a free-form named bucket — call it whatever fits the way you organise your money (e.g. "US Stocks", "Gold", "Crypto", "Retirement ETFs"). Each portfolio owns:
+- **TOTAL CAPITAL** = deposits - withdrawals.
+- **TOTAL CASH** = available cash.
+- **POSITIONS** = open position book cost.
+- **BOOK VALUE** = total cash + positions.
+- **TOTAL INCOME** = income records.
+- **REALIZED P&L** = sell-only trading profit/loss using the Average Cost Method.
+- **RETURN** includes realized P&L plus income.
 
-| Concept | What it is | Model |
-|---------|-----------|-------|
-| **Cash events** | Deposits, withdrawals, and the initial funding event — the single source of truth for net deposits | `PortfolioEvent` |
-| **Assets** | Asset symbols you've added to the portfolio (an asset can be tracked even before you buy it) | `Symbol` |
-| **Asset entries** | Buy / Sell entries for an asset symbol, with price, quantity, fee, and notes | `Transaction` |
-| **Income** | Income events attributed to a specific asset symbol within the portfolio | `Dividend` |
+For exact formulas, see [docs/DOMAIN_AND_CALCULATIONS.md](docs/DOMAIN_AND_CALCULATIONS.md).
 
-From those four record types the app derives every number on the dashboard:
+## Features
 
-- **Net deposits** = Σ deposits − Σ withdrawals (read from events; never cached)
-- **Total Cash** = total capital − Σ buy net amounts + Σ sell net amounts + Σ income
-- **Average Cost** per asset = recomputed via the Average Cost Method (ACM) on every buy
-- **Realized P&L** = computed on the fly per asset from the asset entry log (Σ (sell price − average cost) × quantity − fee, plus income), with no snapshot table to drift
-- **Book value** = cost basis of open holdings + available cash
-- **Overview ROI** = realized P&L ÷ Total Contributed
-- **Asset Return** = realized P&L ÷ Total Buy Cost (buy outflows including fees)
+- Manual multi-portfolio tracking.
+- Capital entry log with deposits and withdrawals.
+- Asset list with buy and sell entries.
+- Average Cost Method calculations for open positions and sells.
+- Separate income tracking.
+- Dashboard totals, portfolio summaries, assets page, and charts based on recorded data.
+- Multi-user accounts with per-user data scoping.
+- Email verification, password reset, account settings, and admin user management.
+- Responsive dark-only UI using Bootstrap, Bootstrap Icons, and local design tokens.
 
-## ✨ Features
+## Tech Stack
 
-| Feature | Description |
-|---------|-------------|
-| **Named portfolios** | Create as many portfolios as you like — name them however you organise your investments |
-| **Cash event log** | Deposits, withdrawals, and an initial funding event per portfolio, with full audit trail and inline edit/delete |
-| **Assets** | Add asset symbols to a portfolio independently of any entry; asset entries referencing a new symbol also auto-add it |
-| **Buy / Sell asset entries** | Per-asset entries with price, quantity, fee, date, and free-form notes (with a character counter) |
-| **Average Cost Method** | Every buy recomputes the asset's stored `average_cost` and `net_amount` |
-| **Income tracking** | Record income per asset; it flows into realized P&L |
-| **Realized P&L (live)** | Computed dynamically from the transaction log — no snapshot to drift |
-| **Per-portfolio metrics** | Total Contributed, Book Value, Realized P&L, ROI, Cost Basis, Available Cash |
-| **Dashboard overview** | Aggregated totals across all portfolios (Total Capital, Book Value, Income, Realized P&L) |
-| **Charts page** | Allocation breakdown and realized P&L per portfolio |
-| **Multi-user accounts** | Strict per-user data isolation — every read filters by `Portfolio.user_id`; the first registered user becomes admin |
-| **Email verification** | 6-digit OTP sent on sign-up; sign-ups stage in `pending_registration` until confirmed |
-| **Password reset** | Token-based reset link sent by email, expires in 1 hour |
-| **Brute-force protection** | 5 failed logins → 30-minute lockout; rate limits on auth endpoints via Flask-Limiter |
-| **Account settings** | Change password, change email (with re-verification), self-delete account with OTP |
-| **Admin panel** | List users, send reset emails, toggle admin flag |
-| **Responsive UI** | Bootstrap 5.3 layout with paginated asset cards and entry tables |
+- Python 3
+- Flask
+- Flask-SQLAlchemy
+- SQLite by default
+- Flask-Login
+- Flask-WTF CSRF support plus custom validation
+- Flask-Mail for email delivery
+- Flask-Limiter for auth rate limits
+- Bootstrap 5, Bootstrap Icons, vanilla JavaScript
+- pytest
 
-## 🛠️ Tech Stack
+## Quick Start
 
-| Layer | Technology |
-|-------|-----------|
-| Backend | Python 3.8+ · Flask 3.0.0 |
-| ORM / DB | Flask-SQLAlchemy 3.1.1 · SQLite |
-| Auth | Flask-Login 0.6.3 · bcrypt (with legacy Werkzeug-PBKDF2 verification + auto-rehash) |
-| Forms / CSRF | Flask-WTF 1.2.1 (CSRF only) + custom validation layer (`base_form.py`) |
-| Rate limiting | Flask-Limiter (in-memory storage by default) |
-| Email | Flask-Mail 0.10.0 over Gmail SMTP |
-| Config | python-dotenv |
-| Frontend | Bootstrap 5.3 · Bootstrap Icons · vanilla JS (single `InvestmentPortfolioApp` class) |
-| Testing | pytest |
+Prerequisite: Python 3.8 or newer.
 
-## 🌐 Live Demo
+### Windows PowerShell
 
-👉 https://oneportfolio.pythonanywhere.com/
-
-**Demo credentials:**
-
-| Field | Value |
-|-------|-------|
-| Username | `demo` |
-| Password | `demo1234` |
-
-## 🚀 Quick Start
-
-**Prerequisites:** Python 3.8+
-
-```bash
-# 1. Clone
+```powershell
 git clone https://github.com/nasserx/OnePortfolio.git
 cd OnePortfolio
-
-# 2. Virtual environment
-python -m venv venv
-source venv/bin/activate        # Linux / macOS
-.\venv\Scripts\activate         # Windows
-
-# 3. Install dependencies
-pip install -r requirements.txt
-
-# 4. Run the dev server
-python app.py                   # http://localhost:5000  (debug=True)
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+Copy-Item .env.example .env
+python app.py
 ```
 
-The first registered account is automatically promoted to admin.
-
-> **Dev tip:** set `DEV_AUTO_LOGIN=1` in your environment to skip the login screen and auto-login as the first user. Never enable this in production.
-
-## 🔧 Configuration
-
-All configuration is read from environment variables (place them in a `.env` file or your host's WSGI panel):
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `SECRET_KEY` | ✅ in production | Flask session signing key — generate with `secrets.token_hex(32)`. A dev fallback is used unless `FLASK_ENV=production`. |
-| `EMAIL_USER` | ✅ | Gmail address used to send verification, reset, and account-deletion emails |
-| `EMAIL_PASSWORD` | ✅ | Gmail App Password (requires 2FA on the sending account) |
-| `APP_BASE_URL` | ✅ | Public base URL used inside email links (no trailing slash) |
-| `DATABASE_URL` | — | SQLAlchemy URI — defaults to `sqlite:///portfolio.db` |
-| `SESSION_COOKIE_SECURE` | — | `1` to set `Secure` on session and remember-me cookies (HTTPS only) |
-| `DEV_AUTO_LOGIN` | — | `1` to auto-login as the first user (development only) |
-| `FLASK_ENV` | — | Set to `production` to enforce a real `SECRET_KEY` |
-| `GOOGLE_OAUTH_ENABLED` | — | Optional Google sign-in feature flag. Defaults to `0`; prepared but disabled in this version |
-| `GOOGLE_CLIENT_ID` | — | Optional Google OAuth client ID for a future OAuth release |
-| `GOOGLE_CLIENT_SECRET` | — | Optional Google OAuth client secret for a future OAuth release |
-| `GOOGLE_REDIRECT_URI` | — | Optional future callback URL, e.g. `https://yourapp.pythonanywhere.com/auth/google/callback` |
-
-> Gmail accepts only [App Passwords](https://myaccount.google.com/apppasswords) here — your regular account password will not work.
-
-## 📁 Project Structure
-
-```
-OnePortfolio/
-├── app.py                      # Dev entry point (debug=True, localhost:5000)
-├── wsgi.py                     # Production WSGI entry — exposes `application = create_app()`
-├── config.py                   # Env-driven configuration
-├── conftest.py                 # pytest fixtures (test DB, client, auth helpers)
-├── init_db.py                  # Standalone DB initialization helper
-├── requirements.txt
-├── test_app.py                 # Main test suite
-├── test_auth.py                # Authentication tests
-├── test_transaction_type.py    # Buy/Sell transaction-type tests
-├── screenshots/
-└── portfolio_app/
-    ├── __init__.py             # App factory + idempotent migrations + FK pragma listener
-    ├── models/
-    │   ├── user.py                    # User + bcrypt + lockout fields
-    │   ├── portfolio.py               # Portfolio (just a named bucket owned by a user)
-    │   ├── portfolio_event.py         # Cash events: Initial / Deposit / Withdrawal
-    │   ├── symbol.py                  # Asset symbols tracked inside a portfolio
-    │   ├── transaction.py             # Buy / Sell asset-entry rows referencing a symbol
-    │   ├── dividend.py                # Income, attributed to a symbol
-    │   └── pending_registration.py    # Sign-ups awaiting OTP confirmation
-    ├── repositories/           # Data access — every read joins through `Portfolio.user_id`
-    ├── services/
-    │   ├── factory.py                 # DI container resolved via Flask `g`
-    │   ├── auth_service.py            # Login, lockout, OTP, password reset
-    │   ├── portfolio_service.py       # Portfolio + cash-event operations
-    │   ├── transaction_service.py     # Buy/Sell + asset-symbol auto-tracking + ACM recompute
-    │   └── overview_service.py        # Dashboard aggregation
-    ├── calculators/
-    │   └── portfolio_calculator.py    # ACM, cash balance, realized P&L, dashboard summary
-    ├── forms/                  # Custom form base + auth/portfolio/transaction forms + validators
-    ├── routes/                 # Blueprints: auth, dashboard, portfolios, transactions, charts, admin
-    ├── utils/                  # email, tokens, formatting, decimal_utils, http, messages, constants
-    ├── static/                 # css/, js/main.js, icons/
-    └── templates/              # base.html, auth_base.html, landing.html, plus per-page and admin/auth subfolders
-```
-
-## 🏛️ Architecture
-
-```
-Routes (Blueprints) → Services → Repositories → Models (SQLAlchemy)
-        ↓                ↓
-   Forms (validation)  Calculators (financial math)
-```
-
-- **Dependency injection.** Routes call `get_services()` to retrieve a per-request `Services` bundle (cached on Flask's `g`). All repositories and services are constructed once per request with the current `user_id`.
-- **Per-user isolation.** Every user-data repository (`PortfolioRepository`, `TransactionRepository`, `SymbolRepository`, `DividendRepository`, `PortfolioEventRepository`) joins `Portfolio.user_id` on every read — including `get_by_id` — so cross-tenant access via a forged ID returns nothing.
-- **Idempotent migrations.** `_run_migrations()` runs on every app startup before `db.create_all()`. Each step inspects the current schema before altering, and warm boots short-circuit through SQLite's `PRAGMA user_version`. SQLite foreign-key enforcement is enabled engine-wide via a connection listener.
-- **No denormalised totals.** Net deposits and cash balance are derived on read from `PortfolioEvent` and `Transaction` rows; the previous `net_deposits` cache column and `closed_trade` snapshot table were removed.
-- **Decimal everywhere.** All financial math uses Python's `Decimal` (helpers in `utils/decimal_utils.py`).
-
-## 🧪 Testing
-
-```bash
-pytest -v                          # Run the full suite
-pytest -v test_app.py::test_name   # Run a single test
-```
-
-CI runs on every push via GitHub Actions across Python 3.8, 3.10, and 3.12.
-
-## 🚀 Deployment
-
-### PythonAnywhere
+### Linux/macOS
 
 ```bash
 git clone https://github.com/nasserx/OnePortfolio.git
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
+cd OnePortfolio
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+cp .env.example .env
+python app.py
 ```
 
-In the **WSGI file**, set environment variables and point at the app factory:
+The development server runs at `http://127.0.0.1:5000` by default. The first registered user is promoted to admin.
 
-```python
-activate_this = '/home/YOUR_USERNAME/.virtualenvs/myenv/bin/activate_this.py'
-with open(activate_this) as f:
-    exec(f.read(), {'__file__': activate_this})
+## Configuration
 
-import os
-os.environ['SECRET_KEY']            = 'your-secret-key'
-os.environ['EMAIL_USER']            = 'your-gmail@gmail.com'
-os.environ['EMAIL_PASSWORD']        = 'your-app-password'
-os.environ['APP_BASE_URL']          = 'https://yourapp.pythonanywhere.com'
-os.environ['SESSION_COOKIE_SECURE'] = '1'
-os.environ['GOOGLE_OAUTH_ENABLED']  = '0'
-os.environ['GOOGLE_CLIENT_ID']      = ''
-os.environ['GOOGLE_CLIENT_SECRET']  = ''
-os.environ['GOOGLE_REDIRECT_URI']   = 'https://yourapp.pythonanywhere.com/auth/google/callback'
+Copy `.env.example` to `.env` and fill only local or deployment-specific values. Do not commit `.env`.
 
-from portfolio_app import create_app
-application = create_app()
+Supported environment variables are defined in [config.py](config.py):
+
+| Variable | Description |
+| --- | --- |
+| `SECRET_KEY` | Flask session and CSRF signing key. Required outside debug/test contexts. |
+| `DATABASE_URL` | SQLAlchemy database URI. Defaults to local SQLite `portfolio.db`. |
+| `EMAIL_USER` | Gmail sender address for verification and reset emails. |
+| `EMAIL_PASSWORD` | Gmail app password for the sender account. |
+| `APP_BASE_URL` | Public base URL used in email links, without a trailing slash. |
+| `SESSION_COOKIE_SECURE` | Set to `1` when served over HTTPS. Defaults secure outside debug/test contexts. |
+| `DEV_AUTO_LOGIN` | Development-only first-user auto-login. Never enable in production. |
+| `FLASK_DEBUG` | Enables Flask debug mode when set by your run environment. Also allows the dev-only secret fallback. |
+| `GOOGLE_OAUTH_ENABLED` | Optional placeholder flag. Google OAuth is disabled by default. |
+| `GOOGLE_CLIENT_ID` | Optional Google OAuth client ID. |
+| `GOOGLE_CLIENT_SECRET` | Optional Google OAuth client secret. |
+| `GOOGLE_REDIRECT_URI` | Optional Google OAuth callback URI. |
+
+Gmail requires an app password, not the regular account password.
+
+## Project Structure
+
+```text
+OnePortfolio/
+├── app.py                    # Local development entry point
+├── wsgi.py                   # WSGI entry point
+├── config.py                 # Environment-driven configuration
+├── init_db.py                # Database initialization helper
+├── requirements.txt          # Python dependencies
+├── pytest.ini                # pytest configuration
+├── tests/                    # Test suite
+├── docs/                     # Project documentation
+└── portfolio_app/
+    ├── __init__.py           # Application factory, startup migrations, app wiring
+    ├── models/               # SQLAlchemy models
+    ├── repositories/         # Scoped data access
+    ├── services/             # Business workflows
+    ├── calculators/          # Financial calculations
+    ├── forms/                # Form validation
+    ├── routes/               # Flask blueprints
+    ├── templates/            # Jinja templates
+    ├── static/               # CSS, JavaScript, icons
+    └── utils/                # Formatting, decimal, messages, email, tokens
 ```
 
-Google sign-in is prepared but disabled by default in this version. These Google variables are optional and are not required for normal email/password registration, login, verification, or password reset.
+## Documentation
 
-Then click **Reload** on the Web tab.
+- [Domain and calculations](docs/DOMAIN_AND_CALCULATIONS.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Development](docs/DEVELOPMENT.md)
+- [Design system](docs/DESIGN_SYSTEM.md)
+- [Migrations](docs/MIGRATIONS.md)
 
-> **Note:** PythonAnywhere free accounts only allow outbound traffic to whitelisted hosts. Gmail SMTP (`smtp.gmail.com:587`) is supported.
+## Testing
 
-## 🖼️ Screenshots
+```bash
+python -m pytest -v
+python -m compileall portfolio_app
+git diff --check
+```
 
-### Homepage
-![Homepage](screenshots/homepage.png)
+Tests live in `tests/`.
 
-## 📝 License
+## Deployment Notes
 
-MIT — see [LICENSE](LICENSE) for details.
+Use `wsgi.py` or your host's WSGI configuration to create the Flask app. Set required environment variables in the host environment rather than source control. Use HTTPS and set `SESSION_COOKIE_SECURE=1` for production deployments.
 
-**nasserx** · [@nasserx](https://github.com/nasserx)
+## License
 
----
+MIT. See [LICENSE](LICENSE).
 
-> ⚠️ **Disclaimer:** OnePortfolio is for personal record-keeping and educational purposes only. It does not provide financial advice and does not connect to any broker or market-data service.
+## Disclaimer
+
+OnePortfolio is for personal record keeping and educational use. It does not provide financial advice and does not connect to any broker or market-data service.

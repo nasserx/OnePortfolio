@@ -65,6 +65,12 @@ def _google_oauth_client_or_404():
     return google
 
 
+def _google_oauth_available():
+    if not current_app.config.get('GOOGLE_OAUTH_ENABLED'):
+        return False
+    return get_oauth().create_client('google') is not None
+
+
 def _redirect_to_login_with_google_failure(message_key='GOOGLE_SIGNIN_FAILED'):
     flash(MESSAGES[message_key], 'warning')
     return redirect(url_for('auth.login'))
@@ -172,6 +178,8 @@ def login():
         'auth/login.html',
         form_errors=form_errors,
         form_values=form_values,
+        google_oauth_available=_google_oauth_available(),
+        safe_next=_safe_local_redirect(request.args.get('next')),
     )
 
 

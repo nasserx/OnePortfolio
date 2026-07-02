@@ -105,7 +105,7 @@ Supported environment variables are defined in [config.py](config.py):
 
 Gmail requires an app password, not the regular account password.
 
-Google OAuth currently supports backend login and callback routes only. It is disabled by default, signs in existing verified accounts by matching Google's verified email claim to the local account email, does not create accounts, does not persist provider tokens, and does not implement persistent account linking. This branch does not add a new Google sign-in UI entry point.
+Google OAuth is disabled by default. When enabled, the login page shows a Google sign-in control for existing verified accounts only. Google sign-in matches Google's verified email claim to the local account email, does not create accounts, does not persist provider tokens, and does not implement persistent account linking.
 
 ## Project Structure
 

@@ -450,7 +450,7 @@ class TestAuthUiAndGoogle:
         resp = client.get('/register')
         assert resp.status_code == 200
         body = resp.get_data(as_text=True)
-        assert 'Continue with Google' in body
+        assert 'Continue with Google' not in body
         assert 'Email address' in body
         assert 'name="username"' not in body
         assert 'name="confirm_password"' not in body
@@ -459,7 +459,7 @@ class TestAuthUiAndGoogle:
         resp = client.get('/login')
         assert resp.status_code == 200
         body = resp.get_data(as_text=True)
-        assert 'Continue with Google' in body
+        assert 'Continue with Google' not in body
         assert 'Email address' in body
         assert 'Reset password' in body
         assert 'Forgot password?' not in body

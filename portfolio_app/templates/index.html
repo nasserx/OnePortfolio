@@ -96,9 +96,6 @@
                         <ul class="allocation-legend" id="bookValueLegend"></ul>
                         <div class="charts-empty-panel" data-empty-state hidden>No book value data available.</div>
                     </div>
-                    {% if chart_data.book_value_chart.grouped %}
-                    <div class="charts-helper allocation-note">Showing top 7 portfolios and grouping the rest as Other Portfolios.</div>
-                    {% endif %}
                 </div>
             </section>
 
@@ -116,9 +113,6 @@
                         <ul class="allocation-legend" id="bookCapitalLegend"></ul>
                         <div class="charts-empty-panel" data-empty-state hidden>No total capital data available.</div>
                     </div>
-                    {% if chart_data.capital_chart.grouped %}
-                    <div class="charts-helper allocation-note">Showing top 7 portfolios and grouping the rest as Other Portfolios.</div>
-                    {% endif %}
                 </div>
             </section>
         </div>

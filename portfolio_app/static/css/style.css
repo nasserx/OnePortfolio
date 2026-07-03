@@ -156,12 +156,16 @@ textarea,
 .sidebar-nav-link.active:focus-visible {
     color: var(--text-1) !important;
     background: color-mix(in srgb, var(--surface-4) 90%, var(--text-1)) !important;
-    outline: none !important;
+    outline: 1px solid transparent !important;
     font-weight: 500;
 }
 .sidebar-nav-link.active:hover,
 .sidebar-nav-link.active:focus-visible {
     background: color-mix(in srgb, var(--surface-4) 84%, var(--text-1)) !important;
+}
+.sidebar-nav-link.active:focus-visible {
+    outline-color: var(--focus-ring) !important;
+    outline-offset: 2px !important;
 }
 .sidebar-nav-link.active i,
 .sidebar-nav-link.active:hover i,
@@ -257,7 +261,7 @@ textarea,
 .sidebar-user-trigger:focus,
 .sidebar-user-trigger:focus-visible {
     outline: 1px solid var(--focus-ring) !important;
-    outline-offset: -1px !important;
+    outline-offset: 2px !important;
 }
 .sidebar-user-trigger:hover,
 .sidebar-user-trigger[aria-expanded="true"] { background: var(--surface-hover); }
@@ -2570,6 +2574,10 @@ textarea:-webkit-autofill, select:-webkit-autofill {
 }
 .modal-header .btn-close:hover,
 .modal-header .btn-close:focus-visible { opacity: 1; }
+.modal-header .btn-close:focus-visible {
+    outline: 1px solid var(--focus-ring) !important;
+    outline-offset: 2px !important;
+}
 
 .modal-footer .btn { min-height: var(--button-min-h); }
 .modal-backdrop { background: var(--backdrop-bg); }
@@ -2674,8 +2682,13 @@ textarea:-webkit-autofill, select:-webkit-autofill {
     color: var(--inline-action-hover-color) !important;
     border: 0 !important;
     box-shadow: none !important;
-    outline: none !important;
     text-decoration: none !important;
+}
+.btn-inline:focus-visible,
+.input-action:focus-visible,
+.sell-max-btn:focus-visible {
+    outline: 1px solid var(--focus-ring) !important;
+    outline-offset: 2px !important;
 }
 .withdraw-available-hint {
     display: block;

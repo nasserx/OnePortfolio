@@ -178,6 +178,10 @@
     --button-padding-x: var(--control-padding-x);
     --button-radius: var(--radius-button);
     --button-min-h: var(--control-height);
+    --action-button-bg: transparent;
+    --action-button-border: transparent;
+    --action-button-focus-outline: var(--control-border-focus);
+    --action-button-transition: background-color var(--transition), color var(--transition), opacity var(--transition);
     --page-max-width: 1440px;
     --page-pad-x: 1.5rem;
     --page-pad-y: 0.75rem;
@@ -296,6 +300,13 @@
     --inline-action-color: var(--text-muted);
     --inline-action-hover-color: var(--text-primary);
     --inline-action-active-color: var(--accent);
+    --summary-label-color: var(--text-muted);
+    --summary-value-color: var(--text-primary);
+    --nav-link-color: var(--text-secondary);
+    --nav-link-hover-color: var(--text-primary);
+    --nav-link-hover-bg: var(--surface-hover);
+    --nav-link-hover-outline: var(--border-soft);
+    --nav-link-focus-outline: var(--focus-ring);
 
     --color-profit: var(--positive);
     --color-loss: var(--negative);

@@ -39,7 +39,7 @@ body {
 }
 
 /* Tabular nums on financial data */
-.stat-value, .metric-value, .summary-value, .overview-value,
+.stat-value, .metric-value, .summary-value, .overview-value, .overview-portfolio-number,
 .transactions-table td,
 .table .text-end,
 .table .numeric,
@@ -130,7 +130,7 @@ textarea,
 .sidebar-nav-link {
     display: flex; align-items: center; gap: 0.75rem;
     padding: 0.62rem 0.85rem;
-    color: var(--text-2); font-size: 0.875rem; font-weight: 500;
+    color: var(--nav-link-color); font-size: 0.875rem; font-weight: 500;
     text-decoration: none;
     border-radius: var(--radius-md) !important;
     position: relative;
@@ -144,9 +144,9 @@ textarea,
 }
 .sidebar-nav-link:hover,
 .sidebar-nav-link:focus-visible {
-    color: var(--text-1);
-    background: var(--surface-hover);
-    outline-color: var(--border-soft) !important;
+    color: var(--nav-link-hover-color);
+    background: var(--nav-link-hover-bg);
+    outline-color: var(--nav-link-hover-outline) !important;
     text-decoration: none;
 }
 .sidebar-nav-link:hover i,
@@ -564,7 +564,6 @@ textarea,
     font-size: var(--font-size-kpi); font-weight: 500;
     color: var(--text-1); line-height: 1.15;
     letter-spacing: var(--letter-spacing-normal);
-    font-variant-numeric: tabular-nums;
     display: block;
     min-width: 0;
     max-width: 100%;
@@ -839,7 +838,6 @@ textarea,
 
 .overview-portfolio-number {
     text-align: right;
-    font-variant-numeric: tabular-nums;
     white-space: nowrap;
 }
 
@@ -960,18 +958,18 @@ textarea,
 .row-actions .btn {
     border: 0 !important;
     --bs-btn-border-width: 0;
-    --bs-btn-border-color: transparent;
-    --bs-btn-hover-border-color: transparent;
-    --bs-btn-active-border-color: transparent;
-    --bs-btn-disabled-border-color: transparent;
+    --bs-btn-border-color: var(--action-button-border);
+    --bs-btn-hover-border-color: var(--action-button-border);
+    --bs-btn-active-border-color: var(--action-button-border);
+    --bs-btn-disabled-border-color: var(--action-button-border);
     font-size: 0.875rem !important;
     outline: 1px solid transparent !important;
     outline-offset: 2px !important;
     color: var(--text-2) !important;
-    background: transparent !important;
+    background: var(--action-button-bg) !important;
     box-shadow: none !important;
     transform: none !important;
-    transition: background-color var(--transition), color var(--transition), opacity var(--transition) !important;
+    transition: var(--action-button-transition) !important;
 }
 .row-actions .btn:hover,
 .row-actions .btn:focus,
@@ -994,7 +992,7 @@ textarea,
     border: 0 !important;
     background: var(--surface-hover) !important;
     box-shadow: none !important;
-    outline: 1px solid var(--control-border-focus) !important;
+    outline: 1px solid var(--action-button-focus-outline) !important;
     outline-offset: 2px !important;
 }
 
@@ -1053,17 +1051,17 @@ textarea,
 }
 .btn-action-income {
     color: var(--income) !important;
-    background: transparent !important;
+    background: var(--action-button-bg) !important;
     border: 0 !important;
     box-shadow: none !important;
-    transition: background-color var(--transition), color var(--transition), opacity var(--transition) !important;
+    transition: var(--action-button-transition) !important;
 }
 .btn-action-income:not(.btn-icon) {
     color: var(--on-income) !important;
     background: var(--income) !important;
     border: 0 !important;
     box-shadow: none !important;
-    transition: background-color var(--transition), color var(--transition), opacity var(--transition) !important;
+    transition: var(--action-button-transition) !important;
 }
 
 .btn-action-positive {
@@ -1082,14 +1080,14 @@ textarea,
 
 .btn-action-positive:focus-visible {
     box-shadow: none !important;
-    outline: 1px solid var(--control-border-focus) !important;
+    outline: 1px solid var(--action-button-focus-outline) !important;
     outline-offset: 2px !important;
 }
 
 .btn-action-positive:disabled,
 .btn-action-positive.disabled {
     color: var(--text-disabled) !important;
-    background: transparent !important;
+    background: var(--action-button-bg) !important;
     border: 0 !important;
 }
 
@@ -1155,7 +1153,7 @@ textarea,
     overflow: hidden;
 }
 .summary-label {
-    font-size: var(--font-size-summary-label); color: var(--text-3);
+    font-size: var(--summary-label-font-size, var(--font-size-summary-label)); color: var(--summary-label-color);
     text-transform: uppercase; letter-spacing: var(--letter-spacing-label); font-weight: 400;
     min-width: 0;
     max-width: 100%;
@@ -1163,8 +1161,8 @@ textarea,
     text-overflow: ellipsis;
 }
 .summary-value {
-    font-size: var(--font-size-summary-value); font-weight: 400;
-    color: var(--text-1); font-variant-numeric: tabular-nums;
+    font-size: var(--summary-value-font-size, var(--font-size-summary-value)); font-weight: 400;
+    color: var(--summary-value-color);
     display: block;
     min-width: 0;
     max-width: 100%;
@@ -1228,6 +1226,7 @@ textarea,
 }
 
 .portfolio-primary-metrics .portfolio-summary {
+    --summary-label-font-size: var(--font-size-label);
     gap: 0.35rem 0.7rem;
 }
 
@@ -1237,8 +1236,6 @@ textarea,
 }
 
 .portfolio-primary-metrics .summary-label {
-    color: var(--text-3);
-    font-size: var(--font-size-label);
     white-space: normal;
 }
 
@@ -1379,21 +1376,14 @@ textarea,
 }
 
 .transactions-symbol-metrics .portfolio-summary {
+    --summary-label-font-size: var(--font-size-label);
+    --summary-value-font-size: var(--font-size-numeric);
     gap: 0.35rem 0.7rem;
 }
 
 .transactions-symbol-metrics .summary-item {
     text-align: center;
     min-width: 0;
-}
-
-.transactions-symbol-metrics .summary-label {
-    color: var(--text-3);
-    font-size: var(--font-size-label);
-}
-
-.transactions-symbol-metrics .summary-value {
-    font-size: var(--font-size-numeric);
 }
 
 .transactions-symbol-actions {
@@ -2850,7 +2840,7 @@ i.bi.text-info,
 .settings-sidebar-link {
     display: flex; align-items: center; gap: 0.75rem;
     width: 100%; text-align: left;
-    color: var(--text-2); font-size: 0.875rem; font-weight: 500;
+    color: var(--nav-link-color); font-size: 0.875rem; font-weight: 500;
     padding: 0.62rem 0.85rem;
     background: transparent; cursor: pointer;
     border-radius: var(--radius-md) !important;
@@ -2859,9 +2849,9 @@ i.bi.text-info,
 }
 .settings-sidebar-link:hover,
 .settings-sidebar-link:focus-visible {
-    color: var(--text-1);
-    background: var(--surface-hover);
-    outline-color: var(--border-soft) !important;
+    color: var(--nav-link-hover-color);
+    background: var(--nav-link-hover-bg);
+    outline-color: var(--nav-link-hover-outline) !important;
 }
 .settings-sidebar-link.active,
 .settings-sidebar-link.active:hover,
@@ -2872,7 +2862,7 @@ i.bi.text-info,
     font-weight: 500;
 }
 .settings-sidebar-link:focus-visible {
-    outline-color: var(--focus-ring) !important;
+    outline-color: var(--nav-link-focus-outline) !important;
     outline-offset: 2px !important;
 }
 .settings-sidebar-link .bi {
@@ -3083,7 +3073,7 @@ i.bi.text-info,
     line-height: 1;
     aspect-ratio: 1 / 1;
     transform: none !important;
-    transition: background-color var(--transition), color var(--transition), opacity var(--transition) !important;
+    transition: var(--action-button-transition) !important;
 }
 .btn-icon:hover,
 .btn-icon:focus,
@@ -3106,7 +3096,7 @@ i.bi.text-info,
     border: 0 !important;
     background: var(--surface-hover) !important;
     box-shadow: none !important;
-    outline: 1px solid var(--control-border-focus) !important;
+    outline: 1px solid var(--action-button-focus-outline) !important;
     outline-offset: 2px !important;
 }
 .btn-icon.btn-sm {

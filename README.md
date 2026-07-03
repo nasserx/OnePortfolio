@@ -4,6 +4,13 @@ OnePortfolio is a Flask web app for manual portfolio record keeping. It tracks p
 
 It does not fetch live prices, calculate market value, calculate unrealized P&L, connect to brokers, or provide financial advice.
 
+## Live Demo
+
+- URL: https://oneportfolio.pythonanywhere.com
+- Username: `demo`
+- Password: `demo1234`
+- Demo data may be changed by visitors or reset periodically.
+
 ## What It Tracks
 
 - **Portfolios**: user-defined buckets such as Stocks, ETFs, Gold, or any other name.

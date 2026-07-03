@@ -203,6 +203,17 @@ html {
     margin-top: 1.15rem;
 }
 
+.landing-demo-note {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 0.8rem;
+    max-width: 560px;
+    margin-top: 0.65rem;
+    color: var(--text-muted);
+    font-size: var(--font-size-helper);
+    line-height: 1.45;
+}
+
 .btn-cta-primary,
 .btn-cta-secondary {
     min-height: 38px;

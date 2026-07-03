@@ -160,8 +160,7 @@ def test_charts_page_uses_dashboard_cards_and_current_terminology(app):
     assert '<canvas id="bookCapitalChart"' in html
     assert '<canvas id="portfolioPerformanceChart"' not in html
     assert '<canvas id="assetPerformanceChart"' not in html
-    assert "centerLabel: 'BOOK VALUE'" in html
-    assert "centerLabel: 'CAPITAL'" in html
+    assert 'js/overview_charts.js' in html
     assert 'Other Portfolios' not in data['book_value_chart']['categories']
     assert 'Other Portfolios' not in data['capital_chart']['categories']
 

@@ -154,10 +154,14 @@ textarea,
 .sidebar-nav-link.active,
 .sidebar-nav-link.active:hover,
 .sidebar-nav-link.active:focus-visible {
-    color: var(--op-nav-active) !important;
-    background: var(--op-nav-active-bg) !important;
-    outline: 1px solid var(--op-nav-active-border) !important;
-    font-weight: 600;
+    color: var(--text-1) !important;
+    background: color-mix(in srgb, var(--surface-4) 90%, var(--text-1)) !important;
+    outline: none !important;
+    font-weight: 500;
+}
+.sidebar-nav-link.active:hover,
+.sidebar-nav-link.active:focus-visible {
+    background: color-mix(in srgb, var(--surface-4) 84%, var(--text-1)) !important;
 }
 .sidebar-nav-link.active i,
 .sidebar-nav-link.active:hover i,
@@ -738,93 +742,132 @@ textarea,
     margin-top: 0.2rem;
 }
 
-.overview-portfolio-grid {
+.overview-charts-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.85rem;
+    gap: 1rem;
 }
 
-.overview-portfolio-card .card-body {
-    padding: 0.9rem;
-}
-
-.overview-portfolio-card-accent {
-    outline-color: var(--border-soft) !important;
-}
-
-.overview-portfolio-card-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.85rem;
-    padding-bottom: 0.75rem;
-    border-bottom: 1px solid var(--border-color) !important;
-}
-
-.overview-portfolio-title-group {
+.overview-chart-card {
     min-width: 0;
+}
+
+.overview-portfolio-table {
+    --overview-portfolio-columns: minmax(260px, 2fr) minmax(118px, 0.82fr) minmax(104px, 0.72fr) minmax(118px, 0.82fr) minmax(94px, 0.62fr) minmax(108px, 0.62fr);
+    display: grid;
+    overflow: hidden;
+    background: var(--card-bg);
+    border-radius: var(--radius-card) !important;
+    outline: 1px solid var(--border-soft) !important;
+}
+
+.overview-portfolio-row {
+    display: grid;
+    grid-template-columns: var(--overview-portfolio-columns);
+    align-items: center;
+    column-gap: 1rem;
+    min-width: 0;
+    padding: 0.68rem 0.95rem;
+    border-bottom: 1px solid var(--border-muted) !important;
+    color: var(--text-1);
+    font-size: var(--font-size-sm);
+}
+
+.overview-portfolio-row > * {
+    min-width: 0;
+}
+
+.overview-portfolio-row:last-child {
+    border-bottom: 0 !important;
+}
+
+.overview-portfolio-row-head {
+    color: var(--text-3);
+    font-size: var(--font-size-table-head);
+    font-weight: 400;
+    letter-spacing: var(--letter-spacing-label);
+    text-transform: uppercase;
+    background: var(--surface-2);
+}
+
+.overview-portfolio-row-head > div {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.overview-portfolio-row-head > div:first-child {
+    text-align: left;
+}
+
+.overview-portfolio-name-cell {
     display: flex;
     align-items: center;
     gap: 0.65rem;
 }
 
-.overview-portfolio-icon {
-    width: 30px;
-    height: 30px;
+.overview-portfolio-marker {
+    width: 24px;
+    height: 24px;
+    flex: 0 0 24px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    border-radius: var(--radius-md) !important;
-    background: transparent;
-    color: var(--text-2);
-    outline: 1px solid var(--border-soft) !important;
-    flex-shrink: 0;
+    border-radius: var(--radius-pill) !important;
+    color: var(--text-inv);
+    font-size: 0.6875rem;
+    font-weight: 500;
+    line-height: 1;
+    text-transform: uppercase;
+    font-variant-numeric: normal;
 }
 
-.overview-portfolio-icon-primary {
-    background: transparent;
-    color: var(--text-2);
-    outline-color: var(--border-soft) !important;
-}
+.allocation-marker-1 { background: var(--chart-allocation-1); }
+.allocation-marker-2 { background: var(--chart-allocation-2); }
+.allocation-marker-3 { background: var(--chart-allocation-3); }
+.allocation-marker-4 { background: var(--chart-allocation-4); }
+.allocation-marker-5 { background: var(--chart-allocation-5); }
+.allocation-marker-6 { background: var(--chart-allocation-6); }
+.allocation-marker-7 { background: var(--chart-allocation-7); }
 
-.overview-portfolio-card h3 {
+.overview-portfolio-name {
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-size: var(--font-size-summary-name);
     font-weight: 500;
-    letter-spacing: -0.015em;
 }
 
-.overview-portfolio-card .overview-btn {
+.overview-portfolio-number {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.overview-portfolio-action {
+    display: flex;
+    justify-content: flex-end;
+    white-space: nowrap;
+}
+
+.overview-assets-link {
     display: inline-flex;
     align-items: center;
+    justify-content: flex-end;
     gap: 0.35rem;
-    flex-shrink: 0;
+    color: var(--text-2);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    white-space: nowrap;
 }
 
-.overview-metric-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 0;
-    margin-top: 0;
+.overview-assets-link:hover,
+.overview-assets-link:focus-visible {
+    color: var(--text-1);
 }
 
-.overview-metric-grid .metric-item {
-    min-width: 0;
-    padding: 0.7rem 0.75rem 0.45rem 0;
-}
-
-.overview-metric-grid .metric-item:nth-child(3n) {
-    padding-left: 0;
-}
-
-.overview-metric-grid .metric-label {
-    white-space: normal;
-}
-
-.overview-metric-grid .metric-value {
-    font-size: var(--font-size-numeric);
+.overview-assets-link .bi {
+    color: currentColor;
+    font-size: 0.82rem;
 }
 
 .overview-empty-state {
@@ -856,7 +899,6 @@ textarea,
 }
 
 .overview-kpi-card,
-.overview-portfolio-card-accent,
 .portfolio-list-card,
 .transactions-symbol-card,
 .charts-card,
@@ -870,16 +912,6 @@ textarea,
 .overview-kpi-card:focus-within {
     background: var(--card-bg) !important;
     outline-color: var(--border-accent) !important;
-}
-
-.overview-portfolio-card-accent:hover,
-.overview-portfolio-card-accent:focus-within {
-    background: var(--card-bg) !important;
-    outline-color: var(--border-strong) !important;
-}
-.overview-portfolio-card-accent:hover > .card-body,
-.overview-portfolio-card-accent:focus-within > .card-body {
-    background: var(--card-bg) !important;
 }
 
 .card-header {
@@ -1496,13 +1528,14 @@ textarea,
     padding: 0;
     margin: 0;
     display: grid;
-    grid-template-columns: 10px minmax(0, 1fr) auto;
+    grid-template-columns: 10px minmax(0, 1fr) minmax(56px, auto) minmax(44px, auto);
     align-items: center;
-    column-gap: 0.625rem;
+    column-gap: 0.55rem;
     row-gap: 0.5rem;
     color: var(--text-2);
     font-size: var(--font-size-helper);
     font-weight: 400;
+    min-width: 0;
 }
 
 .allocation-legend li {
@@ -1511,6 +1544,7 @@ textarea,
 
 .allocation-legend .swatch,
 .allocation-legend .name,
+.allocation-legend .value,
 .allocation-legend .pct {
     cursor: pointer;
     user-select: none;
@@ -1522,6 +1556,7 @@ textarea,
 }
 
 .allocation-legend li.is-hidden .name,
+.allocation-legend li.is-hidden .value,
 .allocation-legend li.is-hidden .pct {
     color: var(--text-3);
     opacity: 0.6;
@@ -1549,9 +1584,19 @@ textarea,
     white-space: nowrap;
 }
 
+.allocation-legend .value,
 .allocation-legend .pct {
     font-variant-numeric: tabular-nums;
     text-align: right;
+    white-space: nowrap;
+}
+
+.allocation-legend .value {
+    color: var(--text-2);
+}
+
+.allocation-legend .pct {
+    color: var(--text-3);
 }
 
 .allocation-note {
@@ -2401,21 +2446,6 @@ textarea:-webkit-autofill, select:-webkit-autofill {
     border-color: var(--accent-border) !important;
 }
 
-/* Overview "View →" button */
-.overview-btn {
-    text-decoration: none !important;
-    background: transparent !important;
-    color: var(--primary) !important;
-    font-size: 0.75rem; font-weight: 500;
-    padding: 0.25rem 0.625rem;
-    border-radius: var(--radius-md) !important;
-    transition: background-color var(--transition), color var(--transition);
-}
-.overview-btn:hover {
-    background: var(--brand-hover) !important;
-    color: var(--primary) !important;
-}
-
 /* ============================================================ */
 /* Badges                                                       */
 /* ============================================================ */
@@ -2766,7 +2796,6 @@ i.bi {
 .modal-title-icon { font-size: 1rem; }
 
 .overview-kpi-icon > .bi,
-.overview-portfolio-icon > .bi,
 .overview-empty-icon > .bi,
 .portfolios-empty-icon > .bi,
 .transactions-empty-icon > .bi,
@@ -2785,7 +2814,6 @@ i.bi.text-info,
 .help-message i,
 .settings-verified-badge .bi,
 .btn-logout .bi,
-.overview-btn .bi,
 .nav-tabs .bi {
     color: var(--icon-accent) !important;
 }
@@ -3264,9 +3292,7 @@ i.bi.text-info,
     .overview-kpi-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
-    .overview-portfolio-grid {
-        grid-template-columns: 1fr;
-    }
+    .overview-charts-grid,
     .charts-grid {
         grid-template-columns: 1fr;
     }
@@ -3307,9 +3333,6 @@ i.bi.text-info,
     .card-body { padding: 1rem; }
     .btn-sm { padding: 0.25rem 0.625rem; font-size: 0.8125rem; }
     .page-header { flex-wrap: wrap; margin-bottom: 1.25rem; }
-    .overview-metric-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
     .allocation-wrap {
         grid-template-columns: 1fr;
         justify-items: center;
@@ -3317,9 +3340,42 @@ i.bi.text-info,
     .allocation-legend {
         width: 100%;
     }
-    .overview-portfolio-card-header {
-        align-items: flex-start;
-        flex-direction: column;
+    .overview-portfolio-table {
+        overflow: visible;
+        background: transparent;
+        outline: none !important;
+        gap: 0.75rem;
+    }
+    .overview-portfolio-row-head {
+        display: none;
+    }
+    .overview-portfolio-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        align-items: start;
+        gap: 0.7rem 1rem;
+        padding: 0.9rem;
+        background: var(--card-bg);
+        border-bottom: 0 !important;
+        border-radius: var(--radius-card) !important;
+        outline: 1px solid var(--border-soft) !important;
+    }
+    .overview-portfolio-row > [role="cell"]::before {
+        content: attr(data-label);
+        display: block;
+        margin-bottom: 0.15rem;
+        color: var(--text-3);
+        font-size: var(--font-size-table-head);
+        letter-spacing: var(--letter-spacing-label);
+        text-transform: uppercase;
+    }
+    .overview-portfolio-name-cell {
+        grid-column: 1 / -1;
+    }
+    .overview-portfolio-number {
+        text-align: left;
+    }
+    .overview-portfolio-action {
+        justify-content: flex-start;
     }
     .transactions-toolbar {
         align-items: stretch !important;
@@ -3379,12 +3435,8 @@ i.bi.text-info,
     .overview-kpi-card {
         min-height: auto;
     }
-    .overview-metric-grid {
+    .overview-portfolio-row {
         grid-template-columns: 1fr;
-    }
-    .overview-portfolio-card .overview-btn {
-        width: 100%;
-        justify-content: center;
     }
     .transactions-symbol-metrics .portfolio-summary.columns-6,
     .transactions-symbol-metrics .portfolio-summary.columns-7 {

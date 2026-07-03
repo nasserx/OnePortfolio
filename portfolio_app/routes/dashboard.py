@@ -6,6 +6,7 @@ from flask_login import login_required, current_user
 from decimal import Decimal
 from portfolio_app.services import get_services
 from portfolio_app.calculators import PortfolioCalculator
+from portfolio_app.routes.charts import build_allocation_chart_data
 from portfolio_app.utils.messages import MESSAGES
 
 logger = logging.getLogger(__name__)
@@ -39,7 +40,8 @@ def index() -> str:
         'index.html',
         portfolio_summary=portfolio_summary,
         total_value=total_value,
-        totals=totals
+        totals=totals,
+        chart_data=build_allocation_chart_data(portfolio_summary),
     )
 
 

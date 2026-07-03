@@ -1,6 +1,7 @@
 from datetime import datetime
 from decimal import Decimal
 from html.parser import HTMLParser
+import json
 import re
 from urllib.parse import quote_plus
 
@@ -55,14 +56,16 @@ def _visible_text(html):
     return '\n'.join(parser.parts)
 
 
-def _portfolio_card_text(html):
-    match = re.search(
-        r'<article class="[^"]*overview-portfolio-card[^"]*".*?</article>',
-        html,
-        re.DOTALL,
-    )
+def _portfolio_rows_text(html):
+    start = html.index('data-overview-portfolio-rows')
+    end = html.index('</section>', start)
+    return _visible_text(html[start:end])
+
+
+def _chart_data(html):
+    match = re.search(r'const chartData = (\{.*?\});', html, re.DOTALL)
     assert match is not None
-    return _visible_text(match.group(0))
+    return json.loads(match.group(1))
 
 
 def _seed_overview_activity(uid):
@@ -138,7 +141,8 @@ def test_overview_uses_current_health_metrics_and_terminology(app):
     assert response.status_code == 200
     html = response.get_data(as_text=True)
     text = _visible_text(html)
-    card_text = _portfolio_card_text(html)
+    row_text = _portfolio_rows_text(html)
+    chart_data = _chart_data(html)
 
     for label in (
         'TOTAL CAPITAL',
@@ -150,12 +154,35 @@ def test_overview_uses_current_health_metrics_and_terminology(app):
         assert label in text
 
     for label in (
-        'BOOK VALUE',
-        'RETURN',
-        'REALIZED P&L',
-        'INCOME',
+        'Portfolio',
+        'Book Value',
+        'Realized P&L',
+        'Return',
+        'Income',
+        'Assets',
     ):
-        assert label in card_text
+        assert label in row_text
+
+    column_positions = [
+        row_text.index(label)
+        for label in ('Portfolio', 'Book Value', 'Income', 'Realized P&L', 'Return', 'Assets')
+    ]
+    assert column_positions == sorted(column_positions)
+    assert 'class="overview-portfolio-marker allocation-marker-1"' in html
+    assert '>ا</span>' in html
+
+    assert 'By Book Value' in text
+    assert 'By Capital' in text
+    assert html.count('<canvas') == 2
+    assert '<canvas id="bookValueChart"' in html
+    assert '<canvas id="bookCapitalChart"' in html
+    assert set(chart_data) == {'book_value_chart', 'capital_chart'}
+    assert chart_data['book_value_chart']['categories'] == ['النمو Growth']
+    assert chart_data['capital_chart']['categories'] == ['النمو Growth']
+    assert chart_data['book_value_chart']['values'] == [8675.0]
+    assert chart_data['capital_chart']['values'] == [8500.0]
+    assert chart_data['book_value_chart']['total'] == 8675.0
+    assert chart_data['capital_chart']['total'] == 8500.0
 
     for removed_card_label in (
         'TOTAL CAPITAL',
@@ -163,7 +190,7 @@ def test_overview_uses_current_health_metrics_and_terminology(app):
         'POSITIONS',
         'TOTAL INCOME',
     ):
-        assert removed_card_label not in card_text
+        assert removed_card_label not in row_text
 
     assert 'View Assets' in text
 
@@ -189,8 +216,49 @@ def test_overview_uses_current_health_metrics_and_terminology(app):
     assert 'النمو Growth' in text
     assert '8,500.00' in text
     assert '7,175.00' in text
-    assert '8,675.00' in card_text
-    assert '+75.00' in card_text
-    assert '+100.00' in card_text
-    assert '+1.75%' in card_text
+    assert '8,675.00' in row_text
+    assert '+75.00' in row_text
+    assert '+100.00' in row_text
+    assert '+1.75%' in row_text
     assert f'href="/transactions/?portfolio={quote_plus(portfolio.name)}"' in html
+
+
+def test_overview_empty_portfolios_render_empty_chart_context(app):
+    with app.app_context():
+        uid = _seed_user('overview_empty')
+
+    client = app.test_client()
+    _login(client, uid)
+    response = client.get('/')
+
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    text = _visible_text(html)
+    chart_data = _chart_data(html)
+
+    assert 'No portfolios yet' in text
+    assert 'No book value data available.' in text
+    assert 'No total capital data available.' in text
+    assert html.count('<canvas') == 2
+    assert chart_data['book_value_chart']['categories'] == []
+    assert chart_data['book_value_chart']['allocations'] == []
+    assert chart_data['book_value_chart']['values'] == []
+    assert chart_data['book_value_chart']['total'] == 0.0
+    assert chart_data['capital_chart']['categories'] == []
+    assert chart_data['capital_chart']['allocations'] == []
+    assert chart_data['capital_chart']['values'] == []
+    assert chart_data['capital_chart']['total'] == 0.0
+    assert 'sample' not in text.lower()
+    assert 'demo' not in text.lower()
+
+
+def test_overview_keeps_related_routes_available(app):
+    with app.app_context():
+        uid = _seed_user('overview_routes')
+
+    client = app.test_client()
+    _login(client, uid)
+
+    assert client.get('/charts').status_code == 200
+    assert client.get('/portfolios/').status_code == 200
+    assert client.get('/transactions/').status_code == 200

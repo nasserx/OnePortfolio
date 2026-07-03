@@ -80,48 +80,89 @@
         </div>
     </section>
 
+    <section class="overview-section overview-charts-section" aria-label="Portfolio allocation">
+        <div class="overview-charts-grid">
+            <section class="card page-accent-surface charts-card overview-chart-card">
+                <div class="card-body">
+                    <div class="charts-card-header">
+                        <div class="charts-title-stack">
+                            <h2 class="charts-title">By Book Value</h2>
+                        </div>
+                    </div>
+                    <div class="allocation-wrap" data-doughnut-card="bookValue">
+                        <div class="allocation-canvas-wrap">
+                            <canvas id="bookValueChart" aria-label="Portfolio allocation by book value" role="img">Portfolio allocation by book value.</canvas>
+                        </div>
+                        <ul class="allocation-legend" id="bookValueLegend"></ul>
+                        <div class="charts-empty-panel" data-empty-state hidden>No book value data available.</div>
+                    </div>
+                    {% if chart_data.book_value_chart.grouped %}
+                    <div class="charts-helper allocation-note">Showing top 7 portfolios and grouping the rest as Other Portfolios.</div>
+                    {% endif %}
+                </div>
+            </section>
+
+            <section class="card page-accent-surface charts-card overview-chart-card">
+                <div class="card-body">
+                    <div class="charts-card-header">
+                        <div class="charts-title-stack">
+                            <h2 class="charts-title">By Capital</h2>
+                        </div>
+                    </div>
+                    <div class="allocation-wrap" data-doughnut-card="capital">
+                        <div class="allocation-canvas-wrap">
+                            <canvas id="bookCapitalChart" aria-label="Portfolio allocation by capital" role="img">Portfolio allocation by capital.</canvas>
+                        </div>
+                        <ul class="allocation-legend" id="bookCapitalLegend"></ul>
+                        <div class="charts-empty-panel" data-empty-state hidden>No total capital data available.</div>
+                    </div>
+                    {% if chart_data.capital_chart.grouped %}
+                    <div class="charts-helper allocation-note">Showing top 7 portfolios and grouping the rest as Other Portfolios.</div>
+                    {% endif %}
+                </div>
+            </section>
+        </div>
+    </section>
+
     <section class="overview-section overview-portfolios-section" aria-label="Portfolios">
         {% if portfolio_summary|length > 0 %}
-        <div class="overview-portfolio-grid">
+        <div class="overview-portfolio-table" data-overview-portfolio-rows>
+            <div class="overview-portfolio-row overview-portfolio-row-head" role="row">
+                <div role="columnheader">Portfolio</div>
+                <div role="columnheader">Book Value</div>
+                <div role="columnheader">Income</div>
+                <div role="columnheader">Realized P&amp;L</div>
+                <div role="columnheader">Return</div>
+                <div role="columnheader">Assets</div>
+            </div>
             {% for item in portfolio_summary %}
-            <article class="card h-100 portfolio-card overview-portfolio-card overview-portfolio-card-accent page-accent-surface">
-                <div class="card-body">
-                    <div class="overview-portfolio-card-header">
-                        <div class="overview-portfolio-title-group">
-                            <span class="overview-portfolio-icon overview-portfolio-icon-primary" aria-hidden="true">
-                                <i class="bi bi-wallet2"></i>
-                            </span>
-                            <h3>{{ item.name }}</h3>
-                        </div>
-                        <a href="{{ url_for('transactions.transaction_list', portfolio=item.name) }}"
-                           class="btn btn-sm overview-btn">
-                            <span>View Assets</span>
-                            <i class="bi bi-arrow-right" aria-hidden="true"></i>
-                        </a>
-                    </div>
-
-                    <div class="portfolio-metrics overview-metric-grid">
-                        <div class="metric-item">
-                            <span class="metric-label">BOOK VALUE</span>
-                            <span class="metric-value" title="{{ item.book_value|fmt_money }}">{{ item.book_value|fmt_display_money }}</span>
-                        </div>
-                        <div class="metric-item">
-                            <span class="metric-label">RETURN</span>
-                            <span class="metric-value {% if item.return_percent > 0 %}profit{% elif item.return_percent < 0 %}loss{% else %}neutral{% endif %}" title="{{ item.return_display }}">
-                                {{ '—' if item.return_display == '—' else item.return_percent|fmt_display_percent(signed=True) }}
-                            </span>
-                        </div>
-                        <div class="metric-item">
-                            <span class="metric-label">REALIZED P&amp;L</span>
-                            <span class="metric-value {% if item.realized_pnl > 0 %}profit{% elif item.realized_pnl < 0 %}loss{% else %}neutral{% endif %}" title="{% if item.realized_pnl > 0 %}+{% endif %}{{ item.realized_pnl|fmt_money }}">
-                                {% if item.realized_pnl > 0 %}+{% endif %}{{ item.realized_pnl|fmt_display_money }}
-                            </span>
-                        </div>
-                        <div class="metric-item">
-                            <span class="metric-label">INCOME</span>
-                            <span class="metric-value dividend" title="{% if item.total_income > 0 %}+{% endif %}{{ item.total_income|fmt_money }}">{% if item.total_income > 0 %}+{% endif %}{{ item.total_income|fmt_display_money }}</span>
-                        </div>
-                    </div>
+            <article class="overview-portfolio-row" role="row">
+                <div class="overview-portfolio-name-cell" role="cell" data-label="Portfolio">
+                    <span class="overview-portfolio-marker allocation-marker-{{ ((loop.index0 % 7) + 1) }}" aria-hidden="true">{{ item.name[:1]|upper }}</span>
+                    <span class="overview-portfolio-name" title="{{ item.name }}">{{ item.name }}</span>
+                </div>
+                <div class="overview-portfolio-number" role="cell" data-label="Book Value">
+                    <span title="{{ item.book_value|fmt_money }}">{{ item.book_value|fmt_display_money }}</span>
+                </div>
+                <div class="overview-portfolio-number" role="cell" data-label="Income">
+                    <span class="dividend" title="{% if item.total_income > 0 %}+{% endif %}{{ item.total_income|fmt_money }}">{% if item.total_income > 0 %}+{% endif %}{{ item.total_income|fmt_display_money }}</span>
+                </div>
+                <div class="overview-portfolio-number" role="cell" data-label="Realized P&amp;L">
+                    <span class="{% if item.realized_pnl > 0 %}profit{% elif item.realized_pnl < 0 %}loss{% else %}neutral{% endif %}" title="{% if item.realized_pnl > 0 %}+{% endif %}{{ item.realized_pnl|fmt_money }}">
+                        {% if item.realized_pnl > 0 %}+{% endif %}{{ item.realized_pnl|fmt_display_money }}
+                    </span>
+                </div>
+                <div class="overview-portfolio-number" role="cell" data-label="Return">
+                    <span class="{% if item.return_percent > 0 %}profit{% elif item.return_percent < 0 %}loss{% else %}neutral{% endif %}" title="{{ item.return_display }}">
+                        {{ '—' if item.return_display == '—' else item.return_percent|fmt_display_percent(signed=True) }}
+                    </span>
+                </div>
+                <div class="overview-portfolio-action" role="cell" data-label="Assets">
+                    <a href="{{ url_for('transactions.transaction_list', portfolio=item.name) }}"
+                       class="overview-assets-link">
+                        <span>View Assets</span>
+                        <i class="bi bi-arrow-right" aria-hidden="true"></i>
+                    </a>
                 </div>
             </article>
             {% endfor %}
@@ -144,9 +185,15 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="{{ url_for('static', filename='js/overview_charts.js', v='20260703-1') }}"></script>
 <script>
-document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el) {
-    new bootstrap.Tooltip(el, { trigger: 'hover focus' });
+document.addEventListener('DOMContentLoaded', function () {
+    const chartData = {{ chart_data | tojson }};
+    window.initPortfolioAllocationCharts(chartData);
+    document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el) {
+        new bootstrap.Tooltip(el, { trigger: 'hover focus' });
+    });
 });
 </script>
 {% endblock %}

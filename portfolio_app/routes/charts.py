@@ -211,6 +211,29 @@ def _capital_allocation_rows(portfolio_summary: List[Dict[str, Any]]) -> List[Di
     return rows
 
 
+def build_allocation_chart_data(portfolio_summary: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Build the two portfolio allocation doughnut datasets."""
+    allocation_rows = _allocation_rows(portfolio_summary)
+    capital_rows = _capital_allocation_rows(portfolio_summary)
+
+    return {
+        'book_value_chart': {
+            'categories':  [r['name'] for r in allocation_rows],
+            'allocations': [r['allocation'] for r in allocation_rows],
+            'values':      [r['book_value'] for r in allocation_rows],
+            'total':       float(sum((Decimal(str(r['book_value'])) for r in allocation_rows), ZERO)),
+            'grouped':     len([p for p in portfolio_summary if Decimal(str(p['book_value'])) > ZERO]) > ALLOCATION_TOP_N,
+        },
+        'capital_chart': {
+            'categories':  [r['name'] for r in capital_rows],
+            'allocations': [r['allocation'] for r in capital_rows],
+            'values':      [r['capital'] for r in capital_rows],
+            'total':       float(sum((Decimal(str(r['capital'])) for r in capital_rows), ZERO)),
+            'grouped':     len([p for p in portfolio_summary if Decimal(str(p.get('total_capital', ZERO))) > ZERO]) > ALLOCATION_TOP_N,
+        },
+    }
+
+
 def _portfolio_performance_rows(portfolio_summary: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Unaggregated portfolio performance rows for ranked bars."""
     return [
@@ -712,24 +735,7 @@ def charts() -> str:
     """Charts page - Portfolio visualizations."""
     svc = get_services()
     portfolio_summary, _ = svc.overview_service.get_portfolio_summary()
-
-    allocation_rows = _allocation_rows(portfolio_summary)
-    capital_rows = _capital_allocation_rows(portfolio_summary)
-
-    chart_data: Dict[str, Any] = {
-        'book_value_chart': {
-            'categories':  [r['name'] for r in allocation_rows],
-            'allocations': [r['allocation'] for r in allocation_rows],
-            'values':      [r['book_value'] for r in allocation_rows],
-            'total':       float(sum((Decimal(str(r['book_value'])) for r in allocation_rows), ZERO)),
-            'grouped':     len([p for p in portfolio_summary if Decimal(str(p['book_value'])) > ZERO]) > ALLOCATION_TOP_N,
-        },
-        'capital_chart': {
-            'categories':  [r['name'] for r in capital_rows],
-            'allocations': [r['allocation'] for r in capital_rows],
-            'values':      [r['capital'] for r in capital_rows],
-            'total':       float(sum((Decimal(str(r['capital'])) for r in capital_rows), ZERO)),
-            'grouped':     len([p for p in portfolio_summary if Decimal(str(p.get('total_capital', ZERO))) > ZERO]) > ALLOCATION_TOP_N,
-        },
-    }
-    return render_template('charts.html', chart_data=chart_data)
+    return render_template(
+        'charts.html',
+        chart_data=build_allocation_chart_data(portfolio_summary),
+    )

@@ -2,21 +2,21 @@
     'use strict';
 
     const sampleData = {
-        portfolios: ['Stocks', 'ETFs', 'Crypto', 'Gold', 'Bonds'],
+        portfolios: ['Stocks', 'ETFs', 'Crypto'],
         charts: {
             bookValue: {
                 canvasId: 'landingBookValueChart',
                 legendId: 'landingBookValueLegend',
                 centerLabel: 'Book Value',
-                values: [5200, 3600, 2400, 1700, 1100],
-                total: 14000,
+                values: [5200, 3600, 2400],
+                total: 11200,
             },
             capital: {
                 canvasId: 'landingCapitalChart',
                 legendId: 'landingCapitalLegend',
                 centerLabel: 'Capital',
-                values: [5600, 3900, 2600, 1900, 1300],
-                total: 15300,
+                values: [5600, 3900, 2600],
+                total: 12100,
             },
         },
     };

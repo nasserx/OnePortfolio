@@ -77,23 +77,23 @@
                     <div class="preview-metrics" aria-label="Sample portfolio metrics">
                         <div class="metric-item">
                             <span class="metric-label">Book Value</span>
-                            <span class="metric-value">14,000.00</span>
+                            <span class="metric-value">11,200.00</span>
                         </div>
                         <div class="metric-item">
                             <span class="metric-label">Total Capital</span>
-                            <span class="metric-value">15,300.00</span>
+                            <span class="metric-value">12,100.00</span>
                         </div>
                         <div class="metric-item">
                             <span class="metric-label">Total Cash</span>
-                            <span class="metric-value">2,100.00</span>
+                            <span class="metric-value">1,600.00</span>
                         </div>
                         <div class="metric-item">
                             <span class="metric-label">Total Income</span>
-                            <span class="metric-value metric-income">620.00</span>
+                            <span class="metric-value metric-income">360.00</span>
                         </div>
                         <div class="metric-item">
                             <span class="metric-label">Realized P&amp;L</span>
-                            <span class="metric-value metric-positive">+840.00</span>
+                            <span class="metric-value metric-positive">+760.00</span>
                         </div>
                     </div>
 
@@ -102,7 +102,7 @@
                             <h3 id="book-value-chart-title">By Book Value</h3>
                             <div class="landing-allocation-wrap" data-landing-doughnut-card>
                                 <div class="landing-chart-canvas-wrap">
-                                    <canvas class="landing-chart-canvas" id="landingBookValueChart" aria-label="Sample portfolio allocation by book value" role="img">Sample allocation by book value for Stocks, ETFs, Crypto, Gold, and Bonds.</canvas>
+                                    <canvas class="landing-chart-canvas" id="landingBookValueChart" aria-label="Sample portfolio allocation by book value" role="img">Sample allocation by book value for Stocks, ETFs, and Crypto.</canvas>
                                 </div>
                                 <ul class="landing-allocation-legend" id="landingBookValueLegend" aria-label="By Book Value legend"></ul>
                             </div>
@@ -112,7 +112,7 @@
                             <h3 id="capital-chart-title">By Capital</h3>
                             <div class="landing-allocation-wrap" data-landing-doughnut-card>
                                 <div class="landing-chart-canvas-wrap">
-                                    <canvas class="landing-chart-canvas" id="landingCapitalChart" aria-label="Sample portfolio allocation by capital" role="img">Sample allocation by capital for Stocks, ETFs, Crypto, Gold, and Bonds.</canvas>
+                                    <canvas class="landing-chart-canvas" id="landingCapitalChart" aria-label="Sample portfolio allocation by capital" role="img">Sample allocation by capital for Stocks, ETFs, and Crypto.</canvas>
                                 </div>
                                 <ul class="landing-allocation-legend" id="landingCapitalLegend" aria-label="By Capital legend"></ul>
                             </div>
@@ -121,57 +121,56 @@
 
                     <section class="sample-assets" aria-labelledby="sample-assets-title">
                         <div class="sample-assets-head">
-                            <h3 id="sample-assets-title">Sample assets</h3>
+                            <h3 id="sample-assets-title">Sample portfolios</h3>
                         </div>
-                        <div class="asset-table" role="table" aria-label="Sample assets">
-                            <div class="asset-row asset-row-head" role="row">
-                                <span role="columnheader">Asset</span>
-                                <span role="columnheader">Portfolio</span>
-                                <span role="columnheader">Total buy cost</span>
-                                <span role="columnheader">Quantity</span>
-                                <span role="columnheader">Realized P&amp;L</span>
-                                <span role="columnheader">Income</span>
+                        <div class="overview-portfolio-table landing-sample-table" role="table" aria-label="Sample portfolios">
+                            <div class="overview-portfolio-row overview-portfolio-row-head" role="row">
+                                <div role="columnheader">Portfolio</div>
+                                <div role="columnheader">Book Value</div>
+                                <div role="columnheader">Income</div>
+                                <div role="columnheader">Realized P&amp;L</div>
+                                <div role="columnheader">Return</div>
+                                <div role="columnheader">Assets</div>
                             </div>
-                            <div class="asset-row" role="row">
-                                <span class="asset-name" role="cell"><span class="asset-symbol" aria-hidden="true">A</span>AAPL</span>
-                                <span role="cell">Stocks</span>
-                                <span role="cell">3,200.00</span>
-                                <span role="cell">12</span>
-                                <span class="metric-positive" role="cell">+220.00</span>
-                                <span class="metric-income" role="cell">70.00</span>
-                            </div>
-                            <div class="asset-row" role="row">
-                                <span class="asset-name" role="cell"><span class="asset-symbol" aria-hidden="true">V</span>VOO</span>
-                                <span role="cell">ETFs</span>
-                                <span role="cell">2,800.00</span>
-                                <span role="cell">6</span>
-                                <span class="metric-positive" role="cell">+180.00</span>
-                                <span class="metric-income" role="cell">150.00</span>
-                            </div>
-                            <div class="asset-row" role="row">
-                                <span class="asset-name" role="cell"><span class="asset-symbol" aria-hidden="true">B</span>BTC</span>
-                                <span role="cell">Crypto</span>
-                                <span role="cell">2,100.00</span>
-                                <span role="cell">0.04</span>
-                                <span class="metric-positive" role="cell">+260.00</span>
-                                <span class="metric-income" role="cell">0.00</span>
-                            </div>
-                            <div class="asset-row" role="row">
-                                <span class="asset-name" role="cell"><span class="asset-symbol" aria-hidden="true">G</span>GLD</span>
-                                <span role="cell">Gold</span>
-                                <span role="cell">1,500.00</span>
-                                <span role="cell">8</span>
-                                <span class="metric-positive" role="cell">+90.00</span>
-                                <span class="metric-income" role="cell">40.00</span>
-                            </div>
-                            <div class="asset-row" role="row">
-                                <span class="asset-name" role="cell"><span class="asset-symbol" aria-hidden="true">B</span>BND</span>
-                                <span role="cell">Bonds</span>
-                                <span role="cell">1,100.00</span>
-                                <span role="cell">18</span>
-                                <span class="metric-positive" role="cell">+90.00</span>
-                                <span class="metric-income" role="cell">360.00</span>
-                            </div>
+                            <article class="overview-portfolio-row" role="row">
+                                <div class="overview-portfolio-name-cell" role="cell" data-label="Portfolio">
+                                    <span class="overview-portfolio-marker allocation-marker-1" aria-hidden="true">S</span>
+                                    <span class="overview-portfolio-name" title="Stocks">Stocks</span>
+                                </div>
+                                <div class="overview-portfolio-number" role="cell" data-label="Book Value">5,200.00</div>
+                                <div class="overview-portfolio-number" role="cell" data-label="Income"><span class="dividend">+210.00</span></div>
+                                <div class="overview-portfolio-number" role="cell" data-label="Realized P&amp;L"><span class="profit">+320.00</span></div>
+                                <div class="overview-portfolio-number" role="cell" data-label="Return"><span class="profit">+5.71%</span></div>
+                                <div class="overview-portfolio-action" role="cell" data-label="Assets">
+                                    <span class="overview-assets-link">View Assets &rarr;</span>
+                                </div>
+                            </article>
+                            <article class="overview-portfolio-row" role="row">
+                                <div class="overview-portfolio-name-cell" role="cell" data-label="Portfolio">
+                                    <span class="overview-portfolio-marker allocation-marker-2" aria-hidden="true">E</span>
+                                    <span class="overview-portfolio-name" title="ETFs">ETFs</span>
+                                </div>
+                                <div class="overview-portfolio-number" role="cell" data-label="Book Value">3,600.00</div>
+                                <div class="overview-portfolio-number" role="cell" data-label="Income"><span class="dividend">+150.00</span></div>
+                                <div class="overview-portfolio-number" role="cell" data-label="Realized P&amp;L"><span class="profit">+180.00</span></div>
+                                <div class="overview-portfolio-number" role="cell" data-label="Return"><span class="profit">+4.62%</span></div>
+                                <div class="overview-portfolio-action" role="cell" data-label="Assets">
+                                    <span class="overview-assets-link">View Assets &rarr;</span>
+                                </div>
+                            </article>
+                            <article class="overview-portfolio-row" role="row">
+                                <div class="overview-portfolio-name-cell" role="cell" data-label="Portfolio">
+                                    <span class="overview-portfolio-marker allocation-marker-3" aria-hidden="true">C</span>
+                                    <span class="overview-portfolio-name" title="Crypto">Crypto</span>
+                                </div>
+                                <div class="overview-portfolio-number" role="cell" data-label="Book Value">2,400.00</div>
+                                <div class="overview-portfolio-number" role="cell" data-label="Income"><span class="dividend">+0.00</span></div>
+                                <div class="overview-portfolio-number" role="cell" data-label="Realized P&amp;L"><span class="profit">+260.00</span></div>
+                                <div class="overview-portfolio-number" role="cell" data-label="Return"><span class="profit">+10.00%</span></div>
+                                <div class="overview-portfolio-action" role="cell" data-label="Assets">
+                                    <span class="overview-assets-link">View Assets &rarr;</span>
+                                </div>
+                            </article>
                         </div>
                     </section>
                 </aside>

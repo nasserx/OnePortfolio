@@ -432,61 +432,6 @@ html {
     margin-bottom: 0.55rem;
 }
 
-.asset-table {
-    display: grid;
-    gap: 1px;
-    background: var(--border-muted);
-    overflow: hidden;
-    border-radius: var(--radius-md);
-}
-
-.asset-row {
-    display: grid;
-    grid-template-columns: 1.05fr 0.8fr 1fr 0.65fr 0.95fr 0.85fr;
-    gap: 0.6rem;
-    align-items: center;
-    min-width: 0;
-    padding: 0.5rem 0.62rem;
-    background: var(--surface-3);
-    color: var(--text-secondary);
-    font-size: 0.72rem;
-    line-height: 1.25;
-}
-
-.asset-row > span {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-variant-numeric: tabular-nums;
-}
-
-.asset-row-head {
-    color: var(--text-muted);
-    background: var(--surface-2);
-    font-size: 0.66rem;
-}
-
-.asset-name {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.42rem;
-    color: var(--text-primary);
-}
-
-.asset-symbol {
-    display: inline-grid;
-    place-items: center;
-    width: 1.22rem;
-    height: 1.22rem;
-    flex: 0 0 auto;
-    color: var(--text-secondary);
-    background: var(--surface-4);
-    border-radius: 50%;
-    font-size: 0.62rem;
-    font-weight: 500;
-}
-
 .feature-strip-section,
 .how-section {
     scroll-margin-top: 68px;
@@ -715,49 +660,6 @@ html {
 
     .landing-chart-canvas-wrap {
         min-height: 180px;
-    }
-
-    .asset-row,
-    .asset-row-head {
-        grid-template-columns: 1fr 1fr;
-    }
-
-    .asset-row-head {
-        display: none;
-    }
-
-    .asset-row {
-        gap: 0.45rem 0.75rem;
-        padding: 0.75rem;
-    }
-
-    .asset-row > span:nth-child(1),
-    .asset-row > span:nth-child(2) {
-        grid-column: span 1;
-    }
-
-    .asset-row > span:nth-child(n + 3)::before {
-        display: block;
-        margin-bottom: 0.12rem;
-        color: var(--text-muted);
-        font-size: 0.62rem;
-        line-height: 1.1;
-    }
-
-    .asset-row > span:nth-child(3)::before {
-        content: "Total buy cost";
-    }
-
-    .asset-row > span:nth-child(4)::before {
-        content: "Quantity";
-    }
-
-    .asset-row > span:nth-child(5)::before {
-        content: "Realized P&L";
-    }
-
-    .asset-row > span:nth-child(6)::before {
-        content: "Income";
     }
 
     .landing-footer-inner {

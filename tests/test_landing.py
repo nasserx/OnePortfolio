@@ -52,17 +52,40 @@ def test_landing_rebuild_renders_public_sample_preview(app):
     assert 'id="landingBookValueChart"' in html
     assert 'id="landingCapitalChart"' in html
 
-    for asset in ('AAPL', 'VOO', 'BTC', 'GLD', 'BND'):
-        assert asset in text
+    row_text = html[html.index('aria-label="Sample portfolios"'):]
 
-    assert len(re.findall(r'<div class="asset-row" role="row">', html)) == 5
+    for label in ('Portfolio', 'Book Value', 'Income', 'Realized P&L', 'Return', 'Assets'):
+        assert label in text
+
+    for portfolio in ('Stocks', 'ETFs', 'Crypto'):
+        assert portfolio in text
+
+    assert 'class="overview-portfolio-table landing-sample-table"' in html
+    assert len(re.findall(r'<article class="overview-portfolio-row" role="row">', row_text)) == 3
+    assert 'class="overview-portfolio-marker allocation-marker-1"' in html
+    assert 'class="overview-portfolio-marker allocation-marker-3"' in html
+    assert 'class="overview-portfolio-marker allocation-marker-4"' not in html
+    assert text.count('View Assets →') == 3
+    assert 'href="/transactions/?portfolio=' not in row_text
     assert 'MANUAL PORTFOLIO TRACKING' not in text
     assert 'Marketing preview' not in text
     assert 'Supported record fields' not in text
+    assert 'Gold' not in text
+    assert 'Bonds' not in text
+    assert 'AAPL' not in text
+    assert 'VOO' not in text
+    assert 'BTC' not in text
+    assert 'GLD' not in text
+    assert 'BND' not in text
     assert '124,650.00' not in text
     assert '137,890.30' not in text
-    assert '14,000.00' in text
-    assert '15,300.00' in text
+    assert '14,000.00' not in text
+    assert '15,300.00' not in text
+    assert '11,200.00' in text
+    assert '12,100.00' in text
+    assert '1,600.00' in text
+    assert '360.00' in text
+    assert '+760.00' in text
 
 
 def test_landing_data_source_contains_expected_sample_portfolios():
@@ -71,11 +94,13 @@ def test_landing_data_source_contains_expected_sample_portfolios():
     assert match is not None
 
     labels = re.findall(r"'([^']+)'", match.group(1))
-    assert labels == ['Stocks', 'ETFs', 'Crypto', 'Gold', 'Bonds']
-    assert 'values: [5200, 3600, 2400, 1700, 1100]' in script
-    assert 'total: 14000' in script
-    assert 'values: [5600, 3900, 2600, 1900, 1300]' in script
-    assert 'total: 15300' in script
+    assert labels == ['Stocks', 'ETFs', 'Crypto']
+    assert 'Gold' not in script
+    assert 'Bonds' not in script
+    assert 'values: [5200, 3600, 2400]' in script
+    assert 'total: 11200' in script
+    assert 'values: [5600, 3900, 2600]' in script
+    assert 'total: 12100' in script
     assert script.count('renderDoughnut(') == 3
     assert 'landingBookValueChart' in script
     assert 'landingCapitalChart' in script

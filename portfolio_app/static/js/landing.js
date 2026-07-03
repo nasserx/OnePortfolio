@@ -2,21 +2,52 @@
     'use strict';
 
     const sampleData = {
-        portfolios: ['Stocks', 'ETFs', 'Crypto'],
+        portfolios: [
+            {
+                key: 'stocks',
+                name: 'Stocks',
+                bookValue: 18000,
+                capital: 20000,
+                income: 1100,
+                realizedPnl: 1700,
+                return: '+16%',
+            },
+            {
+                key: 'etfs',
+                name: 'ETFs',
+                bookValue: 14000,
+                capital: 16000,
+                income: 800,
+                realizedPnl: 1200,
+                return: '+14%',
+            },
+            {
+                key: 'crypto',
+                name: 'Crypto',
+                bookValue: 10000,
+                capital: 12000,
+                income: 500,
+                realizedPnl: 700,
+                return: '+12%',
+            },
+        ],
+        totals: {
+            cash: 6000,
+            income: 2400,
+            realizedPnl: 3600,
+        },
         charts: {
             bookValue: {
                 canvasId: 'landingBookValueChart',
                 legendId: 'landingBookValueLegend',
                 centerLabel: 'Book Value',
-                values: [5200, 3600, 2400],
-                total: 11200,
+                valueKey: 'bookValue',
             },
             capital: {
                 canvasId: 'landingCapitalChart',
                 legendId: 'landingCapitalLegend',
                 centerLabel: 'Capital',
-                values: [5600, 3900, 2600],
-                total: 12100,
+                valueKey: 'capital',
             },
         },
     };
@@ -24,7 +55,8 @@
     window.OnePortfolioLandingData = sampleData;
 
     function cssVar(name, fallback) {
-        const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+        const scope = document.querySelector('.landing-page') || document.documentElement;
+        const value = getComputedStyle(scope).getPropertyValue(name).trim();
         return value || fallback;
     }
 
@@ -33,20 +65,29 @@
         return Number.isFinite(value) ? value : fallback;
     }
 
-    const moneyFormatter = new Intl.NumberFormat('en-US', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
+    const integerFormatter = new Intl.NumberFormat('en-US', {
+        maximumFractionDigits: 0,
     });
 
-    function formatMoney(value) {
-        return moneyFormatter.format(Number(value) || 0);
+    function formatLandingNumber(value) {
+        return integerFormatter.format(Math.round(Number(value) || 0));
     }
 
-    function formatCompact(value) {
+    function formatSignedNumber(value) {
         const number = Number(value) || 0;
-        if (Math.abs(number) >= 1000000) return (number / 1000000).toFixed(2) + 'M';
-        if (Math.abs(number) >= 1000) return (number / 1000).toFixed(1) + 'K';
-        return formatMoney(number);
+        return (number > 0 ? '+' : '') + formatLandingNumber(number);
+    }
+
+    function portfolioTotal(valueKey) {
+        return sampleData.portfolios.reduce(function (sum, portfolio) {
+            return sum + (Number(portfolio[valueKey]) || 0);
+        }, 0);
+    }
+
+    function portfolioByKey(key) {
+        return sampleData.portfolios.find(function (portfolio) {
+            return portfolio.key === key;
+        });
     }
 
     function prefersReducedMotion() {
@@ -55,23 +96,28 @@
 
     function palette() {
         return [
-            cssVar('--chart-allocation-1', '#7dd3fc'),
-            cssVar('--chart-allocation-2', '#a78bfa'),
-            cssVar('--chart-allocation-3', '#34d399'),
-            cssVar('--chart-allocation-4', '#f0abfc'),
-            cssVar('--chart-allocation-5', '#38bdf8'),
+            cssVar('--chart-allocation-1', '#6bb6d8'),
+            cssVar('--chart-allocation-2', '#8f82c8'),
+            cssVar('--chart-allocation-3', '#45b883'),
+            cssVar('--chart-allocation-4', '#b884b7'),
+            cssVar('--chart-allocation-5', '#5fa6ce'),
         ];
     }
 
     function buildChartData(config) {
-        const total = Number(config.total) || 0;
-        const percentages = config.values.map(function (value) {
-            return total > 0 ? (Number(value) / total) * 100 : 0;
+        const values = sampleData.portfolios.map(function (portfolio) {
+            return Number(portfolio[config.valueKey]) || 0;
+        });
+        const total = portfolioTotal(config.valueKey);
+        const percentages = values.map(function (value) {
+            return total > 0 ? (value / total) * 100 : 0;
         });
 
         return {
-            labels: sampleData.portfolios,
-            values: config.values,
+            labels: sampleData.portfolios.map(function (portfolio) {
+                return portfolio.name;
+            }),
+            values,
             total,
             percentages,
         };
@@ -103,6 +149,45 @@
         },
     };
 
+    function renderMetrics() {
+        const metrics = {
+            bookValue: formatLandingNumber(portfolioTotal('bookValue')),
+            totalCapital: formatLandingNumber(portfolioTotal('capital')),
+            totalCash: formatLandingNumber(sampleData.totals.cash),
+            totalIncome: formatLandingNumber(sampleData.totals.income),
+            realizedPnl: formatSignedNumber(sampleData.totals.realizedPnl),
+        };
+
+        document.querySelectorAll('[data-landing-metric]').forEach(function (element) {
+            const key = element.getAttribute('data-landing-metric');
+            element.textContent = metrics[key] || '';
+        });
+    }
+
+    function renderTableValues() {
+        document.querySelectorAll('[data-landing-row][data-landing-field]').forEach(function (element) {
+            const portfolio = portfolioByKey(element.getAttribute('data-landing-row'));
+            const field = element.getAttribute('data-landing-field');
+
+            if (!portfolio || !Object.prototype.hasOwnProperty.call(portfolio, field)) {
+                element.textContent = '';
+                return;
+            }
+
+            if (field === 'return') {
+                element.textContent = portfolio[field];
+                return;
+            }
+
+            if (field === 'income' || field === 'realizedPnl') {
+                element.textContent = formatSignedNumber(portfolio[field]);
+                return;
+            }
+
+            element.textContent = formatLandingNumber(portfolio[field]);
+        });
+    }
+
     function renderLegend(legend, data) {
         const fragment = document.createDocumentFragment();
 
@@ -119,7 +204,7 @@
 
             const value = document.createElement('span');
             value.className = 'value';
-            value.textContent = formatMoney(data.values[index]) + ' (' + data.percentages[index].toFixed(1) + '%)';
+            value.textContent = formatLandingNumber(data.values[index]) + ' (' + data.percentages[index].toFixed(1) + '%)';
 
             item.append(swatch, label, value);
             fragment.appendChild(item);
@@ -172,13 +257,13 @@
                             label: function (ctx) {
                                 const value = data.values[ctx.dataIndex] || 0;
                                 const pct = data.percentages[ctx.dataIndex] || 0;
-                                return ' ' + ctx.label + ': ' + formatMoney(value) + ' (' + pct.toFixed(1) + '%)';
+                                return ' ' + ctx.label + ': ' + formatLandingNumber(value) + ' (' + pct.toFixed(1) + '%)';
                             },
                         },
                     },
                     landingCenterText: {
                         label: config.centerLabel,
-                        value: formatCompact(data.total),
+                        value: formatLandingNumber(data.total),
                     },
                 },
             },
@@ -186,6 +271,8 @@
     }
 
     document.addEventListener('DOMContentLoaded', function () {
+        renderMetrics();
+        renderTableValues();
         renderDoughnut(sampleData.charts.bookValue);
         renderDoughnut(sampleData.charts.capital);
     });

@@ -11,7 +11,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v='20260611-2') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css', v='20260703-1') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css', v='20260703-7') }}">
 </head>
 <body class="landing-page">
 
@@ -34,9 +34,9 @@
         <section class="landing-hero" aria-labelledby="landing-heading">
             <div class="landing-container landing-hero-grid">
                 <div class="hero-copy">
-                    <h1 id="landing-heading">Track your portfolios with clarity and control.</h1>
+                    <h1 id="landing-heading">Track your portfolios manually, with clarity and control.</h1>
                     <p class="hero-subtext">
-                        OnePortfolio keeps portfolios, capital, assets, income, and realized results organized from the records you enter yourself.
+                        Record capital, asset activity, income, and realized results from your own data without live prices, broker connections, or market noise.
                     </p>
 
                     <div class="landing-cta-group" aria-label="Account actions">
@@ -44,28 +44,10 @@
                         <a class="btn-cta-secondary" href="{{ url_for('auth.login') }}">Log In</a>
                     </div>
 
-                    <div class="hero-trust-points" aria-label="Product principles">
-                        <div class="trust-point">
-                            <i class="bi bi-journal-text" aria-hidden="true"></i>
-                            <div>
-                                <h2>Entry based</h2>
-                                <p>Results come from saved activity.</p>
-                            </div>
-                        </div>
-                        <div class="trust-point">
-                            <i class="bi bi-wallet2" aria-hidden="true"></i>
-                            <div>
-                                <h2>Cash aware</h2>
-                                <p>Capital and cash stay visible.</p>
-                            </div>
-                        </div>
-                        <div class="trust-point">
-                            <i class="bi bi-shield-lock" aria-hidden="true"></i>
-                            <div>
-                                <h2>No data feeds</h2>
-                                <p>No broker sync or automatic imports.</p>
-                            </div>
-                        </div>
+                    <div class="hero-principles" aria-label="Product principles">
+                        <span><i class="bi bi-journal-text" aria-hidden="true"></i>Manual by design</span>
+                        <span><i class="bi bi-wallet2" aria-hidden="true"></i>Cash stays visible</span>
+                        <span><i class="bi bi-broadcast-pin" aria-hidden="true"></i>No market feeds</span>
                     </div>
                 </div>
 
@@ -77,23 +59,23 @@
                     <div class="preview-metrics" aria-label="Sample portfolio metrics">
                         <div class="metric-item">
                             <span class="metric-label">Book Value</span>
-                            <span class="metric-value">11,200.00</span>
+                            <span class="metric-value" data-landing-metric="bookValue"></span>
                         </div>
                         <div class="metric-item">
                             <span class="metric-label">Total Capital</span>
-                            <span class="metric-value">12,100.00</span>
+                            <span class="metric-value" data-landing-metric="totalCapital"></span>
                         </div>
                         <div class="metric-item">
                             <span class="metric-label">Total Cash</span>
-                            <span class="metric-value">1,600.00</span>
+                            <span class="metric-value" data-landing-metric="totalCash"></span>
                         </div>
                         <div class="metric-item">
                             <span class="metric-label">Total Income</span>
-                            <span class="metric-value metric-income">360.00</span>
+                            <span class="metric-value metric-income" data-landing-metric="totalIncome"></span>
                         </div>
                         <div class="metric-item">
                             <span class="metric-label">Realized P&amp;L</span>
-                            <span class="metric-value metric-positive">+760.00</span>
+                            <span class="metric-value metric-positive" data-landing-metric="realizedPnl"></span>
                         </div>
                     </div>
 
@@ -121,55 +103,45 @@
 
                     <section class="sample-assets" aria-labelledby="sample-assets-title">
                         <div class="sample-assets-head">
-                            <h3 id="sample-assets-title">Sample portfolios</h3>
+                            <h3 id="sample-assets-title">Portfolio records</h3>
                         </div>
-                        <div class="overview-portfolio-table landing-sample-table" role="table" aria-label="Sample portfolios">
-                            <div class="overview-portfolio-row overview-portfolio-row-head" role="row">
+                        <div class="landing-sample-table" role="table" aria-label="Sample portfolio records">
+                            <div class="landing-table-row landing-table-head" role="row">
                                 <div role="columnheader">Portfolio</div>
                                 <div role="columnheader">Book Value</div>
                                 <div role="columnheader">Income</div>
                                 <div role="columnheader">Realized P&amp;L</div>
                                 <div role="columnheader">Return</div>
-                                <div role="columnheader">Assets</div>
                             </div>
-                            <article class="overview-portfolio-row" role="row">
-                                <div class="overview-portfolio-name-cell" role="cell" data-label="Portfolio">
+                            <article class="landing-table-row" role="row">
+                                <div class="landing-table-name" role="cell" data-label="Portfolio">
                                     <span class="overview-portfolio-marker allocation-marker-1" aria-hidden="true">S</span>
-                                    <span class="overview-portfolio-name" title="Stocks">Stocks</span>
+                                    <span>Stocks</span>
                                 </div>
-                                <div class="overview-portfolio-number" role="cell" data-label="Book Value">5,200.00</div>
-                                <div class="overview-portfolio-number" role="cell" data-label="Income"><span class="dividend">+210.00</span></div>
-                                <div class="overview-portfolio-number" role="cell" data-label="Realized P&amp;L"><span class="profit">+320.00</span></div>
-                                <div class="overview-portfolio-number" role="cell" data-label="Return"><span class="profit">+5.71%</span></div>
-                                <div class="overview-portfolio-action" role="cell" data-label="Assets">
-                                    <span class="overview-assets-link">View Assets &rarr;</span>
-                                </div>
+                                <div class="landing-table-number" role="cell" data-label="Book Value" data-landing-row="stocks" data-landing-field="bookValue"></div>
+                                <div class="landing-table-number" role="cell" data-label="Income"><span class="dividend" data-landing-row="stocks" data-landing-field="income"></span></div>
+                                <div class="landing-table-number" role="cell" data-label="Realized P&amp;L"><span class="profit" data-landing-row="stocks" data-landing-field="realizedPnl"></span></div>
+                                <div class="landing-table-number" role="cell" data-label="Return"><span class="profit" data-landing-row="stocks" data-landing-field="return"></span></div>
                             </article>
-                            <article class="overview-portfolio-row" role="row">
-                                <div class="overview-portfolio-name-cell" role="cell" data-label="Portfolio">
+                            <article class="landing-table-row" role="row">
+                                <div class="landing-table-name" role="cell" data-label="Portfolio">
                                     <span class="overview-portfolio-marker allocation-marker-2" aria-hidden="true">E</span>
-                                    <span class="overview-portfolio-name" title="ETFs">ETFs</span>
+                                    <span>ETFs</span>
                                 </div>
-                                <div class="overview-portfolio-number" role="cell" data-label="Book Value">3,600.00</div>
-                                <div class="overview-portfolio-number" role="cell" data-label="Income"><span class="dividend">+150.00</span></div>
-                                <div class="overview-portfolio-number" role="cell" data-label="Realized P&amp;L"><span class="profit">+180.00</span></div>
-                                <div class="overview-portfolio-number" role="cell" data-label="Return"><span class="profit">+4.62%</span></div>
-                                <div class="overview-portfolio-action" role="cell" data-label="Assets">
-                                    <span class="overview-assets-link">View Assets &rarr;</span>
-                                </div>
+                                <div class="landing-table-number" role="cell" data-label="Book Value" data-landing-row="etfs" data-landing-field="bookValue"></div>
+                                <div class="landing-table-number" role="cell" data-label="Income"><span class="dividend" data-landing-row="etfs" data-landing-field="income"></span></div>
+                                <div class="landing-table-number" role="cell" data-label="Realized P&amp;L"><span class="profit" data-landing-row="etfs" data-landing-field="realizedPnl"></span></div>
+                                <div class="landing-table-number" role="cell" data-label="Return"><span class="profit" data-landing-row="etfs" data-landing-field="return"></span></div>
                             </article>
-                            <article class="overview-portfolio-row" role="row">
-                                <div class="overview-portfolio-name-cell" role="cell" data-label="Portfolio">
+                            <article class="landing-table-row" role="row">
+                                <div class="landing-table-name" role="cell" data-label="Portfolio">
                                     <span class="overview-portfolio-marker allocation-marker-3" aria-hidden="true">C</span>
-                                    <span class="overview-portfolio-name" title="Crypto">Crypto</span>
+                                    <span>Crypto</span>
                                 </div>
-                                <div class="overview-portfolio-number" role="cell" data-label="Book Value">2,400.00</div>
-                                <div class="overview-portfolio-number" role="cell" data-label="Income"><span class="dividend">+0.00</span></div>
-                                <div class="overview-portfolio-number" role="cell" data-label="Realized P&amp;L"><span class="profit">+260.00</span></div>
-                                <div class="overview-portfolio-number" role="cell" data-label="Return"><span class="profit">+10.00%</span></div>
-                                <div class="overview-portfolio-action" role="cell" data-label="Assets">
-                                    <span class="overview-assets-link">View Assets &rarr;</span>
-                                </div>
+                                <div class="landing-table-number" role="cell" data-label="Book Value" data-landing-row="crypto" data-landing-field="bookValue"></div>
+                                <div class="landing-table-number" role="cell" data-label="Income"><span class="dividend" data-landing-row="crypto" data-landing-field="income"></span></div>
+                                <div class="landing-table-number" role="cell" data-label="Realized P&amp;L"><span class="profit" data-landing-row="crypto" data-landing-field="realizedPnl"></span></div>
+                                <div class="landing-table-number" role="cell" data-label="Return"><span class="profit" data-landing-row="crypto" data-landing-field="return"></span></div>
                             </article>
                         </div>
                     </section>
@@ -177,34 +149,31 @@
             </div>
         </section>
 
-        <section class="feature-strip-section" id="features" aria-labelledby="features-title">
+        <section class="features-section" id="features" aria-labelledby="features-title">
             <div class="landing-container">
-                <h2 id="features-title" class="visually-hidden">Features</h2>
-                <div class="feature-strip">
-                    <article class="feature-strip-item">
-                        <i class="bi bi-cash-stack" aria-hidden="true"></i>
-                        <h3>Capital records</h3>
-                        <p>Track deposits and withdrawals.</p>
+                <div class="section-heading">
+                    <h2 id="features-title">Features</h2>
+                </div>
+                <div class="feature-card-grid">
+                    <article class="feature-card">
+                        <i class="bi bi-journal-text" aria-hidden="true"></i>
+                        <h3>Manual by design</h3>
+                        <p>You decide what is recorded and when. OnePortfolio stays focused on the activity you enter.</p>
                     </article>
-                    <article class="feature-strip-item">
-                        <i class="bi bi-arrow-left-right" aria-hidden="true"></i>
-                        <h3>Asset activity</h3>
-                        <p>Keep buys, sells, quantities, and fees.</p>
+                    <article class="feature-card">
+                        <i class="bi bi-wallet2" aria-hidden="true"></i>
+                        <h3>Cash stays visible</h3>
+                        <p>Deposits, withdrawals, buys, sells, and income remain tied to the cash balance.</p>
                     </article>
-                    <article class="feature-strip-item">
-                        <i class="bi bi-plus-circle" aria-hidden="true"></i>
-                        <h3>Income entries</h3>
-                        <p>Attach income to the right assets.</p>
+                    <article class="feature-card">
+                        <i class="bi bi-broadcast-pin" aria-hidden="true"></i>
+                        <h3>No market feeds</h3>
+                        <p>No live prices, broker sync, or background imports. Your records remain the source of truth.</p>
                     </article>
-                    <article class="feature-strip-item">
+                    <article class="feature-card">
                         <i class="bi bi-pie-chart" aria-hidden="true"></i>
-                        <h3>Portfolio views</h3>
-                        <p>Review cash, book value, and return.</p>
-                    </article>
-                    <article class="feature-strip-item">
-                        <i class="bi bi-speedometer2" aria-hidden="true"></i>
-                        <h3>Lean workspace</h3>
-                        <p>Move through routine updates quickly.</p>
+                        <h3>Built around book value</h3>
+                        <p>Review cost basis, cash, realized P&amp;L, income, and return without market-value assumptions.</p>
                     </article>
                 </div>
             </div>
@@ -216,30 +185,37 @@
                     <h2 id="how-title">How it works</h2>
                 </div>
 
-                <div class="steps-list">
-                    <article class="step-item">
+                <div class="step-card-grid">
+                    <article class="step-card">
                         <span class="step-number">01</span>
-                        <i class="bi bi-folder-plus" aria-hidden="true"></i>
                         <h3>Create your portfolios</h3>
                         <p>Set up the groups you want to track.</p>
                     </article>
-                    <article class="step-item">
+                    <article class="step-card">
                         <span class="step-number">02</span>
-                        <i class="bi bi-journal-plus" aria-hidden="true"></i>
                         <h3>Add your records</h3>
-                        <p>Enter capital, assets, trades, and income.</p>
+                        <p>Enter capital, asset activity, and income as they happen.</p>
                     </article>
-                    <article class="step-item">
+                    <article class="step-card">
                         <span class="step-number">03</span>
-                        <i class="bi bi-pie-chart" aria-hidden="true"></i>
                         <h3>Review the results</h3>
-                        <p>Check cash, book value, realized P&amp;L, and return.</p>
+                        <p>See cash, book value, realized P&amp;L, income, and return in one place.</p>
                     </article>
                 </div>
+            </div>
+        </section>
 
-                <div class="final-actions" aria-label="Final account actions">
-                    <a class="btn-cta-primary" href="{{ url_for('auth.register') }}">Create your portfolio</a>
-                    <a class="btn-cta-secondary" href="{{ url_for('auth.login') }}">Log In</a>
+        <section class="closing-section" aria-labelledby="closing-title">
+            <div class="landing-container">
+                <div class="closing-panel">
+                    <div>
+                        <h2 id="closing-title">A clearer record of every portfolio you manage.</h2>
+                        <p>Start with your own numbers and keep the process under your control.</p>
+                    </div>
+                    <div class="closing-actions" aria-label="Closing account actions">
+                        <a class="btn-cta-primary" href="{{ url_for('auth.register') }}">Create your portfolio</a>
+                        <a class="btn-cta-secondary" href="{{ url_for('auth.login') }}">Log In</a>
+                    </div>
                 </div>
             </div>
         </section>
@@ -258,6 +234,6 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <script src="{{ url_for('static', filename='js/landing.js', v='20260703-1') }}"></script>
+    <script src="{{ url_for('static', filename='js/landing.js', v='20260703-5') }}"></script>
 </body>
 </html>

@@ -67,6 +67,18 @@ def _register_google_oauth_client(app, oauth_client):
     )
 
 
+def _dev_auto_login_allowed(app) -> bool:
+    return bool(app.testing or app.debug)
+
+
+def _validate_dev_auto_login_config(app) -> None:
+    if app.config.get('DEV_AUTO_LOGIN') and not _dev_auto_login_allowed(app):
+        raise RuntimeError(
+            'DEV_AUTO_LOGIN can only be enabled when TESTING=True, '
+            'or DEBUG=True.'
+        )
+
+
 @event.listens_for(Engine, "connect")
 def _enable_sqlite_foreign_keys(dbapi_connection, connection_record):
     # SQLite ships with foreign-key enforcement disabled. Without this pragma
@@ -85,6 +97,7 @@ def create_app(config_class=Config):
     """Application factory pattern."""
     app = Flask(__name__)
     app.config.from_object(config_class)
+    _validate_dev_auto_login_config(app)
 
     # ------------------------------------------------------------------
     # Development-only: auto-login as first user, bypasses authentication.

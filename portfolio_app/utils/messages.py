@@ -180,8 +180,6 @@ MESSAGES = {
     'DELETION_CONFIRMED':          "Your account has been permanently deleted.",
     'DELETION_INVALID_CODE':       "The code is incorrect or has expired. Please request a new one.",
     'DELETION_NO_EMAIL':           "No email address is linked to your account. Please contact an administrator for help.",
-    'DELETION_CODE_NOT_VERIFIED':    "Please verify the confirmation code first.",
-    'DELETION_CONFIRM_TEXT_REQUIRED': "Type \"delete\" to confirm account deletion.",
 
     # Admin panel
     'USER_NOT_FOUND':              "User not found.",

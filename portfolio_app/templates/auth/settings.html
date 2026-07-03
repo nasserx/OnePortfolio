@@ -237,14 +237,13 @@
 
                             {% set deletion_error = request.args.get('deletion_error') %}
                             {% set deletion_sent  = request.args.get('deletion_sent') %}
-                            {% set deletion_verified = request.args.get('deletion_verified') %}
 
                             <!-- Step 2: start deletion and send the email code -->
                             <div id="delete-start-section"
-                                 class="{% if not deletion_error or deletion_sent or deletion_verified %}d-none{% endif %}">
+                                 class="{% if not deletion_error or deletion_sent %}d-none{% endif %}">
                                 <div class="alert alert-warning py-2 mb-3">
                                     <i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>
-                                    This action cannot be undone.
+                                    Deleting your account permanently removes your portfolios and recorded data. Enter the verification code sent to your email to continue.
                                 </div>
                                 {% if deletion_error and not deletion_sent %}
                                     <div class="alert alert-danger py-2 mb-3">
@@ -259,7 +258,7 @@
                                         <i class="bi bi-envelope me-1" aria-hidden="true"></i>Send confirmation code
                                     </button>
                                     <button type="submit" form="form-delete-cancel"
-                                            class="btn btn-link btn-sm ms-1" style="color: var(--text-2);">Cancel</button>
+                                            class="btn btn-link btn-sm ms-1 text-secondary">Cancel</button>
                                 </form>
                             </div>
 
@@ -268,11 +267,11 @@
                             </form>
 
                             <!-- Step 3: verify the email code -->
-                            {% if deletion_sent and not deletion_verified %}
+                            {% if deletion_sent %}
                             <div id="delete-confirm-section">
                                 <div class="alert alert-warning py-2 mb-3">
                                     <i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>
-                                    This action cannot be undone.
+                                    Deleting your account permanently removes your portfolios and recorded data. Enter the verification code sent to your email to continue.
                                 </div>
                                 {% if deletion_error %}
                                     <div class="alert alert-danger py-2 mb-3">
@@ -292,7 +291,7 @@
                                         <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>Resend confirmation code
                                     </button>
                                     <button type="submit" form="form-delete-cancel"
-                                            class="btn btn-link btn-sm ms-1" style="color: var(--text-2);">Cancel</button>
+                                            class="btn btn-link btn-sm ms-1 text-secondary">Cancel</button>
                                 </form>
 
                                 <form method="post" action="{{ url_for('auth.delete_account_verify') }}"
@@ -306,40 +305,9 @@
                                                autocomplete="one-time-code"
                                                placeholder="000000" autofocus required>
                                     </div>
-                                    <button type="submit" class="btn btn-primary btn-sm">
-                                        <i class="bi bi-check-circle me-2" aria-hidden="true"></i>Verify code
-                                    </button>
-                                </form>
-                            </div>
-                            {% endif %}
-
-                            <!-- Step 4: final typed confirmation -->
-                            {% if deletion_verified %}
-                            <div id="delete-final-section">
-                                <div class="alert alert-warning py-2 mb-3">
-                                    <i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>
-                                    This action cannot be undone.
-                                </div>
-                                {% if deletion_error %}
-                                    <div class="alert alert-danger py-2 mb-3">
-                                        <i class="bi bi-exclamation-circle me-1" aria-hidden="true"></i>{{ deletion_error }}
-                                    </div>
-                                {% endif %}
-
-                                <form method="post" action="{{ url_for('auth.delete_account_confirm') }}"
-                                      novalidate>
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <div class="mb-3">
-                                        <label for="delete-confirm" class="form-label">Type "delete" to permanently delete your account</label>
-                                        <input type="text" id="delete-confirm" name="delete_confirm"
-                                               class="form-control form-control-sm settings-delete-confirm-input"
-                                               autocomplete="off" autofocus required>
-                                    </div>
                                     <button type="submit" class="btn btn-danger btn-sm">
-                                        <i class="bi bi-trash me-2" aria-hidden="true"></i>Delete permanently
+                                        <i class="bi bi-trash me-2" aria-hidden="true"></i>Delete account
                                     </button>
-                                    <button type="submit" form="form-delete-cancel"
-                                            class="btn btn-link btn-sm ms-1" style="color: var(--text-2);">Cancel</button>
                                 </form>
                             </div>
                             {% endif %}
@@ -380,14 +348,12 @@
     const btnShow    = document.getElementById('btn-show-delete-confirm');
     const startSection = document.getElementById('delete-start-section');
     const confirmSection = document.getElementById('delete-confirm-section');
-    const finalSection = document.getElementById('delete-final-section');
     const btnRequest = document.getElementById('form-delete-request');
 
     // If a deletion stage is already visible (sent/error state), hide the trigger button
     const deletionStageVisible = (
         (startSection && !startSection.classList.contains('d-none')) ||
-        (confirmSection && !confirmSection.classList.contains('d-none')) ||
-        (finalSection && !finalSection.classList.contains('d-none'))
+        (confirmSection && !confirmSection.classList.contains('d-none'))
     );
     if (deletionStageVisible && btnRequest) {
         btnRequest.classList.add('d-none');

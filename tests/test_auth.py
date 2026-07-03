@@ -17,14 +17,20 @@ The mail layer is monkey-patched (``send_verification_email`` /
 """
 
 from datetime import datetime, timedelta, timezone
-import html
 
 import pytest
+from sqlalchemy.exc import SQLAlchemyError
 
 from config import Config
 from portfolio_app import create_app, db, limiter
+from portfolio_app.models.dividend import Dividend
+from portfolio_app.models.portfolio import Portfolio
+from portfolio_app.models.portfolio_event import PortfolioEvent
+from portfolio_app.models.symbol import Symbol
+from portfolio_app.models.transaction import Transaction
 from portfolio_app.models.user import User
 from portfolio_app.models.pending_registration import PendingRegistration
+from portfolio_app.repositories.user_repository import UserRepository
 
 
 # ---------------------------------------------------------------------------
@@ -515,7 +521,7 @@ class TestSettingsAndDeletion:
         assert '>Username<' not in body
         assert 'Cannot be changed.' not in body
 
-    def test_account_page_initially_hides_final_deletion_form(self, app, client, email_log):
+    def test_account_page_initially_hides_deletion_code_and_typed_confirmation(self, app, client, email_log):
         _signup_and_verify(app, client, email_log)
         client.post(
             '/login',
@@ -528,8 +534,9 @@ class TestSettingsAndDeletion:
         assert 'id="delete-code"' not in body
         assert 'name="delete_confirm"' not in body
         assert 'Delete permanently' not in body
+        assert 'Type "delete"' not in body
 
-    def test_after_sending_deletion_code_shows_code_only(self, app, client, email_log):
+    def test_after_sending_deletion_code_shows_code_delete_button_only(self, app, client, email_log):
         _signup_and_verify(app, client, email_log)
         client.post(
             '/login',
@@ -542,11 +549,12 @@ class TestSettingsAndDeletion:
         assert resp.status_code == 200
         body = resp.get_data(as_text=True)
         assert 'id="delete-code"' in body
-        assert 'Verify code' in body
+        assert 'Delete account' in body
         assert 'name="delete_confirm"' not in body
         assert 'Delete permanently' not in body
+        assert 'Type "delete"' not in body
 
-    def test_final_deletion_cannot_happen_before_code_verification(self, app, client, email_log):
+    def test_invalid_deletion_code_does_not_delete_or_logout(self, app, client, email_log):
         _signup_and_verify(app, client, email_log)
         client.post(
             '/login',
@@ -555,16 +563,18 @@ class TestSettingsAndDeletion:
         client.post('/settings/delete/request')
 
         resp = client.post(
-            '/settings/delete/confirm',
-            data={'delete_confirm': 'delete'},
+            '/settings/delete/verify',
+            data={'code': '000000'},
             follow_redirects=True,
         )
         assert resp.status_code == 200
-        assert 'Please verify the confirmation code first.' in resp.get_data(as_text=True)
+        assert 'The code is incorrect or has expired. Please request a new one.' in resp.get_data(as_text=True)
         with app.app_context():
-            assert User.query.filter_by(email='alice@example.com').count() == 1
+            user = User.query.filter_by(email='alice@example.com').one()
+        with client.session_transaction() as sess:
+            assert sess.get('_user_id') == str(user.id)
 
-    def test_after_code_verification_shows_delete_confirmation(self, app, client, email_log):
+    def test_expired_deletion_code_does_not_delete_or_logout(self, app, client, email_log):
         _signup_and_verify(app, client, email_log)
         client.post(
             '/login',
@@ -576,6 +586,10 @@ class TestSettingsAndDeletion:
             for _, value in email_log
             if value.startswith('deletion:')
         ][-1]
+        with app.app_context():
+            user = User.query.filter_by(email='alice@example.com').one()
+            user.deletion_code_expires_at = datetime.now(timezone.utc) - timedelta(minutes=1)
+            db.session.commit()
 
         resp = client.post(
             '/settings/delete/verify',
@@ -583,40 +597,13 @@ class TestSettingsAndDeletion:
             follow_redirects=True,
         )
         assert resp.status_code == 200
-        body = resp.get_data(as_text=True)
-        assert 'id="delete-code"' not in body
-        assert 'name="delete_confirm"' in body
-        assert 'Type "delete" to permanently delete your account' in body
-        assert 'Delete permanently' in body
+        assert 'The code is incorrect or has expired. Please request a new one.' in resp.get_data(as_text=True)
         with app.app_context():
-            assert User.query.filter_by(email='alice@example.com').count() == 1
+            user = User.query.filter_by(email='alice@example.com').one()
+        with client.session_transaction() as sess:
+            assert sess.get('_user_id') == str(user.id)
 
-    def test_final_deletion_requires_exact_lowercase_delete(self, app, client, email_log):
-        _signup_and_verify(app, client, email_log)
-        client.post(
-            '/login',
-            data={'username': 'alice@example.com', 'password': 'CorrectHorse9'},
-        )
-        client.post('/settings/delete/request')
-        deletion_code = [
-            value.split(':', 1)[1]
-            for _, value in email_log
-            if value.startswith('deletion:')
-        ][-1]
-        client.post('/settings/delete/verify', data={'code': deletion_code})
-
-        resp = client.post(
-            '/settings/delete/confirm',
-            data={'delete_confirm': 'DELETE'},
-            follow_redirects=True,
-        )
-        assert resp.status_code == 200
-        body = html.unescape(resp.get_data(as_text=True))
-        assert 'Type "delete" to confirm account deletion.' in body
-        with app.app_context():
-            assert User.query.filter_by(email='alice@example.com').count() == 1
-
-    def test_account_deletion_with_verified_code_and_lowercase_delete_succeeds(
+    def test_correct_deletion_code_deletes_account_immediately_and_logs_out(
         self, app, client, email_log,
     ):
         _signup_and_verify(app, client, email_log)
@@ -630,22 +617,211 @@ class TestSettingsAndDeletion:
             for _, value in email_log
             if value.startswith('deletion:')
         ][-1]
-        verify_resp = client.post(
-            '/settings/delete/verify',
-            data={'code': deletion_code},
-            follow_redirects=False,
-        )
-        assert verify_resp.status_code in (302, 303)
 
         resp = client.post(
-            '/settings/delete/confirm',
-            data={'delete_confirm': 'delete'},
+            '/settings/delete/verify',
+            data={'code': deletion_code},
             follow_redirects=False,
         )
         assert resp.status_code in (302, 303)
         assert resp.headers.get('Location', '').endswith('/login')
         with app.app_context():
             assert User.query.filter_by(email='alice@example.com').count() == 0
+        with client.session_transaction() as sess:
+            assert sess.get('_user_id') is None
+
+    def test_deletion_removes_current_user_and_associated_data_only(
+        self, app, client, email_log,
+    ):
+        _signup_and_verify(app, client, email_log)
+        with app.app_context():
+            alice = User.query.filter_by(email='alice@example.com').one()
+            bob = User(
+                username='bob',
+                email='bob@example.com',
+                is_verified=True,
+                created_at=datetime.now(timezone.utc),
+            )
+            bob.set_password('CorrectHorse9')
+            db.session.add(bob)
+            db.session.flush()
+
+            alice_portfolio = Portfolio(user_id=alice.id, name='Alice Portfolio')
+            bob_portfolio = Portfolio(user_id=bob.id, name='Bob Portfolio')
+            db.session.add_all([alice_portfolio, bob_portfolio])
+            db.session.flush()
+            db.session.add_all([
+                PortfolioEvent(
+                    portfolio_id=alice_portfolio.id,
+                    event_type='Deposit',
+                    amount_delta=1000,
+                ),
+                Transaction(
+                    portfolio_id=alice_portfolio.id,
+                    transaction_type='Buy',
+                    symbol='AAPL',
+                    price=100,
+                    quantity=1,
+                    fees=0,
+                    net_amount=100,
+                    average_cost=100,
+                ),
+                Dividend(
+                    portfolio_id=alice_portfolio.id,
+                    symbol='AAPL',
+                    amount=5,
+                ),
+                Symbol(portfolio_id=alice_portfolio.id, symbol='AAPL'),
+                PortfolioEvent(
+                    portfolio_id=bob_portfolio.id,
+                    event_type='Deposit',
+                    amount_delta=500,
+                ),
+            ])
+            db.session.commit()
+            bob_id = bob.id
+
+        client.post(
+            '/login',
+            data={'username': 'alice@example.com', 'password': 'CorrectHorse9'},
+        )
+        client.post('/settings/delete/request')
+        deletion_code = [
+            value.split(':', 1)[1]
+            for _, value in email_log
+            if value.startswith('deletion:')
+        ][-1]
+        resp = client.post(
+            '/settings/delete/verify',
+            data={'code': deletion_code},
+            follow_redirects=False,
+        )
+        assert resp.status_code in (302, 303)
+        with app.app_context():
+            assert User.query.filter_by(email='alice@example.com').count() == 0
+            assert User.query.filter_by(email='bob@example.com').count() == 1
+            assert Portfolio.query.filter_by(user_id=bob_id).count() == 1
+            assert Portfolio.query.filter_by(name='Alice Portfolio').count() == 0
+            assert Transaction.query.count() == 0
+            assert Dividend.query.count() == 0
+            assert Symbol.query.count() == 0
+            assert PortfolioEvent.query.count() == 1
+
+    def test_reused_deletion_code_cannot_delete_another_account(self, app, client, email_log):
+        _signup_and_verify(app, client, email_log)
+        client.post(
+            '/login',
+            data={'username': 'alice@example.com', 'password': 'CorrectHorse9'},
+        )
+        client.post('/settings/delete/request')
+        deletion_code = [
+            value.split(':', 1)[1]
+            for _, value in email_log
+            if value.startswith('deletion:')
+        ][-1]
+        client.post('/settings/delete/verify', data={'code': deletion_code})
+
+        _signup_and_verify(
+            app,
+            client,
+            email_log,
+            email='bob@example.com',
+            password='CorrectHorse9',
+        )
+        client.post(
+            '/login',
+            data={'username': 'bob@example.com', 'password': 'CorrectHorse9'},
+        )
+
+        resp = client.post(
+            '/settings/delete/verify',
+            data={'code': deletion_code},
+            follow_redirects=True,
+        )
+        assert resp.status_code == 200
+        assert 'The code is incorrect or has expired. Please request a new one.' in resp.get_data(as_text=True)
+        with app.app_context():
+            bob = User.query.filter_by(email='bob@example.com').one()
+        with client.session_transaction() as sess:
+            assert sess.get('_user_id') == str(bob.id)
+
+    def test_another_users_deletion_code_cannot_delete_current_user(self, app, client, email_log):
+        _signup_and_verify(app, client, email_log)
+        with app.app_context():
+            bob = User(
+                username='bob',
+                email='bob@example.com',
+                is_verified=True,
+                deletion_code='123456',
+                deletion_code_expires_at=datetime.now(timezone.utc) + timedelta(minutes=10),
+                created_at=datetime.now(timezone.utc),
+            )
+            bob.set_password('CorrectHorse9')
+            db.session.add(bob)
+            db.session.commit()
+
+        client.post(
+            '/login',
+            data={'username': 'alice@example.com', 'password': 'CorrectHorse9'},
+        )
+        resp = client.post(
+            '/settings/delete/verify',
+            data={'code': '123456'},
+            follow_redirects=True,
+        )
+        assert resp.status_code == 200
+        assert 'The code is incorrect or has expired. Please request a new one.' in resp.get_data(as_text=True)
+        with app.app_context():
+            assert User.query.filter_by(email='alice@example.com').count() == 1
+            assert User.query.filter_by(email='bob@example.com').count() == 1
+
+    def test_account_deletion_commit_failure_rolls_back_and_preserves_account(
+        self, app, client, email_log, monkeypatch,
+    ):
+        _signup_and_verify(app, client, email_log)
+        client.post(
+            '/login',
+            data={'username': 'alice@example.com', 'password': 'CorrectHorse9'},
+        )
+        client.post('/settings/delete/request')
+        deletion_code = [
+            value.split(':', 1)[1]
+            for _, value in email_log
+            if value.startswith('deletion:')
+        ][-1]
+
+        original_commit = UserRepository.commit
+
+        def fail_user_delete_commit(self):
+            if any(isinstance(obj, User) for obj in self.db.session.deleted):
+                raise SQLAlchemyError('delete commit failed')
+            return original_commit(self)
+
+        monkeypatch.setattr(UserRepository, 'commit', fail_user_delete_commit)
+        resp = client.post(
+            '/settings/delete/verify',
+            data={'code': deletion_code},
+            follow_redirects=True,
+        )
+        assert resp.status_code == 200
+        with app.app_context():
+            user = User.query.filter_by(email='alice@example.com').one()
+            assert user.deletion_code == deletion_code
+        with client.session_transaction() as sess:
+            assert sess.get('_user_id') == str(user.id)
+
+        monkeypatch.setattr(UserRepository, 'commit', original_commit)
+        resp = client.post(
+            '/settings/delete/verify',
+            data={'code': deletion_code},
+            follow_redirects=False,
+        )
+        assert resp.status_code in (302, 303)
+        assert resp.headers.get('Location', '').endswith('/login')
+        with app.app_context():
+            assert User.query.filter_by(email='alice@example.com').count() == 0
+        with client.session_transaction() as sess:
+            assert sess.get('_user_id') is None
 
 
 # ---------------------------------------------------------------------------

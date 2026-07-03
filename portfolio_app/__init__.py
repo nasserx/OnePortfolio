@@ -239,9 +239,9 @@ def create_app(config_class=Config):
                 return redirect(url_for('auth.verify_code', email=email))
             return redirect(url_for('auth.login'))
 
-        if endpoint == 'auth.delete_account_confirm':
+        if endpoint == 'auth.delete_account_verify':
             flash(message, 'warning')
-            return redirect(url_for('auth.settings', tab='account'))
+            return redirect(url_for('auth.settings', tab='account', deletion_sent='1'))
 
         # Generic fallback — keep the message inside a real page so the
         # user still sees navigation, branding, and a way out.

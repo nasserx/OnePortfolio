@@ -413,16 +413,6 @@ class AuthService:
     def confirm_account_deletion(self, user: User, code: str) -> Tuple[bool, str]:
         # Reject upfront if the code was never set or has expired — the same
         # generic message hides whether the user is in the deletion flow.
-        success, error_msg = self.verify_account_deletion_code(user, code)
-        if not success:
-            return False, error_msg
-
-        self.user_repo.delete(user)
-        self.user_repo.commit()
-        return True, ''
-
-    def verify_account_deletion_code(self, user: User, code: str) -> Tuple[bool, str]:
-        """Verify the deletion OTP without deleting the account."""
         if not self._deletion_code_is_live(user):
             return False, MESSAGES['DELETION_INVALID_CODE']
 
@@ -439,13 +429,6 @@ class AuthService:
             return False, MESSAGES['DELETION_INVALID_CODE']
 
         user.deletion_code_failed_attempts = 0
-        self.user_repo.commit()
-        return True, ''
-
-    def complete_verified_account_deletion(self, user: User) -> Tuple[bool, str]:
-        """Delete an account after its deletion OTP has been verified."""
-        if not self._deletion_code_is_live(user):
-            return False, MESSAGES['DELETION_INVALID_CODE']
         self.user_repo.delete(user)
         self.user_repo.commit()
         return True, ''

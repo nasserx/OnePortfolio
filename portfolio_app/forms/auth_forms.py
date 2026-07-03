@@ -149,23 +149,6 @@ class VerifyCodeForm(BaseForm):
         return not self.has_errors()
 
 
-class ConfirmDeletionForm(VerifyCodeForm):
-    """Form for final account deletion intent after OTP verification."""
-
-    def validate(self) -> bool:
-        confirm = self._validate_required_string(
-            'delete_confirm',
-            MESSAGES['DELETION_CONFIRM_TEXT_REQUIRED'],
-        )
-        if confirm:
-            if confirm != 'delete':
-                self.errors['delete_confirm'] = MESSAGES['DELETION_CONFIRM_TEXT_REQUIRED']
-            else:
-                self.cleaned_data['delete_confirm'] = confirm
-
-        return not self.has_errors()
-
-
 class UpdateEmailForm(BaseForm):
     """Form for updating the logged-in user's email address."""
 

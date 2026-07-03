@@ -2893,7 +2893,6 @@ i.bi.text-info,
     max-width: 180px; letter-spacing: 0.2em;
     font-weight: 600; font-size: 1rem; text-align: center;
 }
-.settings-delete-confirm-input { max-width: 220px; font-weight: 600; }
 .settings-tab-content { min-height: 400px; overflow-wrap: anywhere; }
 
 @media (max-width: 575.98px) {

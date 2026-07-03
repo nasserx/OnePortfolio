@@ -21,7 +21,6 @@ from portfolio_app.forms.auth_forms import (
     RegisterForm,
     ChangePasswordForm,
     GoogleDisconnectForm,
-    ConfirmDeletionForm,
     ForgotPasswordForm,
     ResetPasswordForm,
     VerifyCodeForm,
@@ -38,7 +37,6 @@ from portfolio_app.utils.messages import MESSAGES
 logger = logging.getLogger(__name__)
 
 auth_bp = Blueprint('auth', __name__)
-_DELETION_VERIFIED_SESSION_KEY = 'deletion_verified_user_id'
 _GOOGLE_OAUTH_NEXT_SESSION_KEY = 'google_oauth_next'
 _GOOGLE_OAUTH_PROVIDER = 'google'
 
@@ -753,7 +751,6 @@ def delete_account_request():
         return redirect(url_for('auth.settings', tab='account',
                                 deletion_error=MESSAGES['DELETION_NO_EMAIL']))
 
-    session.pop(_DELETION_VERIFIED_SESSION_KEY, None)
     svc = get_services()
     try:
         code = svc.auth_service.request_account_deletion(current_user)
@@ -773,7 +770,6 @@ def delete_account_request():
 @login_required
 def delete_account_cancel():
     """Cancel the in-progress account deletion flow."""
-    session.pop(_DELETION_VERIFIED_SESSION_KEY, None)
     return redirect(url_for('auth.settings', tab='account'))
 
 
@@ -786,11 +782,10 @@ def delete_account_cancel():
     error_message=MESSAGES['ACCOUNT_LOCKED'],
 )
 def delete_account_verify():
-    """Verify the account-deletion OTP before showing the final delete step."""
+    """Delete the authenticated account after a valid deletion OTP."""
     form = VerifyCodeForm(request.form)
 
     def _verify_error(msg: str):
-        session.pop(_DELETION_VERIFIED_SESSION_KEY, None)
         return redirect(url_for('auth.settings', tab='account', deletion_sent='1',
                                 deletion_error=msg))
 
@@ -804,52 +799,16 @@ def delete_account_verify():
         return _verify_error(MESSAGES['DELETION_INVALID_CODE'])
 
     data = form.get_cleaned_data()
-    success, error_msg = svc.auth_service.verify_account_deletion_code(user, data['code'])
-    if not success:
-        return _verify_error(error_msg or MESSAGES['DELETION_INVALID_CODE'])
-
-    session[_DELETION_VERIFIED_SESSION_KEY] = str(user.id)
-    return redirect(url_for('auth.settings', tab='account', deletion_verified='1'))
-
-
-@auth_bp.route('/settings/delete/confirm', methods=['POST'])
-@login_required
-@demo_restricted
-@limiter.limit(
-    "5 per 15 minutes",
-    key_func=lambda: f"deletion:{current_user.get_id() or ''}",
-    error_message=MESSAGES['ACCOUNT_LOCKED'],
-)
-def delete_account_confirm():
-    """Permanently delete the authenticated user's account after OTP verification."""
-    form = ConfirmDeletionForm(request.form)
-
-    def _deletion_error(msg: str):
-        return redirect(url_for('auth.settings', tab='account', deletion_verified='1',
-                                deletion_error=msg))
-
-    if session.get(_DELETION_VERIFIED_SESSION_KEY) != current_user.get_id():
-        return redirect(url_for('auth.settings', tab='account', deletion_sent='1',
-                                deletion_error=MESSAGES['DELETION_CODE_NOT_VERIFIED']))
-
-    if not form.validate():
-        first_error = next(iter(form.errors.values()), MESSAGES['DELETION_INVALID_CODE'])
-        return _deletion_error(first_error)
-
-    data = form.get_cleaned_data()
-    svc = get_services()
-
-    # Fetch a fresh copy of the user before deletion so the OTP fields are current
-    user = svc.user_repo.get_by_id(current_user.id)
-    if not user:
-        return _deletion_error(MESSAGES['DELETION_INVALID_CODE'])
-
-    success, error_msg = svc.auth_service.complete_verified_account_deletion(user)
+    try:
+        success, error_msg = svc.auth_service.confirm_account_deletion(user, data['code'])
+    except SQLAlchemyError:
+        svc.user_repo.db.session.rollback()
+        logger.exception('Failed to delete account for user %s', current_user.id)
+        return _verify_error(MESSAGES['OPERATION_FAILED'])
 
     if success:
-        session.pop(_DELETION_VERIFIED_SESSION_KEY, None)
         logout_user()
         flash(MESSAGES['DELETION_CONFIRMED'], 'success')
         return redirect(url_for('auth.login'))
 
-    return _deletion_error(error_msg or MESSAGES['DELETION_INVALID_CODE'])
+    return _verify_error(error_msg or MESSAGES['DELETION_INVALID_CODE'])

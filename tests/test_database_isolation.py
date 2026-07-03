@@ -9,7 +9,7 @@ def test_pytest_database_path_is_temporary_and_outside_tests(app, test_db_path):
 
     assert test_db_path.name == 'test.sqlite'
     assert test_db_path.exists()
-    assert not test_db_path.resolve().is_relative_to(repo_tests_dir)
+    assert repo_tests_dir.resolve() not in test_db_path.resolve().parents
 
 
 def test_database_starts_empty_before_creating_user(app):

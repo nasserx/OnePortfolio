@@ -113,7 +113,7 @@ def test_application_factory_runs_migrations_before_create_all(tmp_path, monkeyp
 
     assert order == ['migrations', 'create_all']
     repo_tests_dir = Path(__file__).resolve().parent
-    assert not db_path.resolve().is_relative_to(repo_tests_dir)
+    assert repo_tests_dir.resolve() not in db_path.resolve().parents
 
 
 def _index_columns(app, table_name):

@@ -280,7 +280,7 @@ def test_overview_portfolio_allocation_uses_other_portfolios_only_after_seven(ap
     assert chart_data['capital_chart']['categories'][-1] == 'Other Portfolios'
     assert len(chart_data['book_value_chart']['categories']) == 8
     assert len(chart_data['capital_chart']['categories']) == 8
-    assert 'Showing top 7 portfolios and grouping the rest as Other Portfolios.' in html
+    assert 'Showing top 7 portfolios and grouping the rest as Other Portfolios.' not in html
 
 
 def test_overview_keeps_related_routes_available(app):

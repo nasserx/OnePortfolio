@@ -903,8 +903,7 @@ textarea,
 .overview-kpi-card,
 .portfolio-list-card,
 .transactions-symbol-card,
-.charts-card,
-.charts-empty-state {
+.charts-card {
     border-color: transparent !important;
     border-width: 0 !important;
     outline-color: var(--border-soft) !important;
@@ -1447,20 +1446,7 @@ textarea,
     outline: 1px solid var(--border-soft) !important;
 }
 
-.charts-page {
-    display: grid;
-    gap: 1rem;
-}
-
-.charts-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 1rem;
-    align-items: stretch;
-}
-
-.charts-card,
-.charts-empty-state {
+.charts-card {
     outline-color: var(--border-soft) !important;
 }
 
@@ -1496,12 +1482,6 @@ textarea,
     color: var(--text-1);
     font-size: var(--font-size-card-title);
     font-weight: 500;
-}
-
-.charts-helper {
-    color: var(--text-3);
-    font-size: var(--font-size-helper);
-    line-height: 1.35;
 }
 
 .allocation-wrap {
@@ -1593,10 +1573,6 @@ textarea,
     color: var(--text-3);
 }
 
-.allocation-note {
-    margin-top: 0.75rem;
-}
-
 .charts-empty-panel {
     grid-column: 1 / -1;
     min-height: 180px;
@@ -1612,9 +1588,7 @@ textarea,
 }
 
 .charts-card:hover,
-.charts-card:focus-within,
-.charts-empty-state:hover,
-.charts-empty-state:focus-within {
+.charts-card:focus-within {
     outline-color: var(--border-accent) !important;
 }
 .charts-card:hover > .card-body,
@@ -3295,8 +3269,7 @@ i.bi.text-info,
     .overview-kpi-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
-    .overview-charts-grid,
-    .charts-grid {
+    .overview-charts-grid {
         grid-template-columns: 1fr;
     }
     .transactions-page-header {

@@ -549,23 +549,21 @@ def test_dividends(app):
 
 
 # ---------------------------------------------------------------------------
-# Test 7 – Symbol performance (per-symbol heatmap aggregation)
+# Test 7 – Symbol performance
 # ---------------------------------------------------------------------------
 
 def test_symbol_performance(app):
-    """Verify per-(portfolio, symbol) realized performance for the heatmap.
+    """Verify per-(portfolio, symbol) realized performance.
 
     Covers:
       - Symbol with sells: realized P&L and ROI use total buy cost so the
-        percentage matches the Transactions section symbol summary
+        percentage matches the Assets section symbol summary
       - Symbol with dividends only (held, never sold): ROI uses total buy
         cost so dividends are measured against the whole symbol position
       - Dividend recorded against a symbol with no transaction history
         still surfaces (rare, but real for transferred-in holdings)
       - Cross-user isolation: another user sees only their own rows
-      - Zero-P&L rows are dropped from the treemap projection
     """
-    from portfolio_app.routes.charts import _symbol_treemap, TOP_N_SYMBOLS
 
     with app.app_context():
         db.drop_all()
@@ -582,9 +580,9 @@ def test_symbol_performance(app):
         svc1.portfolio_service.deposit_funds(trading.id, _dec(10_000))
         svc1.portfolio_service.deposit_funds(long_term.id, _dec(10_000))
 
-        # AAPL in Trading: buy 10@100, sell 5@120 → realized P&L = 100,
-        # realized cost basis = 500, total buy cost = 1000. The heatmap
-        # and Transactions summary should use 100/1000 = 10%, not 100/500 = 20%.
+        # AAPL in Trading: buy 10@100, sell 5@120 -> realized P&L = 100,
+        # realized cost basis = 500, total buy cost = 1000. Asset return
+        # should use 100/1000 = 10%, not 100/500 = 20%.
         b1 = Transaction(portfolio_id=trading.id, transaction_type='Buy',
                          date=datetime(2026, 1, 1), symbol='AAPL',
                          price=100, quantity=10, fees=0)
@@ -596,8 +594,7 @@ def test_symbol_performance(app):
 
         # AAPL in Long-term: same ticker, different portfolio and ROI.
         # buy 100@10, sell 10@11 → realized P&L = 10, total buy cost = 1000.
-        # The charts heatmap must combine this with Trading/AAPL as one
-        # user-level AAPL tile and recompute ROI from total P&L / total buy cost.
+        # Same ticker in another portfolio must remain a distinct row.
         b1_lt = Transaction(portfolio_id=long_term.id, transaction_type='Buy',
                             date=datetime(2026, 1, 1), symbol='AAPL',
                             price=10, quantity=100, fees=0)
@@ -696,44 +693,6 @@ def test_symbol_performance(app):
         assert len(u2_rows) == 1, f"u2 should have 1 row, got {len(u2_rows)}"
         assert u2_rows[0]['symbol'] == 'NVDA'
         _assert('NVDA return amount (u2)', _dec('100'), u2_rows[0]['return_amount'])
-
-        # ── 7f: treemap projection drops zero-P&L rows ──
-        # Build a synthetic row with zero pnl alongside real ones — should be filtered.
-        zero_row = {
-            'portfolio_id': trading.id, 'portfolio_name': 'Trading', 'symbol': 'ZERO',
-            'realized_pnl': ZERO, 'total_income': ZERO, 'return_amount': ZERO,
-            'total_buy_cost': ZERO,
-            'realized_cost_basis': ZERO, 'held_cost_basis': ZERO,
-            'return_base': ZERO, 'return_percent': ZERO, 'return_display': '—',
-        }
-        treemap = _symbol_treemap(rows + [zero_row])
-        assert all(t['pnl'] != 0 or t.get('income', 0) != 0 for t in treemap), 'zero-performance row leaked into treemap'
-        assert all('abs_pnl' in t and 'name' in t for t in treemap), 'treemap shape broken'
-        aapl_tile = next(t for t in treemap if t['name'] == 'AAPL')
-        _assert('AAPL heatmap aggregates P&L across portfolios', _dec('110'), _dec(str(aapl_tile['pnl'])))
-        _assert('AAPL heatmap recomputes Return from aggregate total buy cost', _dec('5.5'),
-                _dec(str(aapl_tile['return_percent'])))
-        assert aapl_tile['portfolio_count'] == 2
-        assert aapl_tile['portfolio_names'] == ['Trading', 'Long-term']
-        print("  PASS  treemap shape and zero-row filtering")
-
-        # ── 7g: top-N + Others aggregation ──
-        # Build a synthetic dataset of N+3 rows so the tail must collapse.
-        synthetic = []
-        for i in range(TOP_N_SYMBOLS + 3):
-            synthetic.append({
-                'portfolio_id': 1, 'portfolio_name': 'P', 'symbol': f'SYM{i}',
-                'realized_pnl': _dec(str(100 - i)), 'total_income': ZERO,
-                'return_amount': _dec(str(100 - i)),
-                'total_buy_cost': _dec('1000'),
-                'realized_cost_basis': _dec('1000'), 'held_cost_basis': _dec('1000'),
-                'return_base': _dec('1000'),
-                'return_percent': _dec(str((100 - i) / 10)), 'return_display': '',
-            })
-        agg = _symbol_treemap(synthetic)
-        assert len(agg) == TOP_N_SYMBOLS + 1, f"Expected {TOP_N_SYMBOLS + 1} tiles, got {len(agg)}"
-        assert agg[-1]['name'] == 'Others', "Tail must collapse into 'Others'"
-        print(f"  PASS  top-{TOP_N_SYMBOLS} + Others aggregation")
 
         print("\n  All symbol performance checks passed.")
 

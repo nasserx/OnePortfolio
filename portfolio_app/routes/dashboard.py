@@ -6,7 +6,7 @@ from flask_login import login_required, current_user
 from decimal import Decimal
 from portfolio_app.services import get_services
 from portfolio_app.calculators import PortfolioCalculator
-from portfolio_app.routes.charts import build_allocation_chart_data
+from portfolio_app.calculators.allocation_charts import build_allocation_chart_data
 from portfolio_app.utils.messages import MESSAGES
 
 logger = logging.getLogger(__name__)

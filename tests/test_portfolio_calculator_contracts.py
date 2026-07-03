@@ -6,7 +6,7 @@ from portfolio_app import db
 from portfolio_app.calculators import PortfolioCalculator
 from portfolio_app.models import Dividend, Portfolio, PortfolioEvent, Transaction
 from portfolio_app.models.user import User
-from portfolio_app.routes.charts import _allocation_rows
+from portfolio_app.calculators.allocation_charts import _allocation_rows
 
 
 ZERO = Decimal('0')

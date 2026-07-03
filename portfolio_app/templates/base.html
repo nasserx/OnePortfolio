@@ -52,13 +52,6 @@
                 <i class="bi bi-box-seam" aria-hidden="true"></i>
                 Assets
             </a>
-            <a class="sidebar-nav-link {% if request.endpoint == 'charts.charts' %}active{% endif %}"
-               href="{{ url_for('charts.charts') }}"
-               {% if request.endpoint == 'charts.charts' %}aria-current="page"{% endif %}>
-                <i class="bi bi-bar-chart-line" aria-hidden="true"></i>
-                Charts
-            </a>
-
             {% if current_user.is_admin %}
             <div class="sidebar-divider"></div>
             <a class="sidebar-nav-link {% if request.endpoint == 'admin.users' %}active{% endif %}"

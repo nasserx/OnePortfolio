@@ -4,7 +4,6 @@ from decimal import Decimal
 from portfolio_app import db
 from portfolio_app.calculators import PortfolioCalculator
 from portfolio_app.models.user import User
-from portfolio_app.routes.charts import _asset_performance_rows
 from portfolio_app.services.factory import Services
 
 
@@ -141,8 +140,6 @@ def test_asset_performance_realized_pnl_excludes_income_and_return_includes_inco
 
         rows = svc.overview_service.get_symbol_performance()
         row = next(item for item in rows if item['symbol'] == 'AAPL')
-        asset_rows = _asset_performance_rows(rows)
-        asset_row = next(item for item in asset_rows if item['name'] == 'AAPL')
 
         assert row['realized_pnl'] == _dec('100.0000000000')
         assert row['total_income'] == _dec('75.0000000000')
@@ -150,10 +147,6 @@ def test_asset_performance_realized_pnl_excludes_income_and_return_includes_inco
         assert row['return_display'] == '+17.50%'
         assert 'total_realized_pnl' not in row
         assert 'dividend_total' not in row
-        assert asset_row['realized_pnl'] == 100.0
-        assert asset_row['income'] == 75.0
-        assert asset_row['return_amount'] == 175.0
-        assert asset_row['return_percent'] == 17.5
 
 
 def test_income_only_symbol_has_zero_realized_pnl_and_no_return_base(app):
@@ -166,8 +159,6 @@ def test_income_only_symbol_has_zero_realized_pnl_and_no_return_base(app):
 
         rows = svc.overview_service.get_symbol_performance()
         row = next(item for item in rows if item['symbol'] == 'TRSF')
-        asset_rows = _asset_performance_rows(rows)
-        asset_row = next(item for item in asset_rows if item['name'] == 'TRSF')
 
         assert row['realized_pnl'] == _dec('0')
         assert row['total_income'] == _dec('20.0000000000')
@@ -175,10 +166,6 @@ def test_income_only_symbol_has_zero_realized_pnl_and_no_return_base(app):
         assert row['return_base'] == _dec('0')
         assert row['return_percent'] == _dec('0')
         assert row['return_display'] == '—'
-        assert asset_row['realized_pnl'] == 0.0
-        assert asset_row['income'] == 20.0
-        assert asset_row['return_amount'] == 20.0
-        assert asset_row['return_percent'] is None
 
 
 def test_updating_and_deleting_income_changes_cash_book_value_return_only(app):

@@ -176,6 +176,8 @@ def test_overview_uses_current_health_metrics_and_terminology(app):
     assert html.count('<canvas') == 2
     assert '<canvas id="bookValueChart"' in html
     assert '<canvas id="bookCapitalChart"' in html
+    assert 'href="/charts"' not in html
+    assert '>Charts<' not in html
     assert set(chart_data) == {'book_value_chart', 'capital_chart'}
     assert chart_data['book_value_chart']['categories'] == ['النمو Growth']
     assert chart_data['capital_chart']['categories'] == ['النمو Growth']
@@ -252,6 +254,35 @@ def test_overview_empty_portfolios_render_empty_chart_context(app):
     assert 'demo' not in text.lower()
 
 
+def test_overview_portfolio_allocation_uses_other_portfolios_only_after_seven(app):
+    with app.app_context():
+        uid = _seed_user('overview_many_portfolios')
+        svc = Services(user_id=uid)
+        for idx in range(8):
+            portfolio = svc.portfolio_service.create_portfolio(
+                f'Allocated {idx + 1}', user_id=uid,
+            )
+            svc.portfolio_service.deposit_funds(
+                portfolio.id, _dec(str(1000 + idx)), date=datetime(2024, 1, 1),
+            )
+
+    client = app.test_client()
+    _login(client, uid)
+    response = client.get('/')
+
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    chart_data = _chart_data(html)
+
+    assert 'Other Portfolios' in chart_data['book_value_chart']['categories']
+    assert 'Other Portfolios' in chart_data['capital_chart']['categories']
+    assert chart_data['book_value_chart']['categories'][-1] == 'Other Portfolios'
+    assert chart_data['capital_chart']['categories'][-1] == 'Other Portfolios'
+    assert len(chart_data['book_value_chart']['categories']) == 8
+    assert len(chart_data['capital_chart']['categories']) == 8
+    assert 'Showing top 7 portfolios and grouping the rest as Other Portfolios.' in html
+
+
 def test_overview_keeps_related_routes_available(app):
     with app.app_context():
         uid = _seed_user('overview_routes')
@@ -259,6 +290,7 @@ def test_overview_keeps_related_routes_available(app):
     client = app.test_client()
     _login(client, uid)
 
-    assert client.get('/charts').status_code == 200
+    assert client.get('/').status_code == 200
+    assert client.get('/charts').status_code == 404
     assert client.get('/portfolios/').status_code == 200
     assert client.get('/transactions/').status_code == 200

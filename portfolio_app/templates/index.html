@@ -37,10 +37,10 @@
                         <span class="bi bi-info-circle stat-info-icon"
                               tabindex="0"
                               role="img"
-                              aria-label="Book value is positions plus total cash."
+                              aria-label="Book value is total cash plus the recorded cost basis of current positions."
                               data-bs-toggle="tooltip"
                               data-bs-placement="top"
-                              title="Positions + Total Cash"></span>
+                              title="Total cash + recorded cost basis of current positions"></span>
                     </span>
                     <span class="stat-value" title="{{ totals.total_value|fmt_money }}">{{ totals.total_value|fmt_display_money }}</span>
                 </div>
@@ -66,10 +66,10 @@
                         <span class="bi bi-info-circle stat-info-icon"
                               tabindex="0"
                               role="img"
-                              aria-label="Realized P and L is derived from sells, average cost, and fees."
+                              aria-label="Realized P and L is profit or loss from completed sales only, using average cost and sell fees."
                               data-bs-toggle="tooltip"
                               data-bs-placement="top"
-                              title="Sell proceeds minus average cost and fees"></span>
+                              title="Profit/loss from completed sales only, using average cost and sell fees"></span>
                     </span>
                     <span class="stat-value {% if totals.realized_pnl > 0 %}profit{% elif totals.realized_pnl < 0 %}loss{% else %}neutral{% endif %}" title="{% if totals.realized_pnl > 0 %}+{% endif %}{{ totals.realized_pnl|fmt_money }}">
                         {% if totals.realized_pnl > 0 %}+{% endif %}{{ totals.realized_pnl|fmt_display_money }}

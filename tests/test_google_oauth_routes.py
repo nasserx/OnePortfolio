@@ -5,6 +5,7 @@ These tests replace the app-scoped OAuth registry with small fakes through
 """
 
 from dataclasses import dataclass, field
+from typing import List, Optional
 
 import pytest
 from authlib.integrations.base_client import OAuthError
@@ -50,14 +51,14 @@ def _config_for(db_path, **overrides):
 
 @dataclass
 class FakeGoogleClient:
-    identity: dict | None = field(default_factory=lambda: {
+    identity: Optional[dict] = field(default_factory=lambda: {
         'sub': 'google-sub-alice',
         'email': 'alice@example.com',
         'email_verified': True,
     })
-    token: dict | object | None = None
-    oauth_error: Exception | None = None
-    redirect_uris: list[str] = field(default_factory=list)
+    token: Optional[object] = None
+    oauth_error: Optional[Exception] = None
+    redirect_uris: List[str] = field(default_factory=list)
     parse_id_token_called: bool = False
 
     def authorize_redirect(self, redirect_uri):

@@ -476,7 +476,7 @@
                             <div class="col-6">
                                 <div class="mb-3">
                                     <label for="add_tx_date" class="form-label">Date</label>
-                                    <input type="text" class="form-control {% if _tx_add_errs.get('date') %}is-invalid{% endif %}" id="add_tx_date" name="date" placeholder="YYYY-MM-DD">
+                                    <input type="text" class="form-control {% if _tx_add_errs.get('date') %}is-invalid{% endif %}" id="add_tx_date" name="date" placeholder="YYYY-MM-DD" data-datepicker="flatpickr">
                                     {% if _tx_add_errs.get('date') %}
                                     <div class="invalid-feedback d-block">{{ _tx_add_errs.get('date') }}</div>
                                     {% endif %}
@@ -589,7 +589,7 @@
                         <div class="col-6">
                             <div class="mb-3">
                                 <label for="edit_date" class="form-label">Date</label>
-                                <input type="text" class="form-control {% if _tx_edit_errs.get('edit_date') %}is-invalid{% endif %}" id="edit_date" name="edit_date" placeholder="YYYY-MM-DD">
+                                <input type="text" class="form-control {% if _tx_edit_errs.get('edit_date') %}is-invalid{% endif %}" id="edit_date" name="edit_date" placeholder="YYYY-MM-DD" data-datepicker="flatpickr">
                                 {% if _tx_edit_errs.get('edit_date') %}
                                 <div class="invalid-feedback">{{ _tx_edit_errs.get('edit_date') }}</div>
                                 {% endif %}
@@ -718,7 +718,8 @@
                                 <label for="add_div_date" class="form-label">Date</label>
                                 <input type="text"
                                        class="form-control {% if _div_add_errs.get('date') %}is-invalid{% endif %}"
-                                       id="add_div_date" name="date" placeholder="YYYY-MM-DD">
+                                       id="add_div_date" name="date" placeholder="YYYY-MM-DD"
+                                       data-datepicker="flatpickr">
                                 {% if _div_add_errs.get('date') %}
                                 <div class="invalid-feedback d-block">{{ _div_add_errs.get('date') }}</div>
                                 {% endif %}
@@ -780,7 +781,8 @@
                                 <label for="edit_dividend_date" class="form-label">Date</label>
                                 <input type="text"
                                        class="form-control {% if _div_edit_errs.get('edit_date') %}is-invalid{% endif %}"
-                                       id="edit_dividend_date" name="edit_date" placeholder="YYYY-MM-DD">
+                                       id="edit_dividend_date" name="edit_date" placeholder="YYYY-MM-DD"
+                                       data-datepicker="flatpickr">
                                 {% if _div_edit_errs.get('edit_date') %}
                                 <div class="invalid-feedback">{{ _div_edit_errs.get('edit_date') }}</div>
                                 {% else %}
@@ -848,8 +850,6 @@ function filterBySymbol(query) {
     if (window.refreshOuterPagination) window.refreshOuterPagination(true);
 }
 
-function ensureEditDatePicker() { initFlatpickr('edit_date'); }
-
 function openAddSymbolModal() {
     const modalEl = document.getElementById('addSymbolModal');
     const symbolInput = document.getElementById('symbol_ticker');
@@ -914,7 +914,6 @@ function openAddSymbolModal() {
                 if (portfolioGroup) portfolioGroup.classList.toggle('d-none', locked);
                 if (symbolGroup) symbolGroup.classList.toggle('d-none', locked);
 
-                initFlatpickr('add_tx_date');
                 const modalEl = document.getElementById('addTransactionModal');
                 if (modalEl) new bootstrap.Modal(modalEl).show();
             }
@@ -1184,8 +1183,6 @@ function openAddTransactionModal(portfolioId, portfolioName, symbol, forcedType)
     if (notesInput) notesInput.value = '';
     if (dateInput) dateInput.value = todayStr();
 
-    initFlatpickr('add_tx_date');
-
     if (forcedType && typeSelect) {
         typeSelect.value = forcedType;
         if (typeGroup) typeGroup.classList.add('d-none');
@@ -1249,8 +1246,6 @@ function editTransaction(id, portfolioId, type, symbol, price, quantity, fees, n
     if (feesInput) feesInput.value = trimTrailingZeros(fees);
     if (notesInput) notesInput.value = notes;
     if (dateInput) dateInput.value = dateShort || '';
-
-    ensureEditDatePicker();
 
     // Trigger preview recalculation after programmatic value changes
     if (priceInput) priceInput.dispatchEvent(new Event('input'));
@@ -1523,7 +1518,6 @@ function openStandaloneDividendModal(portfolioId, symbol) {
     if (notesEl)        notesEl.value = '';
     if (submitBtn)      submitBtn.disabled = false;
 
-    initFlatpickr('add_div_date');
     bootstrap.Modal.getOrCreateInstance(document.getElementById('addDividendModal')).show();
 }
 
@@ -1560,7 +1554,6 @@ function openEditDividendModal(id, amount, dateShort, notes) {
     if (notesEl)  notesEl.value  = notes || '';
     if (errEl)    { errEl.textContent = ''; errEl.classList.add('d-none'); }
 
-    initFlatpickr('edit_dividend_date');
     new bootstrap.Modal(document.getElementById('editDividendModal')).show();
 }
 

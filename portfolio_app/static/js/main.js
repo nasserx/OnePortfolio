@@ -246,10 +246,44 @@ document.addEventListener('submit', function(ev) {
     }
 }, true);
 
-function initFlatpickr(id) {
-    const el = document.getElementById(id);
-    if (!el || el._flatpickr || !window.flatpickr) return;
-    window.flatpickr(el, { dateFormat: 'Y-m-d', allowInput: true });
+function initDateField(el) {
+    if (!el || el._flatpickr || !window.flatpickr) return null;
+
+    const currentValue = el.value;
+    if (el.type === 'date') {
+        el.dataset.nativeType = 'date';
+        el.type = 'text';
+    }
+
+    const instance = window.flatpickr(el, {
+        dateFormat: 'Y-m-d',
+        allowInput: true,
+        clickOpens: !el.disabled && !el.readOnly,
+        appendTo: document.body,
+        disableMobile: true,
+        static: false,
+        onReady: function(selectedDates, dateStr, fp) {
+            fp.calendarContainer.classList.add('op-flatpickr');
+        }
+    });
+
+    if (currentValue && el.value !== currentValue) {
+        el.value = currentValue;
+    }
+
+    return instance;
+}
+
+function initDateFields(root) {
+    const scope = root || document;
+    scope.querySelectorAll('[data-datepicker="flatpickr"]').forEach(initDateField);
+}
+
+function closeDatePickers(root) {
+    const scope = root || document;
+    scope.querySelectorAll('[data-datepicker="flatpickr"]').forEach(function(el) {
+        if (el._flatpickr) el._flatpickr.close();
+    });
 }
 
 class FormValidator {
@@ -1232,6 +1266,7 @@ class InvestmentPortfolioApp {
     initialize() {
         new NativeValidationDisabler();
         new DecimalInputHandler();
+        initDateFields(document);
         new AlertManager();
         new TooltipManager();
         new FormValidatorsInitializer();
@@ -1246,6 +1281,11 @@ class InvestmentPortfolioApp {
             window.addEventListener('scroll', onScroll, { passive: true });
             onScroll();
         }
+
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.addEventListener('shown.bs.modal', () => initDateFields(modal));
+            modal.addEventListener('hidden.bs.modal', () => closeDatePickers(modal));
+        });
     }
 }
 

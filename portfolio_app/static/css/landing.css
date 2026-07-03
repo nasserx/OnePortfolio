@@ -4,6 +4,7 @@
    ============================================================ */
 
 html {
+    color-scheme: dark;
     scroll-behavior: smooth;
 }
 
@@ -77,23 +78,9 @@ html {
 }
 
 .landing-logo-mark {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
     width: 24px;
     height: 24px;
     color: var(--text-1);
-}
-
-.landing-logo-mark svg {
-    display: block;
-    width: 100%;
-    height: 100%;
-}
-
-.logo-mark-dot,
-.logo-mark-line {
-    fill: currentColor;
 }
 
 .landing-nav-links {
@@ -143,7 +130,7 @@ html {
     border-radius: var(--radius-md) !important;
     outline: none !important;
     box-shadow: none !important;
-    transition: background var(--transition-slow), border-color var(--transition-slow), color var(--transition-slow);
+    transition: background-color var(--transition-slow), border-color var(--transition-slow), color var(--transition-slow);
 }
 
 .landing-page .btn-nav-login,
@@ -274,7 +261,7 @@ html {
     border: 1px solid var(--border-soft) !important;
     outline: none !important;
     box-shadow: none !important;
-    transition: background var(--transition-slow), border-color var(--transition-slow), transform var(--transition-slow);
+    transition: background-color var(--transition-slow), border-color var(--transition-slow);
 }
 
 .support-card:hover,
@@ -282,7 +269,6 @@ html {
 .final-cta-card:hover {
     background: var(--landing-card-hover-bg);
     border-color: var(--landing-border-hover) !important;
-    transform: translateY(-1px);
 }
 
 .support-card {

@@ -81,8 +81,11 @@
 
     --income: #60a5fa;
     --income-text: var(--income);
-    --income-bg: rgba(37, 99, 235, 0.14);
-    --income-border: rgba(96, 165, 250, 0.3);
+    --income-bg: color-mix(in srgb, var(--income) 14%, transparent);
+    --income-border: color-mix(in srgb, var(--income) 30%, transparent);
+    --income-hover: color-mix(in srgb, var(--income) 22%, transparent);
+    --income-active: color-mix(in srgb, var(--income) 30%, transparent);
+    --on-income: #09090B;
 
     --neutral-data: #cbd5e1;
     --neutral-data-bg: rgba(148, 163, 184, 0.12);
@@ -186,9 +189,15 @@
     --shadow-elevated: none;
 
     /* Motion */
-    --transition: 0.16s ease;
-    --transition-slow: 0.24s ease;
-    --transition-theme: 0.18s ease;
+    --motion-duration-fast: 120ms;
+    --motion-duration-normal: 160ms;
+    --motion-duration-slow: 180ms;
+    --motion-ease-calm: cubic-bezier(0.2, 0, 0, 1);
+    --transition: var(--motion-duration-normal) var(--motion-ease-calm);
+    --transition-fast: var(--motion-duration-fast) var(--motion-ease-calm);
+    --transition-slow: var(--motion-duration-slow) var(--motion-ease-calm);
+    --transition-theme: var(--motion-duration-normal) var(--motion-ease-calm);
+    --z-flatpickr: 1100;
 
     /* Existing OnePortfolio aliases */
     --primary: var(--accent);

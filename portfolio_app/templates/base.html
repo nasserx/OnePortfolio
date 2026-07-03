@@ -6,9 +6,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{% block title %}OnePortfolio{% endblock %}</title>
 
-    <link rel="icon" href="{{ url_for('static', filename='icons/favicon.svg') }}" type="image/svg+xml">
-    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/apple-touch-icon.png') }}">
-    <link rel="manifest" href="{{ url_for('static', filename='icons/site.webmanifest') }}">
+    {% include 'components/favicon_links.html' %}
     <meta name="theme-color" content="#f97316">
 
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -29,7 +27,8 @@
 
         <!-- Brand -->
         <a class="sidebar-brand" href="{{ url_for('dashboard.index') }}">
-            <img src="{{ url_for('static', filename='icons/favicon.svg') }}" alt="OnePortfolio">
+            {% set logo_class = 'op-logo-mark sidebar-logo-mark' %}
+            {% include 'components/logo_mark.html' %}
             OnePortfolio
         </a>
 

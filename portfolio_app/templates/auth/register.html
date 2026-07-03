@@ -6,8 +6,9 @@
 
     <!-- Header -->
     <div class="text-center mb-3">
-        <img src="{{ url_for('static', filename='icons/favicon.svg') }}"
-             alt="OnePortfolio logo" class="auth-logo mb-3">
+        {% set logo_class = 'op-logo-mark auth-logo mb-3' %}
+        {% set logo_label = 'OnePortfolio logo' %}
+        {% include 'components/logo_mark.html' %}
         <h1 class="auth-title">Create your account</h1>
         <p class="auth-subtitle mb-0">Start tracking your portfolio</p>
     </div>

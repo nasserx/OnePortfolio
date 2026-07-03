@@ -4,7 +4,7 @@ All financial calculations use `Decimal`.
 
 ## Realized P&L
 
-Realized P&L is trading profit or loss from `Sell` transactions only.
+Realized P&L is profit or loss from completed sales only.
 
 Formula per sell:
 
@@ -44,11 +44,11 @@ Income increases Total Cash.
 
 ## Positions
 
-Positions are the cost basis of currently open asset quantities. Income does not affect Positions.
+Positions are the recorded cost basis of current asset quantities. Income does not affect Positions.
 
 ## Book Value
 
-`Book Value = Total Cash + Positions`
+`Book Value = Total Cash + recorded cost basis of current positions`
 
 Income affects Book Value through Total Cash.
 

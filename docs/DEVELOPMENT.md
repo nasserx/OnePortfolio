@@ -66,10 +66,10 @@ git status --short
 
 For behavior changes, manually exercise the affected page or route. For financial behavior, verify:
 
-- Realized P&L remains sell-only.
+- Realized P&L remains limited to completed sales.
 - Income remains separate.
 - Total Cash includes income.
-- Book Value includes income through Total Cash.
+- Book Value is Total Cash plus the recorded cost basis of current positions.
 - Positions do not change because of income.
 - Return includes realized P&L plus income.
 

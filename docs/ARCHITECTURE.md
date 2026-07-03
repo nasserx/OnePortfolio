@@ -86,13 +86,13 @@ Typical asset-entry creation:
 6. Calculator recomputes average costs where needed.
 7. Route returns JSON or redirects.
 
-Overview and chart pages read records through scoped services/repositories, then call calculator/chart helpers to build display data.
+Overview reads records through scoped services/repositories, then calls calculator helpers to build totals, portfolio summaries, and allocation chart data.
 
 ## Templates, Static Files, and Tokens
 
 Templates live in `portfolio_app/templates/`. Static files live in `portfolio_app/static/`.
 
-`portfolio_app/static/css/tokens.css` is the primary design-token source. `style.css` and page templates consume those tokens. JavaScript is mostly in `portfolio_app/static/js/main.js`, with chart-specific JavaScript embedded in the charts template.
+`portfolio_app/static/css/tokens.css` is the primary design-token source. `style.css` and page templates consume those tokens. JavaScript is mostly in `portfolio_app/static/js/main.js`; Overview chart rendering uses `portfolio_app/static/js/overview_charts.js`.
 
 See [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md) for UI constraints.
 
@@ -105,6 +105,7 @@ See [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md) for UI constraints.
 - `portfolio_app/services/transaction_service.py`: asset entries, income, symbols, chronology, and cash/quantity rules.
 - `portfolio_app/services/portfolio_service.py`: portfolios and capital entries.
 - `portfolio_app/calculators/portfolio_calculator.py`: database-backed financial aggregation.
+- `portfolio_app/calculators/allocation_charts.py`: Overview allocation chart data for By Book Value and By Capital.
 - `portfolio_app/calculators/financial_math.py`: pure financial math.
 - `portfolio_app/routes/`: HTTP endpoints.
 - `tests/`: regression and behavior tests.

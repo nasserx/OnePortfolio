@@ -16,10 +16,10 @@ It does not fetch live prices, calculate market value, calculate unrealized P&L,
 
 - **TOTAL CAPITAL** = deposits - withdrawals.
 - **TOTAL CASH** = available cash.
-- **POSITIONS** = open position book cost.
-- **BOOK VALUE** = total cash + positions.
+- **POSITIONS** = recorded cost basis of current positions.
+- **BOOK VALUE** = total cash + recorded cost basis of current positions.
 - **TOTAL INCOME** = income records.
-- **REALIZED P&L** = sell-only trading profit/loss using the Average Cost Method.
+- **REALIZED P&L** = profit or loss from completed sales using the Average Cost Method and sell fees.
 - **RETURN** includes realized P&L plus income.
 
 For exact formulas, see [docs/DOMAIN_AND_CALCULATIONS.md](docs/DOMAIN_AND_CALCULATIONS.md).
@@ -31,7 +31,7 @@ For exact formulas, see [docs/DOMAIN_AND_CALCULATIONS.md](docs/DOMAIN_AND_CALCUL
 - Asset list with buy and sell entries.
 - Average Cost Method calculations for open positions and sells.
 - Separate income tracking.
-- Dashboard totals, portfolio summaries, assets page, and charts based on recorded data.
+- Overview totals, portfolio summaries, assets page, and Overview allocation charts based on recorded data.
 - Multi-user accounts with per-user data scoping.
 - Email verification, password reset, account settings, and admin user management.
 - Responsive dark-only UI using Bootstrap, Bootstrap Icons, and local design tokens.

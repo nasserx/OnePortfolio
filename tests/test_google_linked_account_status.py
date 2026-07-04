@@ -243,7 +243,6 @@ def test_existing_account_settings_controls_remain_present(app_factory):
     assert 'Change' in html
     assert 'Email Address' in html
     assert 'Update Email' in html
-    assert 'Delete Account' in account_page
     assert 'Delete account' in account_page
 
 

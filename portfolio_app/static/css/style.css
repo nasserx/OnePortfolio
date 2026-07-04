@@ -2855,11 +2855,13 @@ i.bi.text-info,
 .settings-action-desc { font-size: 0.8125rem; color: var(--text-2); line-height: 1.5; }
 .settings-danger-zone {
     padding: 1.25rem;
-    background: var(--danger-muted);
+    background: var(--surface-2);
+    outline: 1px solid var(--negative-border) !important;
     border-radius: var(--radius-md) !important;
 }
-.settings-danger-header { font-weight: 600; font-size: 0.9375rem; color: var(--danger); margin-bottom: 0.4rem; }
-.settings-danger-desc { font-size: 0.875rem; color: var(--text-2); margin-bottom: 0.875rem; }
+.settings-danger-header { font-weight: 600; font-size: 0.9375rem; color: var(--danger); margin-bottom: 0.35rem; }
+.settings-danger-desc { font-size: 0.875rem; color: var(--text-2); line-height: 1.5; margin-bottom: 0.35rem; }
+.settings-danger-warning { font-size: 0.875rem; color: var(--warning); line-height: 1.5; margin-bottom: 0.875rem; }
 .settings-code-input {
     max-width: 180px; letter-spacing: 0.2em;
     font-weight: 600; font-size: 1rem; text-align: center;

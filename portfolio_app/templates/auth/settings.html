@@ -205,16 +205,14 @@
                         <i class="bi bi-person-gear me-2" aria-hidden="true"></i>Account
                     </h3>
 
-                    <!-- Delete Account section -->
+                    <!-- Delete account section -->
                     <div class="settings-danger-zone">
                         <div class="settings-danger-header">
                             <i class="bi bi-exclamation-triangle me-2" aria-hidden="true"></i>
-                            Delete Account
+                            Delete account
                         </div>
-                        <p class="settings-danger-desc">
-                            Deletes your account and all data permanently.
-                            <span class="text-emphasis">Cannot be undone.</span>
-                        </p>
+                        <p class="settings-danger-desc">Permanently delete your account and all portfolio data.</p>
+                        <p class="settings-danger-warning">This action cannot be undone.</p>
 
                         {% if is_demo_account %}
                             <div class="alert alert-warning mb-0">
@@ -241,10 +239,6 @@
                             <!-- Step 2: start deletion and send the email code -->
                             <div id="delete-start-section"
                                  class="{% if not deletion_error or deletion_sent %}d-none{% endif %}">
-                                <div class="alert alert-warning py-2 mb-3">
-                                    <i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>
-                                    Deleting your account permanently removes your portfolios and recorded data. Enter the verification code sent to your email to continue.
-                                </div>
                                 {% if deletion_error and not deletion_sent %}
                                     <div class="alert alert-danger py-2 mb-3">
                                         <i class="bi bi-exclamation-circle me-1" aria-hidden="true"></i>{{ deletion_error }}
@@ -269,10 +263,6 @@
                             <!-- Step 3: verify the email code -->
                             {% if deletion_sent %}
                             <div id="delete-confirm-section">
-                                <div class="alert alert-warning py-2 mb-3">
-                                    <i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>
-                                    Deleting your account permanently removes your portfolios and recorded data. Enter the verification code sent to your email to continue.
-                                </div>
                                 {% if deletion_error %}
                                     <div class="alert alert-danger py-2 mb-3">
                                         <i class="bi bi-exclamation-circle me-1" aria-hidden="true"></i>{{ deletion_error }}

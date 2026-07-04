@@ -100,9 +100,9 @@
     --font-size-card-title: 0.95rem;
     --font-size-section-title: 1rem;
     --font-size-label: 0.6875rem;
-    --font-size-table-head: 0.6875rem;
-    --font-size-table-body: 0.8125rem;
-    --font-size-table-nested-head: 0.6875rem;
+    --font-size-table-head: 0.75rem;
+    --font-size-table-body: 0.75rem;
+    --font-size-table-nested-head: 0.75rem;
     --font-size-table-nested-body: 0.75rem;
     --font-size-helper: 0.75rem;
     --font-size-kpi: clamp(1rem, 1.25vw, 1.25rem);

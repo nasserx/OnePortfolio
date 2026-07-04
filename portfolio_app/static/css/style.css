@@ -40,7 +40,7 @@ body {
 
 /* Tabular nums on financial data */
 .stat-value, .metric-value, .summary-value, .overview-value, .overview-portfolio-number,
-.transactions-table td,
+.records-cell--number,
 .table .text-end,
 .table .numeric,
 .table .amount,
@@ -802,7 +802,7 @@ textarea,
 }
 
 .overview-portfolio-row-head > div {
-    text-align: right;
+    text-align: left;
     font-variant-numeric: tabular-nums;
 }
 
@@ -849,20 +849,20 @@ textarea,
 }
 
 .overview-portfolio-number {
-    text-align: right;
+    text-align: left;
     white-space: nowrap;
 }
 
 .overview-portfolio-action {
     display: flex;
-    justify-content: flex-end;
+    justify-content: flex-start;
     white-space: nowrap;
 }
 
 .overview-assets-link {
     display: inline-flex;
     align-items: center;
-    justify-content: flex-end;
+    justify-content: flex-start;
     gap: 0.35rem;
     color: var(--text-2);
     font-size: var(--font-size-sm);
@@ -1263,10 +1263,6 @@ textarea,
     overflow-x: auto;
 }
 
-.portfolios-page .portfolio-events-table {
-    min-width: 680px;
-}
-
 .portfolios-page .portfolio-events-table td {
     height: 40px;
 }
@@ -1627,6 +1623,70 @@ textarea,
     border-radius: var(--radius-table) !important;
     border-color: var(--table-border) !important;
 }
+.records-table {
+    width: 100%;
+    table-layout: fixed;
+}
+.records-table .records-col--date { width: var(--records-col-date, auto); }
+.records-table .records-col--type { width: var(--records-col-type, auto); }
+.records-table .records-col--price { width: var(--records-col-price, auto); }
+.records-table .records-col--quantity { width: var(--records-col-quantity, auto); }
+.records-table .records-col--fee { width: var(--records-col-fee, auto); }
+.records-table .records-col--total { width: var(--records-col-total, auto); }
+.records-table .records-col--pnl { width: var(--records-col-pnl, auto); }
+.records-table .records-col--return { width: var(--records-col-return, auto); }
+.records-table .records-col--amount { width: var(--records-col-amount, auto); }
+.records-table .records-col--notes { width: var(--records-col-notes, auto); }
+.records-table .records-col--actions { width: var(--records-col-actions, auto); }
+.records-table .records-col--id { width: var(--records-col-id, auto); }
+.records-table .records-col--username { width: var(--records-col-username, auto); }
+.records-table .records-col--email { width: var(--records-col-email, auto); }
+.records-table .records-col--role { width: var(--records-col-role, auto); }
+.records-table .records-col--status { width: var(--records-col-status, auto); }
+.records-table .records-col--registered { width: var(--records-col-registered, auto); }
+.records-table .records-col--last-login { width: var(--records-col-last-login, auto); }
+.records-table :is(th, td).records-cell {
+    overflow: hidden;
+    padding: 0.5rem !important;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: left !important;
+}
+.records-table :is(th, td).records-cell--number {
+    font-variant-numeric: tabular-nums;
+}
+.records-table--asset-entries {
+    --records-col-date: 11%;
+    --records-col-type: 8%;
+    --records-col-price: 10%;
+    --records-col-quantity: 8%;
+    --records-col-fee: 8%;
+    --records-col-total: 13%;
+    --records-col-pnl: 10%;
+    --records-col-return: 9%;
+    --records-col-notes: 15%;
+    --records-col-actions: 8%;
+    min-width: 980px !important;
+}
+.records-table--portfolio-events {
+    --records-col-date: 18%;
+    --records-col-type: 16%;
+    --records-col-amount: 20%;
+    --records-col-notes: 34%;
+    --records-col-actions: 12%;
+    min-width: 680px !important;
+}
+.records-table--admin-users {
+    --records-col-id: 5%;
+    --records-col-username: 13%;
+    --records-col-email: 21%;
+    --records-col-role: 10%;
+    --records-col-status: 12%;
+    --records-col-registered: 12%;
+    --records-col-last-login: 13%;
+    --records-col-actions: 14%;
+    min-width: 900px;
+}
 .table > :not(caption) > * > * {
     background-color: var(--table-bg) !important;
     color: var(--table-cell-color);
@@ -1691,7 +1751,6 @@ textarea,
     --bs-table-hover-color: var(--text-1);
     --bs-table-bg: var(--table-bg);
     --bs-table-striped-bg: var(--table-bg);
-    min-width: 980px;
 }
 .transactions-table thead th {
     --bs-table-bg: var(--table-header-bg);
@@ -1700,7 +1759,6 @@ textarea,
     background-image: none !important;
     border-bottom: 1px solid var(--table-border) !important;
     color: var(--table-header-color) !important;
-    padding: 0.55rem 0.85rem;
     font-size: var(--font-size-table-head);
     font-weight: 500;
     letter-spacing: var(--letter-spacing-label);
@@ -1708,7 +1766,6 @@ textarea,
     white-space: nowrap;
 }
 .transactions-table td {
-    padding: 0.48rem 0.85rem;
     height: 38px;
     background: var(--table-bg) !important;
     color: var(--table-cell-color) !important;
@@ -1716,97 +1773,16 @@ textarea,
     font-weight: 450;
     white-space: nowrap;
 }
-.transactions-table.dashboard-actions-table {
-    width: 100% !important;
-    min-width: 0 !important;
-    table-layout: fixed;
-}
 .transactions-page .portfolio-transactions .table-responsive,
 .portfolios-page .portfolio-cash-events .table-responsive {
     min-width: 0;
     overflow-x: visible !important;
 }
-.dashboard-actions-table th,
-.dashboard-actions-table td {
-    padding-left: 0.5rem;
-    padding-right: 0.5rem;
-    text-align: left;
-}
-.dashboard-actions-table th {
-    font-size: var(--font-size-table-head);
-    font-weight: 500;
-    letter-spacing: var(--letter-spacing-label);
-    line-height: 1.2;
-    text-transform: uppercase;
-}
-.transactions-table.dashboard-actions-table thead th,
-.portfolios-page .portfolio-events-table thead th {
-    font-size: var(--font-size-table-head) !important;
-    font-weight: 500;
-    letter-spacing: var(--letter-spacing-label);
-    line-height: 1.2;
-    text-transform: uppercase;
-}
-.transactions-table.dashboard-actions-table th:first-child,
-.transactions-table.dashboard-actions-table td:first-child {
-    min-width: 0 !important;
-}
-.portfolios-page .portfolio-events-table {
-    min-width: 0 !important;
-}
-.transactions-page .dashboard-actions-table th:nth-child(1),
-.transactions-page .dashboard-actions-table td:nth-child(1) { width: 11% !important; }
-.transactions-page .dashboard-actions-table th:nth-child(2),
-.transactions-page .dashboard-actions-table td:nth-child(2) { width: 8% !important; }
-.transactions-page .dashboard-actions-table th:nth-child(3),
-.transactions-page .dashboard-actions-table td:nth-child(3) { width: 10% !important; }
-.transactions-page .dashboard-actions-table th:nth-child(4),
-.transactions-page .dashboard-actions-table td:nth-child(4) { width: 8% !important; }
-.transactions-page .dashboard-actions-table th:nth-child(5),
-.transactions-page .dashboard-actions-table td:nth-child(5) { width: 8% !important; }
-.transactions-page .dashboard-actions-table th:nth-child(6),
-.transactions-page .dashboard-actions-table td:nth-child(6) { width: 13% !important; }
-.transactions-page .dashboard-actions-table th:nth-child(7),
-.transactions-page .dashboard-actions-table td:nth-child(7) { width: 10% !important; }
-.transactions-page .dashboard-actions-table th:nth-child(8),
-.transactions-page .dashboard-actions-table td:nth-child(8) { width: 9% !important; }
-.transactions-page .dashboard-actions-table th:nth-child(9),
-.transactions-page .dashboard-actions-table td:nth-child(9) { width: 15% !important; }
-.transactions-page .dashboard-actions-table th:nth-child(10),
-.transactions-page .dashboard-actions-table td:nth-child(10) { width: 8% !important; }
-.portfolios-page .portfolio-events-table th:nth-child(1),
-.portfolios-page .portfolio-events-table td:nth-child(1) { width: 18% !important; }
-.portfolios-page .portfolio-events-table th:nth-child(2),
-.portfolios-page .portfolio-events-table td:nth-child(2) { width: 16% !important; }
-.portfolios-page .portfolio-events-table th:nth-child(3),
-.portfolios-page .portfolio-events-table td:nth-child(3) { width: 20% !important; }
-.portfolios-page .portfolio-events-table th:nth-child(4),
-.portfolios-page .portfolio-events-table td:nth-child(4) { width: 34% !important; }
-.portfolios-page .portfolio-events-table th:nth-child(5),
-.portfolios-page .portfolio-events-table td:nth-child(5) { width: 12% !important; }
-.transactions-page .dashboard-actions-table th:nth-child(n+3):nth-child(-n+8),
-.transactions-page .dashboard-actions-table td:nth-child(n+3):nth-child(-n+8),
-.portfolios-page .portfolio-events-table th:nth-child(3),
-.portfolios-page .portfolio-events-table td:nth-child(3) {
-    text-align: right;
-}
-.dashboard-actions-table th:last-child,
-.dashboard-actions-table td:last-child,
-.dashboard-actions-table .actions-cell {
-    text-align: center;
-}
 .dashboard-actions-table .tx-notes-cell,
 .dashboard-actions-table .portfolio-event-notes {
     min-width: 0;
 }
-.dashboard-actions-table .text-end {
-    text-align: right !important;
-}
-.dashboard-actions-table .text-center {
-    text-align: center !important;
-}
-.dashboard-actions-table tbody tr:not(:last-child) td,
-.transactions-table.dashboard-actions-table tbody tr:not(:last-child) td {
+.dashboard-actions-table tbody tr:not(:last-child) td {
     background-image: none !important;
 }
 @media (max-width: 768px) {
@@ -1814,11 +1790,6 @@ textarea,
     .portfolios-page .portfolio-cash-events .table-responsive {
         overflow-x: auto !important;
     }
-}
-.transactions-table th:first-child,
-.transactions-table td:first-child {
-    min-width: 7.25rem;
-    white-space: nowrap;
 }
 .transactions-table tbody tr { transition: background-color var(--transition-slow); }
 .transactions-table tbody tr:not(:last-child) td {
@@ -1943,22 +1914,6 @@ textarea,
 .transactions-page .portfolio-transactions .transactions-table.dashboard-actions-table tbody td,
 .portfolios-page .portfolio-cash-events .portfolio-events-table.dashboard-actions-table tbody td {
     color: var(--text-2) !important;
-}
-
-.transactions-page .transactions-table.dashboard-actions-table thead th,
-.transactions-page .transactions-table.dashboard-actions-table tbody td,
-.portfolios-page .portfolio-events-table.dashboard-actions-table thead th,
-.portfolios-page .portfolio-events-table.dashboard-actions-table tbody td {
-    text-align: left !important;
-}
-
-.transactions-page .transactions-table.dashboard-actions-table thead th:last-child,
-.transactions-page .transactions-table.dashboard-actions-table tbody td:last-child,
-.transactions-page .transactions-table.dashboard-actions-table .actions-cell,
-.portfolios-page .portfolio-events-table.dashboard-actions-table thead th:last-child,
-.portfolios-page .portfolio-events-table.dashboard-actions-table tbody td:last-child,
-.portfolios-page .portfolio-events-table.dashboard-actions-table .actions-cell {
-    text-align: center !important;
 }
 
 /* Shared compact pagination for expandable portfolio and transaction lists. */

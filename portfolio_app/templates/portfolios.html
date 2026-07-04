@@ -103,37 +103,44 @@
                 <div class="portfolio-transactions portfolio-cash-events" id="events-{{ item.portfolio.id }}" hidden>
                     {% if item.events %}
                     <div class="table-responsive">
-                        <table class="table table-sm table-hover align-middle mb-0 transactions-table dashboard-actions-table portfolio-events-table">
+                        <table class="table table-sm table-hover align-middle mb-0 records-table records-table--portfolio-events transactions-table dashboard-actions-table portfolio-events-table">
+                            <colgroup>
+                                <col class="records-col records-col--date">
+                                <col class="records-col records-col--type">
+                                <col class="records-col records-col--amount">
+                                <col class="records-col records-col--notes">
+                                <col class="records-col records-col--actions">
+                            </colgroup>
                             <thead class="table-light">
                                 <tr>
-                                    <th class="small">Date</th>
-                                    <th class="small">Type</th>
-                                    <th class="small text-end">Amount</th>
-                                    <th class="small">Notes</th>
-                                    <th class="small text-center">Actions</th>
+                                    <th class="small records-cell">Date</th>
+                                    <th class="small records-cell">Type</th>
+                                    <th class="small records-cell records-cell--number">Amount</th>
+                                    <th class="small records-cell">Notes</th>
+                                    <th class="small records-cell">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for event in item.events %}
                                 <tr>
-                                    <td><small class="text-muted">{{ event.date_short }}</small></td>
-                                    <td>
+                                    <td class="records-cell"><small class="text-muted">{{ event.date_short }}</small></td>
+                                    <td class="records-cell">
                                         {% if event.event_type in ('Deposit', 'Initial') %}
                                             <span class="tx-type-label tx-type-buy type-deposit">Deposit</span>
                                         {% else %}
                                             <span class="tx-type-label tx-type-sell type-withdrawal">Withdraw</span>
                                         {% endif %}
                                     </td>
-                                    <td class="text-end">
+                                    <td class="records-cell records-cell--number">
                                         <small class="{% if event.amount_delta > 0 %}profit{% elif event.amount_delta < 0 %}loss{% else %}neutral{% endif %}" title="{% if event.amount_delta > 0 %}+{% endif %}{{ event.amount_delta|fmt_money }}">
                                             {% if event.amount_delta > 0 %}+{% endif %}{{ event.amount_delta|fmt_display_money }}
                                         </small>
                                     </td>
                                     {% set event_notes = event.notes or '' %}
-                                    <td class="portfolio-event-notes"{% if event_notes %} title="{{ event_notes }}"{% endif %}>
+                                    <td class="records-cell portfolio-event-notes"{% if event_notes %} title="{{ event_notes }}"{% endif %}>
                                         <small class="text-muted">{{ event_notes if event_notes else '—' }}</small>
                                     </td>
-                                    <td class="text-center actions-cell">
+                                    <td class="records-cell actions-cell">
                                         <div class="btn-group btn-group-sm row-actions" role="group">
                                             <button type="button"
                                                     class="btn btn-outline-primary btn-icon btn-sm js-edit-portfolio-event-btn"

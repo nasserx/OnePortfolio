@@ -157,58 +157,70 @@
                 <div class="portfolio-transactions" id="transactions-{{ item.html_group_id }}" hidden>
                     {% if item.transactions|length > 0 or show_dividend_rows %}
                     <div class="table-responsive">
-                        <table class="table table-sm table-hover align-middle mb-0 transactions-table dashboard-actions-table">
+                        <table class="table table-sm table-hover align-middle mb-0 records-table records-table--asset-entries transactions-table dashboard-actions-table">
+                            <colgroup>
+                                <col class="records-col records-col--date">
+                                <col class="records-col records-col--type">
+                                <col class="records-col records-col--price">
+                                <col class="records-col records-col--quantity">
+                                <col class="records-col records-col--fee">
+                                <col class="records-col records-col--total">
+                                <col class="records-col records-col--pnl">
+                                <col class="records-col records-col--return">
+                                <col class="records-col records-col--notes">
+                                <col class="records-col records-col--actions">
+                            </colgroup>
                             <thead class="table-light">
                                 <tr>
-                                    <th class="small">Date</th>
-                                    <th class="small">Type</th>
-                                    <th class="small text-end">Price</th>
-                                    <th class="small text-end">Quantity</th>
-                                    <th class="small text-end">Fee</th>
-                                    <th class="small text-end">Total</th>
-                                    <th class="small text-end">Realized P&amp;L</th>
-                                    <th class="small text-end">Return</th>
-                                    <th class="small">Notes</th>
-                                    <th class="small text-center">Actions</th>
+                                    <th class="small records-cell">Date</th>
+                                    <th class="small records-cell">Type</th>
+                                    <th class="small records-cell records-cell--number">Price</th>
+                                    <th class="small records-cell records-cell--number">Quantity</th>
+                                    <th class="small records-cell records-cell--number">Fee</th>
+                                    <th class="small records-cell records-cell--number">Total</th>
+                                    <th class="small records-cell records-cell--number">Realized P&amp;L</th>
+                                    <th class="small records-cell records-cell--number">Return</th>
+                                    <th class="small records-cell">Notes</th>
+                                    <th class="small records-cell">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for transaction in item.transactions|reverse %}
                                 <tr>
-                                    <td><small class="text-muted">{{ transaction.date_short }}</small></td>
-                                    <td>
+                                    <td class="records-cell"><small class="text-muted">{{ transaction.date_short }}</small></td>
+                                    <td class="records-cell">
                                         {% if transaction.transaction_type == 'Buy' %}
                                             <span class="tx-type-label tx-type-buy type-buy">Buy</span>
                                         {% else %}
                                             <span class="tx-type-label tx-type-sell type-sell">Sell</span>
                                         {% endif %}
                                     </td>
-                                    <td class="text-end"><small title="{{ transaction.price|fmt_money(item.price_decimal_places) }}">{{ transaction.price|fmt_display_money(item.price_decimal_places) }}</small></td>
-                                    <td class="text-end"><small title="{{ transaction.quantity|fmt_decimal }}">{{ transaction.quantity|fmt_display_decimal }}</small></td>
-                                    <td class="text-end"><small class="text-danger" title="{{ transaction.fees|fmt_decimal }}">{{ transaction.fees|fmt_display_decimal }}</small></td>
-                                    <td class="text-end"><small class="text-primary" title="{{ transaction.net_amount|fmt_money }}">{{ transaction.net_amount|fmt_display_money }}</small></td>
+                                    <td class="records-cell records-cell--number"><small title="{{ transaction.price|fmt_money(item.price_decimal_places) }}">{{ transaction.price|fmt_display_money(item.price_decimal_places) }}</small></td>
+                                    <td class="records-cell records-cell--number"><small title="{{ transaction.quantity|fmt_decimal }}">{{ transaction.quantity|fmt_display_decimal }}</small></td>
+                                    <td class="records-cell records-cell--number"><small class="text-danger" title="{{ transaction.fees|fmt_decimal }}">{{ transaction.fees|fmt_display_decimal }}</small></td>
+                                    <td class="records-cell records-cell--number"><small class="text-primary" title="{{ transaction.net_amount|fmt_money }}">{{ transaction.net_amount|fmt_display_money }}</small></td>
                                     {% if transaction.transaction_type == 'Sell' %}
                                         {% set tx_net_pnl = transaction.net_pnl %}
                                         {% set tx_net_pnl_pct = transaction.net_pnl_percent %}
-                                        <td class="text-end">
+                                        <td class="records-cell records-cell--number">
                                             <small class="{% if tx_net_pnl > 0 %}profit{% elif tx_net_pnl < 0 %}loss{% else %}neutral{% endif %}" title="{% if tx_net_pnl > 0 %}+{% endif %}{{ tx_net_pnl|fmt_money }}">
                                                 {% if tx_net_pnl > 0 %}+{% endif %}{{ tx_net_pnl|fmt_display_money }}
                                             </small>
                                         </td>
-                                        <td class="text-end">
+                                        <td class="records-cell records-cell--number">
                                             <small class="{% if tx_net_pnl_pct is not none and tx_net_pnl_pct > 0 %}profit{% elif tx_net_pnl_pct is not none and tx_net_pnl_pct < 0 %}loss{% else %}neutral{% endif %}"{% if tx_net_pnl_pct is not none %} title="{% if tx_net_pnl_pct > 0 %}+{% endif %}{{ tx_net_pnl_pct|fmt_money }}%"{% endif %}>
                                                 {% if tx_net_pnl_pct is not none %}{{ tx_net_pnl_pct|fmt_display_percent(signed=True) }}{% else %}—{% endif %}
                                             </small>
                                         </td>
                                     {% else %}
-                                        <td class="text-end"><small class="text-muted">—</small></td>
-                                        <td class="text-end"><small class="text-muted">—</small></td>
+                                        <td class="records-cell records-cell--number"><small class="text-muted">—</small></td>
+                                        <td class="records-cell records-cell--number"><small class="text-muted">—</small></td>
                                     {% endif %}
                                     {% set tx_notes = transaction.notes or '' %}
-                                    <td class="tx-notes-cell"{% if tx_notes %} title="{{ tx_notes }}"{% endif %}>
+                                    <td class="records-cell tx-notes-cell"{% if tx_notes %} title="{{ tx_notes }}"{% endif %}>
                                         <small class="text-muted">{{ tx_notes if tx_notes else '—' }}</small>
                                     </td>
-                                    <td class="text-center actions-cell">
+                                    <td class="records-cell actions-cell">
                                         <div class="btn-group btn-group-sm row-actions" role="group">
                                             <button type="button" class="btn btn-outline-primary btn-icon btn-sm js-edit-transaction-btn"
                                                     data-tx='{{ {
@@ -243,21 +255,21 @@
                                 {% if show_dividend_rows %}
                                 {% for div in symbol_dividends|reverse %}
                                 <tr>
-                                    <td><small class="text-muted">{{ div.date_short }}</small></td>
-                                    <td>
+                                    <td class="records-cell"><small class="text-muted">{{ div.date_short }}</small></td>
+                                    <td class="records-cell">
                                         <span class="badge badge-dividend type-income">Income</span>
                                     </td>
-                                    <td class="text-end"><small class="text-muted">—</small></td>
-                                    <td class="text-end"><small class="text-muted">—</small></td>
-                                    <td class="text-end"><small class="text-muted">—</small></td>
-                                    <td class="text-end"><small class="text-primary text-income" title="{{ div.amount|fmt_money }}">{{ div.amount|fmt_display_money }}</small></td>
-                                    <td class="text-end"><small class="text-muted">—</small></td>
-                                    <td class="text-end"><small class="text-muted">—</small></td>
+                                    <td class="records-cell records-cell--number"><small class="text-muted">—</small></td>
+                                    <td class="records-cell records-cell--number"><small class="text-muted">—</small></td>
+                                    <td class="records-cell records-cell--number"><small class="text-muted">—</small></td>
+                                    <td class="records-cell records-cell--number"><small class="text-primary text-income" title="{{ div.amount|fmt_money }}">{{ div.amount|fmt_display_money }}</small></td>
+                                    <td class="records-cell records-cell--number"><small class="text-muted">—</small></td>
+                                    <td class="records-cell records-cell--number"><small class="text-muted">—</small></td>
                                     {% set div_notes = div.notes or '' %}
-                                    <td class="tx-notes-cell"{% if div_notes %} title="{{ div_notes }}"{% endif %}>
+                                    <td class="records-cell tx-notes-cell"{% if div_notes %} title="{{ div_notes }}"{% endif %}>
                                         <small class="text-muted">{{ div_notes if div_notes else '—' }}</small>
                                     </td>
-                                    <td class="text-center actions-cell">
+                                    <td class="records-cell actions-cell">
                                         <div class="btn-group btn-group-sm row-actions" role="group">
                                             <button type="button"
                                                     class="btn btn-outline-primary btn-icon btn-sm js-edit-dividend-btn"

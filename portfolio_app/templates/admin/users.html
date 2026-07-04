@@ -6,33 +6,43 @@
 
 {% if users %}
 <div class="table-responsive">
-    <table class="table table-hover">
+    <table class="table table-hover records-table records-table--admin-users">
+        <colgroup>
+            <col class="records-col records-col--id">
+            <col class="records-col records-col--username">
+            <col class="records-col records-col--email">
+            <col class="records-col records-col--role">
+            <col class="records-col records-col--status">
+            <col class="records-col records-col--registered">
+            <col class="records-col records-col--last-login">
+            <col class="records-col records-col--actions">
+        </colgroup>
         <thead class="table-light">
             <tr>
-                <th style="width:40px;">#</th>
-                <th>Username</th>
-                <th>Email</th>
-                <th>Role</th>
-                <th>Status</th>
-                <th>Registered</th>
-                <th>Last Login</th>
-                <th class="text-end">Actions</th>
+                <th class="records-cell records-cell--number">#</th>
+                <th class="records-cell">Username</th>
+                <th class="records-cell">Email</th>
+                <th class="records-cell">Role</th>
+                <th class="records-cell">Status</th>
+                <th class="records-cell">Registered</th>
+                <th class="records-cell">Last Login</th>
+                <th class="records-cell">Actions</th>
             </tr>
         </thead>
         <tbody>
             {% for user in users %}
             <tr>
-                <td class="text-muted admin-table-id">{{ user.id }}</td>
-                <td>
+                <td class="records-cell records-cell--number text-muted admin-table-id">{{ user.id }}</td>
+                <td class="records-cell">
                     <span class="fw-500">{{ user.username }}</span>
                     {% if user.id == current_user.id %}
                         <span class="badge bg-primary admin-badge-you ms-1">You</span>
                     {% endif %}
                 </td>
-                <td class="text-muted admin-table-cell">
+                <td class="records-cell text-muted admin-table-cell">
                     {{ user.email or '—' }}
                 </td>
-                <td>
+                <td class="records-cell">
                     {% if user.is_admin %}
                         <span class="badge admin-badge--admin">
                             <i class="bi bi-shield-fill me-1" aria-hidden="true"></i>Admin
@@ -43,7 +53,7 @@
                         </span>
                     {% endif %}
                 </td>
-                <td>
+                <td class="records-cell">
                     {% if user.is_verified %}
                         <span class="badge admin-badge--verified">
                             <i class="bi bi-check-circle me-1" aria-hidden="true"></i>Verified
@@ -54,14 +64,14 @@
                         </span>
                     {% endif %}
                 </td>
-                <td class="text-muted admin-table-cell">
+                <td class="records-cell text-muted admin-table-cell">
                     {{ user.created_at.strftime('%Y-%m-%d') if user.created_at else '—' }}
                 </td>
-                <td class="text-muted admin-table-cell">
+                <td class="records-cell text-muted admin-table-cell">
                     {{ user.last_login.strftime('%Y-%m-%d %H:%M') if user.last_login else 'Never' }}
                 </td>
-                <td class="text-end">
-                    <div class="d-flex gap-2 justify-content-end">
+                <td class="records-cell">
+                    <div class="d-flex gap-2">
 
                         {# Confirmation prompts use single-quoted onsubmit
                            attributes so the JSON-quoted username (which

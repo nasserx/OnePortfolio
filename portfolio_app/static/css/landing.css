@@ -302,6 +302,7 @@ html {
     min-width: 0;
     padding: 0.78rem 0.85rem;
     background: var(--surface-elevated);
+    text-align: center;
 }
 
 .metric-item + .metric-item {
@@ -455,6 +456,7 @@ html {
 }
 
 .landing-sample-table {
+    --landing-table-columns: minmax(150px, 1.35fr) minmax(92px, 0.78fr) minmax(82px, 0.7fr) minmax(112px, 0.92fr) minmax(82px, 0.72fr);
     display: grid;
     overflow: hidden;
     border: 1px solid var(--landing-card-border);
@@ -463,7 +465,7 @@ html {
 
 .landing-table-row {
     display: grid;
-    grid-template-columns: minmax(150px, 1.35fr) minmax(92px, 0.78fr) minmax(82px, 0.7fr) minmax(112px, 0.92fr) minmax(82px, 0.72fr);
+    grid-template-columns: var(--landing-table-columns);
     align-items: center;
     min-width: 0;
 }
@@ -487,7 +489,7 @@ html {
 .landing-table-head > div {
     color: var(--text-muted);
     font-size: 0.65rem;
-    text-align: right;
+    text-align: left;
     text-transform: uppercase;
 }
 
@@ -503,7 +505,7 @@ html {
 
 .landing-table-number {
     font-variant-numeric: tabular-nums;
-    text-align: right;
+    text-align: left;
     white-space: nowrap;
 }
 
@@ -733,8 +735,8 @@ html {
         min-height: 178px;
     }
 
-    .landing-table-row {
-        grid-template-columns: minmax(92px, 1.05fr) minmax(58px, 0.72fr) minmax(52px, 0.64fr) minmax(68px, 0.86fr) minmax(54px, 0.66fr);
+    .landing-sample-table {
+        --landing-table-columns: minmax(92px, 1.05fr) minmax(58px, 0.72fr) minmax(52px, 0.64fr) minmax(68px, 0.86fr) minmax(54px, 0.66fr);
     }
 
     .landing-table-row > div {

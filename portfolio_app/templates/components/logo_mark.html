@@ -1,7 +1,15 @@
-<span class="{{ logo_class|default('op-logo-mark') }}" {% if logo_label is defined %}role="img" aria-label="{{ logo_label }}"{% else %}aria-hidden="true"{% endif %}>
-    <svg viewBox="0 0 64 64" focusable="false">
-        <circle cx="23" cy="23" r="6" />
-        <circle cx="41" cy="41" r="6" />
-        <rect x="29" y="14" width="6" height="36" rx="3" transform="rotate(45 32 32)" />
-    </svg>
-</span>
+{% set brand_logo_size = logo_size|default(32) %}
+{% set brand_logo_decorative = logo_decorative|default(true) %}
+<img
+    src="{{ url_for('static', filename='icons/favicon.svg') }}"
+    width="{{ brand_logo_size }}"
+    height="{{ brand_logo_size }}"
+    class="brand-logo {{ logo_class|default('op-logo-mark') }}"
+    {% if brand_logo_decorative %}
+        alt=""
+        aria-hidden="true"
+    {% else %}
+        alt="{{ logo_alt|default('OnePortfolio') }}"
+    {% endif %}
+    decoding="async"
+>

@@ -19,6 +19,7 @@
         <div class="landing-container landing-nav-inner">
             <a href="{{ url_for('dashboard.index') }}" class="landing-brand" aria-label="OnePortfolio home">
                 {% set logo_class = 'op-logo-mark landing-logo-mark' %}
+                {% set logo_size = 28 %}
                 {% include 'components/logo_mark.html' %}
                 <span>OnePortfolio</span>
             </a>

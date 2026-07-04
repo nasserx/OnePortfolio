@@ -5,9 +5,9 @@
 {% block auth_content %}
 
     <div class="text-center mb-4">
-        <div class="icon-circle">
-            <i class="bi bi-hourglass-split fs-2" aria-hidden="true"></i>
-        </div>
+        {% set logo_class = 'op-logo-mark auth-logo mb-3' %}
+        {% set logo_size = 40 %}
+        {% include 'components/logo_mark.html' %}
         <h1 class="h4 fw-500 mb-1">Slow down for a moment</h1>
         <p class="auth-subtitle mb-0">{{ message }}</p>
     </div>

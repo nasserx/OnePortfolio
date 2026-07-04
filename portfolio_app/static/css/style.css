@@ -102,19 +102,12 @@ textarea,
     border-bottom: 1px solid var(--border-soft) !important;
 }
 .sidebar-brand:hover { color: var(--text-1); text-decoration: none; }
+.brand-logo,
 .op-logo-mark {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    color: currentColor;
-    line-height: 1;
-    flex-shrink: 0;
-}
-.op-logo-mark svg {
     display: block;
-    width: 100%;
-    height: 100%;
-    fill: currentColor;
+    flex: 0 0 auto;
+    line-height: 1;
+    object-fit: contain;
 }
 .sidebar-logo-mark {
     width: 32px;
@@ -2782,7 +2775,6 @@ i.bi.text-success,
 i.bi.text-danger,
 i.bi.text-warning,
 i.bi.text-info,
-.icon-circle > .bi,
 .btn-outline-primary .bi,
 .btn-outline-success .bi,
 .btn-outline-danger .bi,
@@ -2918,7 +2910,8 @@ i.bi.text-info,
     padding: 2rem 1rem; background: var(--app-bg);
 }
 .auth-card {
-    width: 100%; max-width: 420px;
+    width: 100%; max-width: min(420px, 100%);
+    min-width: 0;
     background: var(--card-bg);
     padding: 2.25rem !important;
     border-radius: var(--radius-card) !important;
@@ -2926,10 +2919,11 @@ i.bi.text-info,
     box-shadow: var(--shadow-card);
 }
 .auth-logo {
-    display: inline-flex;
+    display: block;
     width: 40px;
     height: 40px;
-    color: var(--text-1);
+    margin-left: auto;
+    margin-right: auto;
 }
 .auth-title { font-size: 1.375rem; font-weight: 600; color: var(--text-1); }
 .auth-subtitle { color: var(--text-3); font-size: 0.875rem; }
@@ -2985,14 +2979,6 @@ i.bi.text-info,
 .strength-bar { height: 3px; background: var(--surface-hover); margin-top: 0.4rem; overflow: hidden; }
 .strength-bar .bar-fill { height: 100%; transition: background-color var(--transition); width: 0%; }
 
-.icon-circle {
-    width: auto; height: auto;
-    background: transparent; color: var(--text-2);
-    outline: none !important;
-    display: flex; align-items: center; justify-content: center;
-    margin: 0 auto 1rem; font-size: 1.375rem;
-    border-radius: 0 !important;
-}
 .otp-input { font-size: 2rem; font-weight: 600; letter-spacing: 0.5rem; text-align: center; }
 .auth-inner-card  { background: var(--surface) !important; outline: 1px solid var(--border-color) !important; }
 .auth-inner-title { font-size: 1.25rem; font-weight: 600; }

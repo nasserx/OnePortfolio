@@ -120,7 +120,8 @@ textarea,
     display: flex; flex-direction: column; gap: 0.2rem;
 }
 
-.sidebar-nav-link {
+.sidebar-nav-link,
+.settings-sidebar-link {
     display: flex; align-items: center; gap: 0.75rem;
     padding: 0.62rem 0.85rem;
     color: var(--nav-link-color); font-size: 0.875rem; font-weight: 500;
@@ -130,39 +131,53 @@ textarea,
     outline: 1px solid transparent !important;
     transition: background-color var(--transition-slow), color var(--transition);
 }
-.sidebar-nav-link i {
+.sidebar-nav-link i,
+.settings-sidebar-link .bi {
     font-size: 1rem; flex-shrink: 0; width: 18px; text-align: center;
     color: currentColor;
     transition: color var(--transition);
 }
 .sidebar-nav-link:hover,
-.sidebar-nav-link:focus-visible {
+.sidebar-nav-link:focus-visible,
+.settings-sidebar-link:hover,
+.settings-sidebar-link:focus-visible {
     color: var(--nav-link-hover-color);
     background: var(--nav-link-hover-bg);
     outline-color: var(--nav-link-hover-outline) !important;
     text-decoration: none;
 }
 .sidebar-nav-link:hover i,
-.sidebar-nav-link:focus-visible i { color: currentColor; }
+.sidebar-nav-link:focus-visible i,
+.settings-sidebar-link:hover .bi,
+.settings-sidebar-link:focus-visible .bi { color: currentColor; }
 .sidebar-nav-link.active,
 .sidebar-nav-link.active:hover,
-.sidebar-nav-link.active:focus-visible {
+.sidebar-nav-link.active:focus-visible,
+.settings-sidebar-link.active,
+.settings-sidebar-link.active:hover,
+.settings-sidebar-link.active:focus-visible {
     color: var(--text-1) !important;
     background: color-mix(in srgb, var(--surface-4) 90%, var(--text-1)) !important;
     outline: 1px solid transparent !important;
     font-weight: 500;
 }
 .sidebar-nav-link.active:hover,
-.sidebar-nav-link.active:focus-visible {
+.sidebar-nav-link.active:focus-visible,
+.settings-sidebar-link.active:hover,
+.settings-sidebar-link.active:focus-visible {
     background: color-mix(in srgb, var(--surface-4) 84%, var(--text-1)) !important;
 }
-.sidebar-nav-link.active:focus-visible {
+.sidebar-nav-link.active:focus-visible,
+.settings-sidebar-link.active:focus-visible {
     outline-color: var(--focus-ring) !important;
     outline-offset: 2px !important;
 }
 .sidebar-nav-link.active i,
 .sidebar-nav-link.active:hover i,
-.sidebar-nav-link.active:focus-visible i { color: currentColor; }
+.sidebar-nav-link.active:focus-visible i,
+.settings-sidebar-link.active .bi,
+.settings-sidebar-link.active:hover .bi,
+.settings-sidebar-link.active:focus-visible .bi { color: currentColor; }
 
 .sidebar-divider {
     height: 1px;
@@ -2817,45 +2832,9 @@ i.bi.text-info,
 .settings-tab-content .tab-pane.fade { transition: opacity 0.1s ease; }
 
 .settings-sidebar-link {
-    display: flex; align-items: center; gap: 0.75rem;
     width: 100%; text-align: left;
-    color: var(--nav-link-color); font-size: 0.875rem; font-weight: 500;
-    padding: 0.62rem 0.85rem;
     background: transparent; cursor: pointer;
-    border-radius: var(--radius-md) !important;
-    outline: 1px solid transparent !important;
-    transition: background-color var(--transition-slow), color var(--transition);
 }
-.settings-sidebar-link:hover,
-.settings-sidebar-link:focus-visible {
-    color: var(--nav-link-hover-color);
-    background: var(--nav-link-hover-bg);
-    outline-color: var(--nav-link-hover-outline) !important;
-}
-.settings-sidebar-link.active,
-.settings-sidebar-link.active:hover,
-.settings-sidebar-link.active:focus-visible {
-    color: var(--op-nav-active) !important;
-    background: var(--op-nav-active-bg) !important;
-    outline: 1px solid var(--op-nav-active-border) !important;
-    font-weight: 500;
-}
-.settings-sidebar-link:focus-visible {
-    outline-color: var(--nav-link-focus-outline) !important;
-    outline-offset: 2px !important;
-}
-.settings-sidebar-link .bi {
-    font-size: 1rem;
-    flex-shrink: 0;
-    width: 18px;
-    text-align: center;
-    color: currentColor;
-}
-.settings-sidebar-link:hover .bi,
-.settings-sidebar-link:focus-visible .bi { color: currentColor; }
-.settings-sidebar-link.active .bi,
-.settings-sidebar-link.active:hover .bi,
-.settings-sidebar-link.active:focus-visible .bi { color: currentColor; }
 
 .settings-readonly-field {
     display: flex; align-items: center; gap: 0.625rem;

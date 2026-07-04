@@ -31,6 +31,7 @@ from portfolio_app.models.transaction import Transaction
 from portfolio_app.models.user import User
 from portfolio_app.models.pending_registration import PendingRegistration
 from portfolio_app.repositories.user_repository import UserRepository
+from portfolio_app.services.auth_service import MAX_OTP_ATTEMPTS
 
 
 # ---------------------------------------------------------------------------
@@ -266,6 +267,34 @@ class TestSignup:
             # Still pending, no user created.
             assert User.query.count() == 0
             assert PendingRegistration.query.count() == 1
+
+    def test_failed_pending_registration_otp_attempts_increment_and_lock_out(
+        self, app, client, email_log,
+    ):
+        _register(client)
+
+        for attempt in range(1, MAX_OTP_ATTEMPTS):
+            resp = client.post(
+                '/verify-code?email=alice@example.com',
+                data={'code': '000000'},
+            )
+            assert resp.status_code == 200
+            with app.app_context():
+                pending = PendingRegistration.query.filter_by(
+                    email='alice@example.com',
+                ).one()
+                assert pending.failed_otp_attempts == attempt
+
+        resp = client.post(
+            '/verify-code?email=alice@example.com',
+            data={'code': '000000'},
+        )
+        assert resp.status_code == 200
+        with app.app_context():
+            assert PendingRegistration.query.filter_by(
+                email='alice@example.com',
+            ).count() == 0
+            assert User.query.count() == 0
 
     def test_valid_otp_creates_user_deletes_pending(self, app, client, email_log):
         _register(client)

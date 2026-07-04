@@ -176,3 +176,66 @@ def test_oauth_identity_migration_is_idempotent_and_preserves_existing_users(tmp
             provider_subject='opaque-sub',
         ).count() == 1
         assert db.session.execute(text('PRAGMA user_version')).scalar() == TARGET_SCHEMA_VERSION
+
+
+def test_migration_repairs_version_29_pending_registration_missing_otp_counter(tmp_path):
+    db_path = tmp_path / 'missing-pending-registration-otp-counter.sqlite'
+    import sqlite3
+
+    con = sqlite3.connect(db_path)
+    try:
+        con.executescript('''
+            CREATE TABLE pending_registration (
+                id                            INTEGER PRIMARY KEY AUTOINCREMENT,
+                token                         VARCHAR(64)  NOT NULL UNIQUE,
+                username                      VARCHAR(80)  NOT NULL UNIQUE,
+                email                         VARCHAR(120) NOT NULL UNIQUE,
+                password_hash                 VARCHAR(255) NOT NULL,
+                verification_code             VARCHAR(6)   NOT NULL,
+                verification_code_expires_at  DATETIME     NOT NULL,
+                created_at                    DATETIME     NOT NULL,
+                expires_at                    DATETIME     NOT NULL
+            );
+            INSERT INTO pending_registration (
+                token,
+                username,
+                email,
+                password_hash,
+                verification_code,
+                verification_code_expires_at,
+                created_at,
+                expires_at
+            ) VALUES (
+                'token',
+                'pending',
+                'pending@example.com',
+                'hash',
+                '123456',
+                '2026-01-01 00:10:00',
+                '2026-01-01 00:00:00',
+                '2026-01-02 00:00:00'
+            );
+            PRAGMA user_version = 29;
+        ''')
+        con.commit()
+    finally:
+        con.close()
+
+    app = create_app(_config_for(db_path))
+
+    with app.app_context():
+        columns = {
+            row[1]: row
+            for row in db.session.execute(
+                text('PRAGMA table_info(pending_registration)')
+            ).fetchall()
+        }
+        failed_attempts_col = columns['failed_otp_attempts']
+        assert failed_attempts_col[2].upper() == 'INTEGER'
+        assert failed_attempts_col[3] == 1
+        assert failed_attempts_col[4] == '0'
+        assert db.session.execute(text(
+            'SELECT failed_otp_attempts FROM pending_registration '
+            'WHERE email = :email'
+        ), {'email': 'pending@example.com'}).scalar() == 0
+        assert db.session.execute(text('PRAGMA user_version')).scalar() == TARGET_SCHEMA_VERSION

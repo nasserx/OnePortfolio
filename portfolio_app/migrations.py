@@ -4,7 +4,7 @@ from portfolio_app import db
 # Bumped whenever a new migration step is added below. Stored in the SQLite
 # header (PRAGMA user_version) after a successful migration so subsequent
 # boots can short-circuit the whole inspection pass.
-TARGET_SCHEMA_VERSION = 29
+TARGET_SCHEMA_VERSION = 30
 
 
 def run_migrations(app):
@@ -529,6 +529,25 @@ def _apply_migration_steps(conn, sa):
             'CREATE INDEX ix_oauth_identity_user_id ON oauth_identity (user_id)'
         ))
         conn.commit()
+
+    # ── Step 30: repair pending_registration OTP counter drift ──────────
+    # Some local databases reached schema version 29 while still missing
+    # this column, so startup short-circuited before Step 27 could repair
+    # the table. Keep this forward migration narrowly scoped and idempotent.
+    tables = set(inspector.get_table_names())
+    if 'pending_registration' in tables:
+        pr_cols = {
+            row[1]
+            for row in conn.execute(
+                sa.text('PRAGMA table_info(pending_registration)')
+            ).fetchall()
+        }
+        if 'failed_otp_attempts' not in pr_cols:
+            conn.execute(sa.text(
+                'ALTER TABLE pending_registration '
+                'ADD COLUMN failed_otp_attempts INTEGER NOT NULL DEFAULT 0'
+            ))
+            conn.commit()
 
     # ── Step 24: rebuild tables with stale FK constraints / dropped cols ─
     # Older databases were created when the parent table was named

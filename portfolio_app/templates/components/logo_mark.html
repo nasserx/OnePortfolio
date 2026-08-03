@@ -1,7 +1,9 @@
 {% set brand_logo_size = logo_size|default(32) %}
 {% set brand_logo_decorative = logo_decorative|default(true) %}
+{% set brand_logo_surface = logo_surface|default('light') %}
+{% set brand_logo_asset = 'icons/favicon-dark.svg' if brand_logo_surface == 'dark' else 'icons/favicon-light.svg' %}
 <img
-    src="{{ url_for('static', filename='icons/favicon.svg') }}"
+    src="{{ url_for('static', filename=brand_logo_asset) }}"
     width="{{ brand_logo_size }}"
     height="{{ brand_logo_size }}"
     class="brand-logo {{ logo_class|default('op-logo-mark') }}"

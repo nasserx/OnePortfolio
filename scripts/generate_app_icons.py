@@ -7,7 +7,8 @@ The master SVG intentionally uses a non-zero viewBox origin:
 Some screenshot-based render paths capture the top-left of the intrinsic SVG
 document instead of fitting that viewBox into the target square canvas. This
 script renders a temporary, visually equivalent SVG with the viewBox normalized
-to 0,0 so every PNG/ICO entry is produced from the full centered artwork.
+to 0,0 and a transparent browser canvas so every PNG/ICO entry is produced from
+the full centered artwork with real alpha transparency.
 """
 
 from __future__ import annotations
@@ -28,6 +29,21 @@ from xml.etree import ElementTree as ET
 ROOT = Path(__file__).resolve().parents[1]
 ICONS_DIR = ROOT / "portfolio_app" / "static" / "icons"
 MASTER_SVG = ICONS_DIR / "favicon.svg"
+LIGHT_SURFACE_ARTWORK = "#09090B"
+DARK_SURFACE_ARTWORK = "#FFFFFF"
+SVG_VARIANTS = {
+    ICONS_DIR / "favicon-light.svg": LIGHT_SURFACE_ARTWORK,
+    ICONS_DIR / "favicon-dark.svg": DARK_SURFACE_ARTWORK,
+}
+SVG_ARTWORK_COLORS = {
+    MASTER_SVG: LIGHT_SURFACE_ARTWORK,
+    **SVG_VARIANTS,
+}
+TARGET_SURFACES = {
+    MASTER_SVG: ("#FFFFFF", "#E0E0E0"),
+    ICONS_DIR / "favicon-light.svg": ("#FFFFFF", "#E0E0E0"),
+    ICONS_DIR / "favicon-dark.svg": ("#000000", "#202020"),
+}
 EDGE = Path(r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe")
 APP_PNGS = {
     "apple-touch-icon.png": 180,
@@ -51,10 +67,10 @@ def inspect_svg(svg_path: Path) -> dict[str, object]:
     parts = [float(part) for part in view_box.replace(",", " ").split()]
     if len(parts) != 4:
         raise IconValidationError(f"Unexpected viewBox: {view_box!r}")
-    rects = []
-    for elem in root.iter():
+    root_rects = []
+    for elem in root:
         if elem.tag.endswith("rect"):
-            rects.append({
+            root_rects.append({
                 "x": elem.attrib.get("x", "0"),
                 "y": elem.attrib.get("y", "0"),
                 "width": elem.attrib.get("width"),
@@ -66,15 +82,83 @@ def inspect_svg(svg_path: Path) -> dict[str, object]:
         for elem in root.iter()
         if "transform" in elem.attrib
     ]
+    artwork_groups = [
+        elem
+        for elem in root
+        if elem.tag.endswith("g")
+        and elem.attrib.get("mask") == "url(#logo-cutout)"
+    ]
+    if len(artwork_groups) != 1:
+        raise IconValidationError(
+            f"{svg_path.name} must contain one masked artwork group"
+        )
     return {
         "width": root.attrib.get("width"),
         "height": root.attrib.get("height"),
         "viewBox": view_box,
         "viewBox_parts": parts,
         "preserveAspectRatio": root.attrib.get("preserveAspectRatio"),
-        "rects": rects,
+        "root_rects": root_rects,
         "transforms": transforms,
+        "artwork_fill": artwork_groups[0].attrib.get("fill"),
     }
+
+
+def svg_with_artwork_color(svg_text: str, artwork_color: str) -> str:
+    root = ET.fromstring(svg_text)
+    artwork_groups = [
+        elem
+        for elem in root
+        if elem.tag.endswith("g")
+        and elem.attrib.get("mask") == "url(#logo-cutout)"
+    ]
+    if len(artwork_groups) != 1:
+        raise IconValidationError("Master SVG must contain one masked artwork group")
+    current_color = artwork_groups[0].attrib.get("fill")
+    marker = f'fill="{current_color}" mask="url(#logo-cutout)"'
+    if svg_text.count(marker) != 1:
+        raise IconValidationError("Could not isolate the master SVG artwork color")
+    return svg_text.replace(
+        marker,
+        f'fill="{artwork_color}" mask="url(#logo-cutout)"',
+        1,
+    )
+
+
+def generate_svg_variants() -> None:
+    master_text = MASTER_SVG.read_text(encoding="utf-8")
+    for svg_path, artwork_color in SVG_VARIANTS.items():
+        svg_path.write_text(
+            svg_with_artwork_color(master_text, artwork_color),
+            encoding="utf-8",
+        )
+
+
+def _hex_rgb(color: str) -> tuple[int, int, int]:
+    value = color.removeprefix("#")
+    if len(value) != 6:
+        raise IconValidationError(f"Expected a six-digit hex color: {color!r}")
+    return tuple(int(value[index:index + 2], 16) for index in (0, 2, 4))
+
+
+def _relative_luminance(color: str) -> float:
+    channels = []
+    for value in _hex_rgb(color):
+        normalized = value / 255
+        channels.append(
+            normalized / 12.92
+            if normalized <= 0.04045
+            else ((normalized + 0.055) / 1.055) ** 2.4
+        )
+    return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2]
+
+
+def contrast_ratio(first: str, second: str) -> float:
+    lighter, darker = sorted(
+        (_relative_luminance(first), _relative_luminance(second)),
+        reverse=True,
+    )
+    return (lighter + 0.05) / (darker + 0.05)
 
 
 def _svg_inner(svg_text: str) -> str:
@@ -113,6 +197,7 @@ def render_png(svg_path: Path, out_path: Path, size: int, tmp_dir: Path) -> None
         "--headless=new",
         "--disable-gpu",
         "--no-first-run",
+        "--default-background-color=00000000",
         f"--user-data-dir={profile}",
         "--force-device-scale-factor=1",
         f"--window-size={size},{size}",
@@ -199,9 +284,8 @@ def decode_png(path: Path) -> tuple[int, int, str, list[tuple[int, int, int, int
     return width, height, mode, pixels
 
 
-def _is_background(pixel: tuple[int, int, int, int]) -> bool:
-    r, g, b, a = pixel
-    return a >= 250 and r <= 18 and g <= 18 and b <= 18
+def _is_transparent(pixel: tuple[int, int, int, int]) -> bool:
+    return pixel[3] == 0
 
 
 def _is_white(pixel: tuple[int, int, int, int]) -> bool:
@@ -221,14 +305,29 @@ def validate_png(path: Path, expected_size: int, *, app_icon: bool) -> dict[str,
         "bottom_left": (height - 1) * width,
         "bottom_right": (height * width) - 1,
     }.items():
-        if not _is_background(pixels[idx]):
-            raise IconValidationError(f"{path.name} {name} corner is not black: {pixels[idx]}")
-    if app_icon and any(px[3] != 255 for px in pixels):
-        raise IconValidationError(f"{path.name} is not fully opaque")
+        if not _is_transparent(pixels[idx]):
+            raise IconValidationError(
+                f"{path.name} {name} corner is not transparent: {pixels[idx]}"
+            )
+    if mode != "RGBA":
+        raise IconValidationError(f"{path.name} does not have an alpha channel")
+    if app_icon and not any(px[3] == 0 for px in pixels):
+        raise IconValidationError(f"{path.name} has no transparent pixels")
+    expected_rgb = _hex_rgb(LIGHT_SURFACE_ARTWORK)
+    opaque_colors = {
+        pixel[:3]
+        for pixel in pixels
+        if pixel[3] == 255
+    }
+    if opaque_colors != {expected_rgb}:
+        raise IconValidationError(
+            f"{path.name} has unexpected opaque artwork colors: "
+            f"{sorted(opaque_colors)[:5]}"
+        )
     fg = [
         (i % width, i // width)
         for i, px in enumerate(pixels)
-        if not _is_background(px)
+        if px[3] != 0
     ]
     if not fg:
         raise IconValidationError(f"{path.name} has no visible logo pixels")
@@ -267,6 +366,9 @@ def validate_png(path: Path, expected_size: int, *, app_icon: bool) -> dict[str,
         "file": path.name,
         "size": f"{width}x{height}",
         "mode": mode,
+        "alpha_range": (min(px[3] for px in pixels), max(px[3] for px in pixels)),
+        "transparent_pixels": sum(1 for px in pixels if px[3] == 0),
+        "opaque_artwork_rgb": expected_rgb,
         "bbox": (min_x, min_y, max_x, max_y),
         "bbox_size": (bbox_w, bbox_h),
         "center": (round(center_x, 2), round(center_y, 2)),
@@ -464,6 +566,7 @@ def extract_ico_pngs(ico_path: Path, out_dir: Path) -> dict[int, Path]:
 def generate() -> None:
     if not EDGE.exists():
         raise IconValidationError(f"Microsoft Edge not found at {EDGE}")
+    generate_svg_variants()
     with tempfile.TemporaryDirectory(prefix="oneportfolio-icons-") as td:
         tmp_dir = Path(td)
         generated_ico_pngs = {}
@@ -477,7 +580,36 @@ def generate() -> None:
 
 
 def validate() -> None:
-    print("SVG:", inspect_svg(MASTER_SVG))
+    master_text = MASTER_SVG.read_text(encoding="utf-8")
+    if LIGHT_SURFACE_ARTWORK == DARK_SURFACE_ARTWORK:
+        raise IconValidationError("Light and dark artwork colors must differ")
+    for svg_path, expected_color in SVG_ARTWORK_COLORS.items():
+        info = inspect_svg(svg_path)
+        if info["root_rects"]:
+            raise IconValidationError(
+                f"{svg_path.name} has a root-level background rectangle: "
+                f"{info['root_rects']}"
+            )
+        if info["artwork_fill"] != expected_color:
+            raise IconValidationError(
+                f"{svg_path.name} artwork is {info['artwork_fill']}, "
+                f"expected {expected_color}"
+            )
+        if svg_path != MASTER_SVG:
+            expected_text = svg_with_artwork_color(master_text, expected_color)
+            if svg_path.read_text(encoding="utf-8") != expected_text:
+                raise IconValidationError(
+                    f"{svg_path.name} does not match the master SVG geometry"
+                )
+        contrasts = {
+            surface: round(contrast_ratio(expected_color, surface), 2)
+            for surface in TARGET_SURFACES[svg_path]
+        }
+        if min(contrasts.values()) < 4.5:
+            raise IconValidationError(
+                f"{svg_path.name} has insufficient target contrast: {contrasts}"
+            )
+        print(f"SVG ({svg_path.name}):", info, "contrast:", contrasts)
     for name, size in APP_PNGS.items():
         print("PNG:", validate_png(ICONS_DIR / name, size, app_icon=True))
     print("Cross-size mean difference:", validate_cross_size())

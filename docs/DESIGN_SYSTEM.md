@@ -17,6 +17,23 @@ Three rules decide most design questions. When in doubt, apply them in order.
 3. **Density is a preference, not a constant.** Never hard-code a compact size —
    scale it from `--density-scale` so the comfortable/compact switch works.
 
+Three consequences worth stating outright, because they are easy to undo by
+accident:
+
+- **Entry types are coloured words, not chips.** Buy, Sell, Income, Deposit and
+  Withdraw appear once per row; wrapping each in a tinted pill turns a ledger
+  into a field of badges and out-shouts the figures. A chip is still right for a
+  *category* tag that appears once per group (the portfolio name beside an asset
+  symbol).
+- **Row actions appear on engagement.** Edit/delete controls are `opacity: 0`
+  until their own row is hovered or focused. They keep their layout space, stay
+  in the tab order, and are permanently visible under `@media (hover: none)`.
+- **The allocation ring shows four slices plus a grouped remainder.** Past four
+  wedges the small ones become unlabelable slivers. Full per-portfolio detail
+  lives in the summary table directly below, so nothing is hidden — only
+  simplified. The cap is `ALLOCATION_TOP_N` in
+  `calculators/allocation_charts.py`.
+
 ## File layout
 
 ```
@@ -62,6 +79,13 @@ Adding a colour means adding a *role*, not a one-off hex. If no existing role
 fits, the design probably needs a new semantic — not a new shade.
 
 ### Themes
+
+The light theme is built on a **warm cream** ramp, not neutral white. That is a
+functional choice, not a stylistic one: against a warm ground the semantic green
+and red hold their saturation, where on clinical white they wash out and start
+reading as grey. The light-theme semantic hues are darkened to clear 4.5:1
+against those cream surfaces; the dark-theme brand steps are pushed up in chroma
+because a desaturated violet reads as grey on near-black.
 
 Light is the base definition on `:root`. Dark is redefined twice: under
 `@media (prefers-color-scheme: dark)` guarded by `:root:not([data-theme="light"])`,

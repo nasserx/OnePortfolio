@@ -17,7 +17,7 @@
 
   .lp-shell {
     width: 100%;
-    max-width: 72rem;
+    max-width: 82rem;
     margin-inline: auto;
     padding-inline: var(--space-6);
   }
@@ -106,7 +106,7 @@
 
   .lp-hero {
     position: relative;
-    padding: var(--space-20) 0 var(--space-16);
+    padding: var(--space-12) 0 var(--space-10);
     overflow: hidden;
   }
 
@@ -129,13 +129,13 @@
     position: relative;
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
-    gap: var(--space-12);
+    gap: var(--space-10);
     align-items: center;
   }
 
   @media (max-width: 64rem) {
-    .lp-hero { padding-top: var(--space-12); }
-    .lp-hero__grid { grid-template-columns: minmax(0, 1fr); gap: var(--space-10); }
+    .lp-hero { padding-top: var(--space-10); }
+    .lp-hero__grid { grid-template-columns: minmax(0, 1fr); gap: var(--space-8); }
   }
 
   .lp-hero__copy {
@@ -165,7 +165,7 @@
   }
 
   .lp-title {
-    max-width: 15ch;
+    max-width: 17ch;
     font-size: clamp(2.25rem, 1.4rem + 3.4vw, 3.5rem);
     font-weight: var(--weight-semibold);
     line-height: 1.05;
@@ -174,7 +174,7 @@
   }
 
   .lp-lede {
-    max-width: 42ch;
+    max-width: 46ch;
     margin: var(--space-5) 0 0;
     color: var(--fg-muted);
     font-size: var(--text-lg);
@@ -187,7 +187,7 @@
     display: flex;
     flex-wrap: wrap;
     gap: var(--space-3);
-    margin-top: var(--space-7);
+    margin-top: var(--space-6);
   }
 
   .lp-cta .bi { transition: transform var(--dur-2) var(--ease-out); }
@@ -197,7 +197,7 @@
     display: flex;
     flex-wrap: wrap;
     gap: var(--space-2) var(--space-5);
-    margin: var(--space-8) 0 0;
+    margin: var(--space-6) 0 0;
     padding: 0;
     list-style: none;
   }
@@ -312,7 +312,7 @@
      Sections
      ====================================================================== */
 
-  .lp-section { padding: var(--space-20) 0; }
+  .lp-section { padding: var(--space-12) 0; }
 
   .lp-section--alt {
     border-block: 1px solid var(--line-subtle);
@@ -320,12 +320,12 @@
   }
 
   @media (max-width: 48rem) {
-    .lp-section { padding: var(--space-12) 0; }
+    .lp-section { padding: var(--space-10) 0; }
   }
 
   .lp-head {
-    max-width: 40rem;
-    margin-bottom: var(--space-10);
+    max-width: 44rem;
+    margin-bottom: var(--space-8);
   }
 
   .lp-head h2 {
@@ -447,7 +447,7 @@
   .lp-limits {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: var(--space-10);
+    gap: var(--space-8);
     align-items: center;
   }
 
@@ -499,7 +499,7 @@
      Close & footer
      ====================================================================== */
 
-  .lp-close { padding: 0 0 var(--space-20); }
+  .lp-close { padding: 0 0 var(--space-12); }
 
   .lp-close__panel {
     display: flex;
@@ -507,8 +507,8 @@
     justify-content: space-between;
     gap: var(--space-6);
     flex-wrap: wrap;
-    max-width: 72rem;
-    padding: var(--space-10);
+    max-width: 82rem;
+    padding: var(--space-8) var(--space-10);
     border: 1px solid var(--line-subtle);
     border-radius: var(--radius-lg);
     background-color: var(--bg-surface);

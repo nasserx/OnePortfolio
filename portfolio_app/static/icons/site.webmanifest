@@ -1,7 +1,7 @@
 {
   "name": "OnePortfolio",
-  "short_name": "Portfolio",
-  "description": "Track and analyze your investment portfolio performance",
+  "short_name": "OnePortfolio",
+  "description": "A clear record of every portfolio you manage. Capital, asset activity, income, and realized results — from your own entries.",
   "icons": [
     {
       "src": "/static/icons/android-chrome-192x192.png",
@@ -16,8 +16,8 @@
       "purpose": "any"
     }
   ],
-  "theme_color": "#f97316",
-  "background_color": "#fff7ed",
+  "theme_color": "#5b45e8",
+  "background_color": "#f7f5f0",
   "display": "standalone",
   "start_url": "/"
 }

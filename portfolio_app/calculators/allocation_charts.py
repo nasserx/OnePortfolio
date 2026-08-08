@@ -5,12 +5,16 @@ from typing import Any, Dict, List
 
 from portfolio_app.utils.decimal_utils import ZERO, safe_divide
 
-ALLOCATION_TOP_N = 7
+# A doughnut stops being readable well before it runs out of distinguishable
+# colours: past four slices the small ones become unlabelable slivers. The
+# ranked remainder is rolled into a single "Other Portfolios" wedge, and the
+# full per-portfolio detail is still one row away in the summary table below.
+ALLOCATION_TOP_N = 4
 ALLOCATION_OTHERS_LABEL = 'Other Portfolios'
 
 
 def _allocation_rows(portfolio_summary: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Portfolio allocation rows: top 7 by book value + Other Portfolios."""
+    """Portfolio allocation rows: top N by book value + Other Portfolios."""
     meaningful = [
         p for p in portfolio_summary
         if Decimal(str(p['book_value'])) > ZERO

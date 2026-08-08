@@ -1558,7 +1558,51 @@
   :root[data-theme="light"] .brand-logo--light { display: block; }
 
   /* ======================================================================
-     16. DATE PICKER (flatpickr)
+     16. HERO BACKDROP
+     A photograph behind a hero is the one place this product lets an image
+     carry mood rather than information. Two rules keep it from costing
+     anything: it is always decorative (`alt=""`, `aria-hidden` wrapper), and
+     it is always under a scrim, because copy legibility cannot depend on
+     which pixel of a photograph lands under a word.
+
+     The scrim itself is per-context — a hero with copy down one side needs a
+     different falloff from a panel with copy through the middle — so it
+     arrives as `--hero-scrim` rather than being hard-coded here.
+     ====================================================================== */
+
+  .hero-media {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  .hero-media picture {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  .hero-media img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    /* Below centre: the crop keeps the ridge line and the meadow, and drops
+       the empty upper sky that a short hero would otherwise fill with. */
+    object-position: 50% 58%;
+  }
+
+  .hero-media::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: var(--hero-scrim, var(--hero-scrim-strong));
+  }
+
+  /* ======================================================================
+     17. DATE PICKER (flatpickr)
      ====================================================================== */
 
   .op-flatpickr.flatpickr-calendar {

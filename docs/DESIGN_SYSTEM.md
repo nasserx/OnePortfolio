@@ -67,6 +67,10 @@ accident:
 ## File layout
 
 ```
+static/img/
+  hero.avif       hero backdrop, primary
+  hero.webp       hero backdrop, fallback for engines without AVIF
+
 static/css/
   tokens.css      layers + design tokens (loaded first, always)
   base.css        reset, element defaults, typography, focus, motion primitives
@@ -254,6 +258,47 @@ buttons, which makes the figures read as labels for the controls.
 Because the summary lives inside a `<button>`, its contents must be phrasing
 content — which is why the `metric` macro emits spans rather than divs.
 
+## Hero backdrops
+
+The marketing hero and the auth showcase share one photographic backdrop:
+`components/hero_image.html` inside a `.hero-media` wrapper.
+
+**Format negotiation.** AVIF is offered through a `<source>`; the `<img>`
+`src` is the WebP. A browser that cannot decode AVIF skips the source and
+uses the img — the one mechanism every engine implements, including ones too
+old to understand `image-set()` type hints. Do not replace this with a CSS
+`background-image` unless the fallback stops mattering.
+
+**The scrim is not decoration.** The colour behind a word is whatever the
+photograph happens to be doing there, and the photograph can be swapped. So
+every hero pairs the picture with `--hero-scrim-*`, and three rules hold:
+
+1. **Copy sits on `--hero-scrim-strong`, always.** That step is tuned to the
+   loosest value that still clears 4.5:1 for `--fg-muted` against a *worst
+   case* pixel — pure black in light, pure white in dark. Currently 0.86;
+   below about 0.84 the guarantee breaks.
+   `tests/test_design_tokens_contrast.py` enforces it.
+2. **`soft` and `edge` are for regions with no text in them.** They exist so
+   the picture can actually be seen where nothing is written over it. If a
+   layout change moves copy into one of those bands, the band moves, not the
+   copy.
+3. **Nothing below `--fg-muted` is a text colour over a hero.** Through the
+   scrim `--fg-subtle` reaches only ~4.06:1 and `--fg-faint` misses even the
+   non-text floor. Small print over imagery is where legibility quietly
+   fails, so the marketing proof list and the auth sub-paragraph step up.
+
+**Gradient or flat?** Use a directional scrim only where the copy's position
+is fixed by the layout — the marketing hero keeps its copy in the left half,
+so `strong` holds to 50% and eases off after. The auth showcase centres its
+copy vertically, so its position within the panel moves with viewport
+height; it takes a flat scrim, because a falloff there would only be correct
+at the height it was eyeballed on.
+
+**Loading.** The marketing hero is eager and high priority. The auth
+showcase is `lazy`/`auto`, because that panel is hidden below 60rem and a
+lazily loaded image inside a hidden container is never fetched — a phone
+signing in does not pay ~200KB for a backdrop it cannot see.
+
 ## Command palette
 
 `Ctrl/Cmd+K`. It reads static navigation entries from a JSON script tag in
@@ -263,8 +308,9 @@ palette by adding one attribute — there is no registration step.
 
 ## Avoid
 
-- Decorative gradients, glows, and ornamental shadows. The single permitted
-  gradient is the hero aura on the marketing page.
+- Decorative gradients, glows, and ornamental shadows. The only gradients in
+  the product are the hero scrims (see [Hero backdrops](#hero-backdrops)),
+  and they are functional — they exist to make text readable, not to decorate.
 - New one-off surface colours, radii, or durations.
 - `!important` in our own layers.
 - Uppercase labels.

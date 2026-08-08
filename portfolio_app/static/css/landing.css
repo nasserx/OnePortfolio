@@ -112,25 +112,24 @@
      Hero
      ====================================================================== */
 
+  /* The copy runs down the left, so the scrim is heaviest there and thins
+     across to the right, where the only thing over the picture is the
+     product card — which brings its own opaque surface. The last layer
+     fades the whole thing into the page below, so the hero ends without a
+     seam. Layers paint first-on-top, hence the bottom fade leading. */
   .lp-hero {
     position: relative;
-    padding: var(--space-12) 0 var(--space-10);
+    padding: var(--space-16) 0 var(--space-12);
     overflow: hidden;
-  }
-
-  .lp-hero__aura {
-    position: absolute;
-    top: -22rem;
-    left: 50%;
-    width: 68rem;
-    height: 44rem;
-    translate: -50% 0;
-    background: radial-gradient(
-      ellipse at center,
-      var(--brand-soft) 0%,
-      transparent 62%
-    );
-    pointer-events: none;
+    --hero-scrim:
+      linear-gradient(to bottom, transparent 52%, var(--hero-scrim-strong) 100%),
+      linear-gradient(
+        96deg,
+        var(--hero-scrim-strong) 0%,
+        var(--hero-scrim-strong) 50%,
+        var(--hero-scrim-soft) 74%,
+        var(--hero-scrim-edge) 100%
+      );
   }
 
   .lp-hero__grid {
@@ -142,8 +141,16 @@
   }
 
   @media (max-width: 64rem) {
-    .lp-hero { padding-top: var(--space-10); }
+    .lp-hero { padding-top: var(--space-12); }
     .lp-hero__grid { grid-template-columns: minmax(0, 1fr); gap: var(--space-8); }
+
+    /* Stacked, the copy spans the full width — there is no longer a quiet
+       side for the picture to show through, so the scrim goes flat. */
+    .lp-hero {
+      --hero-scrim:
+        linear-gradient(to bottom, transparent 60%, var(--hero-scrim-strong) 100%),
+        linear-gradient(var(--hero-scrim-strong), var(--hero-scrim-strong));
+    }
   }
 
   .lp-hero__copy {
@@ -210,15 +217,21 @@
     list-style: none;
   }
 
+  /* One step brighter than the same list would be on a flat surface. Over a
+     photograph the background is whatever the picture is doing, so the
+     quietest text steps have no headroom left — `--fg-subtle` at 12px only
+     reaches 4.06:1 through the scrim, and `--fg-faint` misses even the
+     non-text floor. Small print over imagery is exactly where legibility
+     quietly fails, so it does not go below `--fg-muted` here. */
   .lp-proof li {
     display: inline-flex;
     align-items: center;
     gap: var(--space-2);
-    color: var(--fg-subtle);
+    color: var(--fg-muted);
     font-size: var(--text-xs);
   }
 
-  .lp-proof .bi { color: var(--fg-faint); }
+  .lp-proof .bi { color: var(--fg-subtle); }
 
   /* ======================================================================
      Product shot

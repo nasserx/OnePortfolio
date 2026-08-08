@@ -49,6 +49,21 @@ SOLID_BUTTONS = (
 )
 
 
+# What is allowed to sit over a hero photograph. `--fg-muted` is the floor
+# for text and `--fg-subtle` is decoration only (the small proof icons):
+# through the scrim, `--fg-subtle` reaches 4.06:1 and `--fg-faint` misses
+# even the non-text bar, so neither is a text colour over imagery.
+HERO_FOREGROUNDS = {
+    'fg-default': TEXT_MIN,
+    'fg-muted': TEXT_MIN,
+    'fg-subtle': NON_TEXT_MIN,
+}
+
+# The extremes a photograph can put under a word. Checking both means the
+# guarantee survives swapping the picture for a different one.
+IMAGE_EXTREMES = ('#000000', '#ffffff')
+
+
 def _parse_veil(value):
     """`rgb(r g b / a)` -> ((r, g, b), a)."""
     match = re.fullmatch(
@@ -232,3 +247,33 @@ def test_brand_fill_is_distinguishable_from_the_page(css):
                 f'{theme}: --brand-solid ({fill}) on --{surface} ({bg}) '
                 f'is {ratio:.2f}:1'
             )
+
+
+@pytest.mark.parametrize('theme', ['light', 'dark'])
+def test_hero_copy_is_legible_over_any_photograph(css, theme):
+    """Hero copy must not depend on which pixel lands under it.
+
+    A hero backdrop is a photograph, so the colour behind a word is whatever
+    the image happens to be doing there — and the image can be replaced. The
+    scrim is what makes that safe: `--hero-scrim-strong` is the strength the
+    copy always sits on, so it is checked against both extremes a photograph
+    can produce. `soft` and `edge` are deliberately not checked; they cover
+    regions that carry no text, and the layouts must keep it that way.
+    """
+    declared = _theme_tokens(css, theme)
+    scrim = _parse_veil(declared['hero-scrim-strong'])
+
+    failures = []
+    for role, floor in HERO_FOREGROUNDS.items():
+        fg = _resolve(role, declared)
+        for pixel in IMAGE_EXTREMES:
+            behind = _composite(pixel, scrim)
+            ratio = contrast(fg, behind)
+            if ratio < floor:
+                failures.append(
+                    f'{theme}: --{role} ({fg}) over a {pixel} image pixel '
+                    f'under --hero-scrim-strong resolves to {behind} '
+                    f'= {ratio:.2f}:1, needs {floor}:1'
+                )
+
+    assert not failures, 'hero legibility:\n  ' + '\n  '.join(failures)

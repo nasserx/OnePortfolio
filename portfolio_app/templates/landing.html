@@ -1,7 +1,8 @@
 {#
   Marketing page.
 
-  Structure: nav → hero (claim + live-feeling product portrait) → what it is
+  Structure: nav → hero (claim + live-feeling product portrait over a
+  photographic backdrop) → what it is
   → how it works → the honest limits → close. The product portrait reuses the
   real allocation legend and number styles from the app, so the page is
   showing the actual interface rather than an illustration of it.
@@ -73,7 +74,11 @@
 
     <!-- ══ Hero ══════════════════════════════════════════════════════════ -->
     <section class="lp-hero">
-        <div class="lp-hero__aura" aria-hidden="true"></div>
+        {# The hero's backdrop. It replaces the brand aura that used to sit
+           here — one mood-setting layer per section, not two. #}
+        <div class="hero-media" aria-hidden="true">
+            {% include 'components/hero_image.html' %}
+        </div>
 
         <div class="lp-shell lp-hero__grid">
             <div class="lp-hero__copy">

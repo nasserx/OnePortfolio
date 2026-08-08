@@ -1307,6 +1307,13 @@
      A muted, static portrait of the product. It is decoration with a job:
      it tells a first-time visitor what they are signing in to.
      -------------------------------------------------------------------- */
+  /* A flat scrim, not a gradient. The copy here is vertically centred, so
+     its position within the panel moves with the viewport height — any
+     directional falloff would land the quote in a different band on a
+     laptop than on a desktop, and the legibility guarantee would hold only
+     at the height it was eyeballed on. The surface colour stays as the base
+     layer, so the panel still looks deliberate if the picture never
+     arrives. */
   .auth__showcase {
     position: relative;
     display: flex;
@@ -1317,18 +1324,10 @@
     border-left: 1px solid var(--line-subtle);
     background-color: var(--bg-surface);
     overflow: hidden;
-  }
-
-  .auth__showcase::before {
-    content: "";
-    position: absolute;
-    top: -30%;
-    right: -20%;
-    width: 34rem;
-    height: 34rem;
-    border-radius: 50%;
-    background: radial-gradient(circle, var(--brand-soft) 0%, transparent 68%);
-    pointer-events: none;
+    --hero-scrim: linear-gradient(
+      var(--hero-scrim-strong),
+      var(--hero-scrim-strong)
+    );
   }
 
   .auth__quote {
@@ -1341,10 +1340,13 @@
     letter-spacing: -0.02em;
   }
 
+  /* `--fg-muted`, not `--fg-subtle`: this paragraph sits over the hero
+     photograph, and the quieter step has no contrast headroom left once the
+     scrim is the only thing between it and an arbitrary image. */
   .auth__quote-sub {
     position: relative;
     max-width: 26rem;
-    color: var(--fg-subtle);
+    color: var(--fg-muted);
     font-size: var(--text-sm);
   }
 

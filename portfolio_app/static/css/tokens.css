@@ -240,6 +240,18 @@
     --brand-hover: var(--brand-700);
     --brand-solid: var(--brand-600);
     --brand-solid-hover: var(--brand-700);
+    /* Hero backdrop scrim — the canvas colour at three strengths, painted
+       over the photograph behind a hero. The picture is decorative and the
+       copy on top of it is not, so legibility is not left to whatever pixel
+       happens to fall under a word: text always sits on the `strong` step.
+       0.86 is the loosest that step can be — below roughly 0.84 `--fg-muted`
+       drops under 4.5:1 against a worst-case pixel, so this is the most
+       photograph the design can show without gambling on the picture. `soft`
+       and `edge` are for the areas copy never reaches. */
+    --hero-scrim-strong: rgb(247 245 240 / 0.86);
+    --hero-scrim-soft:   rgb(247 245 240 / 0.66);
+    --hero-scrim-edge:   rgb(247 245 240 / 0.40);
+
     /* Hover veil for the semantic solid buttons. It moves *away* from the
        label colour in each theme — darker under white labels, lighter under
        near-black ones — so hovering can never reduce legibility. A single
@@ -319,6 +331,9 @@
       --brand-hover: var(--brand-300);
       --brand-solid: var(--brand-550);
       --brand-solid-hover: var(--brand-500);
+      --hero-scrim-strong: rgb(16 16 21 / 0.86);
+      --hero-scrim-soft:   rgb(16 16 21 / 0.68);
+      --hero-scrim-edge:   rgb(16 16 21 / 0.42);
       --solid-hover-veil: rgb(255 255 255 / 0.14);
       --brand-soft: rgb(157 136 255 / 0.20);
       --brand-soft-hover: rgb(157 136 255 / 0.30);
@@ -395,6 +410,9 @@
     --brand-hover: var(--brand-300);
     --brand-solid: var(--brand-550);
     --brand-solid-hover: var(--brand-500);
+    --hero-scrim-strong: rgb(16 16 21 / 0.86);
+    --hero-scrim-soft:   rgb(16 16 21 / 0.68);
+    --hero-scrim-edge:   rgb(16 16 21 / 0.42);
     --solid-hover-veil: rgb(255 255 255 / 0.14);
     --brand-soft: rgb(157 136 255 / 0.20);
     --brand-soft-hover: rgb(157 136 255 / 0.30);

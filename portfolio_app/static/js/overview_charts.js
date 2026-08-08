@@ -237,7 +237,22 @@
         responsive: true,
         maintainAspectRatio: false,
         cutout: '68%',
-        animation: prefersReducedMotion() ? false : { duration: 420 },
+        /* The ring draws itself once, when a page of numbers first appears.
+           At 420ms with the default ease-out it snapped: the wedges were
+           already at rest before the eye had found them, so the motion read
+           as a flicker rather than as the chart being built.
+
+           `easeInOutQuart` is the shape that makes a slow sweep feel
+           deliberate instead of sluggish — it leaves and arrives gently and
+           spends its speed in the middle, so most of the duration is not
+           actually perceived as waiting. Ease-out alone at this length
+           would look like it was dragging to a halt. */
+        animation: prefersReducedMotion()
+          ? false
+          : { duration: 1150, easing: 'easeInOutQuart' },
+        transitions: {
+          legendToggle: { animation: { duration: 300, easing: 'easeOutQuart' } }
+        },
         layout: { padding: 6 },
         plugins: {
           legend: { display: false },
@@ -312,7 +327,12 @@
       row.classList.toggle('is-hidden', nowHidden);
       row.setAttribute('aria-pressed', nowHidden ? 'true' : 'false');
       self.chart.toggleDataVisibility(index);
-      self.chart.update();
+      /* Hiding a slice answers the click, so it runs on its own short
+         transition rather than replaying the chart's entrance. A 1150ms
+         sweep is right once, when the ring first draws itself; repeating it
+         every time a legend row is toggled would put the reader's own input
+         behind an animation they have already watched. */
+      self.chart.update(prefersReducedMotion() ? 'none' : 'legendToggle');
     }
 
     this.legend.addEventListener('click', function (event) {

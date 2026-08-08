@@ -247,11 +247,11 @@
                                 <form method="post" action="{{ url_for('auth.delete_account_request') }}"
                                       class="mb-0">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <button type="submit" class="btn btn-warning btn-sm">
+                                    <button type="submit" class="btn btn-primary btn-sm">
                                         <i class="bi bi-envelope me-1" aria-hidden="true"></i>Send confirmation code
                                     </button>
                                     <button type="submit" form="form-delete-cancel"
-                                            class="btn btn-link btn-sm ms-1 text-secondary">Cancel</button>
+                                            class="btn btn-outline-secondary btn-sm ms-1">Cancel</button>
                                 </form>
                             </div>
 
@@ -276,11 +276,11 @@
                                 <form method="post" action="{{ url_for('auth.delete_account_request') }}"
                                       class="mb-3">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <button type="submit" class="btn btn-outline-warning btn-sm">
+                                    <button type="submit" class="btn btn-outline-secondary btn-sm">
                                         <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>Resend confirmation code
                                     </button>
                                     <button type="submit" form="form-delete-cancel"
-                                            class="btn btn-link btn-sm ms-1 text-secondary">Cancel</button>
+                                            class="btn btn-outline-secondary btn-sm ms-1">Cancel</button>
                                 </form>
 
                                 <form method="post" action="{{ url_for('auth.delete_account_verify') }}"

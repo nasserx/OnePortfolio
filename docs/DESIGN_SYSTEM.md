@@ -14,6 +14,16 @@ Three rules decide most design questions. When in doubt, apply them in order.
    marker. Everything else is neutral.
    Those two roles need *different* violets in dark mode — see
    [`--brand` vs `--brand-solid`](#brand-vs-brand-solid).
+
+   **A button is not a value, so a button does not get a value's colour.**
+   Every action in the product is `.btn-primary` — deposit, withdraw, buy,
+   sell, record income, save, create. The single exception is destruction:
+   `.btn-danger` and `.btn-outline-danger`, where red is a warning rather
+   than a quantity. There is deliberately no `.btn-success` and no
+   `.btn-warning` to reach for. A green *Record Deposit* button beside a red
+   *Record Withdraw* button read as a gain and a loss, which is what neither
+   of them is: both are entries the user chose to make, and the sign belongs
+   to the figure they produce, not to the control that produced it.
 2. **One hero number per screen.** A screen with five equally-weighted figures
    has no reading order. Promote one; demote the rest to supporting facts.
 3. **Density is a preference, not a constant.** Never hard-code a compact size —
@@ -30,6 +40,16 @@ accident:
 - **Row actions appear on engagement.** Edit/delete controls are `opacity: 0`
   until their own row is hovered or focused. They keep their layout space, stay
   in the tab order, and are permanently visible under `@media (hover: none)`.
+  In a row of them, **only the destructive one carries a colour** — the rest
+  are neutral and say what they do with their icon and their tooltip. Note
+  that `.btn-icon` sets its own colour at rest *and* on hover, so an outline
+  variant on one shows through only where `components.css` restores it
+  explicitly; there is one such rule, and it is for `.btn-outline-danger`.
+- **A number must never sit next to a control.** Where a table ends in an
+  action column, that column is a fixed track wider than its content, so the
+  surplus becomes a gutter between the data and the things that act on it.
+  Sized to `auto` it collapses onto the last figure, and a value one 12px gap
+  from a button reads as belonging to it.
 - **The allocation ring shows four slices plus a grouped remainder.** Past four
   wedges the small ones become unlabelable slivers. Full per-portfolio detail
   lives in the summary table directly below, so nothing is hidden — only
@@ -98,6 +118,15 @@ Bootstrap's utilities (`.text-muted`, `.d-none`, `.mb-3`, …) still win over ou
 layered rules. That is deliberate — utilities should win. When one of those
 utilities needs to change colour, drive it through its `--bs-*` variable in the
 bridge at the bottom of `tokens.css` rather than trying to out-cascade it.
+
+**Which is exactly why a utility must never be stapled to an element a
+component already styles.** It does not merge with the component's decision;
+it silently outranks it, and nothing in the stylesheet shows that it happened.
+Three cases had drifted this way: `.text-muted` on the withdraw hint rendered
+it a full step darker than every other hint on the same form, and
+`border-0 text-secondary` on the pagination arrows overrode the colour and
+border `.tx-pagination-bar .btn` had already set. If a component gets the
+wrong colour, change the component.
 
 ## Tokens
 
@@ -198,9 +227,25 @@ transitions with its own. Entrances use `animation` for exactly this reason —
 and with `animation-fill-mode: backwards`, not `forwards`, so the final
 keyframe does not outrank a later hover transform and leave the element inert.
 
+**Charts are the one place a long duration is right.** The allocation ring
+draws itself once, when a page of numbers first appears, and it takes 1150ms
+on `easeInOutQuart` — slow enough to be watched, and eased at *both* ends so
+the sweep reads as deliberate rather than as dragging to a halt. Ease-out
+alone at that length looks sluggish; ease-in-out spends its speed in the
+middle, where it is not perceived as waiting. Everything the reader triggers
+afterwards answers on its own short transition (`legendToggle`, 300ms):
+replaying an entrance on every legend click puts their input behind an
+animation they have already seen.
+
 Contrast is enforced by `tests/test_design_tokens_contrast.py`, which parses
 `tokens.css` directly. A palette tweak that drops any text role below its floor
 fails the suite rather than shipping.
+
+**The quiet text step sits the same distance above the floor in both themes.**
+`--fg-subtle` is what field help, character counters and column headings use,
+and it is deliberately close to 4.5:1 — 4.65 light, 4.73 dark. It cannot go
+lighter; that *is* the lightest readable step, and anything quieter belongs to
+`--fg-faint`, which is for text nobody has to read.
 
 ## Numbers in templates
 

@@ -722,12 +722,20 @@
      The fix is structural, not cosmetic: the tracks are declared once on
      `.ledger` and every row adopts them via `subgrid`, so a header cell and
      the cells beneath it are literally the same column. */
+  /* The action column is a fixed track, not `auto`. Sized to its content it
+     shrinks to the width of "View assets", which leaves the last *figure*
+     one 12px gap away from a control — and a number that close to a button
+     reads as belonging to it. Giving the track a width the link does not
+     need turns the surplus into a gutter, and because every column is one
+     subgrid, widening it walks the whole table left together. That gap is
+     doing a different job from the gaps between columns: it separates data
+     from the things that act on it. */
   .ledger {
     display: grid;
     grid-template-columns:
       minmax(9rem, 1.6fr)
       repeat(4, minmax(5.5rem, 1fr))
-      auto;
+      9.5rem;
     column-gap: var(--space-3);
     row-gap: 0;
     border: 1px solid var(--line-subtle);
@@ -760,7 +768,7 @@
       grid-template-columns:
         minmax(9rem, 1.6fr)
         repeat(4, minmax(5.5rem, 1fr))
-        7.5rem;
+        9.5rem;
     }
   }
 

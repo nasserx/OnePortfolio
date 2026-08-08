@@ -88,18 +88,26 @@
       var arc = chart.getDatasetMeta(0).data[0];
       if (!arc) return;
 
+      /* The ring is not a fixed size — it grows with the panel. Sizing the
+         centre label off the hole it sits in keeps the type in proportion
+         instead of leaving a 15px figure marooned in a large ring. The
+         bounds reproduce the previous sizes at the previous diameter. */
+      var hole = arc.innerRadius || 49;
+      var valueSize = Math.max(15, Math.min(22, Math.round(hole * 0.30)));
+      var labelSize = Math.max(11, Math.min(14, Math.round(hole * 0.20)));
+
       var ctx = chart.ctx;
       ctx.save();
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
 
       ctx.fillStyle = cssVar('--fg-subtle', '#82828e');
-      ctx.font = '500 11px Inter, sans-serif';
-      ctx.fillText(options.label, arc.x, arc.y - 11);
+      ctx.font = '500 ' + labelSize + 'px Inter, sans-serif';
+      ctx.fillText(options.label, arc.x, arc.y - Math.round(valueSize * 0.72));
 
       ctx.fillStyle = cssVar('--fg-default', '#ededf1');
-      ctx.font = '600 15px Inter, sans-serif';
-      ctx.fillText(options.value, arc.x, arc.y + 8);
+      ctx.font = '600 ' + valueSize + 'px Inter, sans-serif';
+      ctx.fillText(options.value, arc.x, arc.y + Math.round(valueSize * 0.55));
 
       ctx.restore();
     }

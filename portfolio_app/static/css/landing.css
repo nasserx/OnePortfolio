@@ -352,10 +352,12 @@
   @media (max-width: 36rem) { .lp-grid--4 { grid-template-columns: minmax(0, 1fr); } }
 
   .lp-card {
+    position: relative;
     padding: var(--space-5);
     border: 1px solid var(--line-subtle);
     border-radius: var(--radius-md);
     background-color: var(--bg-surface);
+    overflow: hidden;
     transition:
       border-color var(--dur-2) var(--ease-out),
       transform var(--dur-3) var(--ease-out),
@@ -364,11 +366,27 @@
 
   .lp-section--alt .lp-card { background-color: var(--bg-canvas); }
 
+  /* A brand rule that draws itself across the top edge on hover. It grows
+     from the left rather than fading, so the card answers the pointer with
+     a direction instead of a wash. */
+  .lp-card::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto;
+    height: 2px;
+    background-color: var(--brand);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform var(--dur-3) var(--ease-out);
+  }
+
   .lp-card:hover {
     border-color: var(--brand-line);
-    transform: translateY(-3px);
+    transform: translateY(-4px);
     box-shadow: var(--shadow-lift);
   }
+
+  .lp-card:hover::before { transform: scaleX(1); }
 
   .lp-card__icon {
     display: inline-flex;
@@ -381,6 +399,14 @@
     background-color: var(--brand-soft);
     color: var(--brand);
     font-size: 1rem;
+    transition:
+      background-color var(--dur-2) var(--ease-out),
+      transform var(--dur-3) var(--ease-spring);
+  }
+
+  .lp-card:hover .lp-card__icon {
+    background-color: var(--brand-soft-hover);
+    transform: translateY(-2px) scale(1.06);
   }
 
   .lp-card h3 {
@@ -558,24 +584,26 @@
      enters the viewport. Under reduced motion it is revealed immediately.
      ====================================================================== */
 
-  [data-reveal] {
-    opacity: 0;
-    transform: translate3d(0, 16px, 0);
-    transition:
-      opacity var(--dur-4) var(--ease-out),
-      transform var(--dur-4) var(--ease-out);
-    transition-delay: calc(var(--reveal-index, 0) * 70ms);
-  }
+  /* The reveal runs as an animation, not a transition, on purpose.
+     `data-reveal` sits on the same elements that have their own hover
+     transitions (.lp-card), and a `transition` shorthand here would replace
+     theirs wholesale — the card's border and shadow would stop animating and
+     its lift would inherit the reveal's 460ms. An animation leaves the
+     `transition` property untouched.
+
+     Fill mode is `backwards`, not `forwards`: it hides the element during the
+     stagger delay, then hands control back to the cascade when it finishes.
+     With `forwards` the final keyframe's `transform: none` would outrank the
+     hover lift and the cards would go inert once revealed. */
+  [data-reveal] { opacity: 0; }
 
   [data-reveal].is-revealed {
     opacity: 1;
-    transform: none;
+    animation: op-fade-up var(--dur-4) var(--ease-out) backwards;
+    animation-delay: calc(var(--reveal-index, 0) * 70ms);
   }
 
   @media (prefers-reduced-motion: reduce) {
-    [data-reveal] {
-      opacity: 1;
-      transform: none;
-    }
+    [data-reveal] { opacity: 1; }
   }
 }

@@ -600,12 +600,11 @@
      stays balanced against the taller chart panel beside it. */
   .hero-figure__facts {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
-    gap: var(--space-1) var(--space-5);
-    margin: var(--space-8) 0 0;
+    grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+    gap: var(--space-4) var(--space-5);
     padding-top: var(--space-5);
     border-top: 1px solid var(--line-subtle);
-    margin-top: auto;
+    margin: auto 0 0;
   }
 
   .fact { min-width: 0; }
@@ -616,18 +615,22 @@
     gap: var(--space-1);
     margin: 0 0 var(--space-1);
     color: var(--fg-subtle);
-    font-size: var(--text-2xs);
+    font-size: var(--text-xs);
     font-weight: var(--weight-medium);
-    letter-spacing: var(--tracking-label);
+    letter-spacing: 0;
     white-space: nowrap;
   }
 
+  /* These four carry the whole lower half of the hero card. At the number
+     scale's small step they left it looking unfinished; one step up gives
+     the card a second centre of gravity under the headline figure. */
   .fact__value {
     margin: 0;
     color: var(--fg-default);
-    font-size: var(--num-md);
+    font-size: var(--num-lg);
     font-weight: var(--weight-medium);
     font-variant-numeric: tabular-nums;
+    letter-spacing: -0.015em;
     overflow: hidden;
     text-overflow: ellipsis;
   }
@@ -652,7 +655,7 @@
 
   .alloc-canvas {
     position: relative;
-    height: 10.5rem;
+    height: 9rem;
     flex: none;
   }
 
@@ -872,9 +875,15 @@
     min-width: 0;
   }
 
+  /* Every value in this strip is a figure, and the strip repeats down the
+     page — so the columns are read vertically, card against card. Left
+     alignment let the decimal points wander by up to 28px between cards;
+     right alignment stacks them. The label follows its value so the pair
+     still reads as one unit. */
   .metric {
     display: block;
     min-width: 0;
+    text-align: right;
   }
 
   .metric__label {
@@ -920,6 +929,11 @@
   }
 
   .disclosure__panel .table thead th { background-color: var(--bg-inset); }
+
+  /* Records revealed inside a disclosure are one level below the summary row
+     that opened them, and read half a step smaller to say so. Scoped to the
+     panel: the admin table is a page's primary content, not a detail view. */
+  .disclosure__panel .records-table { font-size: var(--text-detail); }
 
   @media (max-width: 75rem) {
     .disclosure__metrics { --metric-columns: 3; gap: var(--space-2) var(--space-3); }

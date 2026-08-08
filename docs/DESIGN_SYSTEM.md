@@ -286,9 +286,7 @@ every hero pairs the picture with `--hero-scrim-*`, and three rules hold:
    layout change moves copy into one of those bands, the band moves, not the
    copy.
    The same idea vertically: `--hero-scrim-mask` fades the copy scrim off
-   across the strip below the last line of text (`--hero-floor`, which is
-   also the hero's bottom padding — one token, so the scrim can never end
-   above the copy however the hero is resized). That strip is where the
+   across the strip below the last line of text. That strip is where the
    photograph's foreground detail actually survives. Without a mask there is
    no way to open the picture up *underneath* a text column, because a
    gradient cannot vary on both axes at once.
@@ -302,6 +300,37 @@ every hero pairs the picture with `--hero-scrim-*`, and three rules hold:
    scrim `--fg-subtle` reaches only ~4.06:1 and `--fg-faint` misses even the
    non-text floor. Small print over imagery is where legibility quietly
    fails, so the marketing proof list and the auth sub-paragraph step up.
+
+**Three bands, and one sum.** A full-bleed hero is read vertically as:
+
+| band | extent | job |
+| --- | --- | --- |
+| copy | top → `100% − floor − fade` | scrim at full strength, protecting the words |
+| floor | `--hero-floor` | scrim lifted, picture at full clarity |
+| fade | `--hero-fade` | picture dissolving into the page |
+
+The hero's `padding-bottom` is `calc(floor + fade)`, so the last line of copy
+always lands exactly on the top of the floor. That single expression is the
+guarantee: change any one of the three and the other two follow, and no
+resize can slide a dissolve underneath a word. The two masks *meet* at the
+floor/fade line rather than overlapping — a scrim still fading while the
+picture beneath it fades too leaves a pale ghost of itself with nothing left
+to protect.
+
+**How a hero meets the page.** The picture dissolves; it is not painted over.
+Fading it with a wedge of `--bg-canvas` lightens the image on its way out — a
+milky band in light mode, a smear of black in dark — because a wash *changes*
+a colour in order to hide it. A mask only removes, so the page shows through
+cleanly and one rule covers both themes.
+
+Two things make a dissolve stop reading as an edge, and both are needed:
+
+- **Length.** The eye finds the start of a short fade as readily as the cut it
+  replaced. The hero grows by exactly `--hero-fade` to pay for this; that
+  height is the cost of ending without a seam, not padding to be reclaimed.
+- **Curvature.** A linear ramp has a corner in its *rate of change* at each
+  end, and a corner is visible as a line even when the change itself is
+  gentle. `--hero-media-mask` traces a smoothstep in seven stops instead.
 
 **Gradient or flat?** Use a directional scrim only where the copy's position
 is fixed by the layout — the marketing hero keeps its copy in the left half,

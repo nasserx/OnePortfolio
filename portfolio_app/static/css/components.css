@@ -1596,6 +1596,14 @@
        local contrast is what lets texture — the grass, the tree line — still
        read through one. */
     filter: saturate(1.12) contrast(1.06);
+    /* Where a hero has to meet the page, the picture dissolves rather than
+       being painted over. Fading it with a wedge of `--bg-canvas` would
+       lighten the image before it disappeared — a milky band in light mode,
+       a smear of black in dark — because a wash changes a colour on its way
+       to hiding it. A mask only removes, so the page shows through cleanly
+       and the same rule works in both themes. */
+    -webkit-mask-image: var(--hero-media-mask, none);
+    mask-image: var(--hero-media-mask, none);
   }
 
   /* Two scrim layers, because they have different jobs and different

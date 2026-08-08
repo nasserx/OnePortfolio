@@ -152,31 +152,39 @@
      Hero
      ====================================================================== */
 
-  /* The copy runs down the left, so the scrim is heaviest there and thins
-     across to the right, where the only thing over the picture is the
-     product card — which brings its own opaque surface. The last layer
-     fades the whole thing into the page below, so the hero ends without a
-     seam. Layers paint first-on-top, hence the bottom fade leading. */
+  /* The hero reads as three horizontal bands, each with exactly one job:
+
+       copy      scrim at full strength, protecting the words
+       floor     scrim lifted, picture at full clarity — the meadow
+       fade      picture dissolving into the page
+
+     The bottom padding is the sum of the last two, so the copy always ends
+     precisely where the floor begins. That is the invariant: change any one
+     of these and the other two follow, and no amount of resizing can slide
+     a fade underneath a line of text.
+
+     Across the copy band the scrim also thins left-to-right, since the only
+     thing over the picture on that side is the product card, which brings
+     its own opaque surface. */
   .lp-hero {
     position: relative;
-    padding: calc(4rem + var(--space-16)) 0 var(--hero-floor);
+    padding: calc(4rem + var(--space-16)) 0 calc(var(--hero-floor) + var(--hero-fade));
     overflow: hidden;
 
-    /* The band of hero below the copy — where the meadow is, and where
-       nothing is written. The copy scrim is masked off across exactly this
-       strip, so the foreground detail survives instead of being flattened
-       by a scrim it does not need. */
     --hero-floor: var(--space-20);
 
-    /* Chrome and edges. Never masked: the header sits in the top band at
-       all times, and the bottom few pixels always have to meet the page. */
+    /* A dissolve has to be long to stop reading as an edge. The eye finds
+       the *start* of a short fade as readily as the cut it replaced, so
+       this band is generous — the hero grows by exactly this much, which is
+       the price of ending without a seam. */
+    --hero-fade: 8rem;
+
+    /* Chrome. Never masked: the header sits in the top band at all times. */
     --hero-veil:
-      linear-gradient(to bottom, var(--hero-scrim-band) 0, transparent 8rem),
-      linear-gradient(to bottom, transparent calc(100% - 1.5rem), var(--bg-canvas) 100%);
+      linear-gradient(to bottom, var(--hero-scrim-band) 0, transparent 8rem);
 
     /* Copy protection. Heaviest under the words, easing off to nearly
-       nothing on the right where the only thing over the picture is the
-       product card and its own opaque surface. */
+       nothing on the right. */
     --hero-scrim: linear-gradient(
       96deg,
       var(--hero-scrim-strong) 0%,
@@ -185,12 +193,29 @@
       var(--hero-scrim-edge) 100%
     );
 
-    /* ...and it stops where the copy stops. The mask is tied to the same
-       token as the padding, so the scrim can never end above the last line
-       of text however the hero is resized. */
+    /* ...and it lifts across the floor, gone before the fade starts. The
+       two masks meet at that line rather than overlapping: a scrim still
+       fading while the picture beneath it fades too leaves a pale ghost of
+       itself with nothing left to protect. */
     --hero-scrim-mask: linear-gradient(
       to bottom,
-      #000 calc(100% - var(--hero-floor)),
+      #000 calc(100% - var(--hero-floor) - var(--hero-fade)),
+      transparent calc(100% - var(--hero-fade))
+    );
+
+    /* The dissolve. Stops trace a smoothstep rather than a straight ramp,
+       because a linear fade has a corner at each end — and a corner in the
+       rate of change is visible as a line even when the change itself is
+       gentle. Curving both ends is what removes the seam; length alone only
+       moves it. */
+    --hero-media-mask: linear-gradient(
+      to bottom,
+      #000 calc(100% - var(--hero-fade)),
+      rgb(0 0 0 / 0.9) calc(100% - var(--hero-fade) * 0.8),
+      rgb(0 0 0 / 0.72) calc(100% - var(--hero-fade) * 0.65),
+      rgb(0 0 0 / 0.5) calc(100% - var(--hero-fade) * 0.5),
+      rgb(0 0 0 / 0.28) calc(100% - var(--hero-fade) * 0.35),
+      rgb(0 0 0 / 0.1) calc(100% - var(--hero-fade) * 0.2),
       transparent 100%
     );
   }
@@ -209,9 +234,11 @@
 
     /* Stacked, the copy spans the full width — there is no longer a quiet
        side for the picture to show through, so the scrim goes flat. The
-       floor strip below the copy still lifts off. */
+       floor and the fade both shorten: they are a proportion of the hero,
+       and a stacked hero is narrower without being taller. */
     .lp-hero {
       --hero-floor: var(--space-16);
+      --hero-fade: 5rem;
       --hero-scrim: linear-gradient(
         var(--hero-scrim-strong),
         var(--hero-scrim-strong)

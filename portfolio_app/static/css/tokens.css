@@ -240,26 +240,34 @@
     --brand-hover: var(--brand-700);
     --brand-solid: var(--brand-600);
     --brand-solid-hover: var(--brand-700);
-    /* Hero backdrop scrim — the canvas colour at three strengths, painted
-       over the photograph behind a hero. The picture is decorative and the
-       copy on top of it is not, so legibility is not left to whatever pixel
-       happens to fall under a word: text always sits on the `strong` step.
-       These are near the floor — solving for the loosest value that still
-       clears 4.5:1 for `--fg-muted` against a worst-case pixel gives 0.812
-       light and 0.776 dark, and the shipped values keep a small margin over
-       that for antialiasing. Going lower means gambling on the particular
-       photograph. `soft` and `edge` cover the areas copy never reaches, so
-       they are free to open right up.
+    /* Hero backdrop shade — the canvas colour at three strengths, laid over
+       the photograph behind a hero so the copy on top of it stays readable.
 
-       `band` is a separate job: a short veil down the top of a hero so that
-       a header floating on the picture stays readable without a panel
-       behind it. Stacked over `edge` it lands near 0.70, which is where
-       `--fg-default` clears 4.5:1 in both themes — so anything sitting in
-       that band uses the default step, never a quieter one. */
-    --hero-scrim-strong: rgb(247 245 240 / 0.84);
-    --hero-scrim-soft:   rgb(247 245 240 / 0.42);
-    --hero-scrim-edge:   rgb(247 245 240 / 0.12);
-    --hero-scrim-band:   rgb(247 245 240 / 0.64);
+       `shade` is derived, not chosen. It is the lightest veil under which
+       every foreground role still clears its contrast floor against the
+       darkest and lightest pixels the shipped photograph actually puts
+       under the copy — measured from the file itself by
+       `tests/test_hero_legibility.py`, which re-derives the floor on every
+       run and fails if the image or these values drift apart.
+
+       That is the whole reason the picture is visible. Sizing a scrim for a
+       *hypothetical* photograph means sizing it for pure black and pure
+       white, and no real photograph is ever that; the difference is roughly
+       0.3 of alpha, which is the difference between a backdrop and a wash.
+       The trade is explicit: swap the photograph and the test recomputes,
+       so a darker picture would demand a heavier shade and say so.
+
+       `soft` and `edge` cover the areas copy never reaches, so they are
+       free to open right up. `band` is a separate job: a short veil down
+       the top of a hero so that a header floating on the picture stays
+       readable without a panel behind it. Stacked over `edge` it lands near
+       0.70, which is where `--fg-default` clears 4.5:1 in both themes — so
+       anything sitting in that band uses the default step, never a quieter
+       one. */
+    --hero-shade:      rgb(247 245 240 / 0.52);
+    --hero-shade-soft: rgb(247 245 240 / 0.26);
+    --hero-shade-edge: rgb(247 245 240 / 0.08);
+    --hero-band:       rgb(247 245 240 / 0.64);
 
     /* Hover veil for the semantic solid buttons. It moves *away* from the
        label colour in each theme — darker under white labels, lighter under
@@ -340,10 +348,10 @@
       --brand-hover: var(--brand-300);
       --brand-solid: var(--brand-550);
       --brand-solid-hover: var(--brand-500);
-      --hero-scrim-strong: rgb(16 16 21 / 0.80);
-      --hero-scrim-soft:   rgb(16 16 21 / 0.44);
-      --hero-scrim-edge:   rgb(16 16 21 / 0.14);
-      --hero-scrim-band:   rgb(16 16 21 / 0.64);
+      --hero-shade:      rgb(16 16 21 / 0.64);
+      --hero-shade-soft: rgb(16 16 21 / 0.26);
+      --hero-shade-edge: rgb(16 16 21 / 0.08);
+      --hero-band:       rgb(16 16 21 / 0.64);
       --solid-hover-veil: rgb(255 255 255 / 0.14);
       --brand-soft: rgb(157 136 255 / 0.20);
       --brand-soft-hover: rgb(157 136 255 / 0.30);
@@ -420,10 +428,10 @@
     --brand-hover: var(--brand-300);
     --brand-solid: var(--brand-550);
     --brand-solid-hover: var(--brand-500);
-    --hero-scrim-strong: rgb(16 16 21 / 0.80);
-    --hero-scrim-soft:   rgb(16 16 21 / 0.44);
-    --hero-scrim-edge:   rgb(16 16 21 / 0.14);
-    --hero-scrim-band:   rgb(16 16 21 / 0.64);
+    --hero-shade:      rgb(16 16 21 / 0.64);
+    --hero-shade-soft: rgb(16 16 21 / 0.26);
+    --hero-shade-edge: rgb(16 16 21 / 0.08);
+    --hero-band:       rgb(16 16 21 / 0.64);
     --solid-hover-veil: rgb(255 255 255 / 0.14);
     --brand-soft: rgb(157 136 255 / 0.20);
     --brand-soft-hover: rgb(157 136 255 / 0.30);

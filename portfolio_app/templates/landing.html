@@ -75,8 +75,12 @@
     <!-- ══ Hero ══════════════════════════════════════════════════════════ -->
     <section class="lp-hero">
         {# The hero's backdrop. It replaces the brand aura that used to sit
-           here — one mood-setting layer per section, not two. #}
-        <div class="hero-media" aria-hidden="true">
+           here — one mood-setting layer per section, not two.
+
+           `--lift` opts this one into the scroll-driven fade: the picture
+           belongs to the top of the page and leaves with it. The auth
+           showcase does not take it, because that panel never scrolls. #}
+        <div class="hero-media hero-media--lift" aria-hidden="true">
             {% include 'components/hero_image.html' %}
         </div>
 

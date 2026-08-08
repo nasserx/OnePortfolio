@@ -269,51 +269,60 @@ uses the img — the one mechanism every engine implements, including ones too
 old to understand `image-set()` type hints. Do not replace this with a CSS
 `background-image` unless the fallback stops mattering.
 
-**The scrim is not decoration.** The colour behind a word is whatever the
-photograph happens to be doing there, and the photograph can be swapped. So
-every hero pairs the picture with `--hero-scrim-*`, and three rules hold:
+**The shade is measured, not chosen.** The colour behind a word is whatever
+the photograph happens to be doing there, so legibility over a hero is a
+question about the *file*, not about a pair of tokens. That is exactly how it
+is answered: `tests/test_hero_legibility.py` opens the shipped WebP, samples
+every region a text column can land over, and solves for the lightest veil
+under which `--fg-default` still holds 4.5:1 against the darkest and
+brightest pixels it finds.
 
-1. **Copy sits on `--hero-scrim-strong`, always.** That step is tuned to the
-   loosest value that still clears 4.5:1 for `--fg-muted` against a *worst
-   case* pixel — pure black in light, pure white in dark. Solving for it
-   gives 0.812 light and 0.776 dark; the shipped values sit just above, with
-   a small margin for antialiasing. There is no room below that without
-   gambling on the particular photograph, so if a hero needs to be clearer,
-   open up `soft` and `edge` or move the copy — do not lower `strong`.
-   `tests/test_design_tokens_contrast.py` enforces it.
+This is the decision the whole hero rests on. A scrim sized for a
+*hypothetical* photograph has to assume pure black under dark-theme text and
+pure white under light-theme text, and no real photograph is ever both —
+sizing it against the actual picture takes roughly 0.3 off the required
+alpha, which is the difference between a backdrop and a wash. The cost is
+that the guarantee now belongs to this picture: swap it and the test
+recomputes, and a darker one will demand more.
+
+Four rules follow, and the test enforces the first three:
+
+1. **Copy sits on `--hero-shade`, always** — 0.52 light, 0.64 dark, each a
+   few points above its measured floor. Never raise it "for safety": a
+   second test fails if the shade drifts more than 0.10 above what the
+   picture requires, because the image being visible is a requirement too.
 2. **`soft` and `edge` are for regions with no text in them.** They exist so
-   the picture can actually be seen where nothing is written over it. If a
-   layout change moves copy into one of those bands, the band moves, not the
-   copy.
-   The same idea vertically: `--hero-scrim-mask` fades the copy scrim off
-   across the strip below the last line of text. That strip is where the
-   photograph's foreground detail actually survives. Without a mask there is
-   no way to open the picture up *underneath* a text column, because a
-   gradient cannot vary on both axes at once.
-3. **Chrome that floats on a hero uses `--hero-scrim-band`.** A short veil
-   down the top, which stacks with whatever the copy scrim is doing there —
-   near `edge` in the top corner, so the combination lands around 0.70.
-   That is enough for `--fg-default` and nothing quieter, which is why the
-   marketing header's bare controls switch to the default step while the
-   header is transparent.
-4. **Nothing below `--fg-muted` is a text colour over a hero.** Through the
-   scrim `--fg-subtle` reaches only ~4.06:1 and `--fg-faint` misses even the
-   non-text floor. Small print over imagery is where legibility quietly
-   fails, so the marketing proof list and the auth sub-paragraph step up.
+   the picture can be seen where nothing is written over it. If a layout
+   change moves copy into one of those bands, the band moves, not the copy.
+   The same idea vertically: `--hero-shade-mask` lifts the shade off across
+   the strip below the last line of text. Without a mask there is no way to
+   open the picture up *underneath* a text column, because a gradient cannot
+   vary on both axes at once.
+3. **Chrome that floats on a hero uses `--hero-band`.** A short veil down the
+   top, holding full strength across the header's own height before it
+   fades — a band measured at `y=0` is a quarter gone by the row the links
+   sit on. It stacks with whatever the copy shade is doing there, near
+   `edge` in the top corner, and the pair has to clear the floor together.
+4. **Over a photograph, hierarchy is size and weight — never tint.** Greying
+   text down is a trick that only works on flat ground. Every role below
+   `--fg-default` needs about 0.79 against this picture where the default
+   needs 0.49, so a muted lede would have cost the entire photograph to buy
+   an effect the type scale already delivers. The hero lede, the proof list
+   and the auth sub-paragraph all speak at full strength.
 
 **Three bands, and one sum.** A full-bleed hero is read vertically as:
 
 | band | extent | job |
 | --- | --- | --- |
-| copy | top → `100% − floor − fade` | scrim at full strength, protecting the words |
-| floor | `--hero-floor` | scrim lifted, picture at full clarity |
-| fade | `--hero-fade` | picture dissolving into the page |
+| copy | top → `100% − floor − fade` | shade holding the words up |
+| floor | `--hero-floor` | shade lifted, picture at full strength |
+| fade | `--hero-fade` | backdrop dissolving into the page |
 
 The hero's `padding-bottom` is `calc(floor + fade)`, so the last line of copy
 always lands exactly on the top of the floor. That single expression is the
 guarantee: change any one of the three and the other two follow, and no
 resize can slide a dissolve underneath a word. The two masks *meet* at the
-floor/fade line rather than overlapping — a scrim still fading while the
+floor/fade line rather than overlapping — a shade still fading while the
 picture beneath it fades too leaves a pale ghost of itself with nothing left
 to protect.
 
@@ -321,7 +330,9 @@ to protect.
 Fading it with a wedge of `--bg-canvas` lightens the image on its way out — a
 milky band in light mode, a smear of black in dark — because a wash *changes*
 a colour in order to hide it. A mask only removes, so the page shows through
-cleanly and one rule covers both themes.
+cleanly and one rule covers both themes. `--hero-mask` sits on `.hero-media`
+rather than on the `<img>`, so the shade leaves with the picture instead of
+being stranded as a film over bare page colour.
 
 Two things make a dissolve stop reading as an edge, and both are needed:
 
@@ -330,14 +341,24 @@ Two things make a dissolve stop reading as an edge, and both are needed:
   height is the cost of ending without a seam, not padding to be reclaimed.
 - **Curvature.** A linear ramp has a corner in its *rate of change* at each
   end, and a corner is visible as a line even when the change itself is
-  gentle. `--hero-media-mask` traces a smoothstep in seven stops instead.
+  gentle. `--hero-mask` traces a smoothstep in seven stops instead.
 
-**Gradient or flat?** Use a directional scrim only where the copy's position
+**The backdrop leaves with the page.** `.hero-media--lift` fades the whole
+thing out across the first `--hero-lift-range` of scrolling, driven by
+`animation-timeline: scroll(root)` — no scroll handler, no work on the main
+thread. Contrast holds through every frame: both ends are colours the copy is
+already guaranteed against, and a blend between two luminances stays between
+them. Gated on `@supports` and on `prefers-reduced-motion`, with no JS
+fallback on purpose — a handler writing opacity each frame is a jank
+generator, and the static hero it would replace is already correct.
+
+**Gradient or flat?** Use a directional shade only where the copy's position
 is fixed by the layout — the marketing hero keeps its copy in the left half,
-so `strong` holds to 50% and eases off after. The auth showcase centres its
-copy vertically, so its position within the panel moves with viewport
-height; it takes a flat scrim, because a falloff there would only be correct
-at the height it was eyeballed on.
+so the plateau holds to 46% and eases off after. The auth showcase centres
+its copy vertically, so its position within the panel moves with viewport
+height; it takes a flat shade, because a falloff there would only be correct
+at the height it was eyeballed on. It takes no dissolve either: a bounded
+panel with its own border has no edge to hide.
 
 **Loading.** The marketing hero is eager and high priority. The auth
 showcase is `lazy`/`auto`, because that panel is hidden below 60rem and a
@@ -358,11 +379,11 @@ Two things follow from that, and both are easy to lose:
   from scrolling their target underneath it.
 - While the header is transparent its two secondary controls are too — only
   the primary call to action keeps a fill. What pays for that is
-  `--hero-scrim-band`, not a panel. It also forces a colour change: those
-  controls normally sit at `--fg-muted`, which needs 0.81 and would not
-  survive out at the open edge of the scrim, so they take `--fg-default`
-  instead. Anything else added to that end of the header needs the same
-  treatment, and `test_hero_chrome_is_legible_where_the_scrim_is_most_open`
+  `--hero-band`, not a panel. It also forces a colour change: those controls
+  normally sit at `--fg-muted`, which needs about 0.79 against this picture
+  and would not survive out at the open edge of the shade, so they take
+  `--fg-default` instead. Anything else added to that end of the header needs
+  the same treatment, and `test_hero_chrome_is_legible_where_the_shade_is_most_open`
   is what stops the band and the edge drifting apart.
 
 ## Command palette

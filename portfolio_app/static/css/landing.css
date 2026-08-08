@@ -58,13 +58,14 @@
 
   /* While the header is transparent, its two secondary controls are too —
      only the primary call to action keeps a fill. What pays for that is
-     `--hero-scrim-band`: a short veil down the top of the hero that lands
-     near 0.70 once stacked over the open edge of the scrim, which is where
+     `--hero-band`: a short veil down the top of the hero that lands near
+     0.70 once stacked over the open edge of the shade, which is where
      `--fg-default` clears 4.5:1 in both themes.
 
-     Hence the colour change. These two normally sit at `--fg-muted`, and
-     muted needs 0.81 — it would not survive out here. Anything else added
-     to this end of the header has to come with the default step too. */
+     Hence the colour change. These two normally sit at `--fg-muted`, which
+     needs far more veil than that — it would not survive out here. Anything
+     else added to this end of the header has to come with the default step
+     too. */
   .lp-nav:not(.is-stuck) .icon-button,
   .lp-nav:not(.is-stuck) .btn-secondary {
     background-color: transparent;
@@ -154,16 +155,16 @@
 
   /* The hero reads as three horizontal bands, each with exactly one job:
 
-       copy      scrim at full strength, protecting the words
-       floor     scrim lifted, picture at full clarity — the meadow
-       fade      picture dissolving into the page
+       copy      shade holding the words up
+       floor     shade lifted, picture at full strength
+       fade      backdrop dissolving into the page
 
      The bottom padding is the sum of the last two, so the copy always ends
      precisely where the floor begins. That is the invariant: change any one
      of these and the other two follow, and no amount of resizing can slide
      a fade underneath a line of text.
 
-     Across the copy band the scrim also thins left-to-right, since the only
+     Across the copy band the shade also thins left-to-right, since the only
      thing over the picture on that side is the product card, which brings
      its own opaque surface. */
   .lp-hero {
@@ -171,33 +172,46 @@
     padding: calc(4rem + var(--space-16)) 0 calc(var(--hero-floor) + var(--hero-fade));
     overflow: hidden;
 
-    --hero-floor: var(--space-20);
+    --hero-floor: var(--space-10);
+    --hero-fade: 7rem;
 
-    /* A dissolve has to be long to stop reading as an edge. The eye finds
-       the *start* of a short fade as readily as the cut it replaced, so
-       this band is generous — the hero grows by exactly this much, which is
-       the price of ending without a seam. */
-    --hero-fade: 8rem;
+    /* Below centre: the crop keeps the ridge line and the meadow, and drops
+       the empty upper sky that a short hero would otherwise fill with. */
+    --hero-focus: 50% 62%;
 
-    /* Chrome. Never masked: the header sits in the top band at all times. */
-    --hero-veil:
-      linear-gradient(to bottom, var(--hero-scrim-band) 0, transparent 8rem);
+    /* Gone by the time the reader is most of a screen down. Long enough to
+       read as the hero letting go rather than a light being switched off,
+       short enough to finish while the hero is still on screen — a fade
+       that completes after its subject has left never happened. */
+    --hero-lift-range: 68vh;
 
-    /* Copy protection. Heaviest under the words, easing off to nearly
-       nothing on the right. */
-    --hero-scrim: linear-gradient(
-      96deg,
-      var(--hero-scrim-strong) 0%,
-      var(--hero-scrim-strong) 50%,
-      var(--hero-scrim-soft) 74%,
-      var(--hero-scrim-edge) 100%
-    );
+    --hero-shade-layer:
+      /* The band the floating header sits on. It holds full strength across
+         the header's own height before it starts to go: a band that begins
+         fading at y=0 is already a quarter gone by the row the links sit
+         on, and the guarantee is written for the strength they actually
+         get, not the strength at the very top edge. */
+      linear-gradient(to bottom, var(--hero-band) 0, var(--hero-band) 4rem, transparent 9rem),
+      /* And the copy's own shade: full strength under the words, easing off
+         to nearly nothing on the right, where the product card brings its
+         own opaque surface anyway. */
+      linear-gradient(
+        96deg,
+        var(--hero-shade) 0%,
+        var(--hero-shade) 46%,
+        var(--hero-shade-soft) 68%,
+        var(--hero-shade-edge) 100%
+      );
 
-    /* ...and it lifts across the floor, gone before the fade starts. The
-       two masks meet at that line rather than overlapping: a scrim still
-       fading while the picture beneath it fades too leaves a pale ghost of
-       itself with nothing left to protect. */
-    --hero-scrim-mask: linear-gradient(
+    /* The shade lifts across the floor and is gone before the fade starts.
+       The two masks meet at that line rather than overlapping: a shade
+       still fading while the picture beneath it fades too leaves a pale
+       ghost of itself with nothing left to protect.
+
+       This is also the only way to open the picture up *underneath* a text
+       column — a gradient cannot vary on both axes at once, so the vertical
+       falloff has to come from a mask rather than from another colour. */
+    --hero-shade-mask: linear-gradient(
       to bottom,
       #000 calc(100% - var(--hero-floor) - var(--hero-fade)),
       transparent calc(100% - var(--hero-fade))
@@ -208,7 +222,7 @@
        rate of change is visible as a line even when the change itself is
        gentle. Curving both ends is what removes the seam; length alone only
        moves it. */
-    --hero-media-mask: linear-gradient(
+    --hero-mask: linear-gradient(
       to bottom,
       #000 calc(100% - var(--hero-fade)),
       rgb(0 0 0 / 0.9) calc(100% - var(--hero-fade) * 0.8),
@@ -233,16 +247,13 @@
     .lp-hero__grid { grid-template-columns: minmax(0, 1fr); gap: var(--space-8); }
 
     /* Stacked, the copy spans the full width — there is no longer a quiet
-       side for the picture to show through, so the scrim goes flat. The
-       floor and the fade both shorten: they are a proportion of the hero,
-       and a stacked hero is narrower without being taller. */
+       side for the picture to show through, so the shade goes flat. The
+       fade shortens with the narrower hero. */
     .lp-hero {
-      --hero-floor: var(--space-16);
       --hero-fade: 5rem;
-      --hero-scrim: linear-gradient(
-        var(--hero-scrim-strong),
-        var(--hero-scrim-strong)
-      );
+      --hero-shade-layer:
+        linear-gradient(to bottom, var(--hero-band) 0, var(--hero-band) 4rem, transparent 9rem),
+        linear-gradient(var(--hero-shade), var(--hero-shade));
     }
   }
 
@@ -325,6 +336,20 @@
   }
 
   .lp-proof .bi { color: var(--fg-subtle); }
+
+  /* Over the photograph, hierarchy comes from size and weight — never from
+     tint. Greying text down is a trick that only works on flat ground: the
+     quieter a role is, the more veil it needs to survive an image, and
+     `--fg-muted` needs roughly 0.79 against this picture where
+     `--fg-default` needs 0.49. Tinting the lede would therefore have cost
+     the whole photograph, to save an effect the type scale already
+     delivers. So everything loose over the hero speaks at full strength,
+     and the title outranks it by being four times the size. */
+  .lp-hero .lp-lede,
+  .lp-hero .lp-proof li,
+  .lp-hero .lp-proof .bi {
+    color: var(--fg-default);
+  }
 
   /* ======================================================================
      Product shot

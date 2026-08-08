@@ -1307,13 +1307,14 @@
      A muted, static portrait of the product. It is decoration with a job:
      it tells a first-time visitor what they are signing in to.
      -------------------------------------------------------------------- */
-  /* A flat scrim, not a gradient. The copy here is vertically centred, so
+  /* A flat shade, not a gradient. The copy here is vertically centred, so
      its position within the panel moves with the viewport height — any
      directional falloff would land the quote in a different band on a
      laptop than on a desktop, and the legibility guarantee would hold only
-     at the height it was eyeballed on. The surface colour stays as the base
-     layer, so the panel still looks deliberate if the picture never
-     arrives. */
+     at the height it was eyeballed on. Nothing dissolves either: this is a
+     bounded panel with its own border, so it has no edge to hide. The
+     surface colour stays as the base layer, so the panel still looks
+     deliberate if the picture never arrives. */
   .auth__showcase {
     position: relative;
     display: flex;
@@ -1324,10 +1325,7 @@
     border-left: 1px solid var(--line-subtle);
     background-color: var(--bg-surface);
     overflow: hidden;
-    --hero-scrim: linear-gradient(
-      var(--hero-scrim-strong),
-      var(--hero-scrim-strong)
-    );
+    --hero-focus: 50% 62%;
   }
 
   .auth__quote {
@@ -1340,13 +1338,15 @@
     letter-spacing: -0.02em;
   }
 
-  /* `--fg-muted`, not `--fg-subtle`: this paragraph sits over the hero
-     photograph, and the quieter step has no contrast headroom left once the
-     scrim is the only thing between it and an arbitrary image. */
+  /* Full strength, not a quieter step: this paragraph sits over the hero
+     photograph, where a tint is not a free way to say "secondary". Every
+     step below `--fg-default` needs roughly 0.79 of veil against this
+     picture where the default needs 0.49, so greying it down would have
+     been paid for by the photograph. Size carries the hierarchy instead. */
   .auth__quote-sub {
     position: relative;
     max-width: 26rem;
-    color: var(--fg-muted);
+    color: var(--fg-default);
     font-size: var(--text-sm);
   }
 

@@ -1560,14 +1560,25 @@
   /* ======================================================================
      16. HERO BACKDROP
      A photograph behind a hero is the one place this product lets an image
-     carry mood rather than information. Two rules keep it from costing
-     anything: it is always decorative (`alt=""`, `aria-hidden` wrapper), and
-     it is always under a scrim, because copy legibility cannot depend on
-     which pixel of a photograph lands under a word.
+     carry mood rather than information. It is always decorative (`alt=""`,
+     `aria-hidden` wrapper) and always under a shade, because copy
+     legibility cannot depend on which pixel of a photograph lands under a
+     word.
 
-     The scrim itself is per-context — a hero with copy down one side needs a
-     different falloff from a panel with copy through the middle — so it
-     arrives as `--hero-scrim` rather than being hard-coded here.
+     The point of the shade is to be as light as that guarantee allows. It
+     is derived from the shipped photograph's own pixels rather than from a
+     hypothetical worst case, which is what leaves the picture looking like
+     a picture instead of a wash — see `--hero-shade` in tokens.css.
+
+     Three knobs, each optional, each a different job:
+
+       --hero-shade-layer  what is painted over the picture
+       --hero-shade-mask   where that paint lifts back off
+       --hero-mask         where the backdrop itself dissolves
+
+     Nothing here hard-codes a direction. A hero with copy down one side
+     needs a different falloff from a panel with copy through the middle, so
+     the shapes arrive from the page.
      ====================================================================== */
 
   .hero-media {
@@ -1576,6 +1587,11 @@
     z-index: 0;
     overflow: hidden;
     pointer-events: none;
+    /* Applies to the picture *and* the shade above it, so the whole backdrop
+       leaves together. Anything that dissolved the photograph alone would
+       strand the shade as a film over bare page colour. */
+    -webkit-mask-image: var(--hero-mask, none);
+    mask-image: var(--hero-mask, none);
   }
 
   .hero-media picture {
@@ -1589,45 +1605,46 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
-    /* Below centre: the crop keeps the ridge line and the meadow, and drops
-       the empty upper sky that a short hero would otherwise fill with. */
-    object-position: 50% 62%;
-    /* A scrim flattens a photograph as well as dimming it. A little extra
-       local contrast is what lets texture — the grass, the tree line — still
-       read through one. */
-    filter: saturate(1.12) contrast(1.06);
-    /* Where a hero has to meet the page, the picture dissolves rather than
-       being painted over. Fading it with a wedge of `--bg-canvas` would
-       lighten the image before it disappeared — a milky band in light mode,
-       a smear of black in dark — because a wash changes a colour on its way
-       to hiding it. A mask only removes, so the page shows through cleanly
-       and the same rule works in both themes. */
-    -webkit-mask-image: var(--hero-media-mask, none);
-    mask-image: var(--hero-media-mask, none);
+    object-position: var(--hero-focus, 50% 50%);
   }
 
-  /* Two scrim layers, because they have different jobs and different
-     extents. `--hero-veil` is for chrome that floats on the picture (the
-     band down the top under a header) and for blending the hero's edge into
-     the page; it covers the whole element. `--hero-scrim` is the one that
-     protects body copy, and it can be masked back off wherever the copy
-     ends — which is the only way the picture opens up underneath text
-     without the text losing its contrast floor. */
-  .hero-media::before,
+  /* The shade. One layer, because one thing is being decided here: how much
+     of the page's own colour stands between the photograph and the words. */
   .hero-media::after {
     content: "";
     position: absolute;
     inset: 0;
+    background: var(--hero-shade-layer, var(--hero-shade));
+    -webkit-mask-image: var(--hero-shade-mask, none);
+    mask-image: var(--hero-shade-mask, none);
   }
 
-  .hero-media::before {
-    background: var(--hero-veil, none);
+  /* Scroll-driven lift. The backdrop belongs to the top of the page, so it
+     leaves with it: by the time the reader has scrolled past the hero the
+     picture has gone and the sections below arrive on clean ground.
+
+     Contrast is safe throughout the fade. Both ends are colours the copy is
+     already guaranteed against — shaded photograph at one end, page canvas
+     at the other — and a linear blend between two luminances stays between
+     them, so every frame in between is at least as legible as the worse of
+     the two.
+
+     Opted into per page, and only where the browser drives it off the
+     compositor. There is no JS fallback on purpose: a scroll handler that
+     writes opacity on every frame is a jank generator, and the static hero
+     it would replace is already correct. */
+  @supports (animation-timeline: scroll()) {
+    @media (prefers-reduced-motion: no-preference) {
+      .hero-media--lift {
+        animation: op-hero-lift linear both;
+        animation-timeline: scroll(root block);
+        animation-range: 0 var(--hero-lift-range, 70vh);
+      }
+    }
   }
 
-  .hero-media::after {
-    background: var(--hero-scrim, var(--hero-scrim-strong));
-    -webkit-mask-image: var(--hero-scrim-mask, none);
-    mask-image: var(--hero-scrim-mask, none);
+  @keyframes op-hero-lift {
+    to { opacity: 0; }
   }
 
   /* ======================================================================

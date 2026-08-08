@@ -63,6 +63,12 @@ HERO_FOREGROUNDS = {
 # guarantee survives swapping the picture for a different one.
 IMAGE_EXTREMES = ('#000000', '#ffffff')
 
+# Chrome that floats on a hero — the marketing header's links, wordmark and
+# bare controls — is protected by `--hero-scrim-band` stacked over the
+# scrim's most open step, not by a panel of its own. Only `--fg-default`
+# survives out there.
+HERO_CHROME_FOREGROUNDS = {'fg-default': TEXT_MIN}
+
 
 def _parse_veil(value):
     """`rgb(r g b / a)` -> ((r, g, b), a)."""
@@ -277,3 +283,39 @@ def test_hero_copy_is_legible_over_any_photograph(css, theme):
                 )
 
     assert not failures, 'hero legibility:\n  ' + '\n  '.join(failures)
+
+
+def _stack(*veils):
+    """Alpha-composite several veils of the same colour into one."""
+    remaining = 1.0
+    for _, alpha in veils:
+        remaining *= (1 - alpha)
+    return veils[0][0], 1 - remaining
+
+
+@pytest.mark.parametrize('theme', ['light', 'dark'])
+def test_hero_chrome_is_legible_where_the_scrim_is_most_open(css, theme):
+    """The floating header's worst case is the top *corner* of the hero.
+
+    There the copy scrim has eased all the way down to `--hero-scrim-edge`,
+    and the only thing holding the header up is `--hero-scrim-band`. Those
+    two stack, so the check has to stack them too — testing the band alone
+    would flatter it, and testing `edge` alone would condemn it.
+    """
+    declared = _theme_tokens(css, theme)
+    band = _parse_veil(declared['hero-scrim-band'])
+    edge = _parse_veil(declared['hero-scrim-edge'])
+    combined = _stack(band, edge)
+
+    failures = []
+    for role, floor in HERO_CHROME_FOREGROUNDS.items():
+        fg = _resolve(role, declared)
+        for pixel in IMAGE_EXTREMES:
+            ratio = contrast(fg, _composite(pixel, combined))
+            if ratio < floor:
+                failures.append(
+                    f'{theme}: --{role} ({fg}) over a {pixel} pixel under '
+                    f'band+edge ({combined[1]:.3f}) is {ratio:.2f}:1'
+                )
+
+    assert not failures, 'hero chrome legibility:\n  ' + '\n  '.join(failures)

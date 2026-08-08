@@ -285,7 +285,20 @@ every hero pairs the picture with `--hero-scrim-*`, and three rules hold:
    the picture can actually be seen where nothing is written over it. If a
    layout change moves copy into one of those bands, the band moves, not the
    copy.
-3. **Nothing below `--fg-muted` is a text colour over a hero.** Through the
+   The same idea vertically: `--hero-scrim-mask` fades the copy scrim off
+   across the strip below the last line of text (`--hero-floor`, which is
+   also the hero's bottom padding — one token, so the scrim can never end
+   above the copy however the hero is resized). That strip is where the
+   photograph's foreground detail actually survives. Without a mask there is
+   no way to open the picture up *underneath* a text column, because a
+   gradient cannot vary on both axes at once.
+3. **Chrome that floats on a hero uses `--hero-scrim-band`.** A short veil
+   down the top, which stacks with whatever the copy scrim is doing there —
+   near `edge` in the top corner, so the combination lands around 0.70.
+   That is enough for `--fg-default` and nothing quieter, which is why the
+   marketing header's bare controls switch to the default step while the
+   header is transparent.
+4. **Nothing below `--fg-muted` is a text colour over a hero.** Through the
    scrim `--fg-subtle` reaches only ~4.06:1 and `--fg-faint` misses even the
    non-text floor. Small print over imagery is where legibility quietly
    fails, so the marketing proof list and the auth sub-paragraph step up.
@@ -314,12 +327,14 @@ Two things follow from that, and both are easy to lose:
 - The header is out of flow, so `:root { scroll-padding-top }` (set in
   `landing.css`, which only that page loads) is what keeps in-page anchors
   from scrolling their target underneath it.
-- The nav links and wordmark land inside the scrim's strong plateau, but the
-  theme toggle sits out near 80% of the width where the picture is almost
-  unveiled. Bare, its icon would be reading against open sky — so while the
-  header is transparent it takes the same surface as the Log in button next
-  to it. Anything else added to that end of the header needs the same
-  treatment.
+- While the header is transparent its two secondary controls are too — only
+  the primary call to action keeps a fill. What pays for that is
+  `--hero-scrim-band`, not a panel. It also forces a colour change: those
+  controls normally sit at `--fg-muted`, which needs 0.81 and would not
+  survive out at the open edge of the scrim, so they take `--fg-default`
+  instead. Anything else added to that end of the header needs the same
+  treatment, and `test_hero_chrome_is_legible_where_the_scrim_is_most_open`
+  is what stops the band and the edge drifting apart.
 
 ## Command palette
 

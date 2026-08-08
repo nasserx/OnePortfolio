@@ -249,10 +249,17 @@
        light and 0.776 dark, and the shipped values keep a small margin over
        that for antialiasing. Going lower means gambling on the particular
        photograph. `soft` and `edge` cover the areas copy never reaches, so
-       they are free to open right up. */
+       they are free to open right up.
+
+       `band` is a separate job: a short veil down the top of a hero so that
+       a header floating on the picture stays readable without a panel
+       behind it. Stacked over `edge` it lands near 0.70, which is where
+       `--fg-default` clears 4.5:1 in both themes — so anything sitting in
+       that band uses the default step, never a quieter one. */
     --hero-scrim-strong: rgb(247 245 240 / 0.84);
-    --hero-scrim-soft:   rgb(247 245 240 / 0.50);
-    --hero-scrim-edge:   rgb(247 245 240 / 0.22);
+    --hero-scrim-soft:   rgb(247 245 240 / 0.42);
+    --hero-scrim-edge:   rgb(247 245 240 / 0.12);
+    --hero-scrim-band:   rgb(247 245 240 / 0.64);
 
     /* Hover veil for the semantic solid buttons. It moves *away* from the
        label colour in each theme — darker under white labels, lighter under
@@ -334,8 +341,9 @@
       --brand-solid: var(--brand-550);
       --brand-solid-hover: var(--brand-500);
       --hero-scrim-strong: rgb(16 16 21 / 0.80);
-      --hero-scrim-soft:   rgb(16 16 21 / 0.52);
-      --hero-scrim-edge:   rgb(16 16 21 / 0.24);
+      --hero-scrim-soft:   rgb(16 16 21 / 0.44);
+      --hero-scrim-edge:   rgb(16 16 21 / 0.14);
+      --hero-scrim-band:   rgb(16 16 21 / 0.64);
       --solid-hover-veil: rgb(255 255 255 / 0.14);
       --brand-soft: rgb(157 136 255 / 0.20);
       --brand-soft-hover: rgb(157 136 255 / 0.30);
@@ -413,8 +421,9 @@
     --brand-solid: var(--brand-550);
     --brand-solid-hover: var(--brand-500);
     --hero-scrim-strong: rgb(16 16 21 / 0.80);
-    --hero-scrim-soft:   rgb(16 16 21 / 0.52);
-    --hero-scrim-edge:   rgb(16 16 21 / 0.24);
+    --hero-scrim-soft:   rgb(16 16 21 / 0.44);
+    --hero-scrim-edge:   rgb(16 16 21 / 0.14);
+    --hero-scrim-band:   rgb(16 16 21 / 0.64);
     --solid-hover-veil: rgb(255 255 255 / 0.14);
     --brand-soft: rgb(157 136 255 / 0.20);
     --brand-soft-hover: rgb(157 136 255 / 0.30);

@@ -1591,14 +1591,35 @@
     object-fit: cover;
     /* Below centre: the crop keeps the ridge line and the meadow, and drops
        the empty upper sky that a short hero would otherwise fill with. */
-    object-position: 50% 58%;
+    object-position: 50% 62%;
+    /* A scrim flattens a photograph as well as dimming it. A little extra
+       local contrast is what lets texture — the grass, the tree line — still
+       read through one. */
+    filter: saturate(1.12) contrast(1.06);
   }
 
+  /* Two scrim layers, because they have different jobs and different
+     extents. `--hero-veil` is for chrome that floats on the picture (the
+     band down the top under a header) and for blending the hero's edge into
+     the page; it covers the whole element. `--hero-scrim` is the one that
+     protects body copy, and it can be masked back off wherever the copy
+     ends — which is the only way the picture opens up underneath text
+     without the text losing its contrast floor. */
+  .hero-media::before,
   .hero-media::after {
     content: "";
     position: absolute;
     inset: 0;
+  }
+
+  .hero-media::before {
+    background: var(--hero-veil, none);
+  }
+
+  .hero-media::after {
     background: var(--hero-scrim, var(--hero-scrim-strong));
+    -webkit-mask-image: var(--hero-scrim-mask, none);
+    mask-image: var(--hero-scrim-mask, none);
   }
 
   /* ======================================================================

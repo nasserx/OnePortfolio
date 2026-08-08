@@ -56,14 +56,26 @@
     backdrop-filter: blur(12px);
   }
 
-  /* The nav links and wordmark fall inside the scrim's strong plateau, but
-     the theme toggle sits out at ~80% of the width where the picture is
-     nearly unveiled. Bare, its icon would be reading against open sky. It
-     takes the same surface as the Log in button beside it, which is what it
-     should have looked like over an image anyway. */
-  .lp-nav:not(.is-stuck) .icon-button {
-    background-color: var(--bg-surface);
-    border-color: var(--line-subtle);
+  /* While the header is transparent, its two secondary controls are too —
+     only the primary call to action keeps a fill. What pays for that is
+     `--hero-scrim-band`: a short veil down the top of the hero that lands
+     near 0.70 once stacked over the open edge of the scrim, which is where
+     `--fg-default` clears 4.5:1 in both themes.
+
+     Hence the colour change. These two normally sit at `--fg-muted`, and
+     muted needs 0.81 — it would not survive out here. Anything else added
+     to this end of the header has to come with the default step too. */
+  .lp-nav:not(.is-stuck) .icon-button,
+  .lp-nav:not(.is-stuck) .btn-secondary {
+    background-color: transparent;
+    border-color: transparent;
+    color: var(--fg-default);
+  }
+
+  .lp-nav:not(.is-stuck) .icon-button:hover,
+  .lp-nav:not(.is-stuck) .btn-secondary:hover {
+    background-color: var(--bg-hover);
+    border-color: transparent;
   }
 
   /* The header no longer occupies flow, so in-page anchors would otherwise
@@ -147,17 +159,40 @@
      seam. Layers paint first-on-top, hence the bottom fade leading. */
   .lp-hero {
     position: relative;
-    padding: calc(4rem + var(--space-16)) 0 var(--space-12);
+    padding: calc(4rem + var(--space-16)) 0 var(--hero-floor);
     overflow: hidden;
-    --hero-scrim:
-      linear-gradient(to bottom, transparent 52%, var(--hero-scrim-strong) 100%),
-      linear-gradient(
-        96deg,
-        var(--hero-scrim-strong) 0%,
-        var(--hero-scrim-strong) 50%,
-        var(--hero-scrim-soft) 74%,
-        var(--hero-scrim-edge) 100%
-      );
+
+    /* The band of hero below the copy — where the meadow is, and where
+       nothing is written. The copy scrim is masked off across exactly this
+       strip, so the foreground detail survives instead of being flattened
+       by a scrim it does not need. */
+    --hero-floor: var(--space-20);
+
+    /* Chrome and edges. Never masked: the header sits in the top band at
+       all times, and the bottom few pixels always have to meet the page. */
+    --hero-veil:
+      linear-gradient(to bottom, var(--hero-scrim-band) 0, transparent 8rem),
+      linear-gradient(to bottom, transparent calc(100% - 1.5rem), var(--bg-canvas) 100%);
+
+    /* Copy protection. Heaviest under the words, easing off to nearly
+       nothing on the right where the only thing over the picture is the
+       product card and its own opaque surface. */
+    --hero-scrim: linear-gradient(
+      96deg,
+      var(--hero-scrim-strong) 0%,
+      var(--hero-scrim-strong) 50%,
+      var(--hero-scrim-soft) 74%,
+      var(--hero-scrim-edge) 100%
+    );
+
+    /* ...and it stops where the copy stops. The mask is tied to the same
+       token as the padding, so the scrim can never end above the last line
+       of text however the hero is resized. */
+    --hero-scrim-mask: linear-gradient(
+      to bottom,
+      #000 calc(100% - var(--hero-floor)),
+      transparent 100%
+    );
   }
 
   .lp-hero__grid {
@@ -173,11 +208,14 @@
     .lp-hero__grid { grid-template-columns: minmax(0, 1fr); gap: var(--space-8); }
 
     /* Stacked, the copy spans the full width — there is no longer a quiet
-       side for the picture to show through, so the scrim goes flat. */
+       side for the picture to show through, so the scrim goes flat. The
+       floor strip below the copy still lifts off. */
     .lp-hero {
-      --hero-scrim:
-        linear-gradient(to bottom, transparent 60%, var(--hero-scrim-strong) 100%),
-        linear-gradient(var(--hero-scrim-strong), var(--hero-scrim-strong));
+      --hero-floor: var(--space-16);
+      --hero-scrim: linear-gradient(
+        var(--hero-scrim-strong),
+        var(--hero-scrim-strong)
+      );
     }
   }
 

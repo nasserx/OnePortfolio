@@ -104,14 +104,16 @@ def test_assets_page_uses_asset_terminology_and_total_buy_cost(app):
     html = response.get_data(as_text=True)
     text = _visible_text(html)
 
+    # Metric labels are sentence case since the redesign; these assertions
+    # guard the vocabulary, not the casing.
     for label in (
-        'Assets', 'Add Asset', 'ENTRIES',
-        'TOTAL BUY COST', 'QUANTITY', 'AVERAGE COST',
-        'REALIZED P&L', 'REALIZED RETURN', 'INCOME', 'Quantity', 'Fee',
-        'Total', 'Realized P&L', 'Return', 'Income',
+        'Assets', 'Add asset', 'Entries',
+        'Total buy cost', 'Quantity', 'Average cost',
+        'Realized P&L', 'Realized return', 'Income', 'Fee',
+        'Total', 'Return',
     ):
         assert label in text
-    assert 'placeholder="Search asset..."' in html
+    assert 'placeholder="Search asset…"' in html
 
     for old_label in (
         'Transactions', 'Add Symbol',
@@ -123,8 +125,10 @@ def test_assets_page_uses_asset_terminology_and_total_buy_cost(app):
         assert old_label not in text
     assert 'Search symbol...' not in html
 
-    assert re.search(r'REALIZED P&L\s+\+100\.00\s+REALIZED RETURN\s+\+17\.50%', text)
-    assert not re.search(r'REALIZED P&L\s+\+100\.00\s+\+10\.00%', text)
+    # Realized return is computed against total buy cost (17.50%), not
+    # against the remaining cost basis (10.00%).
+    assert re.search(r'Realized P&L\s+\+100\.00\s+Realized return\s+\+17\.50%', text)
+    assert not re.search(r'Realized P&L\s+\+100\.00\s+\+10\.00%', text)
     assert '1,000.00' in text
     assert '500.00' not in text
     assert 'بيع جزئي' in text

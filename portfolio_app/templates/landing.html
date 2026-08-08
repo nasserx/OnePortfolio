@@ -1,241 +1,269 @@
+{#
+  Marketing page.
+
+  Structure: nav → hero (claim + live-feeling product portrait) → what it is
+  → how it works → the honest limits → close. The product portrait reuses the
+  real allocation legend and number styles from the app, so the page is
+  showing the actual interface rather than an illustration of it.
+#}
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OnePortfolio - Portfolio record keeping</title>
+    <title>OnePortfolio — A clear record of every portfolio you manage</title>
+    <meta name="description" content="Track portfolios manually: capital, asset activity, income, and realized results from your own entries. No live prices, no broker connections, no market noise.">
 
     {% include 'components/favicon_links.html' %}
+    <meta name="theme-color" content="#f6f6f8" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#07070a" media="(prefers-color-scheme: dark)">
 
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script>
+    (function () {
+        try {
+            var theme = localStorage.getItem('op:theme');
+            if (theme === 'dark' || theme === 'light') {
+                document.documentElement.setAttribute('data-theme', theme);
+            }
+        } catch (e) {}
+    }());
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v='20260611-2') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css', v='20260703-7') }}">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tokens.css', v=ASSET_VERSION) }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css', v=ASSET_VERSION) }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css', v=ASSET_VERSION) }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css', v=ASSET_VERSION) }}">
 </head>
-<body class="landing-page">
+<body class="landing">
 
-    <nav class="landing-nav" aria-label="Public navigation">
-        <div class="landing-container landing-nav-inner">
-            <a href="{{ url_for('dashboard.index') }}" class="landing-brand" aria-label="OnePortfolio home">
-                {% set logo_surface = 'dark' %}
-                {% set logo_class = 'op-logo-mark landing-logo-mark' %}
-                {% set logo_size = 28 %}
-                {% include 'components/logo_mark.html' %}
-                <span>OnePortfolio</span>
-            </a>
+<a class="skip-link" href="#main">Skip to content</a>
 
-            <div class="landing-nav-actions">
-                <a class="btn-nav-login" href="{{ url_for('auth.login') }}">Log In</a>
-                <a class="btn-nav-signup" href="{{ url_for('auth.register') }}">Sign Up</a>
+<header class="lp-nav" id="lpNav">
+    <div class="lp-shell lp-nav__inner">
+        <a href="{{ url_for('dashboard.index') }}" class="brand" aria-label="OnePortfolio home">
+            {% set logo_class = 'op-logo-mark' %}
+            {% set logo_size = 26 %}
+            {% include 'components/logo_mark.html' %}
+            <span class="brand__word">OnePortfolio</span>
+        </a>
+
+        <nav class="lp-nav__links" aria-label="Sections">
+            <a href="#product">Product</a>
+            <a href="#how">How it works</a>
+            <a href="#limits">What it isn't</a>
+        </nav>
+
+        <div class="lp-nav__actions">
+            <button type="button" class="icon-button" data-theme-toggle aria-label="Switch theme">
+                <i class="bi bi-moon-stars" aria-hidden="true"></i>
+            </button>
+            <a class="btn btn-secondary" href="{{ url_for('auth.login') }}">Log in</a>
+            <a class="btn btn-primary" href="{{ url_for('auth.register') }}">Get started</a>
+        </div>
+    </div>
+</header>
+
+<main id="main">
+
+    <!-- ══ Hero ══════════════════════════════════════════════════════════ -->
+    <section class="lp-hero">
+        <div class="lp-hero__aura" aria-hidden="true"></div>
+
+        <div class="lp-shell lp-hero__grid">
+            <div class="lp-hero__copy">
+                <p class="lp-eyebrow">
+                    <span class="lp-eyebrow__dot" aria-hidden="true"></span>
+                    Manual by design
+                </p>
+
+                <h1 class="lp-title">
+                    A clear record of every portfolio you manage.
+                </h1>
+
+                <p class="lp-lede">
+                    Record capital, asset activity, and income yourself — then read back
+                    cash, book value, realized P&amp;L, and return in one place. No live
+                    prices, no broker connections, no market noise.
+                </p>
+
+                <div class="lp-cta">
+                    <a class="btn btn-primary btn-lg" href="{{ url_for('auth.register') }}">
+                        Create your portfolio
+                        <i class="bi bi-arrow-right" aria-hidden="true"></i>
+                    </a>
+                    <a class="btn btn-secondary btn-lg" href="{{ url_for('auth.login') }}">Log in</a>
+                </div>
+
+                <ul class="lp-proof">
+                    <li><i class="bi bi-shield-lock" aria-hidden="true"></i> Your entries, your data</li>
+                    <li><i class="bi bi-wallet2" aria-hidden="true"></i> Cash stays visible</li>
+                    <li><i class="bi bi-broadcast-pin" aria-hidden="true"></i> No market feeds</li>
+                </ul>
+            </div>
+
+            {# A framed slice of the real overview screen. Same components,
+               same tokens — so it can never drift from the product. #}
+            <div class="lp-shot" aria-label="Product preview" role="img">
+                <div class="lp-shot__chrome" aria-hidden="true">
+                    <span></span><span></span><span></span>
+                </div>
+
+                <div class="lp-shot__body">
+                    <div class="lp-shot__hero">
+                        <span class="lp-shot__label">Book value</span>
+                        <span class="lp-shot__value num" data-landing-metric="bookValue"></span>
+                        <span class="delta delta--pos">
+                            <i class="bi bi-arrow-up-right" aria-hidden="true"></i>
+                            <span data-landing-metric="returnPercent"></span>
+                        </span>
+                    </div>
+
+                    <div class="lp-shot__facts">
+                        <div class="fact">
+                            <span class="fact__label">Total capital</span>
+                            <span class="fact__value num" data-landing-metric="totalCapital"></span>
+                        </div>
+                        <div class="fact">
+                            <span class="fact__label">Total cash</span>
+                            <span class="fact__value num" data-landing-metric="totalCash"></span>
+                        </div>
+                        <div class="fact">
+                            <span class="fact__label">Income</span>
+                            <span class="fact__value num num--income" data-landing-metric="totalIncome"></span>
+                        </div>
+                        <div class="fact">
+                            <span class="fact__label">Realized P&amp;L</span>
+                            <span class="fact__value num num--pos" data-landing-metric="realizedPnl"></span>
+                        </div>
+                    </div>
+
+                    <div class="lp-shot__split">
+                        <div class="lp-shot__chart">
+                            <canvas id="landingChart"></canvas>
+                        </div>
+                        <ul class="allocation-legend" id="landingLegend"></ul>
+                    </div>
+                </div>
             </div>
         </div>
-    </nav>
+    </section>
 
-    <main>
-        <section class="landing-hero" aria-labelledby="landing-heading">
-            <div class="landing-container landing-hero-grid">
-                <div class="hero-copy">
-                    <h1 id="landing-heading">Track your portfolios manually, with clarity and control.</h1>
-                    <p class="hero-subtext">
-                        Record capital, asset activity, income, and realized results from your own data without live prices, broker connections, or market noise.
-                    </p>
+    <!-- ══ Product ═══════════════════════════════════════════════════════ -->
+    <section class="lp-section" id="product">
+        <div class="lp-shell">
+            <header class="lp-head" data-reveal>
+                <h2>Built around what you actually recorded</h2>
+                <p>Four ideas hold the whole product together.</p>
+            </header>
 
-                    <div class="landing-cta-group" aria-label="Account actions">
-                        <a class="btn-cta-primary" href="{{ url_for('auth.register') }}">Create your portfolio</a>
-                        <a class="btn-cta-secondary" href="{{ url_for('auth.login') }}">Log In</a>
-                    </div>
-
-                    <div class="hero-principles" aria-label="Product principles">
-                        <span><i class="bi bi-journal-text" aria-hidden="true"></i>Manual by design</span>
-                        <span><i class="bi bi-wallet2" aria-hidden="true"></i>Cash stays visible</span>
-                        <span><i class="bi bi-broadcast-pin" aria-hidden="true"></i>No market feeds</span>
-                    </div>
-                </div>
-
-                <aside class="portfolio-preview" aria-labelledby="sample-preview-title">
-                    <div class="preview-header">
-                        <h2 id="sample-preview-title">Sample portfolio</h2>
-                    </div>
-
-                    <div class="preview-metrics" aria-label="Sample portfolio metrics">
-                        <div class="metric-item">
-                            <span class="metric-label">Book Value</span>
-                            <span class="metric-value" data-landing-metric="bookValue"></span>
-                        </div>
-                        <div class="metric-item">
-                            <span class="metric-label">Total Capital</span>
-                            <span class="metric-value" data-landing-metric="totalCapital"></span>
-                        </div>
-                        <div class="metric-item">
-                            <span class="metric-label">Total Cash</span>
-                            <span class="metric-value" data-landing-metric="totalCash"></span>
-                        </div>
-                        <div class="metric-item">
-                            <span class="metric-label">Total Income</span>
-                            <span class="metric-value metric-income" data-landing-metric="totalIncome"></span>
-                        </div>
-                        <div class="metric-item">
-                            <span class="metric-label">Realized P&amp;L</span>
-                            <span class="metric-value metric-positive" data-landing-metric="realizedPnl"></span>
-                        </div>
-                    </div>
-
-                    <div class="preview-charts" aria-label="Sample portfolio allocation charts">
-                        <section class="preview-chart-panel" aria-labelledby="book-value-chart-title">
-                            <h3 id="book-value-chart-title">By Book Value</h3>
-                            <div class="landing-allocation-wrap" data-landing-doughnut-card>
-                                <div class="landing-chart-canvas-wrap">
-                                    <canvas class="landing-chart-canvas" id="landingBookValueChart" aria-label="Sample portfolio allocation by book value" role="img">Sample allocation by book value for Stocks, ETFs, and Crypto.</canvas>
-                                </div>
-                                <ul class="landing-allocation-legend" id="landingBookValueLegend" aria-label="By Book Value legend"></ul>
-                            </div>
-                        </section>
-
-                        <section class="preview-chart-panel" aria-labelledby="capital-chart-title">
-                            <h3 id="capital-chart-title">By Capital</h3>
-                            <div class="landing-allocation-wrap" data-landing-doughnut-card>
-                                <div class="landing-chart-canvas-wrap">
-                                    <canvas class="landing-chart-canvas" id="landingCapitalChart" aria-label="Sample portfolio allocation by capital" role="img">Sample allocation by capital for Stocks, ETFs, and Crypto.</canvas>
-                                </div>
-                                <ul class="landing-allocation-legend" id="landingCapitalLegend" aria-label="By Capital legend"></ul>
-                            </div>
-                        </section>
-                    </div>
-
-                    <section class="sample-assets" aria-labelledby="sample-assets-title">
-                        <div class="sample-assets-head">
-                            <h3 id="sample-assets-title">Portfolio records</h3>
-                        </div>
-                        <div class="landing-sample-table" role="table" aria-label="Sample portfolio records">
-                            <div class="landing-table-row landing-table-head" role="row">
-                                <div role="columnheader">Portfolio</div>
-                                <div role="columnheader">Book Value</div>
-                                <div role="columnheader">Income</div>
-                                <div role="columnheader">Realized P&amp;L</div>
-                                <div role="columnheader">Return</div>
-                            </div>
-                            <article class="landing-table-row" role="row">
-                                <div class="landing-table-name" role="cell" data-label="Portfolio">
-                                    <span class="overview-portfolio-marker allocation-marker-1" aria-hidden="true">S</span>
-                                    <span>Stocks</span>
-                                </div>
-                                <div class="landing-table-number" role="cell" data-label="Book Value" data-landing-row="stocks" data-landing-field="bookValue"></div>
-                                <div class="landing-table-number" role="cell" data-label="Income"><span class="dividend" data-landing-row="stocks" data-landing-field="income"></span></div>
-                                <div class="landing-table-number" role="cell" data-label="Realized P&amp;L"><span class="profit" data-landing-row="stocks" data-landing-field="realizedPnl"></span></div>
-                                <div class="landing-table-number" role="cell" data-label="Return"><span class="profit" data-landing-row="stocks" data-landing-field="return"></span></div>
-                            </article>
-                            <article class="landing-table-row" role="row">
-                                <div class="landing-table-name" role="cell" data-label="Portfolio">
-                                    <span class="overview-portfolio-marker allocation-marker-2" aria-hidden="true">E</span>
-                                    <span>ETFs</span>
-                                </div>
-                                <div class="landing-table-number" role="cell" data-label="Book Value" data-landing-row="etfs" data-landing-field="bookValue"></div>
-                                <div class="landing-table-number" role="cell" data-label="Income"><span class="dividend" data-landing-row="etfs" data-landing-field="income"></span></div>
-                                <div class="landing-table-number" role="cell" data-label="Realized P&amp;L"><span class="profit" data-landing-row="etfs" data-landing-field="realizedPnl"></span></div>
-                                <div class="landing-table-number" role="cell" data-label="Return"><span class="profit" data-landing-row="etfs" data-landing-field="return"></span></div>
-                            </article>
-                            <article class="landing-table-row" role="row">
-                                <div class="landing-table-name" role="cell" data-label="Portfolio">
-                                    <span class="overview-portfolio-marker allocation-marker-3" aria-hidden="true">C</span>
-                                    <span>Crypto</span>
-                                </div>
-                                <div class="landing-table-number" role="cell" data-label="Book Value" data-landing-row="crypto" data-landing-field="bookValue"></div>
-                                <div class="landing-table-number" role="cell" data-label="Income"><span class="dividend" data-landing-row="crypto" data-landing-field="income"></span></div>
-                                <div class="landing-table-number" role="cell" data-label="Realized P&amp;L"><span class="profit" data-landing-row="crypto" data-landing-field="realizedPnl"></span></div>
-                                <div class="landing-table-number" role="cell" data-label="Return"><span class="profit" data-landing-row="crypto" data-landing-field="return"></span></div>
-                            </article>
-                        </div>
-                    </section>
-                </aside>
-            </div>
-        </section>
-
-        <section class="features-section" id="features" aria-labelledby="features-title">
-            <div class="landing-container">
-                <div class="section-heading">
-                    <h2 id="features-title">Features</h2>
-                </div>
-                <div class="feature-card-grid">
-                    <article class="feature-card">
-                        <i class="bi bi-journal-text" aria-hidden="true"></i>
-                        <h3>Manual by design</h3>
-                        <p>You decide what is recorded and when. OnePortfolio stays focused on the activity you enter.</p>
-                    </article>
-                    <article class="feature-card">
-                        <i class="bi bi-wallet2" aria-hidden="true"></i>
-                        <h3>Cash stays visible</h3>
-                        <p>Deposits, withdrawals, buys, sells, and income remain tied to the cash balance.</p>
-                    </article>
-                    <article class="feature-card">
-                        <i class="bi bi-broadcast-pin" aria-hidden="true"></i>
-                        <h3>No market feeds</h3>
-                        <p>No live prices, broker sync, or background imports. Your records remain the source of truth.</p>
-                    </article>
-                    <article class="feature-card">
-                        <i class="bi bi-pie-chart" aria-hidden="true"></i>
-                        <h3>Built around book value</h3>
-                        <p>Review cost basis, cash, realized P&amp;L, income, and return without market-value assumptions.</p>
-                    </article>
-                </div>
-            </div>
-        </section>
-
-        <section class="how-section" id="how-it-works" aria-labelledby="how-title">
-            <div class="landing-container">
-                <div class="section-heading">
-                    <h2 id="how-title">How it works</h2>
-                </div>
-
-                <div class="step-card-grid">
-                    <article class="step-card">
-                        <span class="step-number">01</span>
-                        <h3>Create your portfolios</h3>
-                        <p>Set up the groups you want to track.</p>
-                    </article>
-                    <article class="step-card">
-                        <span class="step-number">02</span>
-                        <h3>Add your records</h3>
-                        <p>Enter capital, asset activity, and income as they happen.</p>
-                    </article>
-                    <article class="step-card">
-                        <span class="step-number">03</span>
-                        <h3>Review the results</h3>
-                        <p>See cash, book value, realized P&amp;L, income, and return in one place.</p>
-                    </article>
-                </div>
-            </div>
-        </section>
-
-        <section class="closing-section" aria-labelledby="closing-title">
-            <div class="landing-container">
-                <div class="closing-panel">
-                    <div>
-                        <h2 id="closing-title">A clearer record of every portfolio you manage.</h2>
-                        <p>Start with your own numbers and keep the process under your control.</p>
-                    </div>
-                    <div class="closing-actions" aria-label="Closing account actions">
-                        <a class="btn-cta-primary" href="{{ url_for('auth.register') }}">Create your portfolio</a>
-                        <a class="btn-cta-secondary" href="{{ url_for('auth.login') }}">Log In</a>
-                    </div>
-                </div>
-            </div>
-        </section>
-    </main>
-
-    <footer class="landing-footer">
-        <div class="landing-container landing-footer-inner">
-            <span>&copy; 2026 OnePortfolio</span>
-            <div class="landing-footer-links">
-                <a href="#features">Features</a>
-                <a href="#how-it-works">How it works</a>
-                <a href="{{ url_for('auth.login') }}">Log In</a>
-                <a href="{{ url_for('auth.register') }}">Sign Up</a>
+            <div class="lp-grid lp-grid--4">
+                {% set features = [
+                    ('journal-text', 'Manual by design',
+                     'You decide what is recorded and when. Nothing is imported behind your back, and nothing appears that you did not enter.'),
+                    ('wallet2', 'Cash stays visible',
+                     'Deposits, withdrawals, buys, sells, and income all move the same cash balance — so the number always reconciles.'),
+                    ('calculator', 'Average cost, done properly',
+                     'Realized P&L is computed from your transactions with the average-cost method, including fees on both sides.'),
+                    ('pie-chart', 'Book value, not guesswork',
+                     'Cost basis and cash, with no market-value assumptions layered on top. What you see is what you put in.')
+                ] %}
+                {% for icon, title, body in features %}
+                <article class="lp-card" data-reveal style="--reveal-index:{{ loop.index0 }}">
+                    <span class="lp-card__icon" aria-hidden="true"><i class="bi bi-{{ icon }}"></i></span>
+                    <h3>{{ title }}</h3>
+                    <p>{{ body }}</p>
+                </article>
+                {% endfor %}
             </div>
         </div>
-    </footer>
+    </section>
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <script src="{{ url_for('static', filename='js/landing.js', v='20260703-5') }}"></script>
+    <!-- ══ How it works ══════════════════════════════════════════════════ -->
+    <section class="lp-section lp-section--alt" id="how">
+        <div class="lp-shell">
+            <header class="lp-head" data-reveal>
+                <h2>Three steps, then it's just upkeep</h2>
+                <p>Most people are set up in under five minutes.</p>
+            </header>
+
+            <ol class="lp-steps">
+                {% set steps = [
+                    ('Create your portfolios', 'Group your holdings however you actually think about them — by asset class, by broker, or by strategy.'),
+                    ('Record as you go', 'Deposits and withdrawals, buys and sells, dividends and other income. Each entry takes a few seconds.'),
+                    ('Read the results', 'Cash, book value, realized P&L, income, and return — per asset, per portfolio, and across everything.')
+                ] %}
+                {% for title, body in steps %}
+                <li class="lp-step" data-reveal style="--reveal-index:{{ loop.index0 }}">
+                    <span class="lp-step__num" aria-hidden="true">{{ '%02d'|format(loop.index) }}</span>
+                    <h3>{{ title }}</h3>
+                    <p>{{ body }}</p>
+                </li>
+                {% endfor %}
+            </ol>
+        </div>
+    </section>
+
+    <!-- ══ Limits ════════════════════════════════════════════════════════
+         Saying plainly what the product does not do is a feature, not a
+         disclaimer — it is the fastest way to find the right users. -->
+    <section class="lp-section" id="limits">
+        <div class="lp-shell lp-limits">
+            <div data-reveal>
+                <h2>What OnePortfolio isn't</h2>
+                <p class="lp-lede lp-lede--tight">
+                    It is a ledger, not a terminal. If you want streaming quotes and
+                    broker sync, this is the wrong tool — and that is deliberate.
+                </p>
+            </div>
+
+            <ul class="lp-limits__list" data-reveal style="--reveal-index:1">
+                <li><i class="bi bi-x-lg" aria-hidden="true"></i> No live prices and no position valuations</li>
+                <li><i class="bi bi-x-lg" aria-hidden="true"></i> No broker or exchange connections</li>
+                <li><i class="bi bi-x-lg" aria-hidden="true"></i> No background imports or auto-sync</li>
+                <li><i class="bi bi-check-lg lp-yes" aria-hidden="true"></i> Just the record you keep, computed carefully</li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- ══ Close ═════════════════════════════════════════════════════════ -->
+    <section class="lp-close">
+        <div class="lp-shell lp-close__panel" data-reveal>
+            <div>
+                <h2>Start with your own numbers.</h2>
+                <p>Free to create, and yours to keep.</p>
+            </div>
+            <div class="lp-cta">
+                <a class="btn btn-primary btn-lg" href="{{ url_for('auth.register') }}">
+                    Create your portfolio
+                    <i class="bi bi-arrow-right" aria-hidden="true"></i>
+                </a>
+                <a class="btn btn-secondary btn-lg" href="{{ url_for('auth.login') }}">Log in</a>
+            </div>
+        </div>
+    </section>
+
+</main>
+
+<footer class="lp-footer">
+    <div class="lp-shell lp-footer__inner">
+        <span>&copy; 2026 OnePortfolio</span>
+        <nav class="lp-footer__links" aria-label="Footer">
+            <a href="#product">Product</a>
+            <a href="#how">How it works</a>
+            <a href="{{ url_for('auth.login') }}">Log in</a>
+            <a href="{{ url_for('auth.register') }}">Sign up</a>
+        </nav>
+    </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="{{ url_for('static', filename='js/shell.js', v=ASSET_VERSION) }}"></script>
+<script src="{{ url_for('static', filename='js/landing.js', v=ASSET_VERSION) }}"></script>
 </body>
 </html>

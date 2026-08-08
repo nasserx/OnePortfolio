@@ -17,7 +17,7 @@
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             {% for category, message in messages %}
-                <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show flash-alert mb-3" role="alert">
+                <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show mb-3" role="alert">
                     {{ message }}
                     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 </div>
@@ -27,7 +27,7 @@
 
     <!-- General error -->
     {% if form_errors.get('__all__') %}
-        <div class="alert alert-danger flash-alert mb-3">
+        <div class="alert alert-danger mb-3">
             <i class="bi bi-exclamation-circle me-2"></i>{{ form_errors['__all__'] }}
         </div>
     {% endif %}

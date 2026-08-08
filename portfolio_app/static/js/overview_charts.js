@@ -1,236 +1,330 @@
-(function() {
-    function cssVar(name, fallback) {
-        var value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-        return value || fallback;
-    }
+/* ==========================================================================
+   OnePortfolio — Allocation chart
+   ==========================================================================
 
-    function textColor() {
-        return cssVar('--text-1', '#e8eaed');
-    }
+   One doughnut, two datasets. The segmented control swaps which basis is
+   shown; colours are assigned once across BOTH datasets so a portfolio keeps
+   the same colour whichever basis is active — that consistency is the whole
+   reason the two views can share a chart.
+   ========================================================================== */
 
-    function otherColor() {
-        return cssVar('--chart-allocation-other', '#64748b');
-    }
+(function () {
+  'use strict';
 
-    function chartNumber(name, fallback) {
-        var value = parseFloat(cssVar(name, ''));
-        return Number.isFinite(value) ? value : fallback;
-    }
+  var PALETTE_SIZE = 7;
 
-    function displayNumber(value) {
-        var number = Number(value) || 0;
-        var absValue = Math.abs(number);
-        if (absValue >= 1000000) {
-            return (number / 1000000).toFixed(2) + 'M';
+  function cssVar(name, fallback) {
+    var value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    return value || fallback;
+  }
+
+  function prefersReducedMotion() {
+    return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  }
+
+  function palette() {
+    var colors = [];
+    for (var i = 1; i <= PALETTE_SIZE; i += 1) {
+      colors.push(cssVar('--cat-' + i, '#7461f3'));
+    }
+    return colors;
+  }
+
+  /* Large figures collapse to B/M so the ring's centre label always fits;
+     everything else keeps two decimals so the legend column stays aligned. */
+  function compact(value) {
+    var number = Number(value) || 0;
+    var magnitude = Math.abs(number);
+
+    if (magnitude >= 1e9) return (number / 1e9).toFixed(2) + 'B';
+    if (magnitude >= 1e6) return (number / 1e6).toFixed(2) + 'M';
+
+    return number.toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  }
+
+  function truncate(text, max) {
+    var value = text || '';
+    return value.length > max ? value.slice(0, max) + '…' : value;
+  }
+
+  function hasData(dataset) {
+    return Boolean(
+      dataset
+      && Array.isArray(dataset.categories)
+      && dataset.categories.length
+      && Array.isArray(dataset.allocations)
+      && dataset.allocations.some(function (value) { return Number(value) > 0; })
+    );
+  }
+
+  /* One colour index per portfolio name, shared across both datasets. */
+  function buildColorMap(chartData) {
+    var map = {};
+    var next = 0;
+
+    ['book_value_chart', 'capital_chart'].forEach(function (key) {
+      var dataset = chartData[key] || {};
+      (dataset.categories || []).forEach(function (name) {
+        if (name !== 'Other Portfolios' && map[name] === undefined) {
+          map[name] = next;
+          next += 1;
         }
-        return number.toLocaleString('en-US', {
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 2
+      });
+    });
+
+    return map;
+  }
+
+  /* Centre label plugin — the total belongs inside the ring, not beside it. */
+  var centreText = {
+    id: 'centreText',
+    afterDraw: function (chart) {
+      var options = chart.config.options.plugins.centreText;
+      if (!options || !options.value) return;
+
+      var arc = chart.getDatasetMeta(0).data[0];
+      if (!arc) return;
+
+      var ctx = chart.ctx;
+      ctx.save();
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      ctx.fillStyle = cssVar('--fg-subtle', '#82828e');
+      ctx.font = '500 11px Inter, sans-serif';
+      ctx.fillText(options.label, arc.x, arc.y - 11);
+
+      ctx.fillStyle = cssVar('--fg-default', '#ededf1');
+      ctx.font = '600 15px Inter, sans-serif';
+      ctx.fillText(options.value, arc.x, arc.y + 8);
+
+      ctx.restore();
+    }
+  };
+
+  function AllocationChart(chartData) {
+    this.data = chartData || {};
+    this.colorMap = buildColorMap(this.data);
+    this.colors = palette();
+    this.chart = null;
+    this.view = 'book_value_chart';
+
+    this.canvas = document.getElementById('allocationChart');
+    this.legend = document.getElementById('allocationLegend');
+    this.empty = document.querySelector('[data-alloc-empty]');
+    this.switcher = document.querySelector('[data-alloc-switch]');
+  }
+
+  AllocationChart.prototype.colorFor = function (name) {
+    if (name === 'Other Portfolios') return cssVar('--cat-other', '#7b7b8a');
+    var index = this.colorMap[name];
+    if (!isFinite(index)) index = 0;
+    return this.colors[index % this.colors.length];
+  };
+
+  AllocationChart.prototype.swatchClass = function (name) {
+    if (name === 'Other Portfolios') return 'swatch swatch-other';
+    var index = this.colorMap[name];
+    if (!isFinite(index)) index = 0;
+    return 'swatch swatch-' + ((index % PALETTE_SIZE) + 1);
+  };
+
+  AllocationChart.prototype.mount = function () {
+    if (!this.canvas || !this.legend || !window.Chart) return;
+
+    var self = this;
+
+    this.mountSwitcher();
+    this.render();
+
+    // Canvas pixels do not follow CSS custom properties, so the chart has to
+    // be rebuilt from the new palette whenever the theme flips.
+    window.addEventListener('op:themechange', function () {
+      self.colors = palette();
+      window.Chart.defaults.color = cssVar('--fg-muted', '#a3a3ae');
+      self.render();
+    });
+  };
+
+  AllocationChart.prototype.mountSwitcher = function () {
+    if (!this.switcher) return;
+
+    var self = this;
+    var options = Array.prototype.slice.call(
+      this.switcher.querySelectorAll('[data-alloc-view]'));
+    var thumb = this.switcher.querySelector('.segmented__thumb');
+
+    function moveThumb(active) {
+      if (!thumb) return;
+      thumb.style.width = active.offsetWidth + 'px';
+      thumb.style.transform = 'translateX(' + (active.offsetLeft - 3) + 'px)';
+    }
+
+    options.forEach(function (option) {
+      option.addEventListener('click', function () {
+        options.forEach(function (other) {
+          other.setAttribute('aria-selected', other === option ? 'true' : 'false');
         });
+        moveThumb(option);
+        self.view = option.getAttribute('data-alloc-view');
+        self.render();
+      });
+    });
+
+    var selected = this.switcher.querySelector('[aria-selected="true"]') || options[0];
+    if (selected) {
+      // Layout is not settled during DOMContentLoaded inside a flex row, so
+      // the initial thumb placement waits one frame for real geometry.
+      window.requestAnimationFrame(function () { moveThumb(selected); });
+      window.addEventListener('resize', function () { moveThumb(selected); });
+    }
+  };
+
+  AllocationChart.prototype.render = function () {
+    var dataset = this.data[this.view] || {};
+
+    if (this.chart) {
+      this.chart.destroy();
+      this.chart = null;
+    }
+    this.legend.replaceChildren();
+
+    if (!hasData(dataset)) {
+      this.canvas.hidden = true;
+      this.legend.hidden = true;
+      if (this.empty) this.empty.hidden = false;
+      return;
     }
 
-    function truncate(name, maxLength) {
-        return name && name.length > maxLength ? name.slice(0, maxLength) + '...' : (name || '');
-    }
+    this.canvas.hidden = false;
+    this.legend.hidden = false;
+    if (this.empty) this.empty.hidden = true;
 
-    function prefersReducedMotion() {
-        return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    }
+    this.renderChart(dataset);
+    this.renderLegend(dataset);
+  };
 
-    var allocationPalette = [
-        cssVar('--chart-allocation-1', '#7dd3fc'),
-        cssVar('--chart-allocation-2', '#a78bfa'),
-        cssVar('--chart-allocation-3', '#34d399'),
-        cssVar('--chart-allocation-4', '#f0abfc'),
-        cssVar('--chart-allocation-5', '#38bdf8'),
-        cssVar('--chart-allocation-6', '#c4b5fd'),
-        cssVar('--chart-allocation-7', '#5eead4')
-    ];
+  AllocationChart.prototype.renderChart = function (dataset) {
+    var self = this;
 
-    function colorFor(name, colorMap) {
-        if (name === 'Other Portfolios') return otherColor();
-        var index = colorMap[name];
-        if (!Number.isFinite(index)) index = 0;
-        return allocationPalette[index % allocationPalette.length];
-    }
-
-    function swatchClass(name, colorMap) {
-        if (name === 'Other Portfolios') return 'swatch swatch-other';
-        var index = colorMap[name];
-        if (!Number.isFinite(index)) index = 0;
-        return 'swatch swatch-' + ((index % allocationPalette.length) + 1);
-    }
-
-    function hasMeaningfulData(data) {
-        return data && Array.isArray(data.categories) && data.categories.length &&
-            Array.isArray(data.allocations) && data.allocations.some(function(value) {
-                return Number(value) > 0;
-            });
-    }
-
-    function buildColorMap(chartData) {
-        var colorMap = {};
-        var next = 0;
-        ['book_value_chart', 'capital_chart'].forEach(function(key) {
-            var data = chartData[key] || {};
-            (data.categories || []).forEach(function(name) {
-                if (name !== 'Other Portfolios' && colorMap[name] === undefined) {
-                    colorMap[name] = next;
-                    next += 1;
-                }
-            });
-        });
-        return colorMap;
-    }
-
-    var centerTextPlugin = {
-        id: 'centerText',
-        afterDraw: function(chart) {
-            if (chart.config.type !== 'doughnut') return;
-            var opts = chart.config.options.plugins.centerText;
-            if (!opts || !opts.value) return;
-            var arc = chart.getDatasetMeta(0).data[0];
-            if (!arc) return;
-            var ctx = chart.ctx;
-            ctx.save();
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillStyle = textColor();
-            ctx.globalAlpha = 0.65;
-            ctx.font = '400 ' + chartNumber('--font-size-chart-center-label', 10) + 'px Inter, sans-serif';
-            ctx.fillText(opts.label, arc.x, arc.y - 11);
-            ctx.globalAlpha = 1;
-            ctx.font = '500 ' + chartNumber('--font-size-chart-center-value', 13) + 'px Inter, sans-serif';
-            ctx.fillText(opts.value, arc.x, arc.y + 9);
-            ctx.restore();
-        }
-    };
-
-    function renderDoughnut(config, colorMap) {
-        var canvas = document.getElementById(config.canvasId);
-        var legend = document.getElementById(config.legendId);
-        var card = canvas ? canvas.closest('[data-doughnut-card]') : null;
-        var emptyState = card ? card.querySelector('[data-empty-state]') : null;
-        var data = config.data || {};
-
-        if (!canvas || !legend) return;
-
-        if (!hasMeaningfulData(data)) {
-            canvas.hidden = true;
-            legend.hidden = true;
-            if (emptyState) emptyState.hidden = false;
-            return;
-        }
-
-        var chart = new Chart(canvas, {
-            type: 'doughnut',
-            data: {
-                labels: data.categories,
-                datasets: [{
-                    data: data.allocations,
-                    backgroundColor: data.categories.map(function(name) {
-                        return colorFor(name, colorMap);
-                    }),
-                    borderColor: cssVar('--surface-card', '#111113'),
-                    borderWidth: 2,
-                    hoverOffset: 5
-                }]
-            },
-            plugins: [centerTextPlugin],
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                cutout: '64%',
-                animation: prefersReducedMotion() ? false : { duration: 220 },
-                layout: { padding: 8 },
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        callbacks: {
-                            label: function(ctx) {
-                                var pct = Number(ctx.parsed);
-                                var safePct = Number.isFinite(pct) ? pct.toFixed(1) : '0.0';
-                                return ' ' + ctx.label + ': ' + safePct + '%';
-                            }
-                        }
-                    },
-                    centerText: {
-                        label: config.centerLabel,
-                        value: displayNumber(data.total || 0)
-                    }
-                }
+    this.chart = new window.Chart(this.canvas, {
+      type: 'doughnut',
+      data: {
+        labels: dataset.categories,
+        datasets: [{
+          data: dataset.allocations,
+          backgroundColor: dataset.categories.map(function (name) {
+            return self.colorFor(name);
+          }),
+          borderColor: cssVar('--chart-ring-gap', '#121216'),
+          borderWidth: 2,
+          hoverOffset: 6
+        }]
+      },
+      plugins: [centreText],
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '68%',
+        animation: prefersReducedMotion() ? false : { duration: 420 },
+        layout: { padding: 6 },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: cssVar('--bg-raised', '#18181d'),
+            borderColor: cssVar('--line-default', 'rgba(255,255,255,.11)'),
+            borderWidth: 1,
+            titleColor: cssVar('--fg-default', '#ededf1'),
+            bodyColor: cssVar('--fg-muted', '#a3a3ae'),
+            padding: 10,
+            displayColors: false,
+            callbacks: {
+              label: function (ctx) {
+                var pct = Number(ctx.parsed);
+                return ' ' + (isFinite(pct) ? pct.toFixed(1) : '0.0') + '%';
+              }
             }
-        });
-
-        var frag = document.createDocumentFragment();
-        data.categories.forEach(function(name, index) {
-            var li = document.createElement('li');
-            li.title = name;
-            li.dataset.idx = String(index);
-            li.setAttribute('role', 'button');
-            li.setAttribute('tabindex', '0');
-            li.setAttribute('aria-pressed', 'false');
-
-            var swatch = document.createElement('span');
-            swatch.className = swatchClass(name, colorMap);
-
-            var nameEl = document.createElement('span');
-            nameEl.className = 'name';
-            nameEl.textContent = truncate(name, 22);
-
-            var valueEl = document.createElement('span');
-            valueEl.className = 'value';
-            valueEl.textContent = displayNumber((data.values || [])[index]);
-
-            var pctEl = document.createElement('span');
-            pctEl.className = 'pct';
-            var pct = Number(data.allocations[index]);
-            pctEl.textContent = (Number.isFinite(pct) ? pct.toFixed(1) : '0.0') + '%';
-
-            li.append(swatch, nameEl, valueEl, pctEl);
-            frag.appendChild(li);
-        });
-        legend.appendChild(frag);
-
-        function toggleLegendRow(row) {
-            var index = parseInt(row.dataset.idx, 10);
-            if (Number.isNaN(index)) return;
-            var hidden = !row.classList.contains('is-hidden');
-            row.classList.toggle('is-hidden', hidden);
-            row.setAttribute('aria-pressed', hidden ? 'true' : 'false');
-            chart.toggleDataVisibility(index);
-            chart.update();
+          },
+          centreText: {
+            label: this.view === 'capital_chart' ? 'Total capital' : 'Book value',
+            value: compact(dataset.total || 0)
+          }
         }
+      }
+    });
+  };
 
-        legend.addEventListener('click', function(event) {
-            var target = event.target.closest && event.target.closest('[data-idx]');
-            if (target && legend.contains(target)) toggleLegendRow(target);
-        });
-        legend.addEventListener('keydown', function(event) {
-            if (event.key !== 'Enter' && event.key !== ' ') return;
-            var target = event.target.closest && event.target.closest('[data-idx]');
-            if (target && legend.contains(target)) {
-                event.preventDefault();
-                toggleLegendRow(target);
-            }
-        });
+  AllocationChart.prototype.renderLegend = function (dataset) {
+    var self = this;
+    var fragment = document.createDocumentFragment();
+
+    dataset.categories.forEach(function (name, index) {
+      var row = document.createElement('li');
+      row.title = name;
+      row.dataset.idx = String(index);
+      row.setAttribute('role', 'button');
+      row.setAttribute('tabindex', '0');
+      row.setAttribute('aria-pressed', 'false');
+
+      var swatch = document.createElement('span');
+      swatch.className = self.swatchClass(name);
+
+      var label = document.createElement('span');
+      label.className = 'name';
+      label.textContent = truncate(name, 20);
+
+      var value = document.createElement('span');
+      value.className = 'value';
+      value.textContent = compact((dataset.values || [])[index]);
+
+      var pct = document.createElement('span');
+      pct.className = 'pct';
+      var share = Number(dataset.allocations[index]);
+      pct.textContent = (isFinite(share) ? share.toFixed(1) : '0.0') + '%';
+
+      row.append(swatch, label, value, pct);
+      fragment.appendChild(row);
+    });
+
+    this.legend.appendChild(fragment);
+    this.wireLegend();
+  };
+
+  AllocationChart.prototype.wireLegend = function () {
+    var self = this;
+
+    function toggle(row) {
+      var index = parseInt(row.dataset.idx, 10);
+      if (isNaN(index) || !self.chart) return;
+
+      var nowHidden = !row.classList.contains('is-hidden');
+      row.classList.toggle('is-hidden', nowHidden);
+      row.setAttribute('aria-pressed', nowHidden ? 'true' : 'false');
+      self.chart.toggleDataVisibility(index);
+      self.chart.update();
     }
 
-    window.initPortfolioAllocationCharts = function(chartData) {
-        if (!window.Chart || !chartData) return;
-        Chart.defaults.color = textColor();
-        var colorMap = buildColorMap(chartData);
-        renderDoughnut({
-            canvasId: 'bookValueChart',
-            legendId: 'bookValueLegend',
-            data: chartData.book_value_chart,
-            centerLabel: 'BOOK VALUE'
-        }, colorMap);
-        renderDoughnut({
-            canvasId: 'bookCapitalChart',
-            legendId: 'bookCapitalLegend',
-            data: chartData.capital_chart,
-            centerLabel: 'CAPITAL'
-        }, colorMap);
-    };
-})();
+    this.legend.addEventListener('click', function (event) {
+      var row = event.target.closest('[data-idx]');
+      if (row) toggle(row);
+    });
+
+    this.legend.addEventListener('keydown', function (event) {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      var row = event.target.closest('[data-idx]');
+      if (!row) return;
+      event.preventDefault();
+      toggle(row);
+    });
+  };
+
+  window.initPortfolioAllocationChart = function (chartData) {
+    if (!window.Chart || !chartData) return;
+    window.Chart.defaults.color = cssVar('--fg-muted', '#a3a3ae');
+    window.Chart.defaults.font.family = 'Inter, sans-serif';
+    new AllocationChart(chartData).mount();
+  };
+}());

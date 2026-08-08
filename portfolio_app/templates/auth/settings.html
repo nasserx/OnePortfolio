@@ -2,14 +2,13 @@
 
 {% block title %}Settings — OnePortfolio{% endblock %}
 
-{% block content %}
-<div class="row justify-content-center">
-    <div class="col-12 col-xl-10">
+{% block page_title %}Settings{% endblock %}
 
-        <div class="row g-4 align-items-start">
+{% block content %}
+<div class="settings">
 
             <!-- Sidebar navigation -->
-            <div class="col-12 col-md-3 col-lg-2">
+            <div>
                 <ul class="nav settings-sidebar" id="settingsTabs" role="tablist">
                     <li class="nav-item w-100" role="presentation">
                         <button class="nav-link settings-sidebar-link {% if request.args.get('tab', 'profile') == 'profile' %}active{% endif %}"
@@ -39,7 +38,7 @@
             </div>
 
             <!-- Tab panels -->
-            <div class="col-12 col-md-9 col-lg-10">
+            <div>
         <div class="tab-content settings-tab-content">
 
             <!-- ============================================================ -->
@@ -307,9 +306,7 @@
             </div>
 
         </div>{# /tab-content #}
-            </div>{# /col content #}
-        </div>{# /row sidebar+content #}
-    </div>
+            </div>{# /panels #}
 </div>
 {% endblock %}
 

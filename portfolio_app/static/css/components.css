@@ -1,0 +1,1566 @@
+/* ==========================================================================
+   OnePortfolio — Components
+   Reusable, page-agnostic UI. Every rule consumes role tokens only.
+   ==========================================================================
+   1.  Buttons
+   2.  Icon & action buttons
+   3.  Segmented control
+   4.  Forms
+   5.  Cards & panels
+   6.  Tables
+   7.  Badges, pills & type labels
+   8.  Dropdowns
+   9.  Modals
+   10. Toasts & alerts
+   11. Tooltips
+   12. Pagination
+   13. Empty states & skeletons
+   14. Allocation legend & markers
+   15. Avatar & brand mark
+   16. Date picker (flatpickr)
+   ========================================================================== */
+
+@layer components {
+
+  /* ======================================================================
+     1. BUTTONS
+     ====================================================================== */
+
+  .btn {
+    --btn-bg: transparent;
+    --btn-fg: var(--fg-default);
+    --btn-line: var(--line-default);
+    --btn-bg-hover: var(--bg-hover);
+    --btn-line-hover: var(--line-strong);
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    min-height: var(--control-h);
+    padding: 0 var(--control-pad-x);
+    border: 1px solid var(--btn-line);
+    border-radius: var(--radius-sm);
+    background-color: var(--btn-bg);
+    color: var(--btn-fg);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    line-height: 1;
+    white-space: nowrap;
+    cursor: pointer;
+    transition:
+      background-color var(--dur-1) var(--ease-out),
+      border-color var(--dur-1) var(--ease-out),
+      color var(--dur-1) var(--ease-out),
+      box-shadow var(--dur-2) var(--ease-out),
+      transform var(--dur-2) var(--ease-spring);
+  }
+
+  .btn:hover {
+    background-color: var(--btn-bg-hover);
+    border-color: var(--btn-line-hover);
+    color: var(--btn-fg);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-lift);
+  }
+
+  /* Press reads as the button settling back down, not shrinking away. */
+  .btn:active {
+    transform: translateY(0) scale(0.985);
+    box-shadow: none;
+    transition-duration: var(--dur-1);
+  }
+
+  .btn:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 4px var(--focus-ring-halo);
+  }
+
+  .btn:disabled,
+  .btn.disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+    pointer-events: none;
+  }
+
+  .btn .bi { font-size: 1em; }
+
+  .btn-sm {
+    min-height: var(--control-h-sm);
+    padding: 0 var(--space-2);
+    font-size: var(--text-xs);
+  }
+
+  .btn-lg {
+    min-height: 2.75rem;
+    padding: 0 var(--space-5);
+    font-size: var(--text-md);
+  }
+
+  /* ---- solid ---------------------------------------------------------- */
+  .btn-primary {
+    --btn-bg: var(--brand);
+    --btn-fg: var(--fg-on-brand);
+    --btn-line: var(--brand);
+    --btn-bg-hover: var(--brand-hover);
+    --btn-line-hover: var(--brand-hover);
+  }
+
+  .btn-success {
+    --btn-bg: var(--pos);
+    --btn-fg: var(--fg-on-solid);
+    --btn-line: var(--pos);
+    --btn-bg-hover: var(--pos);
+    --btn-line-hover: var(--pos);
+  }
+
+  .btn-danger {
+    --btn-bg: var(--neg);
+    --btn-fg: var(--fg-on-solid);
+    --btn-line: var(--neg);
+    --btn-bg-hover: var(--neg);
+    --btn-line-hover: var(--neg);
+  }
+
+  .btn-warning {
+    --btn-bg: var(--warn);
+    --btn-fg: var(--fg-on-solid);
+    --btn-line: var(--warn);
+    --btn-bg-hover: var(--warn);
+    --btn-line-hover: var(--warn);
+  }
+
+  /* Solid buttons brighten on hover through a light overlay rather than a
+     second hand-tuned colour per variant. */
+  .btn-primary:hover,
+  .btn-success:hover,
+  .btn-danger:hover,
+  .btn-warning:hover {
+    background-image: linear-gradient(rgb(255 255 255 / 0.12), rgb(255 255 255 / 0.12));
+  }
+
+  /* ---- outline -------------------------------------------------------- */
+  .btn-secondary,
+  .btn-outline-secondary {
+    --btn-bg: var(--bg-surface);
+    --btn-fg: var(--fg-default);
+    --btn-line: var(--line-default);
+    --btn-bg-hover: var(--bg-hover);
+  }
+
+  .btn-outline-primary {
+    --btn-fg: var(--brand);
+    --btn-line: var(--brand-line);
+    --btn-bg-hover: var(--brand-soft);
+    --btn-line-hover: var(--brand);
+  }
+
+  .btn-outline-success {
+    --btn-fg: var(--pos);
+    --btn-line: var(--pos-line);
+    --btn-bg-hover: var(--pos-soft);
+    --btn-line-hover: var(--pos);
+  }
+
+  .btn-outline-danger {
+    --btn-fg: var(--neg);
+    --btn-line: var(--neg-line);
+    --btn-bg-hover: var(--neg-soft);
+    --btn-line-hover: var(--neg);
+  }
+
+  .btn-outline-warning {
+    --btn-fg: var(--warn);
+    --btn-line: var(--warn-line);
+    --btn-bg-hover: var(--warn-soft);
+    --btn-line-hover: var(--warn);
+  }
+
+  /* ---- ghost / link --------------------------------------------------- */
+  .btn-link {
+    --btn-fg: var(--brand);
+    --btn-line: transparent;
+    --btn-bg-hover: transparent;
+    --btn-line-hover: transparent;
+    min-height: auto;
+    padding: 0;
+    text-decoration: none;
+  }
+
+  .btn-link:hover {
+    color: var(--brand-hover);
+    transform: none;
+    box-shadow: none;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  .btn-group {
+    display: inline-flex;
+    gap: var(--space-1);
+  }
+
+  /* The stock Bootstrap group welds buttons into a single pill; these are
+     discrete row actions, so they stay individually hit-testable. */
+  .btn-group > .btn {
+    border-radius: var(--radius-sm);
+  }
+
+  /* ======================================================================
+     2. ICON & ACTION BUTTONS
+     ====================================================================== */
+
+  .btn-icon {
+    width: var(--control-h-sm);
+    height: var(--control-h-sm);
+    min-height: 0;
+    padding: 0;
+    border-color: transparent;
+    background-color: transparent;
+    color: var(--fg-muted);
+    border-radius: var(--radius-sm);
+  }
+
+  /* Row actions sit inside dense tables — a lift would jitter the row, so
+     icon buttons scale in place instead. */
+  .btn-icon:hover {
+    transform: scale(1.08);
+    box-shadow: none;
+    background-color: var(--bg-hover);
+    border-color: transparent;
+    color: var(--fg-default);
+  }
+
+  .btn-icon:active { transform: scale(0.94); }
+
+  .btn-icon.btn-sm {
+    width: 1.625rem;
+    height: 1.625rem;
+    font-size: var(--text-xs);
+  }
+
+  .btn-icon.btn-outline-primary:hover { color: var(--brand); background-color: var(--brand-soft); }
+  .btn-icon.btn-outline-success:hover { color: var(--pos); background-color: var(--pos-soft); }
+  .btn-icon.btn-outline-danger:hover  { color: var(--neg); background-color: var(--neg-soft); }
+
+  .row-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+  }
+
+  /* Inside a dense table the actions recede until the row is engaged —
+     but never so far that they read as disabled. */
+  .table .row-actions {
+    opacity: 0.55;
+    transition: opacity var(--dur-2) var(--ease-out);
+  }
+
+  .table tr:hover .row-actions,
+  .table .row-actions:hover,
+  .table .row-actions:focus-within {
+    opacity: 1;
+  }
+
+  .btn-action-income {
+    --btn-fg: var(--income);
+    --btn-line: var(--income-line);
+    --btn-bg-hover: var(--income-soft);
+    --btn-line-hover: var(--income);
+  }
+
+  .btn-action-income.btn-icon:hover {
+    color: var(--income);
+    background-color: var(--income-soft);
+  }
+
+  .btn-action-positive {
+    --btn-fg: var(--pos);
+    --btn-line: var(--pos-line);
+    --btn-bg-hover: var(--pos-soft);
+    --btn-line-hover: var(--pos);
+  }
+
+  /* ---- icon-only toggles used in the shell ---------------------------- */
+  .icon-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--control-h);
+    height: var(--control-h);
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    background-color: transparent;
+    color: var(--fg-muted);
+    cursor: pointer;
+    transition:
+      background-color var(--dur-1) var(--ease-out),
+      color var(--dur-1) var(--ease-out),
+      transform var(--dur-2) var(--ease-spring);
+  }
+
+  .icon-button:hover {
+    background-color: var(--bg-hover);
+    color: var(--fg-default);
+  }
+
+  .icon-button:active { transform: scale(0.92); }
+
+  .icon-button .bi {
+    font-size: 1rem;
+    transition: transform var(--dur-3) var(--ease-spring);
+  }
+
+  /* ======================================================================
+     3. SEGMENTED CONTROL
+     A single-choice switch for peer views (Book value / Capital). The
+     thumb is a real element so it can slide between options.
+     ====================================================================== */
+
+  .segmented {
+    position: relative;
+    display: inline-flex;
+    padding: 3px;
+    border: 1px solid var(--line-subtle);
+    border-radius: var(--radius-sm);
+    background-color: var(--bg-inset);
+  }
+
+  .segmented__thumb {
+    position: absolute;
+    top: 3px;
+    bottom: 3px;
+    left: 0;
+    border-radius: calc(var(--radius-sm) - 2px);
+    background-color: var(--bg-surface);
+    box-shadow: var(--shadow-raised);
+    transition:
+      transform var(--dur-3) var(--ease-out),
+      width var(--dur-3) var(--ease-out);
+    pointer-events: none;
+  }
+
+  .segmented__option {
+    position: relative;
+    z-index: 1;
+    padding: 0 var(--space-3);
+    height: 1.75rem;
+    border: 0;
+    background: none;
+    color: var(--fg-muted);
+    font-size: var(--text-xs);
+    font-weight: var(--weight-medium);
+    white-space: nowrap;
+    cursor: pointer;
+    border-radius: calc(var(--radius-sm) - 2px);
+    transition: color var(--dur-2) var(--ease-out);
+  }
+
+  .segmented__option:hover { color: var(--fg-default); }
+  .segmented__option[aria-selected="true"] { color: var(--fg-default); }
+
+  /* ======================================================================
+     4. FORMS
+     ====================================================================== */
+
+  .form-label,
+  label.form-label {
+    display: block;
+    margin-bottom: var(--space-2);
+    color: var(--fg-muted);
+    font-size: var(--text-xs);
+    font-weight: var(--weight-medium);
+    letter-spacing: 0;
+  }
+
+  .form-control,
+  .form-select {
+    width: 100%;
+    min-height: var(--control-h);
+    padding: 0 var(--control-pad-x);
+    border: 1px solid var(--line-default);
+    border-radius: var(--radius-sm);
+    background-color: var(--bg-inset);
+    color: var(--fg-default);
+    font-size: var(--text-md);
+    line-height: var(--leading-snug);
+    box-shadow: none;
+    transition:
+      border-color var(--dur-1) var(--ease-out),
+      background-color var(--dur-1) var(--ease-out),
+      box-shadow var(--dur-2) var(--ease-out);
+  }
+
+  textarea.form-control {
+    min-height: 4.5rem;
+    padding: var(--space-2) var(--control-pad-x);
+    line-height: var(--leading-normal);
+  }
+
+  .form-control:hover:not(:disabled):not([readonly]),
+  .form-select:hover:not(:disabled) {
+    border-color: var(--line-strong);
+  }
+
+  .form-control:focus,
+  .form-select:focus {
+    border-color: var(--focus-ring);
+    background-color: var(--bg-surface);
+    box-shadow: 0 0 0 3px var(--focus-ring-halo);
+    outline: none;
+    color: var(--fg-default);
+  }
+
+  .form-control[readonly],
+  .form-select[readonly],
+  .form-control:disabled {
+    background-color: var(--bg-sunken);
+    color: var(--fg-muted);
+    cursor: default;
+  }
+
+  .form-select {
+    padding-right: 2.25rem;
+    background-image: var(--select-caret);
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 15px;
+    appearance: none;
+  }
+
+  .form-control.is-invalid,
+  .form-select.is-invalid {
+    border-color: var(--neg);
+    background-image: none;
+  }
+
+  .form-select.is-invalid { background-image: var(--select-caret); }
+
+  .form-control.is-invalid:focus,
+  .form-select.is-invalid:focus {
+    box-shadow: 0 0 0 3px var(--neg-soft);
+    border-color: var(--neg);
+  }
+
+  .form-control.is-valid,
+  .form-select.is-valid {
+    border-color: var(--pos-line);
+    background-image: none;
+  }
+
+  .invalid-feedback,
+  .valid-feedback {
+    display: none;
+    margin-top: var(--space-1);
+    font-size: var(--text-xs);
+    line-height: var(--leading-snug);
+  }
+
+  .invalid-feedback { color: var(--neg); }
+  .valid-feedback { color: var(--pos); }
+
+  .is-invalid ~ .invalid-feedback,
+  .invalid-feedback.d-block { display: block; }
+
+  .form-text {
+    margin-top: var(--space-1);
+    color: var(--fg-subtle);
+    font-size: var(--text-xs);
+  }
+
+  .form-check-input {
+    width: 1rem;
+    height: 1rem;
+    margin-top: 0.16rem;
+    border: 1px solid var(--line-strong);
+    background-color: var(--bg-inset);
+    cursor: pointer;
+    transition:
+      background-color var(--dur-1) var(--ease-out),
+      border-color var(--dur-1) var(--ease-out);
+  }
+
+  .form-check-input:checked {
+    background-color: var(--brand);
+    border-color: var(--brand);
+  }
+
+  .form-check-input:focus {
+    border-color: var(--focus-ring);
+    box-shadow: 0 0 0 3px var(--focus-ring-halo);
+  }
+
+  .form-check-label {
+    color: var(--fg-muted);
+    font-size: var(--text-sm);
+    cursor: pointer;
+  }
+
+  .input-group-text {
+    border: 1px solid var(--line-default);
+    background-color: var(--bg-sunken);
+    color: var(--fg-muted);
+    font-size: var(--text-sm);
+  }
+
+  /* ---- field with leading icon / trailing action ---------------------- */
+  .field-wrap {
+    position: relative;
+    display: block;
+  }
+
+  .field-wrap .fi {
+    position: absolute;
+    top: 50%;
+    left: var(--space-3);
+    translate: 0 -50%;
+    color: var(--fg-faint);
+    font-size: 0.9rem;
+    pointer-events: none;
+    transition: color var(--dur-1) var(--ease-out);
+  }
+
+  .field-wrap:focus-within .fi { color: var(--brand); }
+
+  .field-wrap input { padding-left: 2.375rem; }
+  .field-wrap input.has-toggle { padding-right: 2.625rem; }
+
+  .field-wrap .toggle-pw {
+    position: absolute;
+    top: 50%;
+    right: var(--space-2);
+    translate: 0 -50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    border: 0;
+    border-radius: var(--radius-xs);
+    background: none;
+    color: var(--fg-faint);
+    cursor: pointer;
+    transition: color var(--dur-1) var(--ease-out), background-color var(--dur-1) var(--ease-out);
+  }
+
+  .field-wrap .toggle-pw:hover {
+    color: var(--fg-default);
+    background-color: var(--bg-hover);
+  }
+
+  /* ---- notes counter -------------------------------------------------- */
+  .notes-counter {
+    display: block;
+    margin-top: var(--space-1);
+    color: var(--fg-faint);
+    font-size: var(--text-2xs);
+    text-align: right;
+    transition: color var(--dur-1) var(--ease-out);
+  }
+
+  .notes-counter.is-danger { color: var(--neg); }
+
+  /* ---- inline max helper (withdraw / sell) ---------------------------- */
+  .sell-max-inline {
+    position: absolute;
+    top: 50%;
+    right: var(--space-2);
+    translate: 0 -50%;
+  }
+
+  .sell-max-btn {
+    padding: 0 var(--space-2) !important;
+    min-height: 1.5rem;
+    border-radius: var(--radius-xs);
+    background-color: var(--brand-soft);
+    color: var(--brand);
+    font-size: var(--text-2xs);
+    font-weight: var(--weight-medium);
+    text-decoration: none;
+  }
+
+  .sell-max-btn:hover {
+    background-color: var(--brand-soft-hover);
+    text-decoration: none;
+  }
+
+  /* ---- Buy / Sell type tabs ------------------------------------------- */
+  .tx-type-tabs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-2);
+  }
+
+  .tx-type-tab {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    min-height: var(--control-h);
+    border: 1px solid var(--line-default);
+    border-radius: var(--radius-sm);
+    background-color: var(--bg-inset);
+    color: var(--fg-muted);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    cursor: pointer;
+    transition:
+      background-color var(--dur-1) var(--ease-out),
+      border-color var(--dur-1) var(--ease-out),
+      color var(--dur-1) var(--ease-out),
+      transform var(--dur-2) var(--ease-spring);
+  }
+
+  .tx-type-tab:hover {
+    border-color: var(--line-strong);
+    color: var(--fg-default);
+  }
+
+  .tx-type-tab:active { transform: scale(0.98); }
+
+  .tx-tab-buy.active {
+    background-color: var(--pos-soft);
+    border-color: var(--pos);
+    color: var(--pos);
+  }
+
+  .tx-tab-sell.active {
+    background-color: var(--neg-soft);
+    border-color: var(--neg);
+    color: var(--neg);
+  }
+
+  /* ---- running cost preview -------------------------------------------- */
+  .tx-preview {
+    min-height: 1.25rem;
+    color: var(--fg-subtle);
+    font-size: var(--text-xs);
+  }
+
+  .tx-preview-amount {
+    color: var(--fg-default);
+    font-weight: var(--weight-medium);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .withdraw-available-hint {
+    display: block;
+    margin-top: var(--space-1);
+    color: var(--fg-subtle);
+    font-size: var(--text-xs);
+  }
+
+  .help-message {
+    color: var(--fg-subtle);
+    font-size: var(--text-sm);
+  }
+
+  /* Hidden by the assets page's symbol filter. */
+  .sym-filter-hide { display: none !important; }
+
+  /* ---- one-time-code input -------------------------------------------- */
+  .otp-input,
+  .settings-code-input {
+    font-family: var(--font-mono);
+    font-size: 1.125rem;
+    letter-spacing: 0.45em;
+    text-align: center;
+    text-indent: 0.45em;
+  }
+
+  /* ---- password strength ---------------------------------------------- */
+  .strength-bar {
+    height: 3px;
+    margin-top: var(--space-2);
+    border-radius: var(--radius-pill);
+    background-color: var(--bg-sunken);
+    overflow: hidden;
+  }
+
+  .strength-bar .bar-fill {
+    height: 100%;
+    border-radius: inherit;
+    background-color: var(--brand);
+    transition: width var(--dur-3) var(--ease-out), background-color var(--dur-2) var(--ease-out);
+  }
+
+  /* ======================================================================
+     5. CARDS & PANELS
+     ====================================================================== */
+
+  .card,
+  .panel {
+    position: relative;
+    border: 1px solid var(--line-subtle);
+    border-radius: var(--radius-md);
+    background-color: var(--bg-surface);
+    background-clip: border-box;
+    box-shadow: var(--shadow-raised);
+  }
+
+  .card-body { padding: var(--card-pad); }
+
+  .card-header,
+  .panel__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--card-pad);
+    border-bottom: 1px solid var(--line-subtle);
+    background-color: transparent;
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+  }
+
+  .card-footer {
+    padding: var(--space-3) var(--card-pad);
+    border-top: 1px solid var(--line-subtle);
+    background-color: transparent;
+  }
+
+  .panel__title {
+    margin: 0;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    color: var(--fg-default);
+  }
+
+  .panel__subtitle {
+    margin: 0;
+    color: var(--fg-subtle);
+    font-size: var(--text-xs);
+  }
+
+  /* ======================================================================
+     6. TABLES
+     ====================================================================== */
+
+  .table-responsive {
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+  }
+
+  .table {
+    width: 100%;
+    margin: 0;
+    border-collapse: separate;
+    border-spacing: 0;
+    color: var(--fg-default);
+    font-size: var(--text-sm);
+    vertical-align: middle;
+  }
+
+  .table > :not(caption) > * > * {
+    padding: var(--cell-pad-y) var(--cell-pad-x);
+    background-color: transparent;
+    border-bottom-width: 0;
+    box-shadow: none;
+    color: inherit;
+  }
+
+  .table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    padding-top: var(--space-2);
+    padding-bottom: var(--space-2);
+    border-bottom: 1px solid var(--line-default);
+    background-color: var(--bg-surface);
+    color: var(--fg-subtle);
+    font-size: var(--text-2xs);
+    font-weight: var(--weight-medium);
+    letter-spacing: var(--tracking-label);
+    text-transform: none;
+    white-space: nowrap;
+  }
+
+  .table-light,
+  .table thead.table-light th {
+    background-color: var(--bg-inset);
+  }
+
+  .table tbody tr {
+    transition: background-color var(--dur-1) var(--ease-out);
+  }
+
+  .table tbody tr:not(:last-child) > td {
+    border-bottom: 1px solid var(--line-subtle);
+  }
+
+  .table-hover > tbody > tr:hover > *,
+  .table tbody tr:hover > td {
+    background-color: var(--bg-hover);
+    color: var(--fg-default);
+  }
+
+  .table .text-muted { color: var(--fg-subtle) !important; }
+
+  /* ---- records tables --------------------------------------------------
+     A shared shell for every ledger-style table in the product. Column
+     widths are supplied per table through --records-col-* so the markup
+     stays identical across pages.
+     -------------------------------------------------------------------- */
+  .records-table {
+    table-layout: fixed;
+    min-width: 44rem;
+  }
+
+  .records-table .records-col--date       { width: var(--records-col-date, 6.5rem); }
+  .records-table .records-col--type       { width: var(--records-col-type, 5rem); }
+  .records-table .records-col--price      { width: var(--records-col-price, 6rem); }
+  .records-table .records-col--quantity   { width: var(--records-col-quantity, 6rem); }
+  .records-table .records-col--fee        { width: var(--records-col-fee, 4.5rem); }
+  .records-table .records-col--total      { width: var(--records-col-total, 7rem); }
+  .records-table .records-col--pnl        { width: var(--records-col-pnl, 7rem); }
+  .records-table .records-col--return     { width: var(--records-col-return, 5.5rem); }
+  .records-table .records-col--amount     { width: var(--records-col-amount, 8rem); }
+  .records-table .records-col--notes      { width: var(--records-col-notes, auto); }
+  .records-table .records-col--actions    { width: var(--records-col-actions, 6rem); }
+  .records-table .records-col--id         { width: var(--records-col-id, 3.5rem); }
+  .records-table .records-col--username   { width: var(--records-col-username, 10rem); }
+  .records-table .records-col--email      { width: var(--records-col-email, auto); }
+  .records-table .records-col--role       { width: var(--records-col-role, 6rem); }
+  .records-table .records-col--status     { width: var(--records-col-status, 7rem); }
+  .records-table .records-col--registered { width: var(--records-col-registered, 7rem); }
+  .records-table .records-col--last-login { width: var(--records-col-last-login, 9.5rem); }
+
+  .records-table :is(th, td).records-cell {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .records-table :is(th, td).records-cell--number {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .records-table td.actions-cell { overflow: visible; }
+
+  .records-table tbody td small {
+    font-size: var(--text-sm);
+    color: inherit;
+  }
+
+  .records-table tbody td small.text-muted { color: var(--fg-subtle) !important; }
+
+  /* ======================================================================
+     7. BADGES, PILLS & TYPE LABELS
+     ====================================================================== */
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding: 0.1875rem var(--space-2);
+    border: 1px solid var(--line-subtle);
+    border-radius: var(--radius-pill);
+    background-color: var(--bg-sunken);
+    color: var(--fg-muted);
+    font-size: var(--text-2xs);
+    font-weight: var(--weight-medium);
+    line-height: 1.35;
+    white-space: nowrap;
+  }
+
+  /* Signed type labels — the one place a coloured chip earns its keep. */
+  .tx-type-label {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.125rem var(--space-2);
+    border: 1px solid transparent;
+    border-radius: var(--radius-pill);
+    font-size: var(--text-2xs);
+    font-weight: var(--weight-medium);
+    line-height: 1.4;
+  }
+
+  .type-buy,
+  .type-deposit,
+  .tx-type-buy {
+    background-color: var(--pos-soft);
+    border-color: var(--pos-line);
+    color: var(--pos);
+  }
+
+  .type-sell,
+  .type-withdrawal,
+  .tx-type-sell {
+    background-color: var(--neg-soft);
+    border-color: var(--neg-line);
+    color: var(--neg);
+  }
+
+  .type-income,
+  .badge-dividend {
+    background-color: var(--income-soft);
+    border-color: var(--income-line);
+    color: var(--income);
+  }
+
+  .nav-admin-badge,
+  .admin-badge--admin {
+    background-color: var(--brand-soft);
+    border-color: var(--brand-line);
+    color: var(--brand);
+  }
+
+  .admin-badge--user { background-color: var(--bg-sunken); }
+
+  .admin-badge--verified {
+    background-color: var(--pos-soft);
+    border-color: var(--pos-line);
+    color: var(--pos);
+  }
+
+  .admin-badge--unverified {
+    background-color: var(--warn-soft);
+    border-color: var(--warn-line);
+    color: var(--warn);
+  }
+
+  .admin-badge-you {
+    background-color: var(--brand-soft) !important;
+    border-color: var(--brand-line);
+    color: var(--brand) !important;
+  }
+
+  /* ======================================================================
+     8. DROPDOWNS
+     ====================================================================== */
+
+  .dropdown-menu {
+    --bs-dropdown-padding-y: var(--space-1);
+    min-width: 11rem;
+    padding: var(--space-1);
+    border: 1px solid var(--line-default);
+    border-radius: var(--radius-md);
+    background-color: var(--bg-raised);
+    box-shadow: var(--shadow-overlay);
+  }
+
+  .dropdown-menu.show {
+    animation: op-scale-in var(--dur-2) var(--ease-out);
+    transform-origin: top center;
+  }
+
+  .dropdown-item,
+  .settings-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    width: 100%;
+    padding: var(--space-2) var(--space-3);
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: none;
+    color: var(--fg-muted);
+    font-size: var(--text-sm);
+    text-align: left;
+    cursor: pointer;
+    transition: background-color var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out);
+  }
+
+  .dropdown-item:hover,
+  .dropdown-item:focus,
+  .settings-item:hover {
+    background-color: var(--bg-hover);
+    color: var(--fg-default);
+  }
+
+  .dropdown-item.active,
+  .dropdown-item:active {
+    background-color: var(--brand-soft);
+    color: var(--brand);
+  }
+
+  .dropdown-divider {
+    margin: var(--space-1) 0;
+    border-top: 1px solid var(--line-subtle);
+    opacity: 1;
+  }
+
+  .btn-logout:hover {
+    background-color: var(--neg-soft);
+    color: var(--neg);
+  }
+
+  /* ---- filter trigger -------------------------------------------------- */
+  .filter-dropdown-btn {
+    --btn-bg: var(--bg-surface);
+    --btn-fg: var(--fg-default);
+    gap: var(--space-2);
+  }
+
+  .filter-dropdown-btn::after { display: none; }
+
+  .filter-dropdown-btn .bi-chevron-down {
+    font-size: 0.7rem;
+    color: var(--fg-faint);
+    transition: transform var(--dur-2) var(--ease-out);
+  }
+
+  .filter-dropdown-btn[aria-expanded="true"] .bi-chevron-down {
+    transform: rotate(180deg);
+  }
+
+  /* ======================================================================
+     9. MODALS
+     ====================================================================== */
+
+  .modal-backdrop {
+    background-color: var(--bg-backdrop);
+    backdrop-filter: blur(3px);
+  }
+
+  .modal-backdrop.show { opacity: 1; }
+
+  .modal-content {
+    border: 1px solid var(--line-default);
+    border-radius: var(--radius-lg);
+    background-color: var(--bg-raised);
+    box-shadow: var(--shadow-overlay);
+    overflow: hidden;
+  }
+
+  /* Bootstrap's default slide-down is replaced with a settle-in-place that
+     matches the rest of the product's motion vocabulary. */
+  .modal.fade .modal-dialog {
+    transform: translateY(10px) scale(0.985);
+    transition: transform var(--dur-3) var(--ease-out), opacity var(--dur-3) var(--ease-out);
+    opacity: 0;
+  }
+
+  .modal.show .modal-dialog {
+    transform: none;
+    opacity: 1;
+  }
+
+  .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-4) var(--space-5);
+    border-bottom: 1px solid var(--line-subtle);
+  }
+
+  .modal-title {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-md);
+    font-weight: var(--weight-semibold);
+    color: var(--fg-default);
+  }
+
+  .modal-title-icon { color: var(--fg-subtle); }
+  .modal-header .modal-title .text-danger { color: var(--neg) !important; }
+
+  .modal-body { padding: var(--space-5); }
+
+  .modal-body > .mb-3:last-child,
+  .modal-body > *:last-child { margin-bottom: 0; }
+
+  .modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-5);
+    border-top: 1px solid var(--line-subtle);
+    background-color: var(--bg-inset);
+  }
+
+  .modal-footer > * { margin: 0; }
+
+  /* Custom close control — the stock one is a filtered PNG-ish SVG that
+     cannot follow theme tokens. */
+  .btn-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: none;
+    opacity: 1;
+    color: var(--fg-subtle);
+    transition: background-color var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out);
+  }
+
+  .btn-close::before {
+    content: "";
+    width: 0.875rem;
+    height: 0.875rem;
+    background-color: currentColor;
+    mask: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath d='M2.5 2.5l11 11m0-11l-11 11' stroke='%23000' stroke-width='1.6' stroke-linecap='round'/%3e%3c/svg%3e") center / contain no-repeat;
+    -webkit-mask: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath d='M2.5 2.5l11 11m0-11l-11 11' stroke='%23000' stroke-width='1.6' stroke-linecap='round'/%3e%3c/svg%3e") center / contain no-repeat;
+  }
+
+  .btn-close:hover {
+    background-color: var(--bg-hover);
+    color: var(--fg-default);
+    opacity: 1;
+  }
+
+  /* ======================================================================
+     10. TOASTS & ALERTS
+     ====================================================================== */
+
+  .flash-container {
+    position: fixed;
+    right: var(--space-5);
+    bottom: var(--space-5);
+    z-index: var(--z-toast);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    width: min(24rem, calc(100vw - 2 * var(--space-5)));
+    pointer-events: none;
+  }
+
+  .flash-alert {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--line-default);
+    border-left: 3px solid var(--fg-subtle);
+    border-radius: var(--radius-md);
+    background-color: var(--bg-raised);
+    box-shadow: var(--shadow-overlay);
+    color: var(--fg-default);
+    font-size: var(--text-sm);
+    pointer-events: auto;
+    animation: op-toast-in var(--dur-3) var(--ease-spring) backwards;
+  }
+
+  @keyframes op-toast-in {
+    from { opacity: 0; transform: translate3d(0, 14px, 0) scale(0.97); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  .flash-alert__icon { margin-top: 0.1rem; font-size: 0.9rem; }
+  .flash-alert__msg { flex: 1; line-height: var(--leading-snug); }
+
+  .flash-alert__close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.25rem;
+    height: 1.25rem;
+    margin: -0.125rem -0.25rem 0 0;
+    border: 0;
+    border-radius: var(--radius-xs);
+    background: none;
+    color: var(--fg-faint);
+    cursor: pointer;
+    transition: color var(--dur-1) var(--ease-out), background-color var(--dur-1) var(--ease-out);
+  }
+
+  .flash-alert__close:hover {
+    background-color: var(--bg-hover);
+    color: var(--fg-default);
+  }
+
+  .flash-alert--success { border-left-color: var(--pos); }
+  .flash-alert--success .flash-alert__icon { color: var(--pos); }
+  .flash-alert--danger { border-left-color: var(--neg); }
+  .flash-alert--danger .flash-alert__icon { color: var(--neg); }
+  .flash-alert--warning { border-left-color: var(--warn); }
+  .flash-alert--warning .flash-alert__icon { color: var(--warn); }
+  .flash-alert--info { border-left-color: var(--income); }
+  .flash-alert--info .flash-alert__icon { color: var(--income); }
+
+  /* ---- inline alerts (in-page and in-modal) --------------------------- */
+  .alert {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--line-default);
+    border-radius: var(--radius-sm);
+    background-color: var(--bg-inset);
+    color: var(--fg-default);
+    font-size: var(--text-sm);
+  }
+
+  .alert-success { background-color: var(--pos-soft); border-color: var(--pos-line); color: var(--pos); }
+  .alert-danger  { background-color: var(--neg-soft); border-color: var(--neg-line); color: var(--neg); }
+  .alert-warning { background-color: var(--warn-soft); border-color: var(--warn-line); color: var(--warn); }
+  .alert-info    { background-color: var(--income-soft); border-color: var(--income-line); color: var(--income); }
+
+  /* ======================================================================
+     11. TOOLTIPS
+     ====================================================================== */
+
+  .tooltip { opacity: 1 !important; }
+
+  .tooltip .tooltip-inner {
+    max-width: 17rem;
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--line-default);
+    border-radius: var(--radius-sm);
+    background-color: var(--bg-raised);
+    box-shadow: var(--shadow-overlay);
+    color: var(--fg-default);
+    font-size: var(--text-xs);
+    line-height: var(--leading-snug);
+    text-align: left;
+  }
+
+  .tooltip .tooltip-arrow::before { display: none; }
+
+  .info-dot {
+    display: inline-flex;
+    color: var(--fg-faint);
+    font-size: 0.75rem;
+    cursor: help;
+    transition: color var(--dur-1) var(--ease-out);
+  }
+
+  .info-dot:hover,
+  .info-dot:focus-visible { color: var(--fg-default); }
+
+  /* ======================================================================
+     12. PAGINATION
+     ====================================================================== */
+
+  .tx-pagination-bar {
+    display: flex;
+    justify-content: flex-end;
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .tx-pg-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+  }
+
+  .tx-pg-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.5rem;
+    height: 1.5rem;
+    padding: 0 var(--space-1);
+    border-radius: var(--radius-xs);
+    color: var(--fg-subtle);
+    font-size: var(--text-xs);
+    cursor: pointer;
+    transition: background-color var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out);
+  }
+
+  .tx-pg-num:hover:not(.active) {
+    background-color: var(--bg-hover);
+    color: var(--fg-default);
+  }
+
+  .tx-pg-num.active {
+    background-color: var(--brand-soft);
+    color: var(--brand);
+    font-weight: var(--weight-medium);
+  }
+
+  .tx-pagination-bar .btn {
+    min-height: 1.5rem;
+    padding: 0 var(--space-2);
+    border-color: transparent;
+    color: var(--fg-subtle);
+  }
+
+  .tx-pagination-bar .btn:hover {
+    transform: none;
+    box-shadow: none;
+    background-color: var(--bg-hover);
+    color: var(--fg-default);
+  }
+
+  /* ======================================================================
+     13. EMPTY STATES & SKELETONS
+     ====================================================================== */
+
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-16) var(--space-6);
+    border: 1px dashed var(--line-default);
+    border-radius: var(--radius-md);
+    background-color: var(--bg-surface);
+    text-align: center;
+  }
+
+  .empty-state__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 3rem;
+    height: 3rem;
+    border-radius: var(--radius-md);
+    background-color: var(--bg-inset);
+    color: var(--fg-faint);
+    font-size: 1.25rem;
+  }
+
+  .empty-state-title {
+    font-size: var(--text-lg);
+    font-weight: var(--weight-semibold);
+  }
+
+  .empty-state-text {
+    max-width: 30rem;
+    margin: 0;
+    color: var(--fg-subtle);
+    font-size: var(--text-sm);
+  }
+
+  .inline-empty {
+    padding: var(--space-5) var(--space-4);
+    color: var(--fg-subtle);
+    font-size: var(--text-sm);
+    text-align: center;
+  }
+
+  .skeleton {
+    border-radius: var(--radius-sm);
+    background-color: var(--bg-inset);
+    background-image: linear-gradient(
+      90deg,
+      transparent 0%,
+      var(--bg-hover) 50%,
+      transparent 100%
+    );
+    background-size: 220% 100%;
+    animation: op-shimmer 1.4s linear infinite;
+  }
+
+  /* ======================================================================
+     14. ALLOCATION LEGEND & MARKERS
+     ====================================================================== */
+
+  .allocation-legend {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .allocation-legend li {
+    display: grid;
+    grid-template-columns: 0.5rem 1fr auto auto;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-2);
+    border-radius: var(--radius-sm);
+    font-size: var(--text-xs);
+    cursor: pointer;
+    transition: background-color var(--dur-1) var(--ease-out), opacity var(--dur-2) var(--ease-out);
+  }
+
+  .allocation-legend li:hover { background-color: var(--bg-hover); }
+
+  .allocation-legend li.is-hidden { opacity: 0.4; }
+
+  .allocation-legend .swatch {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 2px;
+    background-color: var(--cat-other);
+  }
+
+  .allocation-legend li.is-hidden .swatch { background-color: var(--fg-faint); }
+
+  .allocation-legend .name {
+    color: var(--fg-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .allocation-legend .value {
+    color: var(--fg-default);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .allocation-legend .pct {
+    min-width: 3rem;
+    color: var(--fg-subtle);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+  }
+
+  .allocation-legend .swatch-1, .allocation-marker-1 { background-color: var(--cat-1); }
+  .allocation-legend .swatch-2, .allocation-marker-2 { background-color: var(--cat-2); }
+  .allocation-legend .swatch-3, .allocation-marker-3 { background-color: var(--cat-3); }
+  .allocation-legend .swatch-4, .allocation-marker-4 { background-color: var(--cat-4); }
+  .allocation-legend .swatch-5, .allocation-marker-5 { background-color: var(--cat-5); }
+  .allocation-legend .swatch-6, .allocation-marker-6 { background-color: var(--cat-6); }
+  .allocation-legend .swatch-7, .allocation-marker-7 { background-color: var(--cat-7); }
+  .allocation-legend .swatch-other { background-color: var(--cat-other); }
+
+  /* Portfolio initial chip — the colour ties a row to its chart slice. */
+  .marker {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: var(--radius-xs);
+    color: #fff;
+    font-size: var(--text-2xs);
+    font-weight: var(--weight-semibold);
+    text-shadow: 0 1px 1px rgb(0 0 0 / 0.25);
+  }
+
+  /* ======================================================================
+     15. AVATAR & BRAND MARK
+     ====================================================================== */
+
+  .user-avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: var(--radius-sm);
+    background-color: var(--brand-soft);
+    color: var(--brand);
+    font-size: var(--text-xs);
+    font-weight: var(--weight-semibold);
+  }
+
+  .op-logo-mark {
+    display: block;
+    flex: none;
+  }
+
+  /* The brand lockup is shared by the app shell and the marketing page, so
+     it lives here rather than in either page stylesheet. */
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-width: 0;
+    color: var(--fg-default);
+    font-size: var(--text-md);
+    font-weight: var(--weight-semibold);
+    letter-spacing: -0.02em;
+    white-space: nowrap;
+  }
+
+  .brand:hover { color: var(--fg-default); }
+
+  .brand__word {
+    overflow: hidden;
+    white-space: nowrap;
+    transition: opacity var(--dur-2) var(--ease-out);
+  }
+
+  /* Brand assets ship as a light/dark monochrome pair. Both are in the DOM
+     and CSS hides the wrong one, so switching themes never flashes a
+     re-fetch and no JS is involved. Rule order matters here: the explicit
+     `data-theme` blocks must follow the media query, because they carry
+     identical specificity and source order is what breaks the tie. */
+  .brand-logo--dark { display: none; }
+  .brand-logo--light { display: block; }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .brand-logo--dark { display: block; }
+    :root:not([data-theme="light"]) .brand-logo--light { display: none; }
+  }
+
+  :root[data-theme="dark"] .brand-logo--dark { display: block; }
+  :root[data-theme="dark"] .brand-logo--light { display: none; }
+  :root[data-theme="light"] .brand-logo--dark { display: none; }
+  :root[data-theme="light"] .brand-logo--light { display: block; }
+
+  /* ======================================================================
+     16. DATE PICKER (flatpickr)
+     ====================================================================== */
+
+  .op-flatpickr.flatpickr-calendar {
+    z-index: var(--z-datepicker);
+    border: 1px solid var(--line-default);
+    border-radius: var(--radius-md);
+    background-color: var(--bg-raised);
+    box-shadow: var(--shadow-overlay);
+    color: var(--fg-default);
+    font-family: var(--font-sans);
+  }
+
+  .op-flatpickr .flatpickr-months,
+  .op-flatpickr .flatpickr-month {
+    background-color: transparent;
+    color: var(--fg-default);
+    fill: var(--fg-default);
+  }
+
+  .op-flatpickr .flatpickr-current-month input.cur-year,
+  .op-flatpickr .flatpickr-monthDropdown-month {
+    background-color: transparent;
+    color: var(--fg-default);
+  }
+
+  .op-flatpickr .flatpickr-monthDropdown-month { background-color: var(--bg-raised); }
+
+  .op-flatpickr .flatpickr-weekday {
+    color: var(--fg-subtle);
+    font-size: var(--text-2xs);
+    font-weight: var(--weight-medium);
+  }
+
+  .op-flatpickr .flatpickr-day {
+    border-radius: var(--radius-sm);
+    color: var(--fg-default);
+    border-color: transparent;
+    transition: background-color var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out);
+  }
+
+  .op-flatpickr .flatpickr-day:hover {
+    background-color: var(--bg-hover);
+    border-color: transparent;
+  }
+
+  .op-flatpickr .flatpickr-day.today {
+    border-color: var(--brand-line);
+  }
+
+  .op-flatpickr .flatpickr-day.selected,
+  .op-flatpickr .flatpickr-day.selected:hover,
+  .op-flatpickr .flatpickr-day.selected:focus {
+    background-color: var(--brand);
+    border-color: var(--brand);
+    color: var(--fg-on-brand);
+  }
+
+  .op-flatpickr .flatpickr-day.flatpickr-disabled,
+  .op-flatpickr .flatpickr-day.prevMonthDay,
+  .op-flatpickr .flatpickr-day.nextMonthDay {
+    color: var(--fg-faint);
+  }
+
+  .op-flatpickr .flatpickr-prev-month:hover svg,
+  .op-flatpickr .flatpickr-next-month:hover svg {
+    fill: var(--brand);
+  }
+
+  .op-flatpickr.arrowTop::before,
+  .op-flatpickr.arrowTop::after,
+  .op-flatpickr.arrowBottom::before,
+  .op-flatpickr.arrowBottom::after {
+    display: none;
+  }
+}

@@ -170,9 +170,13 @@ def create_app(config_class=Config):
     # Expose the MESSAGES dictionary to all templates
     from portfolio_app.utils.messages import MESSAGES
 
+    # Static-asset cache buster. Bumped by hand when CSS/JS ships, so every
+    # template can use `v=ASSET_VERSION` instead of carrying its own literal.
+    ASSET_VERSION = '20260808-1'
+
     @app.context_processor
     def inject_template_globals():
-        return {'MESSAGES': MESSAGES}
+        return {'MESSAGES': MESSAGES, 'ASSET_VERSION': ASSET_VERSION}
 
     # Health check route
     @app.route('/health')

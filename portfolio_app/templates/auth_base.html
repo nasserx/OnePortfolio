@@ -1,3 +1,10 @@
+{#
+  Authentication shell.
+
+  Two columns: the form on the left, a quiet portrait of the product on the
+  right. The showcase collapses away below 60rem, so the form is never
+  competing for space on a phone.
+#}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7,20 +14,71 @@
     <title>{% block title %}OnePortfolio{% endblock %}</title>
 
     {% include 'components/favicon_links.html' %}
+    <meta name="theme-color" content="#f6f6f8" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#07070a" media="(prefers-color-scheme: dark)">
 
+    <script>
+    (function () {
+        try {
+            var theme = localStorage.getItem('op:theme');
+            if (theme === 'dark' || theme === 'light') {
+                document.documentElement.setAttribute('data-theme', theme);
+            }
+        } catch (e) {}
+    }());
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v='20260611-2') }}">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tokens.css', v=ASSET_VERSION) }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css', v=ASSET_VERSION) }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css', v=ASSET_VERSION) }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css', v=ASSET_VERSION) }}">
+
+    {% block extra_css %}{% endblock %}
 </head>
 <body>
 
-<main class="auth-page">
-    <div class="auth-card">
-        {% set logo_surface = 'dark' %}
-        {% block auth_content %}{% endblock %}
-    </div>
-</main>
+<div class="auth">
+
+    <main class="auth__form-side">
+        <div class="auth-card">
+            {% block auth_content %}{% endblock %}
+        </div>
+    </main>
+
+    <aside class="auth__showcase" aria-hidden="true">
+        <p class="auth__quote">A clear record of every portfolio you manage.</p>
+        <p class="auth__quote-sub">
+            Capital, asset activity, income, and realized results — from your own
+            entries. No live prices, no broker connections, no market noise.
+        </p>
+
+        <div class="auth__preview">
+            <span class="auth__preview-label">Book value</span>
+            <div class="auth__preview-value num">42,180.00</div>
+            <div class="auth__preview-rows">
+                <div class="auth__preview-row">
+                    <span>Total capital</span><span class="num">48,000.00</span>
+                </div>
+                <div class="auth__preview-row">
+                    <span>Total cash</span><span class="num">6,320.00</span>
+                </div>
+                <div class="auth__preview-row">
+                    <span>Total income</span><span class="num num--income">+1,240.00</span>
+                </div>
+                <div class="auth__preview-row">
+                    <span>Realized P&amp;L</span><span class="num num--pos">+2,410.00</span>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 

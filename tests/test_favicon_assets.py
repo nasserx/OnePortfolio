@@ -99,27 +99,50 @@ def test_favicon_declaration_order_selects_one_theme_variant():
     assert len({icon["href"] for icon in EXPECTED_ICONS}) == len(EXPECTED_ICONS)
 
 
-def test_brand_component_selects_artwork_for_its_surface(app):
+def test_brand_component_emits_both_theme_variants(app):
+    """The UI is theme-switchable at runtime, so a single baked-in artwork
+    choice can never be right. The component emits both variants and CSS
+    reveals the one matching the active theme."""
     with app.test_request_context("/"):
-        default_logo = _brand_logos(render_template("components/logo_mark.html"))
-        dark_surface_logo = _brand_logos(render_template(
+        logos = _brand_logos(render_template("components/logo_mark.html"))
+
+    assert logos == [
+        {
+            "src": "/static/icons/favicon-light.svg",
+            "width": "32",
+            "height": "32",
+            "class": "brand-logo brand-logo--light op-logo-mark",
+            "alt": "",
+            "aria-hidden": "true",
+            "decoding": "async",
+        },
+        {
+            "src": "/static/icons/favicon-dark.svg",
+            "width": "32",
+            "height": "32",
+            "class": "brand-logo brand-logo--dark op-logo-mark",
+            "alt": "",
+            "aria-hidden": "true",
+            "decoding": "async",
+        },
+    ]
+
+
+def test_brand_component_honours_size_and_class_overrides(app):
+    with app.test_request_context("/"):
+        logos = _brand_logos(render_template(
             "components/logo_mark.html",
-            logo_surface="dark",
+            logo_size=26,
+            logo_class="op-logo-mark auth-logo",
         ))
 
-    assert default_logo == [{
-        "src": "/static/icons/favicon-light.svg",
-        "width": "32",
-        "height": "32",
-        "class": "brand-logo op-logo-mark",
-        "alt": "",
-        "aria-hidden": "true",
-        "decoding": "async",
-    }]
-    assert dark_surface_logo[0]["src"] == "/static/icons/favicon-dark.svg"
+    assert [logo["width"] for logo in logos] == ["26", "26"]
+    assert [logo["height"] for logo in logos] == ["26", "26"]
+    for logo in logos:
+        assert logo["class"].endswith("op-logo-mark auth-logo")
 
 
-def test_current_dark_surface_owners_request_dark_logo_artwork(app):
+def test_every_brand_surface_ships_both_variants(app):
     client = app.test_client()
     rendered = [
         client.get("/").get_data(as_text=True),
@@ -132,9 +155,11 @@ def test_current_dark_surface_owners_request_dark_logo_artwork(app):
         logos = _brand_logos(html)
         assert logos
         assert {logo["src"] for logo in logos} == {
-            "/static/icons/favicon-dark.svg"
+            "/static/icons/favicon-light.svg",
+            "/static/icons/favicon-dark.svg",
         }
 
+    # Variant selection is a styling concern; no template may hard-code it.
     for name in ("base.html", "auth_base.html", "landing.html"):
         source = Path("portfolio_app/templates", name).read_text(encoding="utf-8")
-        assert source.count("{% set logo_surface = 'dark' %}") == 1
+        assert "logo_surface" not in source

@@ -2,10 +2,12 @@
 
 {% block title %}Admin — User Management{% endblock %}
 
+{% block page_title %}Users{% endblock %}
+
 {% block content %}
 
 {% if users %}
-<div class="table-responsive">
+<div class="card table-responsive">
     <table class="table table-hover records-table records-table--admin-users">
         <colgroup>
             <col class="records-col records-col--id">
@@ -70,8 +72,8 @@
                 <td class="records-cell text-muted admin-table-cell">
                     {{ user.last_login.strftime('%Y-%m-%d %H:%M') if user.last_login else 'Never' }}
                 </td>
-                <td class="records-cell">
-                    <div class="d-flex gap-2">
+                <td class="records-cell actions-cell">
+                    <div class="row-actions">
 
                         {# Confirmation prompts use single-quoted onsubmit
                            attributes so the JSON-quoted username (which

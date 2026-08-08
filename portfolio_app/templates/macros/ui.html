@@ -1,0 +1,139 @@
+{#
+  ============================================================================
+  OnePortfolio — UI macros
+  ============================================================================
+
+  Import once per template:
+
+      {% from 'macros/ui.html' import money, percent, fact, metric %}
+
+  Every figure in the product goes through `money` / `percent`. That gives
+  us one place to decide how a number is coloured, how it is truncated for
+  display, and what the hover title reveals — instead of the same four-branch
+  Jinja conditional repeated in every cell.
+
+  `tone` controls colour and is deliberately explicit:
+    plain   inherit the surrounding text colour (default)
+    sign    green above zero, red below, muted at zero
+    income  the income blue, regardless of sign
+  ============================================================================
+#}
+
+
+{# Resolve a value's tone class. Internal helper for the macros below. #}
+{%- macro _tone_class(value, tone) -%}
+  {%- if tone == 'sign' -%}
+    {%- if value is not none and value > 0 -%}num--pos
+    {%- elif value is not none and value < 0 -%}num--neg
+    {%- else -%}num--flat{%- endif -%}
+  {%- elif tone == 'income' -%}num--income
+  {%- endif -%}
+{%- endmacro -%}
+
+
+{#
+  A monetary figure.
+
+  value    Decimal / number
+  tone     plain | sign | income
+  signed   prefix positive values with '+'
+  decimals decimal places for both the display and title forms
+  class    extra classes on the wrapper
+#}
+{%- macro money(value, tone='plain', signed=false, decimals=2, class='') -%}
+  {%- set prefix = '+' if (signed and value is not none and value > 0) else '' -%}
+  <span class="num {{ _tone_class(value, tone) }} {{ class }}"
+        title="{{ prefix }}{{ value|fmt_money(decimals) }}">{{ prefix }}{{ value|fmt_display_money(decimals) }}</span>
+{%- endmacro -%}
+
+
+{#
+  A percentage.
+
+  `display` is the pre-rendered string the services layer produces — it is
+  the authority on whether a return is even defined, so an em dash from the
+  backend is passed through untouched rather than re-derived here.
+#}
+{%- macro percent(value, display=none, tone='sign', signed=true, class='') -%}
+  {%- if display == '—' or value is none -%}
+    <span class="num num--flat {{ class }}">—</span>
+  {%- else -%}
+    <span class="num {{ _tone_class(value, tone) }} {{ class }}"
+          title="{{ display or value|fmt_display_percent(signed=signed) }}">{{ value|fmt_display_percent(signed=signed) }}</span>
+  {%- endif -%}
+{%- endmacro -%}
+
+
+{# A plain decimal quantity — no currency semantics, no sign colouring. #}
+{%- macro quantity(value, class='') -%}
+  <span class="num {{ class }}" title="{{ value|fmt_decimal }}">{{ value|fmt_display_decimal }}</span>
+{%- endmacro -%}
+
+
+{#
+  A label/value pair in the overview hero.
+  `hint` renders an accessible tooltip dot next to the label.
+#}
+{%- macro fact(label, hint=none) -%}
+  <div class="fact">
+    <p class="fact__label">
+      {{ label }}
+      {%- if hint %} {{ info(hint) }}{% endif -%}
+    </p>
+    <p class="fact__value">{{ caller() }}</p>
+  </div>
+{%- endmacro -%}
+
+
+{#
+  A label/value pair in a disclosure row's summary strip.
+
+  Rendered with spans rather than block elements: these live inside the
+  row's <button>, which only accepts phrasing content. The block layout
+  comes from CSS instead.
+#}
+{%- macro metric(label) -%}
+  <span class="metric">
+    <span class="metric__label">{{ label }}</span>
+    <span class="metric__value">{{ caller() }}</span>
+  </span>
+{%- endmacro -%}
+
+
+{# Tooltip dot. The text serves as both the visual tooltip and the a11y name. #}
+{%- macro info(text) -%}
+  <span class="bi bi-info-circle info-dot"
+        tabindex="0"
+        role="img"
+        aria-label="{{ text }}"
+        data-bs-toggle="tooltip"
+        data-bs-placement="top"
+        title="{{ text }}"></span>
+{%- endmacro -%}
+
+
+{#
+  The coloured initial that ties a portfolio row to its slice of the
+  allocation chart. `index` is the zero-based row position; the palette
+  wraps at seven, matching the chart's own colour map.
+#}
+{%- macro marker(name, index=0) -%}
+  <span class="marker allocation-marker-{{ (index % 7) + 1 }}" aria-hidden="true">{{ name[:1]|upper }}</span>
+{%- endmacro -%}
+
+
+{#
+  Full-page empty state. Pass the call block for the action button.
+
+      {% call empty_state('folder-plus', 'No portfolios yet', 'Create one…') %}
+        <a class="btn btn-primary" href="…">Create portfolio</a>
+      {% endcall %}
+#}
+{%- macro empty_state(icon, title, text) -%}
+  <div class="empty-state">
+    <span class="empty-state__icon" aria-hidden="true"><i class="bi bi-{{ icon }}"></i></span>
+    <h2 class="empty-state-title">{{ title }}</h2>
+    <p class="empty-state-text">{{ text }}</p>
+    {{ caller() }}
+  </div>
+{%- endmacro -%}

@@ -1,3 +1,12 @@
+{#
+  Application shell.
+
+  Pages fill four blocks:
+    page_title     the H1 (required)
+    page_subtitle  one line of context under / beside the title
+    page_actions   buttons on the right of the page header
+    content        the page body
+#}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7,138 +16,204 @@
     <title>{% block title %}OnePortfolio{% endblock %}</title>
 
     {% include 'components/favicon_links.html' %}
-    <meta name="theme-color" content="#f97316">
+    <meta name="theme-color" content="#f6f6f8" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#07070a" media="(prefers-color-scheme: dark)">
 
+    {#
+      Applied before the first paint so a stored preference never flashes
+      the wrong palette. Kept inline and tiny on purpose — a blocking
+      request here would defeat the point.
+    #}
+    <script>
+    (function () {
+        try {
+            var theme = localStorage.getItem('op:theme');
+            if (theme === 'dark' || theme === 'light') {
+                document.documentElement.setAttribute('data-theme', theme);
+            }
+            var density = localStorage.getItem('op:density');
+            if (density) document.documentElement.setAttribute('data-density', density);
+            document.documentElement.setAttribute(
+                'data-sidebar', localStorage.getItem('op:sidebar') || 'expanded');
+        } catch (e) {}
+    }());
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v='20260611-2') }}">
+
+    {# tokens.css declares the cascade layers and pulls Bootstrap into
+       `vendor`, so it must stay first. #}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tokens.css', v=ASSET_VERSION) }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css', v=ASSET_VERSION) }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css', v=ASSET_VERSION) }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css', v=ASSET_VERSION) }}">
 
     {% block extra_css %}{% endblock %}
 </head>
 <body>
 
-<div class="app-layout">
+<a class="skip-link" href="#main">Skip to content</a>
 
-    <!-- ═══════════════════════════════════════ -->
-    <!-- Sidebar -->
-    <!-- ═══════════════════════════════════════ -->
-    <aside class="app-sidebar" id="appSidebar" aria-label="Main navigation">
+<div class="shell" data-nav-open="false">
 
-        <!-- Brand -->
-        <a class="sidebar-brand" href="{{ url_for('dashboard.index') }}">
-            {% set logo_surface = 'dark' %}
-            {% set logo_class = 'op-logo-mark sidebar-logo-mark' %}
-            {% set logo_size = 32 %}
-            {% include 'components/logo_mark.html' %}
-            OnePortfolio
-        </a>
+    <!-- ══ Side navigation ═══════════════════════════════════════════════ -->
+    <aside class="sidenav" id="sidenav" aria-label="Main navigation">
 
-        <!-- Nav links -->
-        <nav class="sidebar-nav">
-            <a class="sidebar-nav-link {% if request.endpoint == 'dashboard.index' %}active{% endif %}"
-               href="{{ url_for('dashboard.index') }}"
-               {% if request.endpoint == 'dashboard.index' %}aria-current="page"{% endif %}>
-                <i class="bi bi-grid-1x2" aria-hidden="true"></i>
-                Overview
+        <div class="sidenav__brand">
+            <a class="brand" href="{{ url_for('dashboard.index') }}">
+                {% set logo_class = 'op-logo-mark' %}
+                {% set logo_size = 26 %}
+                {% include 'components/logo_mark.html' %}
+                <span class="brand__word">OnePortfolio</span>
             </a>
-            <a class="sidebar-nav-link {% if request.endpoint == 'portfolios.portfolios_list' %}active{% endif %}"
-               href="{{ url_for('portfolios.portfolios_list') }}"
-               {% if request.endpoint == 'portfolios.portfolios_list' %}aria-current="page"{% endif %}>
-                <i class="bi bi-wallet2" aria-hidden="true"></i>
-                Portfolios
+            <button type="button" class="icon-button sidenav__collapse d-none d-lg-inline-flex"
+                    data-sidebar-toggle aria-label="Collapse navigation">
+                <i class="bi bi-chevron-left" aria-hidden="true"></i>
+            </button>
+        </div>
+
+        <button type="button" class="nav-search" data-palette-open aria-label="Open command palette">
+            <i class="bi bi-search" aria-hidden="true"></i>
+            <span class="nav-search__label">Search</span>
+            <kbd class="kbd">Ctrl K</kbd>
+        </button>
+
+        <nav class="sidenav__nav">
+            {% set nav_items = [
+                ('dashboard.index',              'grid-1x2',  'Overview'),
+                ('portfolios.portfolios_list',   'wallet2',   'Portfolios'),
+                ('transactions.transaction_list','box-seam',  'Assets')
+            ] %}
+            {% for endpoint, icon, label in nav_items %}
+            <a class="navlink {% if request.endpoint == endpoint %}active{% endif %}"
+               href="{{ url_for(endpoint) }}" data-label="{{ label }}"
+               {% if request.endpoint == endpoint %}aria-current="page"{% endif %}>
+                <i class="bi bi-{{ icon }}" aria-hidden="true"></i>
+                <span class="navlink__text">{{ label }}</span>
             </a>
-            <a class="sidebar-nav-link {% if request.endpoint == 'transactions.transaction_list' %}active{% endif %}"
-               href="{{ url_for('transactions.transaction_list') }}"
-               {% if request.endpoint == 'transactions.transaction_list' %}aria-current="page"{% endif %}>
-                <i class="bi bi-box-seam" aria-hidden="true"></i>
-                Assets
-            </a>
-            {% if current_user.is_admin %}
-            <div class="sidebar-divider"></div>
-            <a class="sidebar-nav-link {% if request.endpoint == 'admin.users' %}active{% endif %}"
-               href="{{ url_for('admin.users') }}"
+            {% endfor %}
+
+            {% if current_user.is_authenticated and current_user.is_admin %}
+            <div class="sidenav__divider"></div>
+            <a class="navlink {% if request.endpoint == 'admin.users' %}active{% endif %}"
+               href="{{ url_for('admin.users') }}" data-label="Users"
                {% if request.endpoint == 'admin.users' %}aria-current="page"{% endif %}>
                 <i class="bi bi-shield-check" aria-hidden="true"></i>
-                Users
+                <span class="navlink__text">Users</span>
             </a>
             {% endif %}
         </nav>
 
         {% if current_user.is_authenticated %}
-        <!-- Sidebar user menu (drops up) -->
-        <div class="dropup sidebar-user-menu">
-            <button class="sidebar-user-trigger" type="button"
-                    data-bs-toggle="dropdown" data-bs-auto-close="true"
-                    data-bs-offset="0,6"
-                    aria-expanded="false" aria-label="User menu">
-                <span class="user-avatar" aria-hidden="true">{{ current_user.username[0].upper() }}</span>
-                <span class="sidebar-user-name">{{ current_user.username }}</span>
-                {% if current_user.is_admin %}
-                    <span class="badge nav-admin-badge">Admin</span>
-                {% endif %}
-                <i class="bi bi-chevron-up sidebar-user-chevron" aria-hidden="true"></i>
-            </button>
-            <ul class="dropdown-menu sidebar-user-dropdown">
-                <li>
-                    <a class="settings-item d-flex align-items-center gap-2"
-                       href="{{ url_for('auth.settings') }}">
-                        <i class="bi bi-gear" aria-hidden="true"></i> Settings
-                    </a>
-                </li>
-                <li><hr class="dropdown-divider"></li>
-                <li>
-                    <form method="post" action="{{ url_for('auth.logout') }}" class="m-0">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <button type="submit"
-                                class="settings-item btn-logout d-flex align-items-center gap-2">
-                            <i class="bi bi-box-arrow-right" aria-hidden="true"></i> Sign out
+        <div class="sidenav__footer">
+            <div class="dropup sidenav__user">
+                <button class="userchip" type="button"
+                        data-bs-toggle="dropdown" data-bs-offset="0,8"
+                        aria-expanded="false" aria-label="Account menu">
+                    <span class="user-avatar" aria-hidden="true">{{ current_user.username[0].upper() }}</span>
+                    <span class="userchip__name">{{ current_user.username }}</span>
+                    <i class="bi bi-chevron-up userchip__chevron" aria-hidden="true"></i>
+                </button>
+                <ul class="dropdown-menu">
+                    {% if current_user.is_admin %}
+                    <li><span class="dropdown-note">
+                        <i class="bi bi-shield-check" aria-hidden="true"></i> Administrator
+                    </span></li>
+                    <li><hr class="dropdown-divider"></li>
+                    {% endif %}
+                    <li>
+                        <a class="dropdown-item" href="{{ url_for('auth.settings') }}">
+                            <i class="bi bi-gear" aria-hidden="true"></i> Settings
+                        </a>
+                    </li>
+                    <li>
+                        <button type="button" class="dropdown-item" data-density-toggle>
+                            <i class="bi bi-arrows-collapse" aria-hidden="true"></i>
+                            <span data-density-label>Compact density</span>
                         </button>
-                    </form>
-                </li>
-            </ul>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                        <form method="post" action="{{ url_for('auth.logout') }}" class="m-0">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="dropdown-item btn-logout">
+                                <i class="bi bi-box-arrow-right" aria-hidden="true"></i> Sign out
+                            </button>
+                        </form>
+                    </li>
+                </ul>
+            </div>
+            <button type="button" class="icon-button" data-theme-toggle aria-label="Switch theme">
+                <i class="bi bi-moon-stars" aria-hidden="true"></i>
+            </button>
         </div>
         {% endif %}
 
     </aside>
 
-    <button class="sidebar-backdrop" id="sidebarBackdrop" type="button" aria-label="Close navigation"></button>
+    <button class="shell__backdrop" type="button" aria-label="Close navigation"></button>
 
-    <!-- ═══════════════════════════════════════ -->
-    <!-- Main -->
-    <!-- ═══════════════════════════════════════ -->
-    <div class="app-main">
+    <!-- ══ Main ══════════════════════════════════════════════════════════ -->
+    <div class="shell__main">
+        <main class="page" id="main">
 
-        <!-- Top Bar -->
-        <header class="app-topbar">
-            <div class="topbar-left">
-                <!-- Mobile menu toggle -->
-                <button class="btn btn-sm btn-outline-secondary topbar-menu-btn d-lg-none" id="sidebarToggle"
-                        aria-label="Toggle menu" aria-controls="appSidebar" aria-expanded="false">
-                    <i class="bi bi-list" aria-hidden="true"></i>
-                </button>
-                <span class="topbar-title">
-                    {% block topbar_title %}{% endblock %}
-                </span>
-            </div>
-            <div class="topbar-right">
-                {% if not current_user.is_authenticated %}
-                    <a href="{{ url_for('auth.login') }}" class="btn-nav-login">Log In</a>
-                    <a href="{{ url_for('auth.register') }}" class="btn-nav-signup">Sign Up</a>
-                {% endif %}
-            </div>
-        </header>
+            <header class="page__header">
+                <div class="page__heading">
+                    <button type="button" class="icon-button page__menu"
+                            data-nav-open-toggle aria-controls="sidenav" aria-expanded="false"
+                            aria-label="Open navigation">
+                        <i class="bi bi-list" aria-hidden="true"></i>
+                    </button>
+                    <h1 class="page__title">{% block page_title %}{% endblock %}</h1>
+                    {% block page_subtitle %}{% endblock %}
+                </div>
+                <div class="page__actions">
+                    {% block page_actions %}{% endblock %}
+                    {% if not current_user.is_authenticated %}
+                        <a href="{{ url_for('auth.login') }}" class="btn btn-secondary">Log in</a>
+                        <a href="{{ url_for('auth.register') }}" class="btn btn-primary">Sign up</a>
+                    {% endif %}
+                </div>
+            </header>
 
-        <!-- Page Content -->
-        <main class="app-content">
             {% block content %}{% endblock %}
+
         </main>
+    </div>
 
-    </div><!-- /.app-main -->
+</div>
 
-</div><!-- /.app-layout -->
+<!-- ══ Command palette ═══════════════════════════════════════════════════ -->
+<div class="palette" id="commandPalette" role="dialog" aria-modal="true"
+     aria-label="Command palette" hidden>
+    <div class="palette__dialog">
+        <div class="palette__search">
+            <i class="bi bi-search" aria-hidden="true"></i>
+            <input type="text" class="palette__input" id="commandPaletteInput"
+                   placeholder="Jump to a page or action…" autocomplete="off"
+                   aria-controls="commandPaletteList">
+        </div>
+        <ul class="palette__list" id="commandPaletteList" role="listbox"
+            aria-label="Commands"></ul>
+    </div>
+</div>
 
-<!-- Flash Messages — outside app-layout so position:fixed works correctly -->
+{# Static palette entries. Pages add their own by tagging any element with
+   data-command="Label" — see shell.js CommandPalette.collect(). #}
+<script type="application/json" id="commandPaletteData">
+{{ [
+    {'label': 'Overview',   'group': 'Navigate', 'icon': 'grid-1x2',  'href': url_for('dashboard.index')},
+    {'label': 'Portfolios', 'group': 'Navigate', 'icon': 'wallet2',   'href': url_for('portfolios.portfolios_list')},
+    {'label': 'Assets',     'group': 'Navigate', 'icon': 'box-seam',  'href': url_for('transactions.transaction_list')},
+    {'label': 'Settings',   'group': 'Navigate', 'icon': 'gear',      'href': url_for('auth.settings')}
+] | tojson }}
+</script>
+
+<!-- ══ Flash messages — outside .shell so position:fixed is viewport-based ═ -->
 {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
     <div class="flash-container" aria-live="polite">
@@ -162,112 +237,9 @@
     {% endif %}
 {% endwith %}
 
-<!-- Bootstrap JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
-<!-- Sidebar Script -->
-<script>
-(function() {
-    const sidebarToggle  = document.getElementById('sidebarToggle');
-    const sidebar        = document.getElementById('appSidebar');
-    const sidebarBackdrop = document.getElementById('sidebarBackdrop');
-
-    // ── Toast system ──────────────────────────────────────────
-    var TOAST_ICONS = {
-        success: 'bi-check-circle-fill',
-        danger:  'bi-exclamation-circle-fill',
-        warning: 'bi-exclamation-triangle-fill',
-        info:    'bi-info-circle-fill'
-    };
-
-    function getOrCreateContainer() {
-        var c = document.querySelector('.flash-container');
-        if (!c) {
-            c = document.createElement('div');
-            c.className = 'flash-container';
-            c.setAttribute('aria-live', 'polite');
-            document.body.appendChild(c);
-        }
-        return c;
-    }
-
-    function dismissToast(el) {
-        el.style.transition = 'opacity 0.22s ease, transform 0.22s ease';
-        el.style.opacity = '0';
-        el.style.transform = 'translateY(8px)';
-        setTimeout(function() { if (el.parentNode) el.remove(); }, 240);
-    }
-
-    function wireToast(el) {
-        var btn = el.querySelector('.flash-alert__close');
-        if (btn) btn.addEventListener('click', function() { dismissToast(el); });
-        setTimeout(function() { if (el.parentNode) dismissToast(el); }, 4000);
-    }
-
-    // Wire server-rendered toasts
-    document.querySelectorAll('.flash-alert').forEach(wireToast);
-
-    // Global helper for AJAX-triggered toasts
-    window.showToast = function(message, type) {
-        var cat  = type || 'info';
-        var icon = TOAST_ICONS[cat] || TOAST_ICONS.info;
-        var el   = document.createElement('div');
-        el.className = 'flash-alert flash-alert--' + cat;
-        el.setAttribute('role', 'alert');
-
-        var iconEl = document.createElement('i');
-        iconEl.className = 'bi ' + icon + ' flash-alert__icon';
-        iconEl.setAttribute('aria-hidden', 'true');
-
-        var msgEl = document.createElement('span');
-        msgEl.className = 'flash-alert__msg';
-        msgEl.textContent = message;
-
-        var closeIcon = document.createElement('i');
-        closeIcon.className = 'bi bi-x';
-        closeIcon.setAttribute('aria-hidden', 'true');
-        var closeBtn = document.createElement('button');
-        closeBtn.type = 'button';
-        closeBtn.className = 'flash-alert__close';
-        closeBtn.setAttribute('aria-label', 'Close');
-        closeBtn.appendChild(closeIcon);
-
-        el.appendChild(iconEl);
-        el.appendChild(msgEl);
-        el.appendChild(closeBtn);
-        getOrCreateContainer().appendChild(el);
-        wireToast(el);
-    };
-
-    // Mobile sidebar toggle
-    if (sidebarToggle && sidebar) {
-        function setSidebarOpen(open) {
-            sidebar.classList.toggle('open', open);
-            document.body.classList.toggle('sidebar-open', open);
-            sidebarToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
-        }
-
-        sidebarToggle.addEventListener('click', function() {
-            setSidebarOpen(!sidebar.classList.contains('open'));
-        });
-        if (sidebarBackdrop) {
-            sidebarBackdrop.addEventListener('click', function() {
-                setSidebarOpen(false);
-            });
-        }
-        document.addEventListener('click', function(e) {
-            if (!sidebar.contains(e.target) && !sidebarToggle.contains(e.target)) {
-                setSidebarOpen(false);
-            }
-        });
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') setSidebarOpen(false);
-        });
-    }
-})();
-</script>
-
-<script src="{{ url_for('static', filename='js/main.js', v='20260509-2') }}"></script>
+<script src="{{ url_for('static', filename='js/shell.js', v=ASSET_VERSION) }}"></script>
+<script src="{{ url_for('static', filename='js/main.js', v=ASSET_VERSION) }}"></script>
 
 {% block extra_js %}{% endblock %}
 </body>

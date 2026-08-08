@@ -1,432 +1,546 @@
-/* ============================================================
-   OnePortfolio Dark Theme Tokens
-   Dark-mode-only design system foundation.
-   ============================================================ */
+/* ==========================================================================
+   OnePortfolio — Design Tokens
+   ==========================================================================
 
-:root {
-    color-scheme: dark;
+   Layer 1  primitives  raw values, never consumed by components directly
+   Layer 2  roles       semantic names, the ONLY thing components may use
+   Layer 3  bridge      maps roles onto Bootstrap's --bs-* variables
 
-    /* Core surfaces */
-    --bg: #09090B;
-    --surface: #0D0D0F;
-    --surface-2: #111113;
-    --surface-3: #151518;
-    --surface-4: #18181B;
-    --surface-elevated: #151518;
-    --surface-card: var(--surface-2);
-    --surface-sidebar: var(--surface);
-    --surface-input: var(--surface-2);
-    --surface-hover: rgba(255, 255, 255, 0.035);
-    --surface-active: var(--surface-4);
-    --backdrop-bg: rgba(9, 9, 11, 0.64);
+   Themes are driven by `data-theme` on <html> with a system-preference
+   fallback. Every colour is defined once in the light block and redefined
+   in both dark blocks, so no role is ever left undefined in either theme.
 
-    /* Text colors */
-    --text-primary: #e8eaed;
-    --text-secondary: #bdc1c6;
-    --text-muted: #9aa0a6;
-    --text-disabled: rgba(154, 160, 166, 0.62);
-    --text-inverse: #09090B;
-    --text-on-accent: var(--text-inverse);
+   Cascade layers are declared here because this is the first stylesheet the
+   document loads. Bootstrap is imported INTO the `vendor` layer, which puts
+   every rule we write above it without a single !important.
+   ========================================================================== */
 
-    /* Borders */
-    --border-default: rgba(255, 255, 255, 0.15);
-    --border-soft: rgba(255, 255, 255, 0.10);
-    --border-muted: rgba(255, 255, 255, 0.08);
-    --border-strong: rgba(255, 255, 255, 0.24);
-    --border-accent: var(--border-strong);
-    --border-card: var(--border-soft);
-    --border-table: var(--border-muted);
-    --border-input: var(--border-default);
-    --border-focus: #E4E4E7;
-    --border-invalid: var(--negative);
-    --border: var(--border-default);
+@layer vendor, tokens, base, components, pages, utilities;
 
-    /* Accent */
-    --accent: #E4E4E7;
-    --accent-hover: #F4F4F5;
-    --accent-soft: rgba(255, 255, 255, 0.055);
-    --accent-border: rgba(255, 255, 255, 0.28);
-    --on-accent: #09090B;
+@import url("https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css") layer(vendor);
 
-    /* Product navigation identity */
-    --op-nav-active: var(--on-accent);
-    --op-nav-active-hover: var(--on-accent);
-    --op-nav-active-bg: var(--accent);
-    --op-nav-active-bg-strong: var(--accent-hover);
-    --op-nav-active-border: var(--accent-border);
+@layer tokens {
 
-    /* Financial semantic colors */
-    --positive: #4ade80;
-    --positive-bg: rgba(34, 197, 94, 0.13);
-    --positive-border: rgba(74, 222, 128, 0.28);
-    --positive-hover: rgba(34, 197, 94, 0.2);
-    --on-positive: #09090B;
+  /* ======================================================================
+     1. PRIMITIVES
+     ====================================================================== */
 
-    --negative: #f87171;
-    --negative-bg: rgba(239, 68, 68, 0.13);
-    --negative-border: rgba(248, 113, 113, 0.3);
-    --negative-hover: rgba(239, 68, 68, 0.2);
-    --on-negative: #09090B;
+  :root {
+    /* Neutrals — a single cool-grey ramp used by both themes */
+    --n-0:   #ffffff;
+    --n-25:  #fbfbfc;
+    --n-50:  #f6f6f8;
+    --n-100: #eeeef1;
+    --n-150: #e4e4e9;
+    --n-200: #d7d7de;
+    --n-300: #b9b9c4;
+    --n-400: #92929f;
+    --n-500: #70707e;
+    --n-600: #55555f;
+    --n-700: #3d3d46;
+    --n-750: #2e2e35;
+    --n-800: #212127;
+    --n-850: #18181d;
+    --n-900: #121216;
+    --n-950: #0b0b0e;
+    --n-1000:#07070a;
 
-    --warning-text: #fbbf24;
-    --warning-bg: rgba(245, 158, 11, 0.14);
-    --warning-border: rgba(251, 191, 36, 0.3);
-    --warning-hover: rgba(245, 158, 11, 0.22);
-    --on-warning: #09090B;
+    /* Brand — indigo-violet. Deliberately off the semantic hues (green /
+       red / blue) so brand surfaces never read as a financial signal. */
+    --brand-300: #a99bff;
+    --brand-400: #8f7dfa;
+    --brand-500: #7461f3;
+    --brand-600: #5d49e0;
+    --brand-700: #4a38bd;
 
-    --info-text: #93c5fd;
-    --info-bg: rgba(59, 130, 246, 0.13);
-    --info-border: rgba(147, 197, 253, 0.28);
-    --info-hover: rgba(59, 130, 246, 0.2);
+    /* Semantic hues — two tunings each, one per theme */
+    --green-light:  #0f8a4d;
+    --green-dark:   #40cf85;
+    --red-light:    #cf3540;
+    --red-dark:     #ff6b74;
+    --blue-light:   #1f6fd4;
+    --blue-dark:    #5aa9ff;
+    --amber-light:  #a9720a;
+    --amber-dark:   #f0b445;
 
-    --income: #60a5fa;
-    --income-text: var(--income);
-    --income-bg: color-mix(in srgb, var(--income) 14%, transparent);
-    --income-border: color-mix(in srgb, var(--income) 30%, transparent);
-    --income-hover: color-mix(in srgb, var(--income) 22%, transparent);
-    --income-active: color-mix(in srgb, var(--income) 30%, transparent);
-    --on-income: #09090B;
+    /* Categorical palette — allocation charts and portfolio markers.
+       Hues are spaced far enough apart to survive both themes and the
+       most common forms of colour-vision deficiency. */
+    --cat-1: #7461f3;
+    --cat-2: #00a3a3;
+    --cat-3: #e07b39;
+    --cat-4: #3f8ef0;
+    --cat-5: #c05fb4;
+    --cat-6: #4da35e;
+    --cat-7: #c9a227;
+    --cat-other: #7b7b8a;
 
-    --neutral-data: #cbd5e1;
-    --neutral-data-bg: rgba(148, 163, 184, 0.12);
-    --neutral-data-border: rgba(203, 213, 225, 0.22);
+    /* ------------------------------------------------------------------
+       Typography
+       ------------------------------------------------------------------ */
+    --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system,
+                 "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
 
-    /* Typography */
-    --font-family-base: "Inter", "Segoe UI", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
-    --font-size-base: 15px;
-    --font-size-control: 0.875rem;
-    --font-size-input: 0.9375rem;
-    --font-size-page-title: 1.375rem;
-    --font-size-card-title: 0.95rem;
-    --font-size-section-title: 1rem;
-    --font-size-label: 0.6875rem;
-    --font-size-table-head: 0.75rem;
-    --font-size-table-body: 0.75rem;
-    --font-size-table-nested-head: 0.75rem;
-    --font-size-table-nested-body: 0.75rem;
-    --font-size-helper: 0.75rem;
-    --font-size-kpi: clamp(1rem, 1.25vw, 1.25rem);
-    --font-size-kpi-compact: clamp(0.8125rem, 1vw, 0.95rem);
-    --font-size-numeric: 0.8125rem;
-    --font-size-chart-label: 0.625rem;
-    --font-size-chart-axis: 10;
-    --font-size-chart-axis-title: 8;
-    --font-size-chart-center-label: 10;
-    --font-size-chart-center-value: 13;
-    --font-size-summary-name: 0.9375rem;
-    --font-size-summary-label: var(--font-size-label);
-    --font-size-summary-value: 0.8125rem;
-    --font-size-summary-context: 0.75rem;
-    --font-size-empty-value: 0.75rem;
-    --font-size-xs: 0.75rem;
-    --font-size-sm: 0.8125rem;
-    --font-size-md: 0.9375rem;
-    --font-size-lg: 1rem;
-    --font-size-h1: 1.375rem;
-    --font-size-h2: 1.125rem;
-    --font-size-h3: 1rem;
-    --font-weight-light: 300;
-    --font-weight-normal: 400;
-    --font-weight-medium: 500;
-    --font-weight-semibold: 600;
-    --font-weight-strong: 600;
-    --line-height-body: 1.65;
-    --line-height-heading: 1.22;
-    --line-height-control: 1.35;
-    --letter-spacing-normal: 0;
-    --letter-spacing-tight: 0;
-    --letter-spacing-label: 0.07em;
+    /* Text ramp — prose and UI chrome */
+    --text-2xs: 0.6875rem;  /* 11px — labels, meta            */
+    --text-xs:  0.75rem;    /* 12px — helper text, captions   */
+    --text-sm:  0.8125rem;  /* 13px — dense UI, table body    */
+    --text-md:  0.875rem;   /* 14px — body default            */
+    --text-lg:  1rem;       /* 16px — section titles          */
+    --text-xl:  1.125rem;   /* 18px — page titles             */
+    --text-2xl: 1.375rem;   /* 22px — headings                */
+    --text-3xl: 1.75rem;
 
-    /* Radius */
-    --radius: 8px;
+    /* Number ramp — kept independent so figures can be tuned without
+       dragging the prose scale along with them. */
+    --num-sm:   0.8125rem;
+    --num-md:   0.9375rem;
+    --num-lg:   1.125rem;
+    --num-hero: clamp(1.875rem, 1.2rem + 2.2vw, 2.75rem);
+
+    --weight-normal: 400;
+    --weight-medium: 500;
+    --weight-semibold: 600;
+
+    --leading-tight: 1.2;
+    --leading-snug: 1.35;
+    --leading-normal: 1.5;
+    --leading-relaxed: 1.6;
+
+    --tracking-label: 0.04em;
+    --tracking-tight: -0.011em;
+
+    /* ------------------------------------------------------------------
+       Space — 4px base
+       ------------------------------------------------------------------ */
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-5: 1.25rem;
+    --space-6: 1.5rem;
+    --space-8: 2rem;
+    --space-10: 2.5rem;
+    --space-12: 3rem;
+    --space-16: 4rem;
+    --space-20: 5rem;
+
+    /* ------------------------------------------------------------------
+       Radius — three steps, each with a job
+       ------------------------------------------------------------------ */
     --radius-xs: 4px;
-    --radius-sm: 4px;
-    --radius-md: 8px;
-    --radius-lg: 8px;
-    --radius-card: var(--radius);
-    --radius-input: var(--radius);
-    --radius-button: var(--radius);
-    --radius-badge: 999px;
-    --radius-table: var(--radius);
-    --radius-modal: var(--radius);
+    --radius-sm: 6px;    /* controls: buttons, inputs, badges */
+    --radius-md: 10px;   /* cards, panels, table shells       */
+    --radius-lg: 14px;   /* modals, drawers, hero surfaces    */
     --radius-pill: 999px;
 
-    /* Spacing and sizing */
-    --space-1: 4px;
-    --space-2: 8px;
-    --space-3: 12px;
-    --space-4: 16px;
-    --space-5: 20px;
-    --space-6: 24px;
-    --space-7: 28px;
-    --space-8: 32px;
-    --control-gap: var(--space-2);
-    --control-height: 40px;
-    --control-height-sm: 32px;
-    --control-padding-y: 8px;
-    --control-padding-x: 12px;
-    --control-pad-y: var(--control-padding-y);
-    --control-pad-x: var(--control-padding-x);
-    --control-min-h: var(--control-height);
-    --input-pad-y: 8px;
-    --input-pad-x: 12px;
-    --input-select-pad-right: 2.25rem;
-    --input-min-h: var(--control-height);
-    --button-height: var(--control-height);
-    --button-height-sm: var(--control-height-sm);
-    --button-padding-y: var(--control-padding-y);
-    --button-padding-x: var(--control-padding-x);
-    --button-radius: var(--radius-button);
-    --button-min-h: var(--control-height);
-    --action-button-bg: transparent;
-    --action-button-border: transparent;
-    --action-button-focus-outline: var(--control-border-focus);
-    --action-button-transition: background-color var(--transition), color var(--transition), opacity var(--transition);
-    --page-max-width: 1440px;
-    --page-pad-x: 1.5rem;
-    --page-pad-y: 0.75rem;
-    --card-padding: 1.25rem;
-    --table-row-compact-height: 38px;
+    /* ------------------------------------------------------------------
+       Sizing — density-aware. `--density-scale` is the single knob the
+       compact/comfortable switch turns.
+       ------------------------------------------------------------------ */
+    --density-scale: 1;
+    --control-h: 2.375rem;              /* 38px */
+    --control-h-sm: 1.875rem;           /* 30px */
+    --control-pad-x: 0.75rem;
+    --row-h: calc(2.5rem * var(--density-scale));
+    --cell-pad-y: calc(0.5rem * var(--density-scale));
+    --cell-pad-x: 0.75rem;
+    --card-pad: 1.125rem;
 
-    /* Shadows */
-    --shadow-card: none;
-    --shadow-elevated: none;
+    --sidebar-w: 15rem;
+    --sidebar-w-collapsed: 4rem;
+    --page-max: 90rem;
+    --page-pad-x: 1.75rem;
+    --page-pad-y: 1.5rem;
 
-    /* Motion */
-    --motion-duration-fast: 120ms;
-    --motion-duration-normal: 160ms;
-    --motion-duration-slow: 180ms;
-    --motion-ease-calm: cubic-bezier(0.2, 0, 0, 1);
-    --transition: var(--motion-duration-normal) var(--motion-ease-calm);
-    --transition-fast: var(--motion-duration-fast) var(--motion-ease-calm);
-    --transition-slow: var(--motion-duration-slow) var(--motion-ease-calm);
-    --transition-theme: var(--motion-duration-normal) var(--motion-ease-calm);
-    --z-flatpickr: 1100;
+    /* ------------------------------------------------------------------
+       Motion — one duration scale, two easings. Everything animated in
+       this product uses a value from here.
+       ------------------------------------------------------------------ */
+    --dur-1: 110ms;   /* colour / opacity swaps      */
+    --dur-2: 180ms;   /* transforms, small reveals   */
+    --dur-3: 260ms;   /* panels, modals              */
+    --dur-4: 460ms;   /* entrances, scroll reveals   */
 
-    /* Existing OnePortfolio aliases */
-    --primary: var(--accent);
-    --primary-dark: var(--accent-hover);
-    --primary-muted: var(--accent-soft);
-    --primary-tint: var(--accent-soft);
-    --primary-hover: var(--accent-soft);
-    --icon-accent: var(--text-muted);
-    --control-border: var(--border-input);
-    --control-border-hover: var(--border-strong);
-    --control-border-focus: var(--border-focus);
-    --control-border-invalid: var(--border-invalid);
-    --control-border-valid: var(--positive-border);
-    --button-border: var(--control-border);
-    --button-border-hover: var(--control-border-hover);
-    --section-hover-border: var(--border-accent);
+    --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+    --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+    --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
 
-    --success: var(--positive);
-    --success-muted: var(--positive-bg);
-    --success-hover: var(--positive-hover);
-    --danger: var(--negative);
-    --danger-muted: var(--negative-bg);
-    --danger-hover: var(--negative-hover);
-    --warning: var(--warning-text);
-    --warning-muted: var(--warning-bg);
-    --info: var(--info-text);
-    --info-muted: var(--info-bg);
+    --z-sticky: 20;
+    --z-sidebar: 60;
+    --z-backdrop: 1040;
+    --z-modal: 1055;
+    --z-datepicker: 1100;
+    --z-toast: 1090;
+    --z-palette: 1200;
+  }
 
-    --app-bg: var(--bg);
-    --sidebar-bg: var(--surface-sidebar);
-    --sidebar-hover: var(--surface-hover);
-    --sidebar-width: 244px;
-    --sidebar-brand-height: 64px;
-    --topbar-height: 24px;
-    --content-max-width: var(--page-max-width);
+  /* ======================================================================
+     2. ROLES — light theme is the base definition
+     ====================================================================== */
 
-    --text-1: var(--text-primary);
-    --text-2: var(--text-secondary);
-    --text-3: var(--text-muted);
-    --text-inv: var(--text-inverse);
+  :root {
+    color-scheme: light;
 
-    --border-color: var(--border-default);
-    --border-subtle: var(--border-soft);
+    /* Surfaces, back to front */
+    --bg-canvas:  var(--n-50);
+    --bg-sunken:  var(--n-100);
+    --bg-surface: var(--n-0);
+    --bg-raised:  var(--n-0);
+    --bg-inset:   var(--n-25);
+    --bg-hover:   rgb(18 18 24 / 0.04);
+    --bg-active:  rgb(18 18 24 / 0.07);
+    --bg-backdrop: rgb(18 18 24 / 0.42);
 
-    --input-bg: var(--surface-input);
-    --input-focus-bg: var(--surface-input);
-    --input-border: var(--control-border);
-    --input-border-hover: var(--control-border-hover);
-    --input-border-focus: var(--control-border-focus);
-    --input-disabled-bg: var(--surface-4);
-    --input-focus-ring: transparent;
-    --danger-focus-ring: transparent;
-    --success-focus-ring: transparent;
+    /* Foreground */
+    --fg-default: #17171c;
+    --fg-muted:   var(--n-600);
+    --fg-subtle:  var(--n-500);
+    --fg-faint:   var(--n-400);
+    --fg-on-brand: var(--n-0);
+    --fg-on-solid: var(--n-0);
 
-    --table-bg: var(--surface-card);
-    --table-header-bg: var(--surface-2);
-    --table-row-hover-bg: var(--surface-hover);
-    --table-border: var(--border-table);
-    --table-border-muted: var(--border-muted);
-    --table-header-color: var(--text-secondary);
-    --table-cell-color: var(--text-primary);
-    --table-caption-color: var(--text-muted);
+    /* Lines */
+    --line-subtle: rgb(18 18 24 / 0.07);
+    --line-default: rgb(18 18 24 / 0.12);
+    --line-strong: rgb(18 18 24 / 0.22);
 
-    --badge-bg: rgba(255, 255, 255, 0.035);
-    --badge-color: var(--text-secondary);
-    --badge-border: var(--neutral-data-border);
-    --badge-positive-bg: var(--positive-bg);
-    --badge-positive-color: var(--positive);
-    --badge-positive-border: var(--positive-border);
-    --badge-negative-bg: var(--negative-bg);
-    --badge-negative-color: var(--negative);
-    --badge-negative-border: var(--negative-border);
-    --badge-warning-bg: var(--warning-bg);
-    --badge-warning-color: var(--warning-text);
-    --badge-warning-border: var(--warning-border);
-    --badge-info-bg: var(--info-bg);
-    --badge-info-color: var(--info-text);
-    --badge-info-border: var(--info-border);
-    --badge-income-bg: var(--income-bg);
-    --badge-income-color: var(--income);
-    --badge-income-border: var(--income-border);
+    /* Brand */
+    --brand: var(--brand-600);
+    --brand-hover: var(--brand-700);
+    --brand-soft: rgb(116 97 243 / 0.10);
+    --brand-soft-hover: rgb(116 97 243 / 0.16);
+    --brand-line: rgb(116 97 243 / 0.32);
 
-    --card-bg: var(--surface-card);
-    --row-hover-strong: var(--table-row-hover-bg);
-    --row-hover: var(--row-hover-strong);
-    --neutral-hover: var(--surface-hover);
-    --brand-hover: var(--accent-soft);
-    --brand-hover-strong: var(--accent-soft);
-    --nav-hover: var(--surface-hover);
-    --settings-hover: var(--surface-hover);
+    /* Financial semantics */
+    --pos: var(--green-light);
+    --pos-soft: rgb(15 138 77 / 0.11);
+    --pos-line: rgb(15 138 77 / 0.28);
 
-    --btn-primary-hover: var(--accent-hover);
-    --btn-success-hover: var(--positive);
-    --btn-danger-hover: var(--negative);
-    --btn-warning-hover: var(--warning-text);
-    --inline-action-color: var(--text-muted);
-    --inline-action-hover-color: var(--text-primary);
-    --inline-action-active-color: var(--accent);
-    --summary-label-color: var(--text-muted);
-    --summary-value-color: var(--text-primary);
-    --nav-link-color: var(--text-secondary);
-    --nav-link-hover-color: var(--text-primary);
-    --nav-link-hover-bg: var(--surface-hover);
-    --nav-link-hover-outline: var(--border-soft);
-    --nav-link-focus-outline: var(--focus-ring);
+    --neg: var(--red-light);
+    --neg-soft: rgb(207 53 64 / 0.10);
+    --neg-line: rgb(207 53 64 / 0.28);
 
-    --color-profit: var(--positive);
-    --color-loss: var(--negative);
-    --color-income: var(--income);
-    --color-dividend: var(--income);
-    --color-dividend-muted: var(--income-bg);
-    --color-neutral: var(--neutral-data);
-    --transaction-dividend-blue: var(--income);
+    --income: var(--blue-light);
+    --income-soft: rgb(31 111 212 / 0.10);
+    --income-line: rgb(31 111 212 / 0.28);
 
-    --focus-ring: var(--border-focus);
-    --danger-ring: var(--negative);
-    --chart-grid-line: var(--border-muted);
-    --chart-zero-line: var(--border-default);
-    --chart-series-pnl: var(--text-primary);
-    --chart-series-return: var(--positive);
-    --chart-pnl-bar: #60a5fa;
-    --chart-return-bar: #34d399;
-    --chart-pnl-fill: rgba(96, 165, 250, 0.16);
-    --chart-return-fill: rgba(52, 211, 153, 0.14);
-    --chart-bar-bg: rgba(255, 255, 255, 0.055);
-    --chart-bar-border: rgba(255, 255, 255, 0.08);
-    --chart-baseline: rgba(255, 255, 255, 0.28);
-    --chart-allocation-1: #7dd3fc;
-    --chart-allocation-2: #a78bfa;
-    --chart-allocation-3: #34d399;
-    --chart-allocation-4: #f0abfc;
-    --chart-allocation-5: #38bdf8;
-    --chart-allocation-6: #c4b5fd;
-    --chart-allocation-7: #5eead4;
-    --chart-allocation-other: #64748b;
-    --chart-neutral-1: #F4F4F5;
-    --chart-neutral-2: #D4D4D8;
-    --chart-neutral-3: #A1A1AA;
-    --chart-neutral-4: #71717A;
-    --chart-neutral-5: #52525B;
-    --chart-neutral-6: #3F3F46;
-    --chart-neutral-7: #27272A;
-    --chart-neutral-8: #18181B;
-    --chart-other: var(--chart-neutral-5);
-    --select-arrow-icon: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%239aa0a6' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.75' d='m3 6 5 5 5-5'/%3e%3c/svg%3e");
-    --font-sans: var(--font-family-base);
-    --space-page-x: var(--page-pad-x);
-    --space-page-y: var(--page-pad-y);
+    --warn: var(--amber-light);
+    --warn-soft: rgb(169 114 10 / 0.12);
+    --warn-line: rgb(169 114 10 / 0.30);
 
-    /* Bootstrap bridge */
-    --bs-body-bg: var(--bg);
-    --bs-body-color: var(--text-primary);
-    --bs-body-color-rgb: 232, 234, 237;
-    --bs-body-bg-rgb: 9, 9, 11;
-    --bs-body-font-family: var(--font-family-base);
-    --bs-body-font-size: var(--font-size-base);
-    --bs-body-line-height: var(--line-height-body);
-    --bs-border-color: var(--border);
-    --bs-border-color-translucent: var(--border-muted);
-    --bs-secondary-color: var(--text-secondary);
-    --bs-secondary-color-rgb: 189, 193, 198;
-    --bs-tertiary-color: var(--text-muted);
-    --bs-tertiary-bg: var(--surface-2);
-    --bs-emphasis-color: var(--text-primary);
-    --bs-heading-color: var(--text-primary);
+    --flat: var(--fg-subtle);
 
-    --bs-link-color: var(--accent);
-    --bs-link-hover-color: var(--accent-hover);
-    --bs-link-color-rgb: 228, 228, 231;
-    --bs-link-hover-color-rgb: 244, 244, 245;
-    --bs-primary: var(--accent);
-    --bs-primary-rgb: 228, 228, 231;
-    --bs-success: var(--positive);
-    --bs-success-rgb: 74, 222, 128;
-    --bs-danger: var(--negative);
-    --bs-danger-rgb: 248, 113, 113;
-    --bs-warning: var(--warning-text);
-    --bs-warning-rgb: 251, 191, 36;
-    --bs-info: var(--info-text);
-    --bs-info-rgb: 147, 197, 253;
+    /* Elevation — two steps only, and never for decoration */
+    --shadow-raised:
+      0 1px 2px rgb(18 18 24 / 0.06),
+      0 1px 1px rgb(18 18 24 / 0.04);
+    --shadow-overlay:
+      0 18px 48px -14px rgb(18 18 24 / 0.24),
+      0 4px 12px -4px rgb(18 18 24 / 0.10);
+    --shadow-lift:
+      0 4px 14px -4px rgb(18 18 24 / 0.14);
 
-    --bs-card-bg: var(--surface-card);
-    --bs-card-color: var(--text-primary);
-    --bs-card-border-color: var(--border);
-    --bs-modal-bg: var(--surface-elevated);
-    --bs-modal-color: var(--text-primary);
-    --bs-modal-border-color: var(--border);
-    --bs-dropdown-bg: var(--surface-elevated);
-    --bs-dropdown-color: var(--text-primary);
-    --bs-dropdown-border-color: var(--border);
-    --bs-dropdown-link-color: var(--text-secondary);
-    --bs-dropdown-link-hover-color: var(--text-primary);
-    --bs-dropdown-link-hover-bg: var(--surface-hover);
-    --bs-dropdown-link-active-color: var(--op-nav-active);
-    --bs-dropdown-link-active-bg: var(--op-nav-active-bg);
-    --bs-table-bg: var(--table-bg);
-    --bs-table-color: var(--text-primary);
-    --bs-table-border-color: var(--table-border);
-    --bs-table-striped-bg: var(--table-bg);
-    --bs-table-striped-color: var(--text-primary);
-    --bs-table-hover-bg: var(--table-row-hover-bg);
-    --bs-table-hover-color: var(--text-primary);
-    --bs-table-active-bg: var(--surface-active);
-    --bs-table-active-color: var(--text-primary);
-    --bs-form-control-bg: var(--surface-input);
-    --bs-form-control-color: var(--text-primary);
-    --bs-form-control-border-color: var(--border-input);
-    --bs-form-invalid-color: var(--negative);
-    --bs-form-invalid-border-color: var(--border-invalid);
-    --bs-form-valid-color: var(--positive);
-    --bs-form-valid-border-color: var(--positive);
-}
+    --focus-ring: var(--brand-500);
+    --focus-ring-halo: rgb(116 97 243 / 0.24);
 
-@media (max-width: 992px) {
-    :root {
-        --topbar-height: 56px;
-        --space-page-x: 1rem;
-        --space-page-y: 1rem;
+    /* Chart roles */
+    --chart-grid: var(--line-subtle);
+    --chart-axis: var(--fg-faint);
+    --chart-ring-gap: var(--bg-surface);
+
+    --select-caret: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%2370707e' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.6' d='m3.5 6 4.5 4.5L12.5 6'/%3e%3c/svg%3e");
+  }
+
+  /* ---------- dark: system preference (no explicit choice made) -------- */
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+
+      --bg-canvas:  var(--n-1000);
+      --bg-sunken:  #050508;
+      --bg-surface: var(--n-900);
+      --bg-raised:  var(--n-850);
+      --bg-inset:   var(--n-950);
+      --bg-hover:   rgb(255 255 255 / 0.045);
+      --bg-active:  rgb(255 255 255 / 0.08);
+      --bg-backdrop: rgb(4 4 7 / 0.66);
+
+      --fg-default: #ededf1;
+      --fg-muted:   #a3a3ae;
+      --fg-subtle:  #82828e;
+      --fg-faint:   #62626d;
+      --fg-on-brand: var(--n-0);
+      --fg-on-solid: var(--n-1000);
+
+      --line-subtle: rgb(255 255 255 / 0.06);
+      --line-default: rgb(255 255 255 / 0.11);
+      --line-strong: rgb(255 255 255 / 0.20);
+
+      --brand: var(--brand-400);
+      --brand-hover: var(--brand-300);
+      --brand-soft: rgb(143 125 250 / 0.14);
+      --brand-soft-hover: rgb(143 125 250 / 0.22);
+      --brand-line: rgb(143 125 250 / 0.34);
+
+      --pos: var(--green-dark);
+      --pos-soft: rgb(64 207 133 / 0.13);
+      --pos-line: rgb(64 207 133 / 0.30);
+
+      --neg: var(--red-dark);
+      --neg-soft: rgb(255 107 116 / 0.13);
+      --neg-line: rgb(255 107 116 / 0.30);
+
+      --income: var(--blue-dark);
+      --income-soft: rgb(90 169 255 / 0.13);
+      --income-line: rgb(90 169 255 / 0.30);
+
+      --warn: var(--amber-dark);
+      --warn-soft: rgb(240 180 69 / 0.13);
+      --warn-line: rgb(240 180 69 / 0.30);
+
+      --shadow-raised:
+        0 1px 2px rgb(0 0 0 / 0.34),
+        inset 0 1px 0 rgb(255 255 255 / 0.035);
+      --shadow-overlay:
+        0 24px 60px -16px rgb(0 0 0 / 0.72),
+        0 6px 16px -6px rgb(0 0 0 / 0.44);
+      --shadow-lift:
+        0 6px 18px -6px rgb(0 0 0 / 0.5);
+
+      --focus-ring: var(--brand-300);
+      --focus-ring-halo: rgb(169 155 255 / 0.28);
+
+      --chart-ring-gap: var(--bg-surface);
+
+      --cat-1: #8f7dfa;
+      --cat-2: #2dc4c4;
+      --cat-3: #f0955c;
+      --cat-4: #6aacf7;
+      --cat-5: #d986cd;
+      --cat-6: #6cc47f;
+      --cat-7: #dcbb4a;
+      --cat-other: #6e6e7d;
+
+      --select-caret: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23a3a3ae' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.6' d='m3.5 6 4.5 4.5L12.5 6'/%3e%3c/svg%3e");
     }
-}
+  }
 
-@media (max-width: 576px) {
+  /* ---------- dark: explicit user choice ------------------------------- */
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+
+    --bg-canvas:  var(--n-1000);
+    --bg-sunken:  #050508;
+    --bg-surface: var(--n-900);
+    --bg-raised:  var(--n-850);
+    --bg-inset:   var(--n-950);
+    --bg-hover:   rgb(255 255 255 / 0.045);
+    --bg-active:  rgb(255 255 255 / 0.08);
+    --bg-backdrop: rgb(4 4 7 / 0.66);
+
+    --fg-default: #ededf1;
+    --fg-muted:   #a3a3ae;
+    --fg-subtle:  #82828e;
+    --fg-faint:   #62626d;
+    --fg-on-brand: var(--n-0);
+    --fg-on-solid: var(--n-1000);
+
+    --line-subtle: rgb(255 255 255 / 0.06);
+    --line-default: rgb(255 255 255 / 0.11);
+    --line-strong: rgb(255 255 255 / 0.20);
+
+    --brand: var(--brand-400);
+    --brand-hover: var(--brand-300);
+    --brand-soft: rgb(143 125 250 / 0.14);
+    --brand-soft-hover: rgb(143 125 250 / 0.22);
+    --brand-line: rgb(143 125 250 / 0.34);
+
+    --pos: var(--green-dark);
+    --pos-soft: rgb(64 207 133 / 0.13);
+    --pos-line: rgb(64 207 133 / 0.30);
+
+    --neg: var(--red-dark);
+    --neg-soft: rgb(255 107 116 / 0.13);
+    --neg-line: rgb(255 107 116 / 0.30);
+
+    --income: var(--blue-dark);
+    --income-soft: rgb(90 169 255 / 0.13);
+    --income-line: rgb(90 169 255 / 0.30);
+
+    --warn: var(--amber-dark);
+    --warn-soft: rgb(240 180 69 / 0.13);
+    --warn-line: rgb(240 180 69 / 0.30);
+
+    --shadow-raised:
+      0 1px 2px rgb(0 0 0 / 0.34),
+      inset 0 1px 0 rgb(255 255 255 / 0.035);
+    --shadow-overlay:
+      0 24px 60px -16px rgb(0 0 0 / 0.72),
+      0 6px 16px -6px rgb(0 0 0 / 0.44);
+    --shadow-lift:
+      0 6px 18px -6px rgb(0 0 0 / 0.5);
+
+    --focus-ring: var(--brand-300);
+    --focus-ring-halo: rgb(169 155 255 / 0.28);
+
+    --chart-ring-gap: var(--bg-surface);
+
+    --cat-1: #8f7dfa;
+    --cat-2: #2dc4c4;
+    --cat-3: #f0955c;
+    --cat-4: #6aacf7;
+    --cat-5: #d986cd;
+    --cat-6: #6cc47f;
+    --cat-7: #dcbb4a;
+    --cat-other: #6e6e7d;
+
+    --select-caret: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23a3a3ae' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.6' d='m3.5 6 4.5 4.5L12.5 6'/%3e%3c/svg%3e");
+  }
+
+  /* ---------- density ---------------------------------------------------
+     One knob. Compact tightens rows and cards without touching type size,
+     which is what actually makes dense ledgers readable.
+     -------------------------------------------------------------------- */
+  :root[data-density="compact"] {
+    --density-scale: 0.8;
+    --card-pad: 0.875rem;
+    --page-pad-y: 1rem;
+  }
+
+  /* ---------- responsive space ----------------------------------------- */
+  @media (max-width: 62rem) {
     :root {
-        --topbar-height: 52px;
-        --space-page-x: 0.75rem;
-        --space-page-y: 0.85rem;
+      --page-pad-x: 1rem;
+      --page-pad-y: 1rem;
     }
+  }
+
+  @media (max-width: 36rem) {
+    :root {
+      --page-pad-x: 0.875rem;
+    }
+  }
+
+  /* ======================================================================
+     3. BOOTSTRAP BRIDGE
+     Bootstrap utilities carry !important, and !important reverses layer
+     order — so we cannot out-cascade them from a later layer. Instead we
+     drive them through their own custom properties, which is both the
+     supported path and the reason this bridge stays small.
+     ====================================================================== */
+
+  :root {
+    --bs-body-bg: var(--bg-canvas);
+    --bs-body-color: var(--fg-default);
+    --bs-body-font-family: var(--font-sans);
+    --bs-body-font-size: var(--text-md);
+    --bs-body-line-height: var(--leading-normal);
+    --bs-emphasis-color: var(--fg-default);
+    --bs-heading-color: var(--fg-default);
+
+    --bs-border-color: var(--line-default);
+    --bs-border-color-translucent: var(--line-subtle);
+    --bs-border-radius: var(--radius-sm);
+    --bs-border-radius-sm: var(--radius-xs);
+    --bs-border-radius-lg: var(--radius-md);
+
+    /* Utility colours (.text-*, .bg-*) resolve through these */
+    --bs-secondary-color: var(--fg-muted);
+    --bs-tertiary-color: var(--fg-subtle);
+    --bs-tertiary-bg: var(--bg-inset);
+    --bs-secondary-bg: var(--bg-sunken);
+
+    --bs-primary: var(--brand);
+    --bs-success: var(--pos);
+    --bs-danger: var(--neg);
+    --bs-warning: var(--warn);
+    --bs-info: var(--income);
+
+    --bs-link-color: var(--brand);
+    --bs-link-hover-color: var(--brand-hover);
+
+    /* Component surfaces */
+    --bs-card-bg: var(--bg-surface);
+    --bs-card-border-color: var(--line-subtle);
+    --bs-modal-bg: var(--bg-raised);
+    --bs-modal-color: var(--fg-default);
+    --bs-modal-border-color: var(--line-default);
+    --bs-dropdown-bg: var(--bg-raised);
+    --bs-dropdown-color: var(--fg-default);
+    --bs-dropdown-border-color: var(--line-default);
+    --bs-dropdown-link-color: var(--fg-muted);
+    --bs-dropdown-link-hover-color: var(--fg-default);
+    --bs-dropdown-link-hover-bg: var(--bg-hover);
+    --bs-dropdown-link-active-color: var(--fg-default);
+    --bs-dropdown-link-active-bg: var(--bg-active);
+
+    --bs-table-bg: transparent;
+    --bs-table-color: var(--fg-default);
+    --bs-table-border-color: var(--line-subtle);
+    --bs-table-hover-bg: var(--bg-hover);
+    --bs-table-hover-color: var(--fg-default);
+    --bs-table-striped-bg: transparent;
+    --bs-table-striped-color: var(--fg-default);
+
+    --bs-form-control-bg: var(--bg-inset);
+    --bs-form-control-color: var(--fg-default);
+    --bs-form-invalid-color: var(--neg);
+    --bs-form-invalid-border-color: var(--neg);
+    --bs-form-valid-color: var(--pos);
+    --bs-form-valid-border-color: var(--pos);
+  }
+
+  /* The RGB triplets Bootstrap's utilities interpolate via
+     `rgba(var(--bs-*-rgb), var(--bs-text-opacity))`. They must stay
+     comma-separated legacy syntax, and must be raw numbers — so they are
+     re-stated per theme rather than aliased onto the role tokens. */
+  :root {
+    --bs-body-bg-rgb: 246, 246, 248;
+    --bs-body-color-rgb: 23, 23, 28;
+    --bs-primary-rgb: 93, 73, 224;
+    --bs-secondary-rgb: 85, 85, 95;
+    --bs-success-rgb: 15, 138, 77;
+    --bs-danger-rgb: 207, 53, 64;
+    --bs-warning-rgb: 169, 114, 10;
+    --bs-info-rgb: 31, 111, 212;
+    --bs-light-rgb: 238, 238, 241;
+    --bs-dark-rgb: 23, 23, 28;
+    --bs-link-color-rgb: 93, 73, 224;
+    --bs-link-hover-color-rgb: 74, 56, 189;
+    --bs-info-text-emphasis: var(--income);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bs-body-bg-rgb: 7, 7, 10;
+      --bs-body-color-rgb: 237, 237, 241;
+      --bs-primary-rgb: 143, 125, 250;
+      --bs-secondary-rgb: 163, 163, 174;
+      --bs-success-rgb: 64, 207, 133;
+      --bs-danger-rgb: 255, 107, 116;
+      --bs-warning-rgb: 240, 180, 69;
+      --bs-info-rgb: 90, 169, 255;
+      --bs-light-rgb: 33, 33, 39;
+      --bs-dark-rgb: 237, 237, 241;
+      --bs-link-color-rgb: 143, 125, 250;
+      --bs-link-hover-color-rgb: 169, 155, 255;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bs-body-bg-rgb: 7, 7, 10;
+    --bs-body-color-rgb: 237, 237, 241;
+    --bs-primary-rgb: 143, 125, 250;
+    --bs-secondary-rgb: 163, 163, 174;
+    --bs-success-rgb: 64, 207, 133;
+    --bs-danger-rgb: 255, 107, 116;
+    --bs-warning-rgb: 240, 180, 69;
+    --bs-info-rgb: 90, 169, 255;
+    --bs-light-rgb: 33, 33, 39;
+    --bs-dark-rgb: 237, 237, 241;
+    --bs-link-color-rgb: 143, 125, 250;
+    --bs-link-hover-color-rgb: 169, 155, 255;
+  }
 }

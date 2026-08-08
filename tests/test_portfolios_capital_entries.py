@@ -76,9 +76,10 @@ def test_portfolios_page_renders_capital_metrics_and_log(app):
 
     assert 'TOTAL CONTRIBUTED' not in html
     assert 'Total Contributed' not in html
+    # Sentence case since the redesign — the vocabulary is what matters here.
     for label in (
-        'CAPITAL ENTRIES', 'TOTAL CAPITAL', 'TOTAL CASH',
-        'POSITIONS', 'BOOK VALUE', 'Date', 'Type', 'Amount',
+        'Capital entries', 'Total capital', 'Total cash',
+        'Positions', 'Book value', 'Date', 'Type', 'Amount',
         'Notes', 'Actions',
     ):
         assert label in html

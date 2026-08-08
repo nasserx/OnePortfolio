@@ -57,13 +57,16 @@ def _visible_text(html):
 
 
 def _portfolio_rows_text(html):
-    start = html.index('data-overview-portfolio-rows')
+    start = html.index('<div class="ledger"')
     end = html.index('</section>', start)
     return _visible_text(html[start:end])
 
 
 def _chart_data(html):
-    match = re.search(r'const chartData = (\{.*?\});', html, re.DOTALL)
+    match = re.search(
+        r'<script type="application/json" id="allocationData">(.*?)</script>',
+        html, re.DOTALL,
+    )
     assert match is not None
     return json.loads(match.group(1))
 
@@ -144,38 +147,42 @@ def test_overview_uses_current_health_metrics_and_terminology(app):
     row_text = _portfolio_rows_text(html)
     chart_data = _chart_data(html)
 
+    # Metric vocabulary. Labels are sentence case since the redesign, so the
+    # assertion is on the words, not on their casing.
     for label in (
-        'TOTAL CAPITAL',
-        'TOTAL CASH',
-        'BOOK VALUE',
-        'TOTAL INCOME',
-        'REALIZED P&L',
+        'Total capital',
+        'Total cash',
+        'Book value',
+        'Total income',
+        'Realized P&L',
     ):
         assert label in text
 
     for label in (
         'Portfolio',
-        'Book Value',
+        'Book value',
         'Realized P&L',
         'Return',
         'Income',
-        'Assets',
+        'assets',
     ):
         assert label in row_text
 
     column_positions = [
         row_text.index(label)
-        for label in ('Portfolio', 'Book Value', 'Income', 'Realized P&L', 'Return', 'Assets')
+        for label in ('Portfolio', 'Book value', 'Income', 'Realized P&L', 'Return', 'assets')
     ]
     assert column_positions == sorted(column_positions)
-    assert 'class="overview-portfolio-marker allocation-marker-1"' in html
+    assert 'class="marker allocation-marker-1"' in html
     assert '>ا</span>' in html
 
-    assert 'By Book Value' in text
-    assert 'By Capital' in text
-    assert html.count('<canvas') == 2
-    assert '<canvas id="bookValueChart"' in html
-    assert '<canvas id="bookCapitalChart"' in html
+    # One canvas, with a segmented control swapping the basis in place.
+    assert 'By book value' in text
+    assert 'By capital' in text
+    assert html.count('<canvas') == 1
+    assert '<canvas id="allocationChart"' in html
+    assert 'data-alloc-view="book_value_chart"' in html
+    assert 'data-alloc-view="capital_chart"' in html
     assert 'href="/charts"' not in html
     assert '>Charts<' not in html
     assert set(chart_data) == {'book_value_chart', 'capital_chart'}
@@ -186,15 +193,17 @@ def test_overview_uses_current_health_metrics_and_terminology(app):
     assert chart_data['book_value_chart']['total'] == 8675.0
     assert chart_data['capital_chart']['total'] == 8500.0
 
+    # The summary table carries per-portfolio figures only; account-level
+    # totals belong to the hero and must not be duplicated in the rows.
     for removed_card_label in (
-        'TOTAL CAPITAL',
-        'TOTAL CASH',
-        'POSITIONS',
-        'TOTAL INCOME',
+        'Total capital',
+        'Total cash',
+        'Positions',
+        'Total income',
     ):
         assert removed_card_label not in row_text
 
-    assert 'View Assets' in text
+    assert 'View assets' in text
 
     for old_label in (
         'TOTAL CONTRIBUTED',
@@ -239,9 +248,10 @@ def test_overview_empty_portfolios_render_empty_chart_context(app):
     chart_data = _chart_data(html)
 
     assert 'No portfolios yet' in text
-    assert 'No book value data available.' in text
-    assert 'No total capital data available.' in text
-    assert html.count('<canvas') == 2
+    # Both bases share one canvas, so there is a single empty message and the
+    # server still ships both (empty) datasets for the switcher.
+    assert 'No portfolio data available.' in text
+    assert html.count('<canvas') == 1
     assert chart_data['book_value_chart']['categories'] == []
     assert chart_data['book_value_chart']['allocations'] == []
     assert chart_data['book_value_chart']['values'] == []

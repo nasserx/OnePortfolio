@@ -1,160 +1,129 @@
 {% extends "base.html" %}
+{% from 'macros/ui.html' import money, percent, quantity, metric, empty_state %}
 
-{% block title %}Assets - OnePortfolio{% endblock %}
+{% block title %}Assets — OnePortfolio{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
 {% endblock %}
 
+{% block page_title %}Assets{% endblock %}
+
+{% block page_actions %}
+    <!-- Portfolio filter -->
+    <div class="dropdown">
+        <button class="btn btn-outline-secondary filter-dropdown-btn" type="button"
+                data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="bi bi-funnel" aria-hidden="true"></i>
+            <span>{{ selected_portfolio or 'All portfolios' }}</span>
+            <i class="bi bi-chevron-down" aria-hidden="true"></i>
+        </button>
+        <ul class="dropdown-menu">
+            <li>
+                <a class="dropdown-item {% if not selected_portfolio %}active{% endif %}"
+                   href="{{ url_for('transactions.transaction_list') }}">All portfolios</a>
+            </li>
+            {% if portfolios %}
+            <li><hr class="dropdown-divider"></li>
+            {% for portfolio in portfolios %}
+            <li>
+                <a class="dropdown-item {% if selected_portfolio == portfolio.name %}active{% endif %}"
+                   href="{{ url_for('transactions.transaction_list', portfolio=portfolio.name) }}">{{ portfolio.name }}</a>
+            </li>
+            {% endfor %}
+            {% endif %}
+        </ul>
+    </div>
+
+    <!-- Asset search -->
+    <div class="search-field">
+        <i class="bi bi-search" aria-hidden="true"></i>
+        <label class="visually-hidden" for="symbolSearch">Search asset</label>
+        <input type="text" class="form-control" id="symbolSearch"
+               placeholder="Search asset…" autocomplete="off">
+    </div>
+
+    {% if portfolios|length > 0 %}
+        <button type="button" class="btn btn-primary js-add-symbol-btn"
+                data-command="Add asset" data-command-group="Create" data-command-icon="plus-lg">
+            <i class="bi bi-plus-lg" aria-hidden="true"></i>
+            <span>Add asset</span>
+        </button>
+    {% else %}
+        <a class="btn btn-primary" href="{{ url_for('portfolios.portfolios_list') }}">Create a portfolio first</a>
+    {% endif %}
+{% endblock %}
+
 {% block content %}
 <div class="transactions-page">
-<header class="page-header transactions-page-header">
-    <div class="transactions-toolbar d-flex align-items-center gap-2">
 
-        <!-- Portfolio filter dropdown -->
-        <div class="dropdown">
-            <button class="btn btn-outline-secondary filter-dropdown-btn dropdown-toggle" type="button"
-                    data-bs-toggle="dropdown" aria-expanded="false">
-                {{ selected_portfolio or 'All Portfolios' }}
-                <i class="bi bi-chevron-down"></i>
-            </button>
-            <ul class="dropdown-menu">
-                <li>
-                    <a class="dropdown-item {% if not selected_portfolio %}active{% endif %}"
-                       href="{{ url_for('transactions.transaction_list') }}">
-                        All Portfolios
-                    </a>
-                </li>
-                {% if portfolios %}
-                <li><hr class="dropdown-divider"></li>
-                {% for portfolio in portfolios %}
-                <li>
-                    <a class="dropdown-item {% if selected_portfolio == portfolio.name %}active{% endif %}"
-                       href="{{ url_for('transactions.transaction_list', portfolio=portfolio.name) }}">
-                        {{ portfolio.name }}
-                    </a>
-                </li>
-                {% endfor %}
-                {% endif %}
-            </ul>
-        </div>
-
-        <!-- Asset search -->
-        <div class="position-relative transactions-search">
-            <span class="position-absolute top-50 start-0 translate-middle-y ps-3 text-muted">
-                <i class="bi bi-search icon-sm"></i>
-            </span>
-            <input type="text" class="form-control ps-5 transactions-search-input" id="symbolSearch"
-                   placeholder="Search asset..."
-                   oninput="this.value = this.value.toUpperCase(); filterBySymbol(this.value);"
-                   autocomplete="off">
-        </div>
-
-        {% if portfolios|length > 0 %}
-            <button type="button" class="btn btn-primary" onclick="openAddSymbolModal()">Add Asset</button>
-        {% else %}
-            <a class="btn btn-primary" href="{{ url_for('portfolios.portfolios_list') }}">Create a portfolio first</a>
-        {% endif %}
-    </div>
-</header>
-
-<!-- Assets -->
-<div class="row transactions-symbol-list">
-    <div class="col-12">
         {% if holdings|length > 0 %}
+        <div class="disclosure enter">
             {% for item in holdings %}
             {% set symbol_key = (item.portfolio.id, item.symbol) %}
             {% set symbol_dividends = dividends_by_symbol.get(symbol_key, []) %}
             {% set symbol_dividend_total = dividend_totals.get(symbol_key, 0) %}
             {% set show_dividend_rows = symbol_dividends|length > 0 %}
-            <div class="card mb-2 symbol-card transactions-symbol-card" data-symbol="{{ item.symbol }}">
-                 <div class="card-header py-2 px-3 portfolio-header transactions-symbol-header page-accent-surface"
-                     onclick="toggleSymbolTransactions('{{ item.html_group_id }}')">
-                    <div class="row align-items-center g-1 summary-row transactions-symbol-summary-row">
-                        <div class="col-lg-2 col-md-3 d-flex align-items-center gap-2 transactions-symbol-identity">
-                            <i class="bi bi-chevron-right portfolio-chevron" id="chevron-{{ item.html_group_id }}"></i>
-                            <span class="text-dark transactions-symbol-name">{{ item.symbol }}</span>
-                            <span class="badge bg-light text-dark border">{{ item.portfolio.name }}</span>
-                        </div>
-                        <div class="col-lg-8 col-md-7 transactions-symbol-metrics">
-                            <div class="portfolio-summary columns-7">
-                                <div class="summary-item">
-                                    <div class="summary-label">ENTRIES</div>
-                                    <div class="summary-value">{{ item.summary.transaction_count + symbol_dividends|length }}</div>
-                                </div>
-                                <div class="summary-item">
-                                    <div class="summary-label">TOTAL BUY COST</div>
-                                    <div class="summary-value" title="{{ item.summary.total_buy_cost|fmt_money }}">{{ item.summary.total_buy_cost|fmt_display_money }}</div>
-                                </div>
-                                <div class="summary-item">
-                                    <div class="summary-label">QUANTITY</div>
-                                    <div class="summary-value" title="{{ item.summary.total_quantity_held|fmt_decimal }}">{{ item.summary.total_quantity_held|fmt_display_decimal }}</div>
-                                </div>
-                                <div class="summary-item">
-                                    <div class="summary-label">AVERAGE COST</div>
-                                    <div class="summary-value text-info-emphasis" title="{{ item.summary.average_cost|fmt_money(item.avg_cost_decimal_places) }}">{{ item.summary.average_cost|fmt_display_money(item.avg_cost_decimal_places) }}</div>
-                                </div>
-                                <div class="summary-item">
-                                    <div class="summary-label">REALIZED P&amp;L</div>
-                                    <div class="summary-value {% if item.summary.realized_pnl > 0 %}profit{% elif item.summary.realized_pnl < 0 %}loss{% else %}neutral{% endif %}" title="{% if item.summary.realized_pnl > 0 %}+{% endif %}{{ item.summary.realized_pnl|fmt_money }}">
-                                        {% if item.summary.realized_pnl > 0 %}+{% endif %}{{ item.summary.realized_pnl|fmt_display_money }}
-                                    </div>
-                                </div>
-                                <div class="summary-item">
-                                    <div class="summary-label">REALIZED RETURN</div>
-                                    <div class="summary-value {% if item.summary.return_percent is not none and item.summary.return_percent > 0 %}profit{% elif item.summary.return_percent is not none and item.summary.return_percent < 0 %}loss{% else %}neutral{% endif %}" title="{{ item.summary.return_display }}">
-                                        {{ '—' if item.summary.return_display == '—' else item.summary.return_percent|fmt_display_percent(signed=True) }}
-                                    </div>
-                                </div>
-                                <div class="summary-item">
-                                    <div class="summary-label">INCOME</div>
-                                    <div class="summary-value dividend" title="{% if symbol_dividend_total > 0 %}+{% endif %}{{ symbol_dividend_total|fmt_money }}">
-                                        {% if symbol_dividend_total > 0 %}+{% endif %}{{ symbol_dividend_total|fmt_display_money }}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-lg-2 col-md-2 text-end transactions-symbol-actions">
-                            <div class="btn-group btn-group-sm row-actions" role="group">
-                                <button type="button"
-                                        class="btn btn-outline-success btn-icon js-add-transaction-btn"
-                                        data-portfolio-id="{{ item.portfolio.id }}"
-                                        data-portfolio="{{ item.portfolio.name|e }}"
-                                        data-symbol="{{ item.symbol|e }}"
-                                        title="Add Asset Entry"
-                                        aria-label="Add Asset Entry"
-                                        data-bs-toggle="tooltip"
-                                        data-bs-placement="top">
-                                    <i class="bi bi-plus-lg"></i>
-                                </button>
-                                <button type="button"
-                                        class="btn btn-action-income btn-icon js-add-dividend-btn"
-                                        data-portfolio-id="{{ item.portfolio.id }}"
-                                        data-symbol="{{ item.symbol|e }}"
-                                        title="Add Income"
-                                        aria-label="Add Income"
-                                        data-bs-toggle="tooltip"
-                                        data-bs-placement="top">
-                                    <i class="bi bi-cash-stack"></i>
-                                </button>
-                                <button type="button"
-                                        class="btn btn-outline-danger btn-icon js-delete-symbol-btn"
-                                        data-portfolio-id="{{ item.portfolio.id }}"
-                                        data-portfolio="{{ item.portfolio.name|e }}"
-                                        data-symbol="{{ item.symbol|e }}"
-                                        data-tx-count="{{ item.summary.transaction_count or 0 }}"
-                                        title="Remove Asset"
-                                        aria-label="Remove Asset"
-                                        data-bs-toggle="tooltip"
-                                        data-bs-placement="top">
-                                    <i class="bi bi-trash"></i>
-                                </button>
-                            </div>
-                        </div>
+            {% set panel_id = 'transactions-' ~ item.html_group_id %}
+            <article class="disclosure__item symbol-card" data-symbol="{{ item.symbol }}">
+
+                <div class="disclosure__head">
+                    <button type="button" class="disclosure__toggle"
+                            aria-expanded="false" aria-controls="{{ panel_id }}"
+                            data-disclosure="{{ item.html_group_id }}"
+                            data-command="{{ item.symbol }} · {{ item.portfolio.name }}"
+                            data-command-group="Assets"
+                            data-command-icon="box-seam">
+                        <i class="bi bi-chevron-right disclosure__chevron" aria-hidden="true"></i>
+
+                        <span class="disclosure__identity">
+                            <span class="disclosure__name">{{ item.symbol }}</span>
+                            <span class="badge">{{ item.portfolio.name }}</span>
+                        </span>
+
+                        <span class="disclosure__metrics" style="--metric-columns:7">
+                            {% call metric('Entries') %}{{ item.summary.transaction_count + symbol_dividends|length }}{% endcall %}
+                            {% call metric('Total buy cost') %}{{ money(item.summary.total_buy_cost) }}{% endcall %}
+                            {% call metric('Quantity') %}{{ quantity(item.summary.total_quantity_held) }}{% endcall %}
+                            {% call metric('Average cost') %}{{ money(item.summary.average_cost, decimals=item.avg_cost_decimal_places) }}{% endcall %}
+                            {% call metric('Realized P&L') %}{{ money(item.summary.realized_pnl, tone='sign', signed=true) }}{% endcall %}
+                            {% call metric('Realized return') %}{{ percent(item.summary.return_percent, item.summary.return_display) }}{% endcall %}
+                            {% call metric('Income') %}{{ money(symbol_dividend_total, tone='income', signed=true) }}{% endcall %}
+                        </span>
+                    </button>
+
+                    <div class="disclosure__actions row-actions">
+                        <button type="button"
+                                class="btn btn-outline-success btn-icon js-add-transaction-btn"
+                                data-portfolio-id="{{ item.portfolio.id }}"
+                                data-portfolio="{{ item.portfolio.name|e }}"
+                                data-symbol="{{ item.symbol|e }}"
+                                title="Add entry" aria-label="Add entry for {{ item.symbol }}"
+                                data-bs-toggle="tooltip" data-bs-placement="top">
+                            <i class="bi bi-plus-lg" aria-hidden="true"></i>
+                        </button>
+                        <button type="button"
+                                class="btn btn-action-income btn-icon js-add-dividend-btn"
+                                data-portfolio-id="{{ item.portfolio.id }}"
+                                data-symbol="{{ item.symbol|e }}"
+                                title="Add income" aria-label="Add income for {{ item.symbol }}"
+                                data-bs-toggle="tooltip" data-bs-placement="top">
+                            <i class="bi bi-cash-stack" aria-hidden="true"></i>
+                        </button>
+                        <button type="button"
+                                class="btn btn-outline-danger btn-icon js-delete-symbol-btn"
+                                data-portfolio-id="{{ item.portfolio.id }}"
+                                data-portfolio="{{ item.portfolio.name|e }}"
+                                data-symbol="{{ item.symbol|e }}"
+                                data-tx-count="{{ item.summary.transaction_count or 0 }}"
+                                title="Remove asset" aria-label="Remove {{ item.symbol }}"
+                                data-bs-toggle="tooltip" data-bs-placement="top">
+                            <i class="bi bi-trash" aria-hidden="true"></i>
+                        </button>
                     </div>
                 </div>
 
-                <div class="portfolio-transactions" id="transactions-{{ item.html_group_id }}" hidden>
+                <div class="disclosure__panel" id="{{ panel_id }}" hidden>
                     {% if item.transactions|length > 0 or show_dividend_rows %}
                     <div class="table-responsive">
                         <table class="table table-sm table-hover align-middle mb-0 records-table records-table--asset-entries transactions-table dashboard-actions-table">
@@ -195,33 +164,27 @@
                                             <span class="tx-type-label tx-type-sell type-sell">Sell</span>
                                         {% endif %}
                                     </td>
-                                    <td class="records-cell records-cell--number"><small title="{{ transaction.price|fmt_money(item.price_decimal_places) }}">{{ transaction.price|fmt_display_money(item.price_decimal_places) }}</small></td>
-                                    <td class="records-cell records-cell--number"><small title="{{ transaction.quantity|fmt_decimal }}">{{ transaction.quantity|fmt_display_decimal }}</small></td>
-                                    <td class="records-cell records-cell--number"><small class="text-danger" title="{{ transaction.fees|fmt_decimal }}">{{ transaction.fees|fmt_display_decimal }}</small></td>
-                                    <td class="records-cell records-cell--number"><small class="text-primary" title="{{ transaction.net_amount|fmt_money }}">{{ transaction.net_amount|fmt_display_money }}</small></td>
+                                    <td class="records-cell records-cell--number">{{ money(transaction.price, decimals=item.price_decimal_places) }}</td>
+                                    <td class="records-cell records-cell--number">{{ quantity(transaction.quantity) }}</td>
+                                    <td class="records-cell records-cell--number"><span class="num num--flat" title="{{ transaction.fees|fmt_decimal }}">{{ transaction.fees|fmt_display_decimal }}</span></td>
+                                    <td class="records-cell records-cell--number">{{ money(transaction.net_amount) }}</td>
                                     {% if transaction.transaction_type == 'Sell' %}
-                                        {% set tx_net_pnl = transaction.net_pnl %}
-                                        {% set tx_net_pnl_pct = transaction.net_pnl_percent %}
                                         <td class="records-cell records-cell--number">
-                                            <small class="{% if tx_net_pnl > 0 %}profit{% elif tx_net_pnl < 0 %}loss{% else %}neutral{% endif %}" title="{% if tx_net_pnl > 0 %}+{% endif %}{{ tx_net_pnl|fmt_money }}">
-                                                {% if tx_net_pnl > 0 %}+{% endif %}{{ tx_net_pnl|fmt_display_money }}
-                                            </small>
+                                            {{ money(transaction.net_pnl, tone='sign', signed=true) }}
                                         </td>
                                         <td class="records-cell records-cell--number">
-                                            <small class="{% if tx_net_pnl_pct is not none and tx_net_pnl_pct > 0 %}profit{% elif tx_net_pnl_pct is not none and tx_net_pnl_pct < 0 %}loss{% else %}neutral{% endif %}"{% if tx_net_pnl_pct is not none %} title="{% if tx_net_pnl_pct > 0 %}+{% endif %}{{ tx_net_pnl_pct|fmt_money }}%"{% endif %}>
-                                                {% if tx_net_pnl_pct is not none %}{{ tx_net_pnl_pct|fmt_display_percent(signed=True) }}{% else %}—{% endif %}
-                                            </small>
+                                            {{ percent(transaction.net_pnl_percent) }}
                                         </td>
                                     {% else %}
-                                        <td class="records-cell records-cell--number"><small class="text-muted">—</small></td>
-                                        <td class="records-cell records-cell--number"><small class="text-muted">—</small></td>
+                                        <td class="records-cell records-cell--number"><span class="num num--flat">—</span></td>
+                                        <td class="records-cell records-cell--number"><span class="num num--flat">—</span></td>
                                     {% endif %}
                                     {% set tx_notes = transaction.notes or '' %}
                                     <td class="records-cell tx-notes-cell"{% if tx_notes %} title="{{ tx_notes }}"{% endif %}>
                                         <small class="text-muted">{{ tx_notes if tx_notes else '—' }}</small>
                                     </td>
                                     <td class="records-cell actions-cell">
-                                        <div class="btn-group btn-group-sm row-actions" role="group">
+                                        <div class="row-actions" role="group">
                                             <button type="button" class="btn btn-outline-primary btn-icon btn-sm js-edit-transaction-btn"
                                                     data-tx='{{ {
                                                         "id": transaction.id,
@@ -259,18 +222,18 @@
                                     <td class="records-cell">
                                         <span class="badge badge-dividend type-income">Income</span>
                                     </td>
-                                    <td class="records-cell records-cell--number"><small class="text-muted">—</small></td>
-                                    <td class="records-cell records-cell--number"><small class="text-muted">—</small></td>
-                                    <td class="records-cell records-cell--number"><small class="text-muted">—</small></td>
-                                    <td class="records-cell records-cell--number"><small class="text-primary text-income" title="{{ div.amount|fmt_money }}">{{ div.amount|fmt_display_money }}</small></td>
-                                    <td class="records-cell records-cell--number"><small class="text-muted">—</small></td>
-                                    <td class="records-cell records-cell--number"><small class="text-muted">—</small></td>
+                                    <td class="records-cell records-cell--number"><span class="num num--flat">—</span></td>
+                                    <td class="records-cell records-cell--number"><span class="num num--flat">—</span></td>
+                                    <td class="records-cell records-cell--number"><span class="num num--flat">—</span></td>
+                                    <td class="records-cell records-cell--number">{{ money(div.amount, tone='income') }}</td>
+                                    <td class="records-cell records-cell--number"><span class="num num--flat">—</span></td>
+                                    <td class="records-cell records-cell--number"><span class="num num--flat">—</span></td>
                                     {% set div_notes = div.notes or '' %}
                                     <td class="records-cell tx-notes-cell"{% if div_notes %} title="{{ div_notes }}"{% endif %}>
                                         <small class="text-muted">{{ div_notes if div_notes else '—' }}</small>
                                     </td>
                                     <td class="records-cell actions-cell">
-                                        <div class="btn-group btn-group-sm row-actions" role="group">
+                                        <div class="row-actions" role="group">
                                             <button type="button"
                                                     class="btn btn-outline-primary btn-icon btn-sm js-edit-dividend-btn"
                                                     data-div='{{ {"id": div.id, "portfolioId": div.portfolio_id, "amount": ("%.10f"|format(div.amount)), "dateShort": div.date_short, "notes": (div.notes or "")}|tojson|e }}'
@@ -295,36 +258,35 @@
                     </div>
                     <div class="tx-pagination-bar" id="pgbar-{{ item.html_group_id }}"></div>
                     {% else %}
-                    <div class="p-3 text-center help-message transactions-inline-empty page-accent-surface">
+                    <p class="inline-empty">
                         <button type="button" class="btn btn-action-positive btn-sm js-add-transaction-btn"
                                 data-portfolio-id="{{ item.portfolio.id }}"
                                 data-portfolio="{{ item.portfolio.name|e }}"
                                 data-symbol="{{ item.symbol|e }}">
-                            <i class="bi bi-plus-lg"></i> Add Entry
+                            <i class="bi bi-plus-lg" aria-hidden="true"></i> Add entry
                         </button>
-                    </div>
+                    </p>
                     {% endif %}
                 </div>
-            </div>
+            </article>
             {% endfor %}
-        <div id="outer-pg-bar" class="tx-pagination-bar mt-1 px-1"></div>
+        </div>
+        <div id="outer-pg-bar" class="tx-pagination-bar"></div>
+
         {% else %}
-        <div class="empty-state transactions-empty-state">
-            <div class="transactions-empty-icon" aria-hidden="true">
-                <i class="bi bi-plus-square"></i>
-            </div>
-            <h2 class="empty-state-title">No assets yet</h2>
-            <p class="empty-state-text">Add an asset, then record manual buy, sell, and income activity.</p>
+        {% call empty_state('plus-square', 'No assets yet',
+            'Add an asset, then record manual buy, sell, and income activity.') %}
             {% if portfolios|length > 0 %}
-            <button type="button" class="btn btn-primary" onclick="openAddSymbolModal()">Add Asset</button>
+            <button type="button" class="btn btn-primary js-add-symbol-btn">
+                <i class="bi bi-plus-lg" aria-hidden="true"></i>
+                <span>Add asset</span>
+            </button>
             {% else %}
             <a class="btn btn-primary" href="{{ url_for('portfolios.portfolios_list') }}">Create a portfolio first</a>
             {% endif %}
-        </div>
+        {% endcall %}
         {% endif %}
 
-    </div>
-</div>
 </div>
 
 <!-- Add Asset Modal -->
@@ -862,6 +824,22 @@ function filterBySymbol(query) {
     if (window.refreshOuterPagination) window.refreshOuterPagination(true);
 }
 
+// Search and "Add asset" are wired here rather than through inline
+// attributes so the markup stays free of behaviour.
+(function wireToolbar() {
+    var search = document.getElementById('symbolSearch');
+    if (search) {
+        search.addEventListener('input', function () {
+            this.value = this.value.toUpperCase();
+            filterBySymbol(this.value);
+        });
+    }
+
+    document.addEventListener('click', function (event) {
+        if (event.target.closest('.js-add-symbol-btn')) openAddSymbolModal();
+    });
+}());
+
 function openAddSymbolModal() {
     const modalEl = document.getElementById('addSymbolModal');
     const symbolInput = document.getElementById('symbol_ticker');
@@ -1130,36 +1108,37 @@ function openAddSymbolModal() {
         return new Set();
     }());
 
-    // Apply immediately — no DOMContentLoaded needed, script is at end of body
-    openSet.forEach(function (id) {
-        var d = document.getElementById('transactions-' + id);
-        var c = document.getElementById('chevron-' + id);
-        if (d) d.hidden = false;
-        if (c) { c.classList.remove('bi-chevron-right'); c.classList.add('bi-chevron-down'); }
-        if (window.initSymbolPagination) window.initSymbolPagination(id);
-    });
+    function setOpen(groupId, open) {
+        var panel = document.getElementById('transactions-' + groupId);
+        var toggle = document.querySelector('[data-disclosure="' + groupId + '"]');
+        if (!panel || !toggle) return;
 
-    function save() {
-        sessionStorage.setItem(SK, JSON.stringify([...openSet]));
-        sessionStorage.setItem(RK, window.location.href);
-    }
+        panel.hidden = !open;
+        toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
 
-    window.toggleSymbolTransactions = function (groupId) {
-        var d = document.getElementById('transactions-' + groupId);
-        var c = document.getElementById('chevron-' + groupId);
-        if (!d || !c) return;
-        if (d.hidden) {
-            d.hidden = false;
-            c.classList.replace('bi-chevron-right', 'bi-chevron-down');
+        if (open) {
             openSet.add(groupId);
             if (window.initSymbolPagination) window.initSymbolPagination(groupId);
         } else {
-            d.hidden = true;
-            c.classList.replace('bi-chevron-down', 'bi-chevron-right');
             openSet.delete(groupId);
         }
-        save();
-    };
+    }
+
+    // Applied immediately — this script runs at the end of <body>.
+    openSet.forEach(function (id) { setOpen(id, true); });
+
+    document.addEventListener('click', function (event) {
+        var toggle = event.target.closest('[data-disclosure]');
+        if (!toggle) return;
+
+        var groupId = toggle.getAttribute('data-disclosure');
+        setOpen(groupId, toggle.getAttribute('aria-expanded') !== 'true');
+
+        try {
+            sessionStorage.setItem(SK, JSON.stringify([...openSet]));
+            sessionStorage.setItem(RK, window.location.href);
+        } catch (e) {}
+    });
 }());
 
 function openAddTransactionModal(portfolioId, portfolioName, symbol, forcedType) {

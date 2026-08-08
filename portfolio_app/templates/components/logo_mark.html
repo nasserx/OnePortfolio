@@ -1,17 +1,26 @@
+{#
+  Brand mark.
+
+  Both monochrome variants are rendered and CSS reveals the one matching the
+  active theme (see components.css § 15). That keeps the mark correct when
+  the user flips themes at runtime, with no flash and no JS.
+
+  Params:
+    logo_size        px, applied to width and height   (default 32)
+    logo_class       extra classes on both <img>       (default 'op-logo-mark')
+    logo_decorative  hide from assistive tech          (default true)
+    logo_alt         alt text when not decorative
+#}
 {% set brand_logo_size = logo_size|default(32) %}
+{% set brand_logo_class = logo_class|default('op-logo-mark') %}
 {% set brand_logo_decorative = logo_decorative|default(true) %}
-{% set brand_logo_surface = logo_surface|default('light') %}
-{% set brand_logo_asset = 'icons/favicon-dark.svg' if brand_logo_surface == 'dark' else 'icons/favicon-light.svg' %}
+{% for variant in ['light', 'dark'] %}
 <img
-    src="{{ url_for('static', filename=brand_logo_asset) }}"
+    src="{{ url_for('static', filename='icons/favicon-' ~ variant ~ '.svg') }}"
     width="{{ brand_logo_size }}"
     height="{{ brand_logo_size }}"
-    class="brand-logo {{ logo_class|default('op-logo-mark') }}"
-    {% if brand_logo_decorative %}
-        alt=""
-        aria-hidden="true"
-    {% else %}
-        alt="{{ logo_alt|default('OnePortfolio') }}"
-    {% endif %}
+    class="brand-logo brand-logo--{{ variant }} {{ brand_logo_class }}"
+    {% if brand_logo_decorative %}alt="" aria-hidden="true"{% else %}alt="{{ logo_alt|default('OnePortfolio') }}"{% endif %}
     decoding="async"
 >
+{% endfor %}

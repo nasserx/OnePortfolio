@@ -16,6 +16,7 @@ The mail layer is monkey-patched (``send_verification_email`` /
 ``send_reset_email``) so no SMTP is ever attempted.
 """
 
+import re
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -460,12 +461,17 @@ class TestAuthUiAndGoogle:
         assert resp.status_code == 200
         body = resp.get_data(as_text=True)
 
-        assert 'class="btn-nav-login" href="/login"' in body
-        assert 'class="btn-nav-signup" href="/register"' in body
-        assert 'class="btn-cta-secondary" href="/login"' in body
-        assert 'class="btn-cta-primary" href="/register"' in body
-        assert 'Log In' in body
-        assert 'Sign Up' in body
+        # Auth actions are plain links to the dedicated pages — never a modal
+        # or an inline form. Class names are presentation and not asserted.
+        login_links = re.findall(r'<a[^>]*href="/login"', body)
+        register_links = re.findall(r'<a[^>]*href="/register"', body)
+
+        # Header and closing call-to-action, at minimum.
+        assert len(login_links) >= 2
+        assert len(register_links) >= 2
+
+        assert 'Log in' in body
+        assert 'Sign up' in body
         assert 'Create Account' not in body
         assert 'dashboard-mockup' not in body
         assert 'Symbol Performance' not in body

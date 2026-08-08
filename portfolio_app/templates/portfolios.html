@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from 'macros/ui.html' import money, metric, marker, empty_state %}
 
 {% set _add_errs = (form_errors.get('portfolios_add', {}) if form_errors else {}) %}
 {% set _add_vals = (form_values.get('portfolios_add', {}) if form_values else {}) %}
@@ -13,94 +14,85 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
 {% endblock %}
 
+{% block page_title %}Portfolios{% endblock %}
+
+{% block page_actions %}
+<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newPortfolioModal"
+        data-command="New portfolio" data-command-group="Create" data-command-icon="plus-lg">
+    <i class="bi bi-plus-lg" aria-hidden="true"></i>
+    <span>New portfolio</span>
+</button>
+{% endblock %}
+
 {% block content %}
 <div class="portfolios-page">
-<header class="page-header portfolios-page-header">
-    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newPortfolioModal">
-        New Portfolio
-    </button>
-</header>
 
-<div class="row portfolios-list">
-    <div class="col-12">
-        {% if portfolio_details %}
-            {% for item in portfolio_details %}
-            <div class="card mb-2 portfolio-card portfolio-list-card">
+    {% if portfolio_details %}
+    <div class="disclosure enter">
+        {% for item in portfolio_details %}
+        {% set panel_id = 'events-' ~ item.portfolio.id %}
+        <article class="disclosure__item portfolio-card">
 
-                <!-- Clickable header -->
-                <div class="card-header py-2 px-3 portfolio-header portfolio-primary-header page-accent-surface"
-                     onclick="togglePortfolioEvents('{{ item.portfolio.id }}')">
-                    <div class="row align-items-center g-1 summary-row portfolio-primary-row">
+            <div class="disclosure__head">
+                {#
+                  The whole summary is one button so it is reachable by
+                  keyboard and announces its own state. Row actions sit
+                  outside it — nesting them would make them unclickable.
+                #}
+                <button type="button" class="disclosure__toggle"
+                        aria-expanded="false" aria-controls="{{ panel_id }}"
+                        data-disclosure="{{ item.portfolio.id }}"
+                        data-command="Portfolio: {{ item.portfolio.name }}"
+                        data-command-group="Portfolios"
+                        data-command-icon="wallet2">
+                    <i class="bi bi-chevron-right disclosure__chevron" aria-hidden="true"></i>
 
-                        <!-- Name + chevron -->
-                        <div class="col-lg-3 col-md-3 d-flex align-items-center gap-2 portfolio-identity">
-                            <i class="bi bi-chevron-right portfolio-chevron" id="chevron-{{ item.portfolio.id }}"></i>
-                            <span class="portfolio-name">{{ item.portfolio.name }}</span>
-                        </div>
+                    <span class="disclosure__identity">
+                        {{ marker(item.portfolio.name, loop.index0) }}
+                        <span class="disclosure__name">{{ item.portfolio.name }}</span>
+                    </span>
 
-                        <!-- Metrics -->
-                        <div class="col-lg-7 col-md-5 portfolio-primary-metrics">
-                            <div class="portfolio-summary columns-5">
-                                <div class="summary-item">
-                                    <div class="summary-label">CAPITAL ENTRIES</div>
-                                    <div class="summary-value">{{ item.events|length }}</div>
-                                </div>
-                                <div class="summary-item">
-                                    <div class="summary-label">TOTAL CAPITAL</div>
-                                    <div class="summary-value" title="{{ item.total_capital|fmt_money }}">{{ item.total_capital|fmt_display_money }}</div>
-                                </div>
-                                <div class="summary-item">
-                                    <div class="summary-label">TOTAL CASH</div>
-                                    <div class="summary-value" title="{{ item.withdrawable_cash|fmt_money }}">{{ item.withdrawable_cash|fmt_display_money }}</div>
-                                </div>
-                                <div class="summary-item">
-                                    <div class="summary-label">POSITIONS</div>
-                                    <div class="summary-value" title="{{ item.positions|fmt_money }}">{{ item.positions|fmt_display_money }}</div>
-                                </div>
-                                <div class="summary-item">
-                                    <div class="summary-label">BOOK VALUE</div>
-                                    <div class="summary-value" title="{{ item.book_value|fmt_money }}">{{ item.book_value|fmt_display_money }}</div>
-                                </div>
-                            </div>
-                        </div>
+                    <span class="disclosure__metrics">
+                        {% call metric('Capital entries') %}{{ item.events|length }}{% endcall %}
+                        {% call metric('Total capital') %}{{ money(item.total_capital) }}{% endcall %}
+                        {% call metric('Total cash') %}{{ money(item.withdrawable_cash) }}{% endcall %}
+                        {% call metric('Positions') %}{{ money(item.positions) }}{% endcall %}
+                        {% call metric('Book value') %}{{ money(item.book_value) }}{% endcall %}
+                    </span>
+                </button>
 
-                        <!-- Actions -->
-                        <div class="col-lg-2 col-md-4 text-end portfolio-summary-actions">
-                            <div class="btn-group btn-group-sm row-actions" role="group">
-                                <button type="button"
-                                        class="btn btn-outline-success btn-icon js-deposit-funds-btn"
-                                        data-portfolio-id="{{ item.portfolio.id }}"
-                                        data-name="{{ item.portfolio.name|e }}"
-                                        title="Deposit"
-                                        data-bs-toggle="tooltip" data-bs-placement="top">
-                                    <i class="bi bi-arrow-down-circle"></i>
-                                </button>
-                                <button type="button"
-                                        class="btn btn-outline-danger btn-icon js-withdraw-funds-btn"
-                                        data-portfolio-id="{{ item.portfolio.id }}"
-                                        data-name="{{ item.portfolio.name|e }}"
-                                        data-withdrawable-cash="{{ item.withdrawable_cash|fmt_money }}"
-                                        data-withdrawable-cash-input="{{ item.withdrawable_cash|fmt_money }}"
-                                        title="Withdraw"
-                                        data-bs-toggle="tooltip" data-bs-placement="top">
-                                    <i class="bi bi-arrow-up-circle"></i>
-                                </button>
-                                <button type="button"
-                                        class="btn btn-outline-danger btn-icon js-delete-portfolio-btn"
-                                        data-portfolio-id="{{ item.portfolio.id }}"
-                                        data-name="{{ item.portfolio.name|e }}"
-                                        title="Remove Portfolio"
-                                        data-bs-toggle="tooltip" data-bs-placement="top">
-                                    <i class="bi bi-trash"></i>
-                                </button>
-                            </div>
-                        </div>
-
-                    </div>
+                <div class="disclosure__actions row-actions">
+                    <button type="button"
+                            class="btn btn-outline-success btn-icon js-deposit-funds-btn"
+                            data-portfolio-id="{{ item.portfolio.id }}"
+                            data-name="{{ item.portfolio.name|e }}"
+                            title="Deposit" aria-label="Deposit into {{ item.portfolio.name }}"
+                            data-bs-toggle="tooltip" data-bs-placement="top">
+                        <i class="bi bi-arrow-down-circle" aria-hidden="true"></i>
+                    </button>
+                    <button type="button"
+                            class="btn btn-outline-danger btn-icon js-withdraw-funds-btn"
+                            data-portfolio-id="{{ item.portfolio.id }}"
+                            data-name="{{ item.portfolio.name|e }}"
+                            data-withdrawable-cash="{{ item.withdrawable_cash|fmt_money }}"
+                            data-withdrawable-cash-input="{{ item.withdrawable_cash|fmt_money }}"
+                            title="Withdraw" aria-label="Withdraw from {{ item.portfolio.name }}"
+                            data-bs-toggle="tooltip" data-bs-placement="top">
+                        <i class="bi bi-arrow-up-circle" aria-hidden="true"></i>
+                    </button>
+                    <button type="button"
+                            class="btn btn-outline-danger btn-icon js-delete-portfolio-btn"
+                            data-portfolio-id="{{ item.portfolio.id }}"
+                            data-name="{{ item.portfolio.name|e }}"
+                            title="Remove portfolio" aria-label="Remove {{ item.portfolio.name }}"
+                            data-bs-toggle="tooltip" data-bs-placement="top">
+                        <i class="bi bi-trash" aria-hidden="true"></i>
+                    </button>
                 </div>
+            </div>
 
-                <!-- Capital log table (collapsed by default) -->
-                <div class="portfolio-transactions portfolio-cash-events" id="events-{{ item.portfolio.id }}" hidden>
+            <!-- Capital log (collapsed by default) -->
+            <div class="disclosure__panel portfolio-cash-events" id="{{ panel_id }}" hidden>
                     {% if item.events %}
                     <div class="table-responsive">
                         <table class="table table-sm table-hover align-middle mb-0 records-table records-table--portfolio-events transactions-table dashboard-actions-table portfolio-events-table">
@@ -132,16 +124,14 @@
                                         {% endif %}
                                     </td>
                                     <td class="records-cell records-cell--number">
-                                        <small class="{% if event.amount_delta > 0 %}profit{% elif event.amount_delta < 0 %}loss{% else %}neutral{% endif %}" title="{% if event.amount_delta > 0 %}+{% endif %}{{ event.amount_delta|fmt_money }}">
-                                            {% if event.amount_delta > 0 %}+{% endif %}{{ event.amount_delta|fmt_display_money }}
-                                        </small>
+                                        {{ money(event.amount_delta, tone='sign', signed=true) }}
                                     </td>
                                     {% set event_notes = event.notes or '' %}
                                     <td class="records-cell portfolio-event-notes"{% if event_notes %} title="{{ event_notes }}"{% endif %}>
                                         <small class="text-muted">{{ event_notes if event_notes else '—' }}</small>
                                     </td>
                                     <td class="records-cell actions-cell">
-                                        <div class="btn-group btn-group-sm row-actions" role="group">
+                                        <div class="row-actions" role="group">
                                             <button type="button"
                                                     class="btn btn-outline-primary btn-icon btn-sm js-edit-portfolio-event-btn"
                                                     data-event='{{ {
@@ -172,30 +162,25 @@
                     </div>
                     <div class="tx-pagination-bar" id="pgbar-ev-{{ item.portfolio.id }}"></div>
                     {% else %}
-                    <div class="portfolio-inline-empty page-accent-surface">
-                        <small>No capital entries yet. Use Deposit to add funds.</small>
-                    </div>
+                    <p class="inline-empty">No capital entries yet. Use Deposit to add funds.</p>
                     {% endif %}
                 </div>
 
-            </div>
-            {% endfor %}
-        <div id="outer-pg-bar-portfolios" class="tx-pagination-bar mt-1 px-1"></div>
-        {% else %}
-        <div class="empty-state portfolios-empty-state">
-            <div class="portfolios-empty-icon" aria-hidden="true">
-                <i class="bi bi-folder-plus"></i>
-            </div>
-            <h2 class="empty-state-title">No portfolios yet</h2>
-            <p class="empty-state-text">Create your first portfolio to start recording capital entries and transactions manually.</p>
-            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newPortfolioModal">
-                <i class="bi bi-plus-lg" aria-hidden="true"></i>
-                <span>Create Portfolio</span>
-            </button>
-        </div>
-        {% endif %}
+        </article>
+        {% endfor %}
     </div>
-</div>
+    <div id="outer-pg-bar-portfolios" class="tx-pagination-bar"></div>
+
+    {% else %}
+    {% call empty_state('folder-plus', 'No portfolios yet',
+        'Create your first portfolio to start recording capital entries and asset activity.') %}
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newPortfolioModal">
+            <i class="bi bi-plus-lg" aria-hidden="true"></i>
+            <span>Create portfolio</span>
+        </button>
+    {% endcall %}
+    {% endif %}
+
 </div>
 
 <!-- ── Deposit Modal ───────────────────────────────────────────────── -->
@@ -635,6 +620,9 @@
 }());
 
 // ── Expand / Collapse ─────────────────────────────────────────────
+// The summary row is a real <button aria-expanded>; the chevron rotates
+// from CSS off that state, so this only has to move `hidden` and remember
+// which rows were open across a same-page reload.
 (function () {
     var SK = 'portfoliosOpen', RK = 'portfoliosOpenRef';
 
@@ -650,35 +638,39 @@
         return new Set();
     }());
 
-    openSet.forEach(function (id) {
-        var d = document.getElementById('events-' + id);
-        var c = document.getElementById('chevron-' + id);
-        if (d) d.hidden = false;
-        if (c) { c.classList.replace('bi-chevron-right', 'bi-chevron-down'); }
-        if (window.initPortfolioPagination) window.initPortfolioPagination(id);
-    });
+    function panelFor(id) { return document.getElementById('events-' + id); }
+    function toggleFor(id) { return document.querySelector('[data-disclosure="' + id + '"]'); }
 
-    function save() {
-        sessionStorage.setItem(SK, JSON.stringify([...openSet]));
-        sessionStorage.setItem(RK, window.location.href);
+    function setOpen(id, open) {
+        var panel = panelFor(id);
+        var toggle = toggleFor(id);
+        if (!panel || !toggle) return;
+
+        panel.hidden = !open;
+        toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+
+        if (open) {
+            openSet.add(String(id));
+            if (window.initPortfolioPagination) window.initPortfolioPagination(String(id));
+        } else {
+            openSet.delete(String(id));
+        }
     }
 
-    window.togglePortfolioEvents = function (portfolioId) {
-        var d = document.getElementById('events-' + portfolioId);
-        var c = document.getElementById('chevron-' + portfolioId);
-        if (!d || !c) return;
-        if (d.hidden) {
-            d.hidden = false;
-            c.classList.replace('bi-chevron-right', 'bi-chevron-down');
-            openSet.add(String(portfolioId));
-            if (window.initPortfolioPagination) window.initPortfolioPagination(String(portfolioId));
-        } else {
-            d.hidden = true;
-            c.classList.replace('bi-chevron-down', 'bi-chevron-right');
-            openSet.delete(String(portfolioId));
-        }
-        save();
-    };
+    openSet.forEach(function (id) { setOpen(id, true); });
+
+    document.addEventListener('click', function (event) {
+        var toggle = event.target.closest('[data-disclosure]');
+        if (!toggle) return;
+
+        var id = toggle.getAttribute('data-disclosure');
+        setOpen(id, toggle.getAttribute('aria-expanded') !== 'true');
+
+        try {
+            sessionStorage.setItem(SK, JSON.stringify([...openSet]));
+            sessionStorage.setItem(RK, window.location.href);
+        } catch (e) {}
+    });
 }());
 
 // ── Deposit / Withdraw / Delete Portfolio ─────────────────────────

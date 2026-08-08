@@ -14,6 +14,32 @@ Three rules decide most design questions. When in doubt, apply them in order.
    marker. Everything else is neutral.
    Those two roles need *different* violets in dark mode — see
    [`--brand` vs `--brand-solid`](#brand-vs-brand-solid).
+
+   **A button is not a value, so a button does not get a value's colour.**
+   Every action in the product is `.btn-primary` — deposit, withdraw, buy,
+   sell, record income, save, create. The single exception is destruction:
+   `.btn-danger` and `.btn-outline-danger`, where red is a warning rather
+   than a quantity. There is deliberately no `.btn-success` and no
+   `.btn-warning` to reach for. A green *Record Deposit* button beside a red
+   *Record Withdraw* button read as a gain and a loss, which is what neither
+   of them is: both are entries the user chose to make, and the sign belongs
+   to the figure they produce, not to the control that produced it.
+
+   Violet is therefore what an action looks like, filled or not: the primary
+   button, the active nav marker, and `.btn-icon` — the row actions, which
+   take the brand colour on no surface at all. The tint is what makes a line
+   of small glyphs read as controls rather than as decoration beside the
+   figures, and `--brand` clears 4.5:1 on every surface, so it can carry
+   that with no fill and no border behind it.
+
+   **Hover is the one place a control may borrow a value's colour, because
+   there it means something different.** A resting colour claims "this
+   control is of that kind"; a hover colour says "this is what will happen
+   if you press it" — and only the second is true of a deposit. So
+   `.btn-icon--pos`, `--neg` and `--income` tint on hover only, in the exact
+   roles the resulting figures will be printed in: a deposit adds, a
+   withdrawal subtracts, income is income. Destruction keeps its warning on
+   `.btn-outline-danger`, since it is previewing loss rather than an entry.
 2. **One hero number per screen.** A screen with five equally-weighted figures
    has no reading order. Promote one; demote the rest to supporting facts.
 3. **Density is a preference, not a constant.** Never hard-code a compact size —
@@ -30,17 +56,37 @@ accident:
 - **Row actions appear on engagement.** Edit/delete controls are `opacity: 0`
   until their own row is hovered or focused. They keep their layout space, stay
   in the tab order, and are permanently visible under `@media (hover: none)`.
+  In a row of them, **only the destructive one carries a colour** — the rest
+  are neutral and say what they do with their icon and their tooltip. Note
+  that `.btn-icon` sets its own colour at rest *and* on hover, so an outline
+  variant on one shows through only where `components.css` restores it
+  explicitly; there is one such rule, and it is for `.btn-outline-danger`.
+- **A number must never sit next to a control.** Where a table ends in an
+  action column, that column is a fixed track wider than its content, so the
+  surplus becomes a gutter between the data and the things that act on it.
+  Sized to `auto` it collapses onto the last figure, and a value one 12px gap
+  from a button reads as belonging to it.
+- **Two tables stacked in one card share their edges, not their columns.**
+  A disclosure's summary row and the record table inside it hold different
+  things and can never align column-for-column. What they can align is where
+  their data stops and where their controls start: `--row-actions-w` is that
+  right-hand zone, declared once on `.disclosure` and consumed by both. The
+  panel is also inset by `--space-4 − --cell-pad-x`, because a row pads
+  itself at the edges while a table pads inside each cell — miss that and
+  both rows sit 16px out of true down their whole length.
 - **The allocation ring shows four slices plus a grouped remainder.** Past four
   wedges the small ones become unlabelable slivers. Full per-portfolio detail
   lives in the summary table directly below, so nothing is hidden — only
   simplified. The cap is `ALLOCATION_TOP_N` in
   `calculators/allocation_charts.py`.
-- **Figures are right-aligned wherever a column repeats.** Tables and the
-  disclosure metric strips both read vertically, card against card, so the
-  decimal points must stack. Left-aligned numbers let them wander by tens of
-  pixels. The overview hero's supporting facts are the exception and stay
-  left-aligned: each is a label/value *pair*, not a column, and right-aligning
-  a value across a half-card-wide cell would strand it away from its own label.
+- **Figures are right-aligned wherever a column of them is meant to be
+  compared.** That is the full ledger on the Overview: it reads vertically,
+  row against row, so the decimal points must stack. Left-aligned numbers let
+  them wander by tens of pixels.
+  Where the unit being read is a label/value *pair* rather than a column, it
+  centres instead — the disclosure summary strips — or stays left, as in the
+  overview hero's supporting facts. The test is what the reader is comparing:
+  a figure against the figure above it, or a figure against its own label.
 - **A column heading and its data must be the same column, structurally.**
   Alignment is not a `text-align` question. If a header row and its body rows
   are separate grid containers, each resolves its own track sizes and any
@@ -98,6 +144,15 @@ Bootstrap's utilities (`.text-muted`, `.d-none`, `.mb-3`, …) still win over ou
 layered rules. That is deliberate — utilities should win. When one of those
 utilities needs to change colour, drive it through its `--bs-*` variable in the
 bridge at the bottom of `tokens.css` rather than trying to out-cascade it.
+
+**Which is exactly why a utility must never be stapled to an element a
+component already styles.** It does not merge with the component's decision;
+it silently outranks it, and nothing in the stylesheet shows that it happened.
+Three cases had drifted this way: `.text-muted` on the withdraw hint rendered
+it a full step darker than every other hint on the same form, and
+`border-0 text-secondary` on the pagination arrows overrode the colour and
+border `.tx-pagination-bar .btn` had already set. If a component gets the
+wrong colour, change the component.
 
 ## Tokens
 
@@ -198,9 +253,25 @@ transitions with its own. Entrances use `animation` for exactly this reason —
 and with `animation-fill-mode: backwards`, not `forwards`, so the final
 keyframe does not outrank a later hover transform and leave the element inert.
 
+**Charts are the one place a long duration is right.** The allocation ring
+draws itself once, when a page of numbers first appears, and it takes 1150ms
+on `easeInOutQuart` — slow enough to be watched, and eased at *both* ends so
+the sweep reads as deliberate rather than as dragging to a halt. Ease-out
+alone at that length looks sluggish; ease-in-out spends its speed in the
+middle, where it is not perceived as waiting. Everything the reader triggers
+afterwards answers on its own short transition (`legendToggle`, 300ms):
+replaying an entrance on every legend click puts their input behind an
+animation they have already seen.
+
 Contrast is enforced by `tests/test_design_tokens_contrast.py`, which parses
 `tokens.css` directly. A palette tweak that drops any text role below its floor
 fails the suite rather than shipping.
+
+**The quiet text step sits the same distance above the floor in both themes.**
+`--fg-subtle` is what field help, character counters and column headings use,
+and it is deliberately close to 4.5:1 — 4.65 light, 4.73 dark. It cannot go
+lighter; that *is* the lightest readable step, and anything quieter belongs to
+`--fg-faint`, which is for text nobody has to read.
 
 ## Numbers in templates
 

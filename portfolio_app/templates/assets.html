@@ -94,7 +94,7 @@
 
                     <div class="disclosure__actions row-actions">
                         <button type="button"
-                                class="btn btn-outline-success btn-icon js-add-transaction-btn"
+                                class="btn btn-icon js-add-transaction-btn"
                                 data-portfolio-id="{{ item.portfolio.id }}"
                                 data-portfolio="{{ item.portfolio.name|e }}"
                                 data-symbol="{{ item.symbol|e }}"
@@ -103,7 +103,7 @@
                             <i class="bi bi-plus-lg" aria-hidden="true"></i>
                         </button>
                         <button type="button"
-                                class="btn btn-action-income btn-icon js-add-dividend-btn"
+                                class="btn btn-icon btn-icon--income js-add-dividend-btn"
                                 data-portfolio-id="{{ item.portfolio.id }}"
                                 data-symbol="{{ item.symbol|e }}"
                                 title="Add income" aria-label="Add income for {{ item.symbol }}"
@@ -150,7 +150,7 @@
                                     <th class="small records-cell records-cell--number">Realized P&amp;L</th>
                                     <th class="small records-cell records-cell--number">Return</th>
                                     <th class="small records-cell">Notes</th>
-                                    <th class="small records-cell">Actions</th>
+                                    <th class="small records-cell records-cell--actions">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -183,9 +183,9 @@
                                     <td class="records-cell tx-notes-cell"{% if tx_notes %} title="{{ tx_notes }}"{% endif %}>
                                         <small class="text-muted">{{ tx_notes if tx_notes else '—' }}</small>
                                     </td>
-                                    <td class="records-cell actions-cell">
+                                    <td class="records-cell records-cell--actions actions-cell">
                                         <div class="row-actions" role="group">
-                                            <button type="button" class="btn btn-outline-primary btn-icon btn-sm js-edit-transaction-btn"
+                                            <button type="button" class="btn btn-icon btn-sm js-edit-transaction-btn"
                                                     data-tx='{{ {
                                                         "id": transaction.id,
                                                         "portfolioId": transaction.portfolio_id,
@@ -232,10 +232,10 @@
                                     <td class="records-cell tx-notes-cell"{% if div_notes %} title="{{ div_notes }}"{% endif %}>
                                         <small class="text-muted">{{ div_notes if div_notes else '—' }}</small>
                                     </td>
-                                    <td class="records-cell actions-cell">
+                                    <td class="records-cell records-cell--actions actions-cell">
                                         <div class="row-actions" role="group">
                                             <button type="button"
-                                                    class="btn btn-outline-primary btn-icon btn-sm js-edit-dividend-btn"
+                                                    class="btn btn-icon btn-sm js-edit-dividend-btn"
                                                     data-div='{{ {"id": div.id, "portfolioId": div.portfolio_id, "amount": ("%.10f"|format(div.amount)), "dateShort": div.date_short, "notes": (div.notes or "")}|tojson|e }}'
                                                     title="Edit" aria-label="Edit"
                                                     data-bs-toggle="tooltip" data-bs-placement="top">
@@ -259,7 +259,7 @@
                     <div class="tx-pagination-bar" id="pgbar-{{ item.html_group_id }}"></div>
                     {% else %}
                     <p class="inline-empty">
-                        <button type="button" class="btn btn-action-positive btn-sm js-add-transaction-btn"
+                        <button type="button" class="btn btn-secondary btn-sm js-add-transaction-btn"
                                 data-portfolio-id="{{ item.portfolio.id }}"
                                 data-portfolio="{{ item.portfolio.name|e }}"
                                 data-symbol="{{ item.symbol|e }}">
@@ -711,7 +711,7 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="submit" class="btn btn-action-income" id="add_div_submit_btn">Record Income</button>
+                    <button type="submit" class="btn btn-primary" id="add_div_submit_btn">Record Income</button>
                 </div>
             </form>
         </div>
@@ -989,9 +989,9 @@ function openAddSymbolModal() {
         bar.style.display = 'flex';
         bar.innerHTML =
             '<div class="tx-pg-indicator">' +
-                '<button class="btn btn-sm tx-pg-prev px-1 py-0 border-0 text-secondary"' + (page <= 1 ? ' disabled' : '') + ' data-gid="' + groupId + '">&#8249;</button>' +
+                '<button class="btn btn-sm tx-pg-prev px-1 py-0"' + (page <= 1 ? ' disabled' : '') + ' data-gid="' + groupId + '">&#8249;</button>' +
                 nums +
-                '<button class="btn btn-sm tx-pg-next px-1 py-0 border-0 text-secondary"' + (page >= totalPages ? ' disabled' : '') + ' data-gid="' + groupId + '">&#8250;</button>' +
+                '<button class="btn btn-sm tx-pg-next px-1 py-0"' + (page >= totalPages ? ' disabled' : '') + ' data-gid="' + groupId + '">&#8250;</button>' +
             '</div>';
     }
 
@@ -1071,9 +1071,9 @@ function openAddSymbolModal() {
         bar.style.display = 'flex';
         bar.innerHTML =
             '<div class="tx-pg-indicator">' +
-                '<button class="btn btn-sm px-1 py-0 border-0 text-secondary outer-pg-prev"' + (currentPage <= 1 ? ' disabled' : '') + '>&#8249;</button>' +
+                '<button class="btn btn-sm px-1 py-0 outer-pg-prev"' + (currentPage <= 1 ? ' disabled' : '') + '>&#8249;</button>' +
                 nums +
-                '<button class="btn btn-sm px-1 py-0 border-0 text-secondary outer-pg-next"' + (currentPage >= totalPages ? ' disabled' : '') + '>&#8250;</button>' +
+                '<button class="btn btn-sm px-1 py-0 outer-pg-next"' + (currentPage >= totalPages ? ' disabled' : '') + '>&#8250;</button>' +
             '</div>';
     }
 

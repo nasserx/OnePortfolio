@@ -48,14 +48,17 @@ FOREGROUNDS = {
 SURFACES = ('bg-canvas', 'bg-surface', 'bg-raised', 'bg-inset')
 
 # Solid buttons: (fill role, label role, hover fill role, veiled on hover?).
-# The semantic solids hover by painting `--solid-hover-veil` over their fill,
-# so that veil is part of the shipped hover colour and part of this check.
+# Only two ship. Every action in the product is `.btn-primary` except the
+# ones that destroy something, which are `.btn-danger` — green and amber
+# fills were retired because green, red and amber mean a signed financial
+# value here, and a button is not a value.
+#
+# `.btn-danger` hovers by painting `--solid-hover-veil` over its fill, so
+# that veil is part of the shipped hover colour and part of this check.
 # `.btn-primary` is excluded from that rule — it swaps its fill instead.
 SOLID_BUTTONS = (
     ('brand-solid', 'fg-on-brand', 'brand-solid-hover', False),
-    ('pos', 'fg-on-solid', 'pos', True),
     ('neg', 'fg-on-solid', 'neg', True),
-    ('warn', 'fg-on-solid', 'warn', True),
 )
 
 

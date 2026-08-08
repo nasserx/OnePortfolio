@@ -110,14 +110,15 @@
     --btn-line-hover: var(--brand-solid-hover);
   }
 
-  .btn-success {
-    --btn-bg: var(--pos);
-    --btn-fg: var(--fg-on-solid);
-    --btn-line: var(--pos);
-    --btn-bg-hover: var(--pos);
-    --btn-line-hover: var(--pos);
-  }
+  /* The only solid that is not the brand. Red here is not decoration and
+     not a category — it is the warning on a button that destroys something,
+     and it is the last colour left in this file that a *control* may carry.
 
+     There is deliberately no `.btn-success` and no `.btn-warning`. Green,
+     red and amber mean a signed financial value in this product; borrowing
+     them for actions was what made a deposit look like a gain and a
+     withdrawal look like a loss, when both are just entries the user chose
+     to make. Every action that is not destructive is `.btn-primary`. */
   .btn-danger {
     --btn-bg: var(--neg);
     --btn-fg: var(--fg-on-solid);
@@ -126,26 +127,16 @@
     --btn-line-hover: var(--neg);
   }
 
-  .btn-warning {
-    --btn-bg: var(--warn);
-    --btn-fg: var(--fg-on-solid);
-    --btn-line: var(--warn);
-    --btn-bg-hover: var(--warn);
-    --btn-line-hover: var(--warn);
-  }
+  /* It has no second hand-tuned colour, so it brightens on hover through a
+     veil. The veil is theme-aware: it darkens the fill under light theme's
+     white label and lightens it under dark theme's near-black one, so hover
+     always moves away from the label.
 
-  /* The semantic solids have no second hand-tuned colour, so they brighten
-     on hover through a veil. The veil is theme-aware: it darkens the fill
-     under light theme's white labels and lightens it under dark theme's
-     near-black ones, so hover always moves away from the label.
-
-     `.btn-primary` is deliberately NOT in this list. It has a real hover
+     `.btn-primary` is deliberately NOT in this rule. It has a real hover
      step (`--brand-solid-hover`), and stacking a 12% white wash on top of
      it pushed the white label from 4.60:1 down to 3.77:1 — the button lost
      legibility exactly as the pointer landed on it. */
-  .btn-success:hover,
-  .btn-danger:hover,
-  .btn-warning:hover {
+  .btn-danger:hover {
     background-image: linear-gradient(var(--solid-hover-veil), var(--solid-hover-veil));
   }
 
@@ -165,25 +156,11 @@
     --btn-line-hover: var(--brand);
   }
 
-  .btn-outline-success {
-    --btn-fg: var(--pos);
-    --btn-line: var(--pos-line);
-    --btn-bg-hover: var(--pos-soft);
-    --btn-line-hover: var(--pos);
-  }
-
   .btn-outline-danger {
     --btn-fg: var(--neg);
     --btn-line: var(--neg-line);
     --btn-bg-hover: var(--neg-soft);
     --btn-line-hover: var(--neg);
-  }
-
-  .btn-outline-warning {
-    --btn-fg: var(--warn);
-    --btn-line: var(--warn-line);
-    --btn-bg-hover: var(--warn-soft);
-    --btn-line-hover: var(--warn);
   }
 
   /* ---- ghost / link --------------------------------------------------- */
@@ -220,6 +197,14 @@
      2. ICON & ACTION BUTTONS
      ====================================================================== */
 
+  /* Brand-coloured at rest, on nothing: no fill, no border. These are the
+     product's row actions, and violet is what an action looks like here —
+     the same colour as the primary button and the active nav marker, just
+     without a surface under it. The tint is what makes a row of small
+     glyphs read as controls rather than as decoration beside the figures;
+     `--brand` clears 4.5:1 on every surface, so it can carry that alone.
+     Hover is unchanged: the neutral wash and the near-black glyph are what
+     tell you which one the pointer is on. */
   .btn-icon {
     width: var(--control-h-sm);
     height: var(--control-h-sm);
@@ -227,7 +212,7 @@
     padding: 0;
     border-color: transparent;
     background-color: transparent;
-    color: var(--fg-muted);
+    color: var(--brand);
     border-radius: var(--radius-sm);
   }
 
@@ -249,9 +234,28 @@
     font-size: var(--text-xs);
   }
 
-  .btn-icon.btn-outline-primary:hover { color: var(--brand); background-color: var(--brand-soft); }
-  .btn-icon.btn-outline-success:hover { color: var(--pos); background-color: var(--pos-soft); }
-  .btn-icon.btn-outline-danger:hover  { color: var(--neg); background-color: var(--neg-soft); }
+  /* Hover previews the consequence.
+
+     At rest these are all just actions and all violet — the colour of a
+     control, not of a quantity. On hover the ones that move the ledger take
+     the colour of the direction they will move it: a deposit adds, a
+     withdrawal subtracts, income is income, and they borrow the same three
+     roles the resulting figures will be printed in.
+
+     That is a different claim from labelling the button green, which is
+     what these used to do and what made a deposit read as a gain. A resting
+     colour says "this control is of that kind"; a hover colour says "this
+     is what will happen if you press it", and only the second one is true.
+
+     `.btn-icon` sets its own colour at rest *and* on hover, so each of
+     these has to out-specify it — hence the doubled class. */
+  .btn-icon.btn-icon--pos:hover    { color: var(--pos);    background-color: var(--pos-soft); }
+  .btn-icon.btn-icon--neg:hover    { color: var(--neg);    background-color: var(--neg-soft); }
+  .btn-icon.btn-icon--income:hover { color: var(--income); background-color: var(--income-soft); }
+
+  /* Destruction is the exception that keeps its warning on a separate
+     class, because it is not previewing an entry — it is previewing loss. */
+  .btn-icon.btn-outline-danger:hover { color: var(--neg); background-color: var(--neg-soft); }
 
   /* Row actions appear on engagement only.
      Hidden with opacity — not `visibility` or `display` — so the buttons
@@ -287,25 +291,6 @@
       opacity: 1;
       pointer-events: auto;
     }
-  }
-
-  .btn-action-income {
-    --btn-fg: var(--income);
-    --btn-line: var(--income-line);
-    --btn-bg-hover: var(--income-soft);
-    --btn-line-hover: var(--income);
-  }
-
-  .btn-action-income.btn-icon:hover {
-    color: var(--income);
-    background-color: var(--income-soft);
-  }
-
-  .btn-action-positive {
-    --btn-fg: var(--pos);
-    --btn-line: var(--pos-line);
-    --btn-bg-hover: var(--pos-soft);
-    --btn-line-hover: var(--pos);
   }
 
   /* ---- icon-only toggles used in the shell ---------------------------- */
@@ -536,8 +521,9 @@
   .form-text,
   .withdraw-available-hint,
   .tx-preview,
-  .help-message {
-    font-size: var(--text-2xs);
+  .help-message,
+  .notes-counter {
+    font-size: var(--text-3xs);
   }
 
   .form-text {
@@ -627,12 +613,18 @@
     background-color: var(--bg-hover);
   }
 
-  /* ---- notes counter -------------------------------------------------- */
+  /* ---- notes counter --------------------------------------------------
+     `--fg-subtle`, not `--fg-faint`. The faint step is for text nobody has
+     to read — placeholders, disabled hints, decorative icons — and it holds
+     3:1, not 4.5:1. A character counter is the opposite: it is the only
+     warning a user gets that their note is about to be cut off, and at
+     3.66:1 in the light theme it was the quietest thing on the form. It
+     belongs with the field help text it sits beside.
+     -------------------------------------------------------------------- */
   .notes-counter {
     display: block;
     margin-top: var(--space-1);
-    color: var(--fg-faint);
-    font-size: var(--text-2xs);
+    color: var(--fg-subtle);
     text-align: right;
     transition: color var(--dur-1) var(--ease-out);
   }
@@ -715,12 +707,23 @@
     color: var(--fg-subtle);
   }
 
+  /* One step down from the page's ink. This number is a running preview of
+     something the user is still typing, not a figure they have committed —
+     at full strength it was the loudest thing in a row of quiet help text,
+     which is what made the whole hint line read as heavy. The weight stays,
+     because that is what makes it scannable without being dark. */
   .tx-preview-amount {
-    color: var(--fg-default);
+    color: var(--fg-muted);
     font-weight: var(--weight-medium);
     font-variant-numeric: tabular-nums;
   }
 
+  /* This one used to carry Bootstrap's `.text-muted` as well, which — being
+     a `!important` utility, and so above every layer we write — quietly won
+     and rendered it a full step darker than every other hint on the same
+     form. Utilities beating components is the documented cost of the layer
+     system; the fix is never to staple one onto an element a component
+     already styles. */
   .withdraw-available-hint {
     display: block;
     margin-top: var(--space-1);
@@ -891,7 +894,12 @@
   .records-table .records-col--return     { width: var(--records-col-return, 5.5rem); }
   .records-table .records-col--amount     { width: var(--records-col-amount, 8rem); }
   .records-table .records-col--notes      { width: var(--records-col-notes, auto); }
-  .records-table .records-col--actions    { width: var(--records-col-actions, 6rem); }
+  /* Inside a disclosure this resolves to `--row-actions-w`, the same
+     right-hand zone the summary row above reserves — so the two tables stop
+     their data at the same x and start their controls at the same x, even
+     though they can never share a column. Outside one (the admin table) it
+     falls back to its own width. */
+  .records-table .records-col--actions    { width: var(--records-col-actions, var(--row-actions-w, 6rem)); }
   .records-table .records-col--id         { width: var(--records-col-id, 3.5rem); }
   .records-table .records-col--username   { width: var(--records-col-username, 10rem); }
   .records-table .records-col--email      { width: var(--records-col-email, auto); }
@@ -911,7 +919,15 @@
     font-variant-numeric: tabular-nums;
   }
 
+  /* Right-aligned so the buttons land under the summary row's own cluster
+     rather than 34px inside it. The header follows, because a heading that
+     does not sit over its column is the thing that made these tables look
+     out of true in the first place. */
+  .records-table :is(th, td).records-cell--actions { text-align: right; }
+
   .records-table td.actions-cell { overflow: visible; }
+
+  .records-table td.actions-cell .row-actions { justify-content: flex-end; }
 
   .records-table tbody td small {
     font-size: inherit;

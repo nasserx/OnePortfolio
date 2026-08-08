@@ -63,7 +63,7 @@
 
                 <div class="disclosure__actions row-actions">
                     <button type="button"
-                            class="btn btn-outline-success btn-icon js-deposit-funds-btn"
+                            class="btn btn-icon btn-icon--pos js-deposit-funds-btn"
                             data-portfolio-id="{{ item.portfolio.id }}"
                             data-name="{{ item.portfolio.name|e }}"
                             title="Deposit" aria-label="Deposit into {{ item.portfolio.name }}"
@@ -71,7 +71,7 @@
                         <i class="bi bi-arrow-down-circle" aria-hidden="true"></i>
                     </button>
                     <button type="button"
-                            class="btn btn-outline-danger btn-icon js-withdraw-funds-btn"
+                            class="btn btn-icon btn-icon--neg js-withdraw-funds-btn"
                             data-portfolio-id="{{ item.portfolio.id }}"
                             data-name="{{ item.portfolio.name|e }}"
                             data-withdrawable-cash="{{ item.withdrawable_cash|fmt_money }}"
@@ -109,7 +109,7 @@
                                     <th class="small records-cell">Type</th>
                                     <th class="small records-cell records-cell--number">Amount</th>
                                     <th class="small records-cell">Notes</th>
-                                    <th class="small records-cell">Actions</th>
+                                    <th class="small records-cell records-cell--actions">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -130,10 +130,10 @@
                                     <td class="records-cell portfolio-event-notes"{% if event_notes %} title="{{ event_notes }}"{% endif %}>
                                         <small class="text-muted">{{ event_notes if event_notes else '—' }}</small>
                                     </td>
-                                    <td class="records-cell actions-cell">
+                                    <td class="records-cell records-cell--actions actions-cell">
                                         <div class="row-actions" role="group">
                                             <button type="button"
-                                                    class="btn btn-outline-primary btn-icon btn-sm js-edit-portfolio-event-btn"
+                                                    class="btn btn-icon btn-sm js-edit-portfolio-event-btn"
                                                     data-event='{{ {
                                                         "id": event.id,
                                                         "type": event.event_type,
@@ -235,7 +235,7 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="submit" class="btn btn-success">Record Deposit</button>
+                    <button type="submit" class="btn btn-primary">Record Deposit</button>
                 </div>
             </form>
         </div>
@@ -275,7 +275,7 @@
                                 {% if _with_errs.get('amount_delta') %}
                                 <div class="invalid-feedback">{{ _with_errs.get('amount_delta') }}</div>
                                 {% endif %}
-                                <small class="text-muted withdraw-available-hint">Available to withdraw: <span id="withdraw_available_cash">0.00</span></small>
+                                <small class="withdraw-available-hint">Available to withdraw: <span id="withdraw_available_cash">0.00</span></small>
                             </div>
                         </div>
                         <div class="col-6">
@@ -300,7 +300,7 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="submit" class="btn btn-danger">Record Withdraw</button>
+                    <button type="submit" class="btn btn-primary">Record Withdraw</button>
                 </div>
             </form>
         </div>
@@ -527,9 +527,9 @@
         bar.style.display = 'flex';
         bar.innerHTML =
             '<div class="tx-pg-indicator">' +
-                '<button class="btn btn-sm px-1 py-0 border-0 text-secondary ev-pg-prev"' + (page <= 1 ? ' disabled' : '') + ' data-ev-gid="' + portfolioId + '">&#8249;</button>' +
+                '<button class="btn btn-sm px-1 py-0 ev-pg-prev"' + (page <= 1 ? ' disabled' : '') + ' data-ev-gid="' + portfolioId + '">&#8249;</button>' +
                 nums +
-                '<button class="btn btn-sm px-1 py-0 border-0 text-secondary ev-pg-next"' + (page >= totalPages ? ' disabled' : '') + ' data-ev-gid="' + portfolioId + '">&#8250;</button>' +
+                '<button class="btn btn-sm px-1 py-0 ev-pg-next"' + (page >= totalPages ? ' disabled' : '') + ' data-ev-gid="' + portfolioId + '">&#8250;</button>' +
             '</div>';
     }
 
@@ -603,9 +603,9 @@
         bar.style.display = 'flex';
         bar.innerHTML =
             '<div class="tx-pg-indicator">' +
-                '<button class="btn btn-sm px-1 py-0 border-0 text-secondary outer-pf-prev"' + (currentPage <= 1 ? ' disabled' : '') + '>&#8249;</button>' +
+                '<button class="btn btn-sm px-1 py-0 outer-pf-prev"' + (currentPage <= 1 ? ' disabled' : '') + '>&#8249;</button>' +
                 nums +
-                '<button class="btn btn-sm px-1 py-0 border-0 text-secondary outer-pf-next"' + (currentPage >= totalPages ? ' disabled' : '') + '>&#8250;</button>' +
+                '<button class="btn btn-sm px-1 py-0 outer-pf-next"' + (currentPage >= totalPages ? ' disabled' : '') + '>&#8250;</button>' +
             '</div>';
     }
 

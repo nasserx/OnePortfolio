@@ -109,6 +109,7 @@
     --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
 
     /* Text ramp — prose and UI chrome */
+    --text-3xs: 0.625rem;   /* 10px — field help, counters    */
     --text-2xs: 0.6875rem;  /* 11px — labels, meta            */
     --text-xs:  0.75rem;    /* 12px — helper text, captions   */
     --text-sm:  0.8125rem;  /* 13px — dense UI, table body    */
@@ -358,7 +359,7 @@
 
       --fg-default: #ededf1;
       --fg-muted:   #b2b2be;
-      --fg-subtle:  #9797a4;
+      --fg-subtle:  #888894;
       --fg-faint:   #7c7c88;
       --fg-on-brand: var(--n-0);
       --fg-on-solid: #0a0a0e;
@@ -438,7 +439,7 @@
 
     --fg-default: #ededf1;
     --fg-muted:   #b2b2be;
-    --fg-subtle:  #9797a4;
+    --fg-subtle:  #888894;
     --fg-faint:   #7c7c88;
     --fg-on-brand: var(--n-0);
     --fg-on-solid: #0a0a0e;

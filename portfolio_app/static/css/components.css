@@ -71,10 +71,11 @@
     transition-duration: var(--dur-1);
   }
 
+  /* One focus indicator, not two. The crisp outline was already doing the
+     job; the translucent halo stacked behind it only added a glow. */
   .btn:focus-visible {
     outline: 2px solid var(--focus-ring);
     outline-offset: 2px;
-    box-shadow: 0 0 0 4px var(--focus-ring-halo);
   }
 
   .btn:disabled,
@@ -428,11 +429,15 @@
     border-color: var(--line-strong);
   }
 
+  /* Every field state is the same mechanism: a 1px hairline that doubles to
+     a crisp 2px edge when the field is active or wrong. The doubling is an
+     *inset* shadow, so it lands exactly on the border instead of blooming
+     outside it — no halo, no glow, and no change to the field's size. */
   .form-control:focus,
   .form-select:focus {
     border-color: var(--focus-ring);
     background-color: var(--bg-surface);
-    box-shadow: 0 0 0 3px var(--focus-ring-halo);
+    box-shadow: inset 0 0 0 1px var(--focus-ring);
     outline: none;
     color: var(--fg-default);
   }
@@ -478,11 +483,17 @@
     background-size: 15px;
   }
 
+  /* A fully saturated red hairline next to a 14%-alpha neutral one reads as
+     a different weight class — the error looked like a stray wire rather
+     than the same field in a different state. The line tokens sit at the
+     same alpha, so `--neg-line` plus a faint wash carries the error at the
+     weight of everything around it. The red message below does the telling. */
   .form-control.is-invalid,
   .form-select.is-invalid,
   .was-validated .form-control:invalid,
   .was-validated .form-select:invalid {
-    border-color: var(--neg);
+    border-color: var(--neg-line);
+    background-color: var(--neg-soft);
   }
 
   .form-control.is-valid,
@@ -490,16 +501,18 @@
   .was-validated .form-control:valid,
   .was-validated .form-select:valid {
     border-color: var(--pos-line);
+    background-color: var(--pos-soft);
   }
 
-  /* The invalid halo matches the weight of the neutral focus ring — the
-     line tokens sit at the same alpha, so the two rings read as siblings. */
+  /* Focused-and-invalid takes the same 2px crisp edge as a normal focus,
+     in red. Identical mechanism, different hue. */
   .form-control.is-invalid:focus,
   .form-select.is-invalid:focus,
   .was-validated .form-control:invalid:focus,
   .was-validated .form-select:invalid:focus {
     border-color: var(--neg);
-    box-shadow: 0 0 0 3px var(--neg-line);
+    background-color: var(--neg-soft);
+    box-shadow: inset 0 0 0 1px var(--neg);
   }
 
   .invalid-feedback,
@@ -516,10 +529,20 @@
   .is-invalid ~ .invalid-feedback,
   .invalid-feedback.d-block { display: block; }
 
+  /* Field help text. Guidance *about* a control sits one step below the
+     control's own label — it is the quietest thing in a form. Error
+     messages are deliberately not in this group: they are the one piece of
+     small text a user is required to read. */
+  .form-text,
+  .withdraw-available-hint,
+  .tx-preview,
+  .help-message {
+    font-size: var(--text-2xs);
+  }
+
   .form-text {
     margin-top: var(--space-1);
     color: var(--fg-subtle);
-    font-size: var(--text-xs);
   }
 
   .form-check-input {
@@ -541,7 +564,9 @@
 
   .form-check-input:focus {
     border-color: var(--focus-ring);
-    box-shadow: 0 0 0 3px var(--focus-ring-halo);
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+    box-shadow: none;
   }
 
   .form-check-label {
@@ -688,7 +713,6 @@
   .tx-preview {
     min-height: 1.25rem;
     color: var(--fg-subtle);
-    font-size: var(--text-xs);
   }
 
   .tx-preview-amount {
@@ -701,12 +725,10 @@
     display: block;
     margin-top: var(--space-1);
     color: var(--fg-subtle);
-    font-size: var(--text-xs);
   }
 
   .help-message {
     color: var(--fg-subtle);
-    font-size: var(--text-sm);
   }
 
   /* Hidden by the assets page's symbol filter. */

@@ -527,9 +527,13 @@
      4. OVERVIEW
      ====================================================================== */
 
+  /* Equal halves. The split panel used to be a 24rem sidecar, which capped
+     the ring at a size the page had room to beat. Given half the row it can
+     sit beside its own legend instead of stacked above it, so the chart gets
+     both a wider box and a taller one. */
   .overview-hero {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 24rem);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--space-5);
     align-items: stretch;
   }
@@ -676,6 +680,28 @@
   .alloc-canvas canvas { max-height: 100%; }
 
   .alloc-panel .allocation-legend { margin-top: auto; }
+
+  /* Wide enough for the ring and its legend to sit side by side. Stacking
+     them spends the panel's height on the legend and its width on nothing;
+     side by side, every pixel of extra width becomes ring diameter. */
+  @media (min-width: 68.0625rem) {
+    .alloc-panel__body {
+      flex-direction: row;
+      align-items: center;
+      gap: var(--space-5);
+    }
+
+    .alloc-canvas {
+      flex: 0 0 13.5rem;
+      height: 13.5rem;
+    }
+
+    .alloc-panel .allocation-legend {
+      flex: 1;
+      min-width: 0;
+      margin-top: 0;
+    }
+  }
 
   .alloc-empty {
     display: grid;
@@ -902,12 +928,15 @@
     color: var(--fg-muted);
   }
 
+  /* Fixed, so the metric strip starts at the same x on every card. Sized to
+     the names rather than to the widest one imaginable — every rem spent
+     here is a rem of empty gutter between a short name and its figures. */
   .disclosure__identity {
     display: flex;
     align-items: center;
     gap: var(--space-2);
     flex: none;
-    width: 11rem;
+    width: 9.5rem;
     min-width: 0;
   }
 
@@ -919,12 +948,18 @@
     font-weight: var(--weight-semibold);
   }
 
+  /* The strip stops short of the action cluster. Run to the full width and
+     the last figure's right edge lands under the edit/delete buttons, so the
+     numbers read as if they belong to the controls; the gutter re-attaches
+     them to the name on the left. It is a margin rather than a narrower
+     track list, so every card still resolves identical columns. */
   .disclosure__metrics {
     display: grid;
     grid-template-columns: repeat(var(--metric-columns, 5), minmax(0, 1fr));
     gap: var(--space-3);
     flex: 1;
     min-width: 0;
+    margin-right: var(--space-10);
   }
 
   /* Every value in this strip is a figure, and the strip repeats down the
@@ -988,7 +1023,11 @@
   .disclosure__panel .records-table { font-size: var(--text-detail); }
 
   @media (max-width: 75rem) {
-    .disclosure__metrics { --metric-columns: 3; gap: var(--space-2) var(--space-3); }
+    .disclosure__metrics {
+      --metric-columns: 3;
+      gap: var(--space-2) var(--space-3);
+      margin-right: var(--space-5);
+    }
     .disclosure__identity { width: 8.5rem; }
   }
 
@@ -1006,6 +1045,7 @@
       --metric-columns: 2;
       flex-basis: 100%;
       margin-top: var(--space-3);
+      margin-right: 0;
     }
 
     .disclosure__actions { margin-left: auto; }

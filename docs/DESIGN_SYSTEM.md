@@ -52,6 +52,17 @@ accident:
 - **Validation changes colour and nothing else.** Bootstrap's invalid state
   also injects an icon and widens the right padding, which resizes the field
   and makes an error read as a different component. Both are reset.
+- **Every field state is the same mechanism.** A 1px hairline at rest, which
+  doubles to a crisp 2px edge when the field is focused or focused-and-wrong.
+  The doubling is an `inset` shadow so it lands *on* the border rather than
+  blooming outside it — no halo, no glow, and the field never changes size.
+  An unfocused invalid field keeps the hairline weight and switches hue plus
+  a faint wash: a fully saturated red line beside a 14%-alpha neutral one
+  reads as a different weight class, which is what made errors look like a
+  stray wire rather than the same control in another state.
+- **One focus indicator, never two.** The crisp `outline` from `base.css` is
+  it. Stacking a translucent ring behind an outline only produces the glow
+  this system is trying not to have.
 
 ## File layout
 
@@ -153,6 +164,15 @@ body copy along.
 Labels are **sentence case**. No `text-transform: uppercase`; at 11px with wide
 tracking it reads worse and looks templated.
 
+Two steps below the body scale carry specific jobs:
+
+- `--text-detail` — record rows revealed inside a disclosure, and nothing
+  else. A page's own primary table stays at `--text-sm`.
+- `--text-2xs` — field help text (`.form-text`, the inline hints, the cost
+  preview, the notes counter). Guidance *about* a control is the quietest
+  thing in a form. Error messages are deliberately excluded: they are the one
+  piece of small text a user is required to read.
+
 Maximum font weight is `600`.
 
 ## Elevation, radius, motion
@@ -217,6 +237,19 @@ they claim the leftover height and spread through it as a 2×2 grid — rather
 than being pinned somewhere as empty space. Anchoring the facts to the bottom
 instead just relocates the gap under the headline, and centring the whole group
 puts a dead band above the card's own title.
+
+The two halves of that row are **equal**, not a panel and a sidecar. Given
+half the width the split chart puts its legend beside the ring instead of
+under it, which converts width into ring diameter rather than into blank
+space. The centre label is sized from `arc.innerRadius`, so it stays in
+proportion when the ring grows.
+
+Two spacing rules for the disclosure summary row, both about ownership of a
+number: the identity column is fixed (so every card's metric strip starts at
+the same x) but sized to the names rather than to the longest name
+imaginable, and the strip stops short of the action cluster. Run it to the
+full width and the last figure's right edge sits under the edit/delete
+buttons, which makes the figures read as labels for the controls.
 
 Because the summary lives inside a `<button>`, its contents must be phrasing
 content — which is why the `metric` macro emits spans rather than divs.

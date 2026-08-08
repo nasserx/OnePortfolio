@@ -102,11 +102,11 @@
 
   /* ---- solid ---------------------------------------------------------- */
   .btn-primary {
-    --btn-bg: var(--brand);
+    --btn-bg: var(--brand-solid);
     --btn-fg: var(--fg-on-brand);
-    --btn-line: var(--brand);
-    --btn-bg-hover: var(--brand-hover);
-    --btn-line-hover: var(--brand-hover);
+    --btn-line: var(--brand-solid);
+    --btn-bg-hover: var(--brand-solid-hover);
+    --btn-line-hover: var(--brand-solid-hover);
   }
 
   .btn-success {
@@ -133,13 +133,19 @@
     --btn-line-hover: var(--warn);
   }
 
-  /* Solid buttons brighten on hover through a light overlay rather than a
-     second hand-tuned colour per variant. */
-  .btn-primary:hover,
+  /* The semantic solids have no second hand-tuned colour, so they brighten
+     on hover through a veil. The veil is theme-aware: it darkens the fill
+     under light theme's white labels and lightens it under dark theme's
+     near-black ones, so hover always moves away from the label.
+
+     `.btn-primary` is deliberately NOT in this list. It has a real hover
+     step (`--brand-solid-hover`), and stacking a 12% white wash on top of
+     it pushed the white label from 4.60:1 down to 3.77:1 — the button lost
+     legibility exactly as the pointer landed on it. */
   .btn-success:hover,
   .btn-danger:hover,
   .btn-warning:hover {
-    background-image: linear-gradient(rgb(255 255 255 / 0.12), rgb(255 255 255 / 0.12));
+    background-image: linear-gradient(var(--solid-hover-veil), var(--solid-hover-veil));
   }
 
   /* ---- outline -------------------------------------------------------- */
@@ -529,8 +535,8 @@
   }
 
   .form-check-input:checked {
-    background-color: var(--brand);
-    border-color: var(--brand);
+    background-color: var(--brand-solid);
+    border-color: var(--brand-solid);
   }
 
   .form-check-input:focus {
@@ -1583,8 +1589,8 @@
   .op-flatpickr .flatpickr-day.selected,
   .op-flatpickr .flatpickr-day.selected:hover,
   .op-flatpickr .flatpickr-day.selected:focus {
-    background-color: var(--brand);
-    border-color: var(--brand);
+    background-color: var(--brand-solid);
+    border-color: var(--brand-solid);
     color: var(--fg-on-brand);
   }
 

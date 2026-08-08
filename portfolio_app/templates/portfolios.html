@@ -53,7 +53,7 @@
                     </span>
 
                     <span class="disclosure__metrics">
-                        {% call metric('Capital entries') %}{{ item.events|length }}{% endcall %}
+                        {% call metric('Entries') %}{{ item.events|length }}{% endcall %}
                         {% call metric('Total capital') %}{{ money(item.total_capital) }}{% endcall %}
                         {% call metric('Total cash') %}{{ money(item.withdrawable_cash) }}{% endcall %}
                         {% call metric('Positions') %}{{ money(item.positions) }}{% endcall %}
@@ -162,7 +162,7 @@
                     </div>
                     <div class="tx-pagination-bar" id="pgbar-ev-{{ item.portfolio.id }}"></div>
                     {% else %}
-                    <p class="inline-empty">No capital entries yet. Use Deposit to add funds.</p>
+                    <p class="inline-empty">No entries yet. Use Deposit to add funds.</p>
                     {% endif %}
                 </div>
 
@@ -459,7 +459,7 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <p>Remove this <span class="text-emphasis" id="delete_event_type_name"></span> capital entry?</p>
+                    <p>Remove this <span class="text-emphasis" id="delete_event_type_name"></span> entry?</p>
                     <div class="alert alert-warning mb-0">
                         <i class="bi bi-exclamation-triangle me-1"></i>
                         This will reverse the effect on portfolio capital and cash.

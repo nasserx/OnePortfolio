@@ -52,11 +52,18 @@
     /* Brand — indigo-violet. Deliberately off the semantic hues (green /
        red / blue) so brand surfaces never read as a financial signal.
        The dark-theme steps are pushed up in chroma: against a near-black
-       ground a desaturated violet reads as grey. */
-    --brand-200: #c3b8ff;
-    --brand-300: #b9abff;
-    --brand-400: #a390ff;
-    --brand-500: #7c66ff;
+       ground a desaturated violet reads as grey.
+
+       The ramp splits into two working halves. 400–200 are the *accent*
+       steps: bright enough to read as text and hairlines on a near-black
+       ground. 600–550 are the *solid* steps: deep enough to carry white
+       label text at 4.5:1. A single step cannot do both jobs — that is
+       why `--brand` and `--brand-solid` are separate roles below. */
+    --brand-200: #bdb0ff;
+    --brand-300: #b3a1ff;
+    --brand-400: #9d88ff;
+    --brand-500: #7358ff;
+    --brand-550: #6647ff;
     --brand-600: #5b45e8;
     --brand-700: #4732c4;
 
@@ -221,12 +228,27 @@
     --line-default: rgb(62 59 57 / 0.15);
     --line-strong: rgb(62 59 57 / 0.26);
 
-    /* Brand */
+    /* Brand — two roles, not one.
+       `--brand` is the accent: brand-coloured *text*, icons, hairlines and
+       markers drawn on a page surface.
+       `--brand-solid` is the fill: any block of brand colour with a label
+       on top of it (primary button, checked box, selected calendar day).
+       In light they coincide; in dark they must not, because a violet
+       bright enough to read as text on near-black cannot also carry white
+       text on itself. */
     --brand: var(--brand-600);
     --brand-hover: var(--brand-700);
-    --brand-soft: rgb(124 102 255 / 0.10);
-    --brand-soft-hover: rgb(124 102 255 / 0.17);
-    --brand-line: rgb(124 102 255 / 0.34);
+    --brand-solid: var(--brand-600);
+    --brand-solid-hover: var(--brand-700);
+    /* Hover veil for the semantic solid buttons. It moves *away* from the
+       label colour in each theme — darker under white labels, lighter under
+       near-black ones — so hovering can never reduce legibility. A single
+       white wash did exactly that in light mode. */
+    --solid-hover-veil: rgb(0 0 0 / 0.12);
+
+    --brand-soft: rgb(115 88 255 / 0.10);
+    --brand-soft-hover: rgb(115 88 255 / 0.17);
+    --brand-line: rgb(115 88 255 / 0.34);
 
     /* Financial semantics */
     --pos: var(--green-light);
@@ -258,7 +280,7 @@
       0 4px 14px -4px rgb(48 42 34 / 0.14);
 
     --focus-ring: var(--brand-500);
-    --focus-ring-halo: rgb(124 102 255 / 0.26);
+    --focus-ring-halo: rgb(115 88 255 / 0.26);
 
     /* Chart roles */
     --chart-grid: var(--line-subtle);
@@ -286,7 +308,7 @@
       --fg-muted:   #b2b2be;
       --fg-subtle:  #9797a4;
       --fg-faint:   #7c7c88;
-      --fg-on-brand: #0a0a0e;
+      --fg-on-brand: var(--n-0);
       --fg-on-solid: #0a0a0e;
 
       --line-subtle: rgb(255 255 255 / 0.08);
@@ -295,9 +317,12 @@
 
       --brand: var(--brand-400);
       --brand-hover: var(--brand-300);
-      --brand-soft: rgb(163 144 255 / 0.20);
-      --brand-soft-hover: rgb(163 144 255 / 0.30);
-      --brand-line: rgb(163 144 255 / 0.50);
+      --brand-solid: var(--brand-550);
+      --brand-solid-hover: var(--brand-500);
+      --solid-hover-veil: rgb(255 255 255 / 0.14);
+      --brand-soft: rgb(157 136 255 / 0.20);
+      --brand-soft-hover: rgb(157 136 255 / 0.30);
+      --brand-line: rgb(157 136 255 / 0.50);
 
       --pos: var(--green-dark);
       --pos-soft: rgb(64 207 133 / 0.13);
@@ -325,11 +350,11 @@
         0 6px 18px -6px rgb(0 0 0 / 0.5);
 
       --focus-ring: var(--brand-300);
-      --focus-ring-halo: rgb(185 171 255 / 0.32);
+      --focus-ring-halo: rgb(179 161 255 / 0.32);
 
       --chart-ring-gap: var(--bg-surface);
 
-      --cat-1: #a390ff;
+      --cat-1: #9d88ff;
       --cat-2: #2ccbc7;
       --cat-3: #f5975a;
       --cat-4: #64b0ff;
@@ -359,7 +384,7 @@
     --fg-muted:   #b2b2be;
     --fg-subtle:  #9797a4;
     --fg-faint:   #7c7c88;
-    --fg-on-brand: #0a0a0e;
+    --fg-on-brand: var(--n-0);
     --fg-on-solid: #0a0a0e;
 
     --line-subtle: rgb(255 255 255 / 0.08);
@@ -368,9 +393,12 @@
 
     --brand: var(--brand-400);
     --brand-hover: var(--brand-300);
-    --brand-soft: rgb(163 144 255 / 0.20);
-    --brand-soft-hover: rgb(163 144 255 / 0.30);
-    --brand-line: rgb(163 144 255 / 0.50);
+    --brand-solid: var(--brand-550);
+    --brand-solid-hover: var(--brand-500);
+    --solid-hover-veil: rgb(255 255 255 / 0.14);
+    --brand-soft: rgb(157 136 255 / 0.20);
+    --brand-soft-hover: rgb(157 136 255 / 0.30);
+    --brand-line: rgb(157 136 255 / 0.50);
 
     --pos: var(--green-dark);
     --pos-soft: rgb(64 207 133 / 0.13);
@@ -398,11 +426,11 @@
       0 6px 18px -6px rgb(0 0 0 / 0.5);
 
     --focus-ring: var(--brand-300);
-    --focus-ring-halo: rgb(185 171 255 / 0.32);
+    --focus-ring-halo: rgb(179 161 255 / 0.32);
 
     --chart-ring-gap: var(--bg-surface);
 
-    --cat-1: #a390ff;
+    --cat-1: #9d88ff;
     --cat-2: #2ccbc7;
     --cat-3: #f5975a;
     --cat-4: #64b0ff;
@@ -531,7 +559,7 @@
     :root:not([data-theme="light"]) {
       --bs-body-bg-rgb: 16, 16, 21;
       --bs-body-color-rgb: 237, 237, 241;
-      --bs-primary-rgb: 163, 144, 255;
+      --bs-primary-rgb: 157, 136, 255;
       --bs-secondary-rgb: 178, 178, 190;
       --bs-success-rgb: 64, 207, 133;
       --bs-danger-rgb: 255, 107, 116;
@@ -539,15 +567,15 @@
       --bs-info-rgb: 90, 169, 255;
       --bs-light-rgb: 30, 30, 37;
       --bs-dark-rgb: 237, 237, 241;
-      --bs-link-color-rgb: 163, 144, 255;
-      --bs-link-hover-color-rgb: 185, 171, 255;
+      --bs-link-color-rgb: 157, 136, 255;
+      --bs-link-hover-color-rgb: 179, 161, 255;
     }
   }
 
   :root[data-theme="dark"] {
     --bs-body-bg-rgb: 16, 16, 21;
     --bs-body-color-rgb: 237, 237, 241;
-    --bs-primary-rgb: 163, 144, 255;
+    --bs-primary-rgb: 157, 136, 255;
     --bs-secondary-rgb: 178, 178, 190;
     --bs-success-rgb: 64, 207, 133;
     --bs-danger-rgb: 255, 107, 116;
@@ -555,7 +583,7 @@
     --bs-info-rgb: 90, 169, 255;
     --bs-light-rgb: 30, 30, 37;
     --bs-dark-rgb: 237, 237, 241;
-    --bs-link-color-rgb: 163, 144, 255;
-    --bs-link-hover-color-rgb: 185, 171, 255;
+    --bs-link-color-rgb: 157, 136, 255;
+    --bs-link-hover-color-rgb: 179, 161, 255;
   }
 }

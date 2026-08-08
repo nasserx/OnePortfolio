@@ -548,15 +548,15 @@
     box-shadow: var(--shadow-raised);
   }
 
-  /* The card stretches to match the allocation panel, whose height follows
-     its legend. Two `auto` margins — one here, one on the facts — split that
-     slack evenly, so the headline group floats in balanced space instead of
-     the whole gap collecting above the facts. */
+  /* The card stretches to match the allocation panel, so it always has slack
+     to place. It goes below the headline group, never above it: a label that
+     starts at the top edge reads as the card's title, which is what it is.
+     Centring the group instead left a dead band above "Book value" and made
+     the card look unfinished. */
   .hero-figure__label {
     display: flex;
     align-items: center;
     gap: var(--space-2);
-    margin-top: auto;
     color: var(--fg-subtle);
     font-size: var(--text-xs);
     font-weight: var(--weight-medium);
@@ -596,15 +596,29 @@
   .delta--neg { background-color: var(--neg-soft); border-color: var(--neg-line); color: var(--neg); }
   .delta--flat { color: var(--fg-subtle); }
 
-  /* `margin-top: auto` pins the facts to the bottom of the card so the hero
-     stays balanced against the taller chart panel beside it. */
+  /* The card is stretched to the height of the chart panel beside it, which
+     leaves roughly 120px of slack. Pinning the facts to the bottom just
+     relocates that slack into one dead band under the headline. Instead the
+     facts block *absorbs* it: it claims the remaining height and spreads its
+     rows through it, so the lower half of the card is a filled 2x2 stat grid
+     rather than an empty gap with a strip at the bottom. */
   .hero-figure__facts {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
     gap: var(--space-4) var(--space-5);
     padding-top: var(--space-5);
     border-top: 1px solid var(--line-subtle);
-    margin: auto 0 0;
+    margin-top: var(--space-5);
+  }
+
+  @media (min-width: 68.0625rem) {
+    .hero-figure__facts {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      flex: 1;
+      align-content: space-between;
+      row-gap: var(--space-5);
+      margin-top: var(--space-6);
+    }
   }
 
   .fact { min-width: 0; }
@@ -672,8 +686,24 @@
     text-align: center;
   }
 
-  /* ---- portfolio ledger table ------------------------------------------ */
+  /* ---- portfolio ledger table ------------------------------------------
+     Every row is its own grid, so every row used to resolve its own track
+     sizes. The last column is content-sized, and the header's last cell is
+     an empty "Actions" label while each body row holds a "View assets"
+     link — a ~110px difference that pushed all four `1fr` figure columns
+     out of step with their own headings. `Return` sat above the link.
+
+     The fix is structural, not cosmetic: the tracks are declared once on
+     `.ledger` and every row adopts them via `subgrid`, so a header cell and
+     the cells beneath it are literally the same column. */
   .ledger {
+    display: grid;
+    grid-template-columns:
+      minmax(9rem, 1.6fr)
+      repeat(4, minmax(5.5rem, 1fr))
+      auto;
+    column-gap: var(--space-3);
+    row-gap: 0;
     border: 1px solid var(--line-subtle);
     border-radius: var(--radius-md);
     background-color: var(--bg-surface);
@@ -683,16 +713,29 @@
 
   .ledger__row {
     display: grid;
-    grid-template-columns:
-      minmax(9rem, 1.6fr)
-      repeat(4, minmax(5.5rem, 1fr))
-      auto;
+    grid-column: 1 / -1;
+    grid-template-columns: subgrid;
     align-items: center;
     gap: var(--space-3);
     padding: 0 var(--space-4);
     min-height: var(--row-h);
     border-bottom: 1px solid var(--line-subtle);
     transition: background-color var(--dur-1) var(--ease-out);
+  }
+
+  /* Fallback for engines without subgrid: rows keep their own identical
+     template. Columns can drift by the width of the action link, but the
+     table still reads — it degrades to the previous behaviour rather than
+     collapsing into one column. */
+  @supports not (grid-template-columns: subgrid) {
+    .ledger { display: block; }
+
+    .ledger__row {
+      grid-template-columns:
+        minmax(9rem, 1.6fr)
+        repeat(4, minmax(5.5rem, 1fr))
+        7.5rem;
+    }
   }
 
   .ledger__row:last-child { border-bottom: 0; }
@@ -760,7 +803,16 @@
   @media (max-width: 60rem) {
     .ledger__row--head { display: none; }
 
+    /* Drop back out of subgrid: below this width each row restacks into its
+       own two-column card, so a shared track list would only impose a
+       31rem minimum on a phone-width viewport. */
+    .ledger {
+      display: block;
+      grid-template-columns: none;
+    }
+
     .ledger__row {
+      grid-column: auto;
       grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
       gap: var(--space-2) var(--space-3);
       padding: var(--space-3) var(--space-4);

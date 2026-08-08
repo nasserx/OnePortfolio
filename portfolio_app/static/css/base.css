@@ -236,7 +236,7 @@
     z-index: var(--z-palette);
     padding: var(--space-2) var(--space-4);
     border-radius: var(--radius-sm);
-    background-color: var(--brand);
+    background-color: var(--brand-solid);
     color: var(--fg-on-brand);
     font-size: var(--text-sm);
     font-weight: var(--weight-medium);

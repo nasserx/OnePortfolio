@@ -37,6 +37,38 @@ FOREGROUNDS = {
 
 SURFACES = ('bg-canvas', 'bg-surface', 'bg-raised', 'bg-inset')
 
+# Solid buttons: (fill role, label role, hover fill role, veiled on hover?).
+# The semantic solids hover by painting `--solid-hover-veil` over their fill,
+# so that veil is part of the shipped hover colour and part of this check.
+# `.btn-primary` is excluded from that rule — it swaps its fill instead.
+SOLID_BUTTONS = (
+    ('brand-solid', 'fg-on-brand', 'brand-solid-hover', False),
+    ('pos', 'fg-on-solid', 'pos', True),
+    ('neg', 'fg-on-solid', 'neg', True),
+    ('warn', 'fg-on-solid', 'warn', True),
+)
+
+
+def _parse_veil(value):
+    """`rgb(r g b / a)` -> ((r, g, b), a)."""
+    match = re.fullmatch(
+        r'rgb\(\s*(\d+)\s+(\d+)\s+(\d+)\s*/\s*([\d.]+)\s*\)', value.strip()
+    )
+    assert match, f'--solid-hover-veil is {value!r}, expected rgb(r g b / a)'
+    r, g, b, alpha = match.groups()
+    return (int(r), int(g), int(b)), float(alpha)
+
+
+def _composite(hex_colour, veil):
+    """Paint a translucent veil over an opaque colour, as the browser does."""
+    (vr, vg, vb), alpha = veil
+    value = hex_colour.lstrip('#')
+    parts = [int(value[i:i + 2], 16) for i in (0, 2, 4)]
+    return '#' + ''.join(
+        f'{round(c * (1 - alpha) + v * alpha):02x}'
+        for c, v in zip(parts, (vr, vg, vb))
+    )
+
 
 def _relative_luminance(hex_colour):
     value = hex_colour.lstrip('#')
@@ -153,12 +185,50 @@ def test_surface_ladder_is_ordered_and_separated(css, theme):
             f'{theme}: adjacent surfaces are too close to tell apart ({ladder})'
 
 
-def test_on_brand_text_is_legible_on_the_brand_fill(css):
-    """The primary button's label sits on the brand colour, not a surface."""
+@pytest.mark.parametrize('theme', ['light', 'dark'])
+def test_solid_button_labels_stay_legible_at_rest_and_on_hover(css, theme):
+    """A button's label sits on its fill, not on a page surface.
+
+    Hover is checked too, and with the white overlay composited in: a hover
+    state that brightens past the threshold makes the label fade exactly as
+    the pointer lands on it, which is the worst possible moment for it.
+    """
+    declared = _theme_tokens(css, theme)
+    veil = _parse_veil(declared['solid-hover-veil'])
+
+    failures = []
+    for fill_role, label_role, hover_role, veiled in SOLID_BUTTONS:
+        label = _resolve(label_role, declared)
+        hover_fill = _resolve(hover_role, declared)
+        states = (
+            ('rest', _resolve(fill_role, declared)),
+            ('hover', _composite(hover_fill, veil) if veiled else hover_fill),
+        )
+        for state, fill in states:
+            ratio = contrast(label, fill)
+            if ratio < TEXT_MIN:
+                failures.append(
+                    f'{theme}: --{label_role} ({label}) on --{fill_role} '
+                    f'{state} ({fill}) is {ratio:.2f}:1'
+                )
+
+    assert not failures, 'button label contrast:\n  ' + '\n  '.join(failures)
+
+
+def test_brand_fill_is_distinguishable_from_the_page(css):
+    """The solid brand is a shape, so it needs 3:1 against what surrounds it.
+
+    This is the constraint that forces `--brand` and `--brand-solid` apart in
+    dark mode: one violet cannot both carry white text and stay bright enough
+    to read as text itself.
+    """
     for theme in ('light', 'dark'):
         declared = _theme_tokens(css, theme)
-        brand = _resolve('brand', declared)
-        on_brand = _resolve('fg-on-brand', declared)
-        ratio = contrast(on_brand, brand)
-        assert ratio >= 4.5, \
-            f'{theme}: --fg-on-brand ({on_brand}) on --brand ({brand}) is {ratio:.2f}:1'
+        fill = _resolve('brand-solid', declared)
+        for surface in SURFACES:
+            bg = _resolve(surface, declared)
+            ratio = contrast(fill, bg)
+            assert ratio >= NON_TEXT_MIN, (
+                f'{theme}: --brand-solid ({fill}) on --{surface} ({bg}) '
+                f'is {ratio:.2f}:1'
+            )

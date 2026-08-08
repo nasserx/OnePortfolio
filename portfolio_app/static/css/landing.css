@@ -49,11 +49,19 @@
     height: 4rem;
   }
 
+  /* The wordmark is a different kind of thing from the section links, so it
+     gets more air than the links give each other — otherwise "OnePortfolio"
+     reads as the first item in the menu. */
   .lp-nav__links {
     display: flex;
     align-items: center;
     gap: var(--space-5);
+    margin-left: var(--space-6);
     margin-right: auto;
+  }
+
+  @media (max-width: 66rem) {
+    .lp-nav__links { margin-left: var(--space-3); }
   }
 
   .lp-nav__links a {

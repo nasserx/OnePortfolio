@@ -12,6 +12,8 @@ Three rules decide most design questions. When in doubt, apply them in order.
    financial values (`positive` / `negative` / `income`). The brand violet
    appears in exactly two roles: the primary button, and the active navigation
    marker. Everything else is neutral.
+   Those two roles need *different* violets in dark mode — see
+   [`--brand` vs `--brand-solid`](#brand-vs-brand-solid).
 2. **One hero number per screen.** A screen with five equally-weighted figures
    has no reading order. Promote one; demote the rest to supporting facts.
 3. **Density is a preference, not a constant.** Never hard-code a compact size —
@@ -36,8 +38,17 @@ accident:
 - **Figures are right-aligned wherever a column repeats.** Tables and the
   disclosure metric strips both read vertically, card against card, so the
   decimal points must stack. Left-aligned numbers let them wander by tens of
-  pixels. A single non-repeating row — the overview hero's supporting facts —
-  stays left-aligned, because there is nothing below it to line up with.
+  pixels. The overview hero's supporting facts are the exception and stay
+  left-aligned: each is a label/value *pair*, not a column, and right-aligning
+  a value across a half-card-wide cell would strand it away from its own label.
+- **A column heading and its data must be the same column, structurally.**
+  Alignment is not a `text-align` question. If a header row and its body rows
+  are separate grid containers, each resolves its own track sizes and any
+  content-sized column (an action link vs an empty "Actions" label) knocks
+  every heading out of step with the figures beneath it. `.ledger` declares its
+  tracks once and every row adopts them with `grid-template-columns: subgrid`.
+  Real `<table>`s get this for free — which is why they are still the right
+  tool for the record lists.
 - **Validation changes colour and nothing else.** Bootstrap's invalid state
   also injects an icon and widens the right padding, which resizes the field
   and makes an error read as a different component. Both are reset.
@@ -85,6 +96,31 @@ Three layers, and components may only consume the middle one:
 
 Adding a colour means adding a *role*, not a one-off hex. If no existing role
 fits, the design probably needs a new semantic — not a new shade.
+
+### `--brand` vs `--brand-solid`
+
+The brand has two roles because one violet cannot do both jobs in dark mode:
+
+| Role | Used for | Constraint |
+|---|---|---|
+| `--brand` | brand-coloured **text**, icons, hairlines, the nav marker | ≥ 4.5:1 *as* text on a dark surface → must be light |
+| `--brand-solid` | any **filled** block with a label on it: primary button, checked box, selected calendar day | must carry white text at ≥ 4.5:1 → must be dark |
+
+In the light theme they coincide. In dark they are three ramp steps apart, and
+the gap is not stylistic: the usable band for a white-labelled violet on this
+palette is a relative luminance of roughly 0.14–0.18, and `--brand` sits well
+above it. Reaching for `--brand` as a fill is the mistake this split exists to
+prevent — `tests/test_design_tokens_contrast.py` fails the build if it happens.
+
+**Hover must move away from the label, not toward it.** The semantic solid
+buttons (success / danger / warning) hover by painting `--solid-hover-veil`
+over their fill: black in light, where labels are white; white in dark, where
+labels are near-black. A single white wash for both themes looked fine and
+quietly dropped light-mode Success to 4.31:1 *on hover only* — the state where
+the user is committing to the click. `.btn-primary` is excluded from that rule
+because it has a real hover step of its own; stacking the two dropped it to
+3.77:1. The test composites the veil, so it checks the shipped colour rather
+than the resting one.
 
 ### Themes
 
@@ -174,6 +210,13 @@ Two layout primitives cover the product:
   assets). The whole summary is one `<button aria-expanded>`, so it is
   keyboard-reachable and announces its own state; row actions sit *outside* that
   button or they would be unclickable.
+
+The overview hero is stretched to the height of the chart panel beside it, so
+it always has slack to place. That slack goes **into** the supporting facts —
+they claim the leftover height and spread through it as a 2×2 grid — rather
+than being pinned somewhere as empty space. Anchoring the facts to the bottom
+instead just relocates the gap under the headline, and centring the whole group
+puts a dead band above the card's own title.
 
 Because the summary lives inside a `<button>`, its contents must be phrasing
 content — which is why the `metric` macro emits spans rather than divs.

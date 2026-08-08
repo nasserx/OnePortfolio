@@ -275,8 +275,11 @@ every hero pairs the picture with `--hero-scrim-*`, and three rules hold:
 
 1. **Copy sits on `--hero-scrim-strong`, always.** That step is tuned to the
    loosest value that still clears 4.5:1 for `--fg-muted` against a *worst
-   case* pixel — pure black in light, pure white in dark. Currently 0.86;
-   below about 0.84 the guarantee breaks.
+   case* pixel — pure black in light, pure white in dark. Solving for it
+   gives 0.812 light and 0.776 dark; the shipped values sit just above, with
+   a small margin for antialiasing. There is no room below that without
+   gambling on the particular photograph, so if a hero needs to be clearer,
+   open up `soft` and `edge` or move the copy — do not lower `strong`.
    `tests/test_design_tokens_contrast.py` enforces it.
 2. **`soft` and `edge` are for regions with no text in them.** They exist so
    the picture can actually be seen where nothing is written over it. If a
@@ -298,6 +301,25 @@ at the height it was eyeballed on.
 showcase is `lazy`/`auto`, because that panel is hidden below 60rem and a
 lazily loaded image inside a hidden container is never fetched — a phone
 signing in does not pay ~200KB for a backdrop it cannot see.
+
+**The marketing header floats on the picture.** `.lp-nav` is `fixed`, not
+`sticky`: sticky keeps the header in flow, which pushes the hero down by the
+header's own height and puts a band of flat page colour above the
+photograph. At rest the header is nothing but its contents; the frosted
+panel and hairline only appear once `landing.js` adds `.is-stuck`, when the
+header is genuinely floating over content it needs separating from.
+
+Two things follow from that, and both are easy to lose:
+
+- The header is out of flow, so `:root { scroll-padding-top }` (set in
+  `landing.css`, which only that page loads) is what keeps in-page anchors
+  from scrolling their target underneath it.
+- The nav links and wordmark land inside the scrim's strong plateau, but the
+  theme toggle sits out near 80% of the width where the picture is almost
+  unveiled. Bare, its icon would be reading against open sky — so while the
+  header is transparent it takes the same surface as the Log in button next
+  to it. Anything else added to that end of the header needs the same
+  treatment.
 
 ## Command palette
 

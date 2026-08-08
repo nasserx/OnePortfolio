@@ -30,17 +30,45 @@
      Navigation
      ====================================================================== */
 
+  /* Fixed rather than sticky, so the hero's picture runs to the top edge of
+     the viewport and the header sits *on* it. Sticky keeps the header in
+     flow, which would push the image down by its own height and put a band
+     of flat page colour above the photograph. */
   .lp-nav {
-    position: sticky;
+    position: fixed;
     top: 0;
+    left: 0;
+    right: 0;
     z-index: var(--z-sticky);
     border-bottom: 1px solid transparent;
-    background-color: color-mix(in srgb, var(--bg-canvas) 82%, transparent);
-    backdrop-filter: blur(12px);
-    transition: border-color var(--dur-2) var(--ease-out);
+    background-color: transparent;
+    transition:
+      background-color var(--dur-2) var(--ease-out),
+      border-color var(--dur-2) var(--ease-out);
   }
 
-  .lp-nav.is-stuck { border-bottom-color: var(--line-subtle); }
+  /* At rest the header is nothing but its contents. The panel only appears
+     once the page has scrolled and the header is genuinely floating over
+     content it needs to be separated from. */
+  .lp-nav.is-stuck {
+    border-bottom-color: var(--line-subtle);
+    background-color: color-mix(in srgb, var(--bg-canvas) 82%, transparent);
+    backdrop-filter: blur(12px);
+  }
+
+  /* The nav links and wordmark fall inside the scrim's strong plateau, but
+     the theme toggle sits out at ~80% of the width where the picture is
+     nearly unveiled. Bare, its icon would be reading against open sky. It
+     takes the same surface as the Log in button beside it, which is what it
+     should have looked like over an image anyway. */
+  .lp-nav:not(.is-stuck) .icon-button {
+    background-color: var(--bg-surface);
+    border-color: var(--line-subtle);
+  }
+
+  /* The header no longer occupies flow, so in-page anchors would otherwise
+     scroll their target underneath it. */
+  :root { scroll-padding-top: 5rem; }
 
   .lp-nav__inner {
     display: flex;
@@ -119,7 +147,7 @@
      seam. Layers paint first-on-top, hence the bottom fade leading. */
   .lp-hero {
     position: relative;
-    padding: var(--space-16) 0 var(--space-12);
+    padding: calc(4rem + var(--space-16)) 0 var(--space-12);
     overflow: hidden;
     --hero-scrim:
       linear-gradient(to bottom, transparent 52%, var(--hero-scrim-strong) 100%),
@@ -141,7 +169,7 @@
   }
 
   @media (max-width: 64rem) {
-    .lp-hero { padding-top: var(--space-12); }
+    .lp-hero { padding-top: calc(4rem + var(--space-10)); }
     .lp-hero__grid { grid-template-columns: minmax(0, 1fr); gap: var(--space-8); }
 
     /* Stacked, the copy spans the full width — there is no longer a quiet

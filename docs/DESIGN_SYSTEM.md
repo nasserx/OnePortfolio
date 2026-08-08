@@ -33,6 +33,14 @@ accident:
   lives in the summary table directly below, so nothing is hidden — only
   simplified. The cap is `ALLOCATION_TOP_N` in
   `calculators/allocation_charts.py`.
+- **Figures are right-aligned wherever a column repeats.** Tables and the
+  disclosure metric strips both read vertically, card against card, so the
+  decimal points must stack. Left-aligned numbers let them wander by tens of
+  pixels. A single non-repeating row — the overview hero's supporting facts —
+  stays left-aligned, because there is nothing below it to line up with.
+- **Validation changes colour and nothing else.** Bootstrap's invalid state
+  also injects an icon and widens the right padding, which resizes the field
+  and makes an error read as a different component. Both are reset.
 
 ## File layout
 
@@ -122,6 +130,17 @@ Maximum font weight is `600`.
 - Every animation degrades through the single global
   `@media (prefers-reduced-motion: reduce)` block in `base.css`. Do not write
   per-component reduced-motion guards.
+
+**Never set the `transition` shorthand on an element that also has hover
+choreography.** The marketing page's scroll reveal originally did, and silently
+replaced each card's own `border-color` / `box-shadow` / `transform`
+transitions with its own. Entrances use `animation` for exactly this reason —
+and with `animation-fill-mode: backwards`, not `forwards`, so the final
+keyframe does not outrank a later hover transform and leave the element inert.
+
+Contrast is enforced by `tests/test_design_tokens_contrast.py`, which parses
+`tokens.css` directly. A palette tweak that drops any text role below its floor
+fails the suite rather than shipping.
 
 ## Numbers in templates
 

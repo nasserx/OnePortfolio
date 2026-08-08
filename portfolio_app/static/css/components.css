@@ -448,24 +448,52 @@
     appearance: none;
   }
 
+  /* Validation states change colour and nothing else.
+     Bootstrap also injects a status icon and widens the right padding, which
+     makes an invalid field a visibly different size and shape from the one
+     next to it — so a field jumps as you fill the form, and the error border
+     reads as a different component. Both are reset here, for every way
+     Bootstrap can flag a field. */
   .form-control.is-invalid,
-  .form-select.is-invalid {
-    border-color: var(--neg);
+  .form-control.is-valid,
+  .was-validated .form-control:invalid,
+  .was-validated .form-control:valid {
+    padding-right: var(--control-pad-x);
     background-image: none;
   }
 
-  .form-select.is-invalid { background-image: var(--select-caret); }
+  .form-select.is-invalid,
+  .form-select.is-valid,
+  .was-validated .form-select:invalid,
+  .was-validated .form-select:valid {
+    padding-right: 2.25rem;
+    background-image: var(--select-caret);
+    background-position: right 0.75rem center;
+    background-size: 15px;
+  }
 
-  .form-control.is-invalid:focus,
-  .form-select.is-invalid:focus {
-    box-shadow: 0 0 0 3px var(--neg-soft);
+  .form-control.is-invalid,
+  .form-select.is-invalid,
+  .was-validated .form-control:invalid,
+  .was-validated .form-select:invalid {
     border-color: var(--neg);
   }
 
   .form-control.is-valid,
-  .form-select.is-valid {
+  .form-select.is-valid,
+  .was-validated .form-control:valid,
+  .was-validated .form-select:valid {
     border-color: var(--pos-line);
-    background-image: none;
+  }
+
+  /* The invalid halo matches the weight of the neutral focus ring — the
+     line tokens sit at the same alpha, so the two rings read as siblings. */
+  .form-control.is-invalid:focus,
+  .form-select.is-invalid:focus,
+  .was-validated .form-control:invalid:focus,
+  .was-validated .form-select:invalid:focus {
+    border-color: var(--neg);
+    box-shadow: 0 0 0 3px var(--neg-line);
   }
 
   .invalid-feedback,
@@ -858,9 +886,12 @@
   .records-table td.actions-cell { overflow: visible; }
 
   .records-table tbody td small {
-    font-size: var(--text-sm);
+    font-size: inherit;
     color: inherit;
   }
+
+  .records-table .tx-type-label,
+  .records-table .badge-dividend { font-size: inherit; }
 
   .records-table tbody td small.text-muted { color: var(--fg-subtle) !important; }
 
@@ -1372,7 +1403,7 @@
     grid-template-columns: 0.5rem 1fr auto auto;
     align-items: center;
     gap: var(--space-2);
-    padding: var(--space-2) var(--space-2);
+    padding: 0.3125rem var(--space-2);
     border-radius: var(--radius-sm);
     font-size: var(--text-xs);
     cursor: pointer;

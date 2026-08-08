@@ -548,10 +548,15 @@
     box-shadow: var(--shadow-raised);
   }
 
+  /* The card stretches to match the allocation panel, whose height follows
+     its legend. Two `auto` margins — one here, one on the facts — split that
+     slack evenly, so the headline group floats in balanced space instead of
+     the whole gap collecting above the facts. */
   .hero-figure__label {
     display: flex;
     align-items: center;
     gap: var(--space-2);
+    margin-top: auto;
     color: var(--fg-subtle);
     font-size: var(--text-xs);
     font-weight: var(--weight-medium);

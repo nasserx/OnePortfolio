@@ -246,23 +246,40 @@
   .btn-icon.btn-outline-success:hover { color: var(--pos); background-color: var(--pos-soft); }
   .btn-icon.btn-outline-danger:hover  { color: var(--neg); background-color: var(--neg-soft); }
 
+  /* Row actions appear on engagement only.
+     Hidden with opacity — not `visibility` or `display` — so the buttons
+     stay in the tab order and in the accessibility tree. Tabbing to one
+     trips :focus-within on its row, which reveals it. `pointer-events: none`
+     is what stops a click landing on an invisible control; it does not
+     affect keyboard focus. The row's width is reserved either way, so
+     revealing them never reflows the table. */
   .row-actions {
     display: inline-flex;
     align-items: center;
     gap: var(--space-1);
-  }
-
-  /* Inside a dense table the actions recede until the row is engaged —
-     but never so far that they read as disabled. */
-  .table .row-actions {
-    opacity: 0.55;
+    opacity: 0;
+    pointer-events: none;
     transition: opacity var(--dur-2) var(--ease-out);
   }
 
-  .table tr:hover .row-actions,
-  .table .row-actions:hover,
-  .table .row-actions:focus-within {
+  /* Scoped deliberately: a table row reveals only its own actions, and the
+     disclosure header reveals only the header's. A descendant selector here
+     would light up every row inside the hovered card at once. */
+  tr:hover > * > .row-actions,
+  tr:focus-within > * > .row-actions,
+  .disclosure__item:hover > .disclosure__head > .disclosure__actions,
+  .disclosure__item:focus-within > .disclosure__head > .disclosure__actions,
+  .row-actions:focus-within {
     opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* Coarse pointers never fire hover, so there the actions stay put. */
+  @media (hover: none) {
+    .row-actions {
+      opacity: 1;
+      pointer-events: auto;
+    }
   }
 
   .btn-action-income {
@@ -866,40 +883,34 @@
     white-space: nowrap;
   }
 
-  /* Signed type labels — the one place a coloured chip earns its keep. */
-  .tx-type-label {
+  /* Entry types — Buy / Sell / Income / Deposit / Withdraw.
+     Colour alone carries the meaning. A chip around every row's type column
+     turns a quiet ledger into a field of pills; the word in the right colour
+     says the same thing and lets the figures stay the loudest element. */
+  .tx-type-label,
+  .badge-dividend {
     display: inline-flex;
     align-items: center;
-    padding: 0.125rem var(--space-2);
-    border: 1px solid transparent;
-    border-radius: var(--radius-pill);
-    font-size: var(--text-2xs);
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    font-size: var(--text-sm);
     font-weight: var(--weight-medium);
     line-height: 1.4;
+    white-space: nowrap;
   }
 
   .type-buy,
   .type-deposit,
-  .tx-type-buy {
-    background-color: var(--pos-soft);
-    border-color: var(--pos-line);
-    color: var(--pos);
-  }
+  .tx-type-buy { color: var(--pos); }
 
   .type-sell,
   .type-withdrawal,
-  .tx-type-sell {
-    background-color: var(--neg-soft);
-    border-color: var(--neg-line);
-    color: var(--neg);
-  }
+  .tx-type-sell { color: var(--neg); }
 
   .type-income,
-  .badge-dividend {
-    background-color: var(--income-soft);
-    border-color: var(--income-line);
-    color: var(--income);
-  }
+  .badge-dividend { color: var(--income); }
 
   .nav-admin-badge,
   .admin-badge--admin {

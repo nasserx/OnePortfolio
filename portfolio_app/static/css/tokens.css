@@ -26,18 +26,22 @@
      ====================================================================== */
 
   :root {
-    /* Neutrals — a single cool-grey ramp used by both themes */
+    /* Neutrals.
+       The dark end is a true cool grey. The light end is warmed a few points
+       towards yellow — a paper/cream cast rather than clinical white. Warm
+       ground makes the semantic greens and reds read as saturated instead of
+       washing out, which is the whole job of the light theme here. */
     --n-0:   #ffffff;
-    --n-25:  #fbfbfc;
-    --n-50:  #f6f6f8;
-    --n-100: #eeeef1;
-    --n-150: #e4e4e9;
-    --n-200: #d7d7de;
-    --n-300: #b9b9c4;
-    --n-400: #92929f;
-    --n-500: #70707e;
-    --n-600: #55555f;
-    --n-700: #3d3d46;
+    --n-25:  #fcfbf8;
+    --n-50:  #f7f5f0;
+    --n-100: #efece5;
+    --n-150: #e6e2d9;
+    --n-200: #d9d4c9;
+    --n-300: #bcb7ab;
+    --n-400: #96918a;
+    --n-500: #726e68;
+    --n-600: #575350;
+    --n-700: #3e3b39;
     --n-750: #2e2e35;
     --n-800: #212127;
     --n-850: #18181d;
@@ -46,34 +50,38 @@
     --n-1000:#07070a;
 
     /* Brand — indigo-violet. Deliberately off the semantic hues (green /
-       red / blue) so brand surfaces never read as a financial signal. */
-    --brand-300: #a99bff;
-    --brand-400: #8f7dfa;
-    --brand-500: #7461f3;
-    --brand-600: #5d49e0;
-    --brand-700: #4a38bd;
+       red / blue) so brand surfaces never read as a financial signal.
+       The dark-theme steps are pushed up in chroma: against a near-black
+       ground a desaturated violet reads as grey. */
+    --brand-200: #c3b8ff;
+    --brand-300: #ab9bff;
+    --brand-400: #9583ff;
+    --brand-500: #7c66ff;
+    --brand-600: #5b45e8;
+    --brand-700: #4732c4;
 
-    /* Semantic hues — two tunings each, one per theme */
-    --green-light:  #0f8a4d;
+    /* Semantic hues — two tunings each, one per theme. The light-theme
+       values are darkened to clear 4.5:1 against the cream surfaces. */
+    --green-light:  #0b7a44;
     --green-dark:   #40cf85;
-    --red-light:    #cf3540;
+    --red-light:    #c22b38;
     --red-dark:     #ff6b74;
-    --blue-light:   #1f6fd4;
+    --blue-light:   #1a63c4;
     --blue-dark:    #5aa9ff;
-    --amber-light:  #a9720a;
+    --amber-light:  #96640a;
     --amber-dark:   #f0b445;
 
     /* Categorical palette — allocation charts and portfolio markers.
        Hues are spaced far enough apart to survive both themes and the
        most common forms of colour-vision deficiency. */
-    --cat-1: #7461f3;
-    --cat-2: #00a3a3;
-    --cat-3: #e07b39;
-    --cat-4: #3f8ef0;
-    --cat-5: #c05fb4;
-    --cat-6: #4da35e;
-    --cat-7: #c9a227;
-    --cat-other: #7b7b8a;
+    --cat-1: #6a55e8;
+    --cat-2: #00928f;
+    --cat-3: #cf6a24;
+    --cat-4: #2f7fdb;
+    --cat-5: #b04ea4;
+    --cat-6: #3d8f4e;
+    --cat-7: #b08a1a;
+    --cat-other: #8c867c;
 
     /* ------------------------------------------------------------------
        Typography
@@ -183,18 +191,19 @@
   :root {
     color-scheme: light;
 
-    /* Surfaces, back to front */
+    /* Surfaces, back to front. Cards sit a warm white above a cream
+       canvas — enough separation to read as raised without a hard edge. */
     --bg-canvas:  var(--n-50);
     --bg-sunken:  var(--n-100);
-    --bg-surface: var(--n-0);
+    --bg-surface: #fffefb;
     --bg-raised:  var(--n-0);
     --bg-inset:   var(--n-25);
-    --bg-hover:   rgb(18 18 24 / 0.04);
-    --bg-active:  rgb(18 18 24 / 0.07);
-    --bg-backdrop: rgb(18 18 24 / 0.42);
+    --bg-hover:   rgb(62 59 57 / 0.05);
+    --bg-active:  rgb(62 59 57 / 0.09);
+    --bg-backdrop: rgb(38 34 28 / 0.40);
 
-    /* Foreground */
-    --fg-default: #17171c;
+    /* Foreground — warm-black, matched to the cream ground */
+    --fg-default: #1c1a17;
     --fg-muted:   var(--n-600);
     --fg-subtle:  var(--n-500);
     --fg-faint:   var(--n-400);
@@ -202,55 +211,55 @@
     --fg-on-solid: var(--n-0);
 
     /* Lines */
-    --line-subtle: rgb(18 18 24 / 0.07);
-    --line-default: rgb(18 18 24 / 0.12);
-    --line-strong: rgb(18 18 24 / 0.22);
+    --line-subtle: rgb(62 59 57 / 0.09);
+    --line-default: rgb(62 59 57 / 0.15);
+    --line-strong: rgb(62 59 57 / 0.26);
 
     /* Brand */
     --brand: var(--brand-600);
     --brand-hover: var(--brand-700);
-    --brand-soft: rgb(116 97 243 / 0.10);
-    --brand-soft-hover: rgb(116 97 243 / 0.16);
-    --brand-line: rgb(116 97 243 / 0.32);
+    --brand-soft: rgb(124 102 255 / 0.10);
+    --brand-soft-hover: rgb(124 102 255 / 0.17);
+    --brand-line: rgb(124 102 255 / 0.34);
 
     /* Financial semantics */
     --pos: var(--green-light);
-    --pos-soft: rgb(15 138 77 / 0.11);
-    --pos-line: rgb(15 138 77 / 0.28);
+    --pos-soft: rgb(11 122 68 / 0.11);
+    --pos-line: rgb(11 122 68 / 0.28);
 
     --neg: var(--red-light);
-    --neg-soft: rgb(207 53 64 / 0.10);
-    --neg-line: rgb(207 53 64 / 0.28);
+    --neg-soft: rgb(194 43 56 / 0.10);
+    --neg-line: rgb(194 43 56 / 0.28);
 
     --income: var(--blue-light);
-    --income-soft: rgb(31 111 212 / 0.10);
-    --income-line: rgb(31 111 212 / 0.28);
+    --income-soft: rgb(26 99 196 / 0.10);
+    --income-line: rgb(26 99 196 / 0.28);
 
     --warn: var(--amber-light);
-    --warn-soft: rgb(169 114 10 / 0.12);
-    --warn-line: rgb(169 114 10 / 0.30);
+    --warn-soft: rgb(150 100 10 / 0.12);
+    --warn-line: rgb(150 100 10 / 0.30);
 
     --flat: var(--fg-subtle);
 
     /* Elevation — two steps only, and never for decoration */
     --shadow-raised:
-      0 1px 2px rgb(18 18 24 / 0.06),
-      0 1px 1px rgb(18 18 24 / 0.04);
+      0 1px 2px rgb(48 42 34 / 0.07),
+      0 1px 1px rgb(48 42 34 / 0.04);
     --shadow-overlay:
-      0 18px 48px -14px rgb(18 18 24 / 0.24),
-      0 4px 12px -4px rgb(18 18 24 / 0.10);
+      0 18px 48px -14px rgb(48 42 34 / 0.22),
+      0 4px 12px -4px rgb(48 42 34 / 0.10);
     --shadow-lift:
-      0 4px 14px -4px rgb(18 18 24 / 0.14);
+      0 4px 14px -4px rgb(48 42 34 / 0.14);
 
     --focus-ring: var(--brand-500);
-    --focus-ring-halo: rgb(116 97 243 / 0.24);
+    --focus-ring-halo: rgb(124 102 255 / 0.26);
 
     /* Chart roles */
     --chart-grid: var(--line-subtle);
     --chart-axis: var(--fg-faint);
     --chart-ring-gap: var(--bg-surface);
 
-    --select-caret: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%2370707e' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.6' d='m3.5 6 4.5 4.5L12.5 6'/%3e%3c/svg%3e");
+    --select-caret: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23726e68' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.6' d='m3.5 6 4.5 4.5L12.5 6'/%3e%3c/svg%3e");
   }
 
   /* ---------- dark: system preference (no explicit choice made) -------- */
@@ -280,9 +289,9 @@
 
       --brand: var(--brand-400);
       --brand-hover: var(--brand-300);
-      --brand-soft: rgb(143 125 250 / 0.14);
-      --brand-soft-hover: rgb(143 125 250 / 0.22);
-      --brand-line: rgb(143 125 250 / 0.34);
+      --brand-soft: rgb(149 131 255 / 0.16);
+      --brand-soft-hover: rgb(149 131 255 / 0.24);
+      --brand-line: rgb(149 131 255 / 0.42);
 
       --pos: var(--green-dark);
       --pos-soft: rgb(64 207 133 / 0.13);
@@ -310,17 +319,17 @@
         0 6px 18px -6px rgb(0 0 0 / 0.5);
 
       --focus-ring: var(--brand-300);
-      --focus-ring-halo: rgb(169 155 255 / 0.28);
+      --focus-ring-halo: rgb(171 155 255 / 0.30);
 
       --chart-ring-gap: var(--bg-surface);
 
-      --cat-1: #8f7dfa;
-      --cat-2: #2dc4c4;
-      --cat-3: #f0955c;
-      --cat-4: #6aacf7;
-      --cat-5: #d986cd;
-      --cat-6: #6cc47f;
-      --cat-7: #dcbb4a;
+      --cat-1: #9583ff;
+      --cat-2: #2ccbc7;
+      --cat-3: #f5975a;
+      --cat-4: #64b0ff;
+      --cat-5: #e087d2;
+      --cat-6: #6ccb83;
+      --cat-7: #e3c256;
       --cat-other: #6e6e7d;
 
       --select-caret: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23a3a3ae' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.6' d='m3.5 6 4.5 4.5L12.5 6'/%3e%3c/svg%3e");
@@ -353,9 +362,9 @@
 
     --brand: var(--brand-400);
     --brand-hover: var(--brand-300);
-    --brand-soft: rgb(143 125 250 / 0.14);
-    --brand-soft-hover: rgb(143 125 250 / 0.22);
-    --brand-line: rgb(143 125 250 / 0.34);
+    --brand-soft: rgb(149 131 255 / 0.16);
+    --brand-soft-hover: rgb(149 131 255 / 0.24);
+    --brand-line: rgb(149 131 255 / 0.42);
 
     --pos: var(--green-dark);
     --pos-soft: rgb(64 207 133 / 0.13);
@@ -383,17 +392,17 @@
       0 6px 18px -6px rgb(0 0 0 / 0.5);
 
     --focus-ring: var(--brand-300);
-    --focus-ring-halo: rgb(169 155 255 / 0.28);
+    --focus-ring-halo: rgb(171 155 255 / 0.30);
 
     --chart-ring-gap: var(--bg-surface);
 
-    --cat-1: #8f7dfa;
-    --cat-2: #2dc4c4;
-    --cat-3: #f0955c;
-    --cat-4: #6aacf7;
-    --cat-5: #d986cd;
-    --cat-6: #6cc47f;
-    --cat-7: #dcbb4a;
+    --cat-1: #9583ff;
+    --cat-2: #2ccbc7;
+    --cat-3: #f5975a;
+    --cat-4: #64b0ff;
+    --cat-5: #e087d2;
+    --cat-6: #6ccb83;
+    --cat-7: #e3c256;
     --cat-other: #6e6e7d;
 
     --select-caret: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23a3a3ae' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.6' d='m3.5 6 4.5 4.5L12.5 6'/%3e%3c/svg%3e");
@@ -497,18 +506,18 @@
      comma-separated legacy syntax, and must be raw numbers — so they are
      re-stated per theme rather than aliased onto the role tokens. */
   :root {
-    --bs-body-bg-rgb: 246, 246, 248;
-    --bs-body-color-rgb: 23, 23, 28;
-    --bs-primary-rgb: 93, 73, 224;
-    --bs-secondary-rgb: 85, 85, 95;
-    --bs-success-rgb: 15, 138, 77;
-    --bs-danger-rgb: 207, 53, 64;
-    --bs-warning-rgb: 169, 114, 10;
-    --bs-info-rgb: 31, 111, 212;
-    --bs-light-rgb: 238, 238, 241;
-    --bs-dark-rgb: 23, 23, 28;
-    --bs-link-color-rgb: 93, 73, 224;
-    --bs-link-hover-color-rgb: 74, 56, 189;
+    --bs-body-bg-rgb: 247, 245, 240;
+    --bs-body-color-rgb: 28, 26, 23;
+    --bs-primary-rgb: 91, 69, 232;
+    --bs-secondary-rgb: 87, 83, 80;
+    --bs-success-rgb: 11, 122, 68;
+    --bs-danger-rgb: 194, 43, 56;
+    --bs-warning-rgb: 150, 100, 10;
+    --bs-info-rgb: 26, 99, 196;
+    --bs-light-rgb: 239, 236, 229;
+    --bs-dark-rgb: 28, 26, 23;
+    --bs-link-color-rgb: 91, 69, 232;
+    --bs-link-hover-color-rgb: 71, 50, 196;
     --bs-info-text-emphasis: var(--income);
   }
 
@@ -516,7 +525,7 @@
     :root:not([data-theme="light"]) {
       --bs-body-bg-rgb: 7, 7, 10;
       --bs-body-color-rgb: 237, 237, 241;
-      --bs-primary-rgb: 143, 125, 250;
+      --bs-primary-rgb: 149, 131, 255;
       --bs-secondary-rgb: 163, 163, 174;
       --bs-success-rgb: 64, 207, 133;
       --bs-danger-rgb: 255, 107, 116;
@@ -524,15 +533,15 @@
       --bs-info-rgb: 90, 169, 255;
       --bs-light-rgb: 33, 33, 39;
       --bs-dark-rgb: 237, 237, 241;
-      --bs-link-color-rgb: 143, 125, 250;
-      --bs-link-hover-color-rgb: 169, 155, 255;
+      --bs-link-color-rgb: 149, 131, 255;
+      --bs-link-hover-color-rgb: 171, 155, 255;
     }
   }
 
   :root[data-theme="dark"] {
     --bs-body-bg-rgb: 7, 7, 10;
     --bs-body-color-rgb: 237, 237, 241;
-    --bs-primary-rgb: 143, 125, 250;
+    --bs-primary-rgb: 149, 131, 255;
     --bs-secondary-rgb: 163, 163, 174;
     --bs-success-rgb: 64, 207, 133;
     --bs-danger-rgb: 255, 107, 116;
@@ -540,7 +549,7 @@
     --bs-info-rgb: 90, 169, 255;
     --bs-light-rgb: 33, 33, 39;
     --bs-dark-rgb: 237, 237, 241;
-    --bs-link-color-rgb: 143, 125, 250;
-    --bs-link-hover-color-rgb: 169, 155, 255;
+    --bs-link-color-rgb: 149, 131, 255;
+    --bs-link-hover-color-rgb: 171, 155, 255;
   }
 }

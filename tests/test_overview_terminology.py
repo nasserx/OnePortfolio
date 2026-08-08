@@ -7,6 +7,7 @@ from urllib.parse import quote_plus
 
 from portfolio_app import db
 from portfolio_app.calculators import PortfolioCalculator
+from portfolio_app.calculators.allocation_charts import ALLOCATION_TOP_N
 from portfolio_app.models.user import User
 from portfolio_app.services.factory import Services
 
@@ -264,7 +265,7 @@ def test_overview_empty_portfolios_render_empty_chart_context(app):
     assert 'demo' not in text.lower()
 
 
-def test_overview_portfolio_allocation_uses_other_portfolios_only_after_seven(app):
+def test_overview_portfolio_allocation_groups_the_tail_as_other_portfolios(app):
     with app.app_context():
         uid = _seed_user('overview_many_portfolios')
         svc = Services(user_id=uid)
@@ -284,13 +285,40 @@ def test_overview_portfolio_allocation_uses_other_portfolios_only_after_seven(ap
     html = response.get_data(as_text=True)
     chart_data = _chart_data(html)
 
-    assert 'Other Portfolios' in chart_data['book_value_chart']['categories']
-    assert 'Other Portfolios' in chart_data['capital_chart']['categories']
-    assert chart_data['book_value_chart']['categories'][-1] == 'Other Portfolios'
-    assert chart_data['capital_chart']['categories'][-1] == 'Other Portfolios'
-    assert len(chart_data['book_value_chart']['categories']) == 8
-    assert len(chart_data['capital_chart']['categories']) == 8
+    # Eight portfolios collapse to the top four plus one grouped wedge, so the
+    # ring stays readable; the summary table below still lists all eight.
+    for key in ('book_value_chart', 'capital_chart'):
+        categories = chart_data[key]['categories']
+        assert len(categories) == ALLOCATION_TOP_N + 1
+        assert categories[-1] == 'Other Portfolios'
+        assert categories.count('Other Portfolios') == 1
+        # Grouping must not lose value: the wedges still sum to 100%.
+        assert round(sum(chart_data[key]['allocations']), 4) == 100.0
+
     assert 'Showing top 7 portfolios and grouping the rest as Other Portfolios.' not in html
+
+
+def test_overview_allocation_leaves_small_portfolio_counts_ungrouped(app):
+    """At or below the cap every portfolio keeps its own wedge."""
+    with app.app_context():
+        uid = _seed_user('overview_few_portfolios')
+        svc = Services(user_id=uid)
+        for idx in range(ALLOCATION_TOP_N):
+            portfolio = svc.portfolio_service.create_portfolio(
+                f'Small {idx + 1}', user_id=uid,
+            )
+            svc.portfolio_service.deposit_funds(
+                portfolio.id, _dec(str(1000 + idx)), date=datetime(2024, 1, 1),
+            )
+
+    client = app.test_client()
+    _login(client, uid)
+    chart_data = _chart_data(client.get('/').get_data(as_text=True))
+
+    for key in ('book_value_chart', 'capital_chart'):
+        categories = chart_data[key]['categories']
+        assert len(categories) == ALLOCATION_TOP_N
+        assert 'Other Portfolios' not in categories
 
 
 def test_overview_keeps_related_routes_available(app):

@@ -1307,6 +1307,14 @@
      A muted, static portrait of the product. It is decoration with a job:
      it tells a first-time visitor what they are signing in to.
      -------------------------------------------------------------------- */
+  /* A flat shade, not a gradient. The copy here is vertically centred, so
+     its position within the panel moves with the viewport height — any
+     directional falloff would land the quote in a different band on a
+     laptop than on a desktop, and the legibility guarantee would hold only
+     at the height it was eyeballed on. Nothing dissolves either: this is a
+     bounded panel with its own border, so it has no edge to hide. The
+     surface colour stays as the base layer, so the panel still looks
+     deliberate if the picture never arrives. */
   .auth__showcase {
     position: relative;
     display: flex;
@@ -1317,18 +1325,7 @@
     border-left: 1px solid var(--line-subtle);
     background-color: var(--bg-surface);
     overflow: hidden;
-  }
-
-  .auth__showcase::before {
-    content: "";
-    position: absolute;
-    top: -30%;
-    right: -20%;
-    width: 34rem;
-    height: 34rem;
-    border-radius: 50%;
-    background: radial-gradient(circle, var(--brand-soft) 0%, transparent 68%);
-    pointer-events: none;
+    --hero-focus: 50% 62%;
   }
 
   .auth__quote {
@@ -1341,10 +1338,15 @@
     letter-spacing: -0.02em;
   }
 
+  /* Full strength, not a quieter step: this paragraph sits over the hero
+     photograph, where a tint is not a free way to say "secondary". Every
+     step below `--fg-default` needs roughly 0.79 of veil against this
+     picture where the default needs 0.49, so greying it down would have
+     been paid for by the photograph. Size carries the hierarchy instead. */
   .auth__quote-sub {
     position: relative;
     max-width: 26rem;
-    color: var(--fg-subtle);
+    color: var(--fg-default);
     font-size: var(--text-sm);
   }
 

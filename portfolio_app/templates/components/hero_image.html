@@ -1,0 +1,32 @@
+{#
+  Hero backdrop image.
+
+  AVIF is offered first and WebP is the fallback: a browser that cannot decode
+  AVIF skips the <source> and uses the <img> src instead. That negotiation is
+  the whole reason this is a <picture> rather than a CSS background — it is
+  the one mechanism every engine implements, including ones too old to
+  understand `image-set()` type hints.
+
+  `alt=""` is deliberate. The picture carries no information the surrounding
+  copy does not; announcing it would add noise to a screen reader, not
+  meaning. Its wrapper is `aria-hidden` for the same reason.
+
+  Callers may set, before including:
+    hero_loading   'eager' (default) or 'lazy'
+    hero_priority  'high' (default) or 'auto'
+
+  Use 'lazy'/'auto' where the container can be hidden by a media query — the
+  browser then skips the download entirely instead of spending ~200KB on a
+  panel the visitor will never see.
+#}
+<picture>
+    <source srcset="{{ url_for('static', filename='img/hero.avif', v=ASSET_VERSION) }}"
+            type="image/avif">
+    <img src="{{ url_for('static', filename='img/hero.webp', v=ASSET_VERSION) }}"
+         alt=""
+         width="1600"
+         height="900"
+         decoding="async"
+         loading="{{ hero_loading | default('eager') }}"
+         fetchpriority="{{ hero_priority | default('high') }}">
+</picture>

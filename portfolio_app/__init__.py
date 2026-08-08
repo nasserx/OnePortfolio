@@ -172,7 +172,7 @@ def create_app(config_class=Config):
 
     # Static-asset cache buster. Bumped by hand when CSS/JS ships, so every
     # template can use `v=ASSET_VERSION` instead of carrying its own literal.
-    ASSET_VERSION = '20260808-5'
+    ASSET_VERSION = '20260808-10'
 
     @app.context_processor
     def inject_template_globals():

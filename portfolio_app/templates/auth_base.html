@@ -2,8 +2,9 @@
   Authentication shell.
 
   Two columns: the form on the left, a quiet portrait of the product on the
-  right. The showcase collapses away below 60rem, so the form is never
-  competing for space on a phone.
+  right, over the same photographic backdrop the marketing hero uses. The
+  showcase collapses away below 60rem, so the form is never competing for
+  space on a phone.
 #}
 <!DOCTYPE html>
 <html lang="en">
@@ -52,6 +53,15 @@
     </main>
 
     <aside class="auth__showcase" aria-hidden="true">
+        {# Lazy on purpose: this panel is hidden below 60rem, and a lazily
+           loaded image inside a hidden container is never fetched — so a
+           phone signing in does not pay for a backdrop it cannot see. #}
+        {% set hero_loading = 'lazy' %}
+        {% set hero_priority = 'auto' %}
+        <div class="hero-media">
+            {% include 'components/hero_image.html' %}
+        </div>
+
         <p class="auth__quote">A clear record of every portfolio you manage.</p>
         <p class="auth__quote-sub">
             Capital, asset activity, income, and realized results — from your own

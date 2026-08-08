@@ -1558,7 +1558,96 @@
   :root[data-theme="light"] .brand-logo--light { display: block; }
 
   /* ======================================================================
-     16. DATE PICKER (flatpickr)
+     16. HERO BACKDROP
+     A photograph behind a hero is the one place this product lets an image
+     carry mood rather than information. It is always decorative (`alt=""`,
+     `aria-hidden` wrapper) and always under a shade, because copy
+     legibility cannot depend on which pixel of a photograph lands under a
+     word.
+
+     The point of the shade is to be as light as that guarantee allows. It
+     is derived from the shipped photograph's own pixels rather than from a
+     hypothetical worst case, which is what leaves the picture looking like
+     a picture instead of a wash — see `--hero-shade` in tokens.css.
+
+     Two knobs, each optional:
+
+       --hero-shade-layer  what is painted over the picture, if not a flat
+                           `--hero-shade`
+       --hero-mask         where the backdrop dissolves, if it has an edge
+                           to hide
+
+     The default for both is the honest one — an even veil and no dissolve.
+     A hero that reaches for the first knob should be able to say why the
+     picture needs to be less visible in one place than another.
+     ====================================================================== */
+
+  .hero-media {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+    /* Applies to the picture *and* the shade above it, so the whole backdrop
+       leaves together. Anything that dissolved the photograph alone would
+       strand the shade as a film over bare page colour. */
+    -webkit-mask-image: var(--hero-mask, none);
+    mask-image: var(--hero-mask, none);
+  }
+
+  .hero-media picture {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  .hero-media img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: var(--hero-focus, 50% 50%);
+  }
+
+  /* The shade. One layer, because one thing is being decided here: how much
+     of the page's own colour stands between the photograph and the words. */
+  .hero-media::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: var(--hero-shade-layer, var(--hero-shade));
+  }
+
+  /* Scroll-driven lift. The backdrop belongs to the top of the page, so it
+     leaves with it: by the time the reader has scrolled past the hero the
+     picture has gone and the sections below arrive on clean ground.
+
+     Contrast is safe throughout the fade. Both ends are colours the copy is
+     already guaranteed against — shaded photograph at one end, page canvas
+     at the other — and a linear blend between two luminances stays between
+     them, so every frame in between is at least as legible as the worse of
+     the two.
+
+     Opted into per page, and only where the browser drives it off the
+     compositor. There is no JS fallback on purpose: a scroll handler that
+     writes opacity on every frame is a jank generator, and the static hero
+     it would replace is already correct. */
+  @supports (animation-timeline: scroll()) {
+    @media (prefers-reduced-motion: no-preference) {
+      .hero-media--lift {
+        animation: op-hero-lift linear both;
+        animation-timeline: scroll(root block);
+        animation-range: 0 var(--hero-lift-range, 70vh);
+      }
+    }
+  }
+
+  @keyframes op-hero-lift {
+    to { opacity: 0; }
+  }
+
+  /* ======================================================================
+     17. DATE PICKER (flatpickr)
      ====================================================================== */
 
   .op-flatpickr.flatpickr-calendar {

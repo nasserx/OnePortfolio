@@ -54,11 +54,20 @@
        The dark-theme steps are pushed up in chroma: against a near-black
        ground a desaturated violet reads as grey.
 
-       The ramp splits into two working halves. 400–200 are the *accent*
+       The ramp splits into three working bands. 400–200 are the *accent*
        steps: bright enough to read as text and hairlines on a near-black
        ground. 600–550 are the *solid* steps: deep enough to carry white
        label text at 4.5:1. A single step cannot do both jobs — that is
-       why `--brand` and `--brand-solid` are separate roles below. */
+       why `--brand` and `--brand-solid` are separate roles below.
+
+       The outer pair at each end (900–800, 100–50) exists for one job:
+       brand-tinted type over the hero photograph. Neither of the working
+       bands can go there. A violet has to be *further* from the picture
+       than plain ink is to survive the same shade, so the light theme
+       needs a deeper violet than `--brand-700` and the dark theme a paler
+       one than `--brand-200`. They are ends of a gradient, not fills. */
+    --brand-50:  #e2ddff;
+    --brand-100: #d1c8ff;
     --brand-200: #bdb0ff;
     --brand-300: #b3a1ff;
     --brand-400: #9d88ff;
@@ -66,6 +75,8 @@
     --brand-550: #6647ff;
     --brand-600: #5b45e8;
     --brand-700: #4732c4;
+    --brand-800: #372697;
+    --brand-900: #241860;
 
     /* Semantic hues — two tunings each, one per theme. The light-theme
        values are darkened to clear 4.5:1 against the cream surfaces. */
@@ -240,34 +251,46 @@
     --brand-hover: var(--brand-700);
     --brand-solid: var(--brand-600);
     --brand-solid-hover: var(--brand-700);
-    /* Hero backdrop shade — the canvas colour at three strengths, laid over
-       the photograph behind a hero so the copy on top of it stays readable.
+    /* Hero backdrop. One veil of the canvas colour, laid over the whole
+       photograph at one strength — no falloff in either direction.
+
+       Uniformity is the point. Every earlier version varied the veil to buy
+       clarity where nothing was written, and every one of them read as a
+       *stain*: the eye has no trouble at all seeing that one part of a
+       photograph is hazier than the rest, and it looks like a rendering
+       fault rather than a design. A picture that is 12% less visible
+       everywhere reads as a picture. So there is exactly one number, and
+       anything floating on the hero is guaranteed against it.
 
        `shade` is derived, not chosen. It is the lightest veil under which
-       every foreground role still clears its contrast floor against the
-       darkest and lightest pixels the shipped photograph actually puts
-       under the copy — measured from the file itself by
-       `tests/test_hero_legibility.py`, which re-derives the floor on every
-       run and fails if the image or these values drift apart.
+       hero copy still clears its contrast floor against the darkest and
+       brightest pixels the shipped photograph actually contains — measured
+       from the file itself by `tests/test_hero_legibility.py`, which
+       re-derives the floor on every run and fails if the image and these
+       values drift apart.
 
        That is the whole reason the picture is visible. Sizing a scrim for a
        *hypothetical* photograph means sizing it for pure black and pure
-       white, and no real photograph is ever that; the difference is roughly
+       white, and no real photograph is ever both; the difference is roughly
        0.3 of alpha, which is the difference between a backdrop and a wash.
        The trade is explicit: swap the photograph and the test recomputes,
        so a darker picture would demand a heavier shade and say so.
 
-       `soft` and `edge` cover the areas copy never reaches, so they are
-       free to open right up. `band` is a separate job: a short veil down
-       the top of a hero so that a header floating on the picture stays
-       readable without a panel behind it. Stacked over `edge` it lands near
-       0.70, which is where `--fg-default` clears 4.5:1 in both themes — so
-       anything sitting in that band uses the default step, never a quieter
-       one. */
-    --hero-shade:      rgb(247 245 240 / 0.52);
-    --hero-shade-soft: rgb(247 245 240 / 0.26);
-    --hero-shade-edge: rgb(247 245 240 / 0.08);
-    --hero-band:       rgb(247 245 240 / 0.64);
+       Because the shade is uniform, a header floating on the hero needs no
+       veil of its own — which is why there is no band token here any more,
+       and why the marketing header is genuinely invisible until it sticks. */
+    --hero-shade: rgb(247 245 240 / 0.52);
+
+    /* The two ends of the hero title's gradient. Large text, so the floor
+       is 3:1 rather than 4.5:1 — that headroom is the only reason a violet
+       can go over a photograph at all. */
+    --hero-title-from: var(--brand-900);
+    --hero-title-to:   var(--brand-800);
+
+    /* How much of a surface floating on the hero stays opaque. The rest is
+       photograph. The binding constraint is the quietest label inside the
+       card, not the card itself. */
+    --hero-card-fill: 94%;
 
     /* Hover veil for the semantic solid buttons. It moves *away* from the
        label colour in each theme — darker under white labels, lighter under
@@ -348,10 +371,10 @@
       --brand-hover: var(--brand-300);
       --brand-solid: var(--brand-550);
       --brand-solid-hover: var(--brand-500);
-      --hero-shade:      rgb(16 16 21 / 0.64);
-      --hero-shade-soft: rgb(16 16 21 / 0.26);
-      --hero-shade-edge: rgb(16 16 21 / 0.08);
-      --hero-band:       rgb(16 16 21 / 0.64);
+      --hero-shade: rgb(16 16 21 / 0.64);
+      --hero-title-from: var(--brand-50);
+      --hero-title-to:   var(--brand-100);
+      --hero-card-fill: 90%;
       --solid-hover-veil: rgb(255 255 255 / 0.14);
       --brand-soft: rgb(157 136 255 / 0.20);
       --brand-soft-hover: rgb(157 136 255 / 0.30);
@@ -428,10 +451,10 @@
     --brand-hover: var(--brand-300);
     --brand-solid: var(--brand-550);
     --brand-solid-hover: var(--brand-500);
-    --hero-shade:      rgb(16 16 21 / 0.64);
-    --hero-shade-soft: rgb(16 16 21 / 0.26);
-    --hero-shade-edge: rgb(16 16 21 / 0.08);
-    --hero-band:       rgb(16 16 21 / 0.64);
+    --hero-shade: rgb(16 16 21 / 0.64);
+    --hero-title-from: var(--brand-50);
+    --hero-title-to:   var(--brand-100);
+    --hero-card-fill: 90%;
     --solid-hover-veil: rgb(255 255 255 / 0.14);
     --brand-soft: rgb(157 136 255 / 0.20);
     --brand-soft-hover: rgb(157 136 255 / 0.30);

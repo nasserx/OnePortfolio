@@ -34,9 +34,13 @@ from tests._colour import (
     contrast,
     parse_veil,
     resolve,
-    stack,
     theme_tokens,
+    to_rgb,
 )
+
+# WCAG's large-text floor. It applies from 24px, or 18.66px bold; the hero
+# title is 56px semibold and nothing else on the hero qualifies.
+LARGE_TEXT_MIN = 3.0
 
 Image = pytest.importorskip(
     'PIL.Image',
@@ -67,9 +71,21 @@ COPY_REGIONS = {
     'auth showcase': (0.05, 0.95, 0.00, 1.00),
 }
 
-# The floating header spans the full width, so it gets no help from the
-# copy shade on the right-hand side — see the stacking in the chrome test.
+# The floating header spans the full width, and sits in the top band of
+# whatever the crop exposes.
 HEADER_REGION = (0.00, 1.00, 0.00, 0.18)
+
+# The product card floats on the right half of the marketing hero. Padded
+# left, because a horizontal crop slides the mapping inward.
+CARD_REGION = (0.45, 1.00, 0.00, 1.00)
+
+# What is printed on that card, and the floor each needs. `--fg-subtle` is
+# the quietest thing on it — the column labels and the allocation
+# percentages — and it is what decides how far the fill can drop.
+CARD_SURFACES = {
+    'bg-surface': {'fg-subtle': TEXT_MIN, 'fg-faint': LARGE_TEXT_MIN},
+    'bg-inset': {'fg-subtle': TEXT_MIN, 'fg-faint': LARGE_TEXT_MIN},
+}
 
 # Sample at 1/4 scale. Averaging 4x4 blocks is not a shortcut: a glyph stroke
 # covers several pixels and the eye integrates across them, so a lone
@@ -148,6 +164,13 @@ def _shade(css, theme):
     return parse_veil(theme_tokens(css, theme)['hero-shade'])
 
 
+def _percentage(value):
+    """`94%` -> 0.94."""
+    text = value.strip()
+    assert text.endswith('%'), f'expected a percentage, got {value!r}'
+    return float(text[:-1]) / 100
+
+
 @pytest.mark.parametrize('theme', ['light', 'dark'])
 def test_hero_copy_clears_its_floor_against_the_actual_photograph(
     css, photograph, theme
@@ -202,35 +225,106 @@ def test_the_shade_is_no_heavier_than_the_photograph_requires(
 
 
 @pytest.mark.parametrize('theme', ['light', 'dark'])
-def test_hero_chrome_is_legible_where_the_shade_is_most_open(
-    css, photograph, theme
-):
-    """The floating header's worst case is the top *right* of the hero.
+def test_the_floating_header_needs_no_veil_of_its_own(css, photograph, theme):
+    """The marketing header sits on the hero with nothing behind it.
 
-    There the copy shade has eased all the way down to `--hero-shade-edge`
-    and the only thing holding the header up is `--hero-band`. The two
-    stack, so the check has to stack them too: testing the band alone would
-    flatter it, and testing `edge` alone would condemn it.
+    That is only possible because the shade is uniform: the sky at the top
+    of the picture is veiled exactly as much as the mountains under the
+    title, so the header is already standing on the guarantee. Every earlier
+    version had to darken a band down the top of the hero to hold this row
+    up, and in the dark theme that band was the most conspicuous thing on
+    the page.
 
-    This is also why the band holds full strength across the header's own
-    height before it fades — a band measured at y=0 is not the band the
-    links are actually sitting in.
+    If this fails, the honest fix is a heavier `--hero-shade` — not a band.
+    A band buys legibility in one strip by making the picture visibly
+    patchy, which is the trade this hero exists to refuse.
     """
     declared = theme_tokens(css, theme)
     foreground = resolve(HERO_FOREGROUND, declared)
-    band = parse_veil(declared['hero-band'])
-    edge = parse_veil(declared['hero-shade-edge'])
-    veil_colour, combined = stack(band, edge)
+    veil_colour, shipped = _shade(css, theme)
 
     needed = _required_alpha(
         _sample(photograph, HEADER_REGION), veil_colour, foreground, TEXT_MIN
     )
 
-    assert combined >= needed, (
-        f'{theme}: --hero-band over --hero-shade-edge gives {combined:.3f}, '
-        f'but the sky behind the header needs {needed:.3f} for '
-        f'--{HERO_FOREGROUND} to hold {TEXT_MIN}:1'
+    assert shipped >= needed, (
+        f'{theme}: --hero-shade is {shipped:.3f}, but the sky behind the '
+        f'floating header needs {needed:.3f} for --{HERO_FOREGROUND} to '
+        f'hold {TEXT_MIN}:1'
     )
+
+
+@pytest.mark.parametrize('theme', ['light', 'dark'])
+def test_the_hero_title_gradient_survives_the_photograph(
+    css, photograph, theme
+):
+    """Both ends of the brand gradient, at the large-text floor.
+
+    3:1 rather than 4.5:1 is not a relaxation — WCAG sets it for text this
+    size, and it is the entire reason a violet can go over a photograph
+    when the body copy beside it cannot. Check both stops: a gradient is
+    only as legible as its lighter end in the light theme and its darker
+    end in the dark one, and which of the two that is flips with the theme.
+    """
+    declared = theme_tokens(css, theme)
+    veil_colour, shipped = _shade(css, theme)
+    pixels = _sample(photograph, COPY_REGIONS['landing hero'])
+
+    failures = []
+    for role in ('hero-title-from', 'hero-title-to'):
+        colour = resolve(role, declared)
+        needed = _required_alpha(pixels, veil_colour, colour, LARGE_TEXT_MIN)
+        if shipped < needed:
+            failures.append(
+                f'{theme}: --{role} ({colour}) needs a shade of {needed:.3f} '
+                f'to hold {LARGE_TEXT_MIN}:1 over this picture, but '
+                f'--hero-shade is {shipped:.3f}'
+            )
+
+    assert not failures, 'hero title gradient:\n  ' + '\n  '.join(failures)
+
+
+@pytest.mark.parametrize('theme', ['light', 'dark'])
+def test_a_translucent_card_on_the_hero_still_carries_its_quietest_label(
+    css, photograph, theme
+):
+    """The product card is glass, and glass lets the picture into the type.
+
+    The constraint is never the card — it is the smallest, faintest thing
+    printed on it, which here is `--fg-subtle` on the inset chrome. The
+    photograph is sampled under the shade first, exactly as it reaches the
+    card, and then the card's own fill is composited on top.
+
+    `backdrop-filter: blur()` is deliberately not modelled. Blurring moves
+    every pixel toward its local mean and so can never produce a value
+    outside the range checked here, which makes ignoring it the
+    conservative choice rather than a gap.
+    """
+    declared = theme_tokens(css, theme)
+    veil_colour, shade = _shade(css, theme)
+    fill = _percentage(declared['hero-card-fill'])
+
+    shaded = [
+        composite(p, (veil_colour, shade))
+        for p in _sample(photograph, CARD_REGION)
+    ]
+
+    failures = []
+    for surface_role, roles in CARD_SURFACES.items():
+        surface = to_rgb(resolve(surface_role, declared))
+        for role, floor in roles.items():
+            ink = resolve(role, declared)
+            worst = min(
+                contrast(ink, composite(p, (surface, fill))) for p in shaded
+            )
+            if worst < floor:
+                failures.append(
+                    f'{theme}: --{role} on a {fill:.0%} --{surface_role} '
+                    f'card falls to {worst:.2f}:1 over the hero, needs '
+                    f'{floor}:1'
+                )
+
+    assert not failures, 'hero card legibility:\n  ' + '\n  '.join(failures)
 
 
 def test_the_fallback_encoding_ships_alongside_the_preferred_one():

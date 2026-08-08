@@ -56,21 +56,28 @@
     backdrop-filter: blur(12px);
   }
 
-  /* While the header is transparent, its two secondary controls are too —
-     only the primary call to action keeps a fill. What pays for that is
-     `--hero-band`: a short veil down the top of the hero that lands near
-     0.70 once stacked over the open edge of the shade, which is where
-     `--fg-default` clears 4.5:1 in both themes.
+  /* At rest the header leaves no mark on the picture at all: no panel, no
+     hairline, and no veil of its own. Nothing but the letters, sitting on
+     the same uniform `--hero-shade` as everything else on the hero — which
+     is exactly what makes that shade worth having. Earlier versions paid
+     for this header with a dark band down the top of the sky, and in the
+     dark theme that band was the most conspicuous thing on the page.
 
-     Hence the colour change. These two normally sit at `--fg-muted`, which
-     needs far more veil than that — it would not survive out here. Anything
-     else added to this end of the header has to come with the default step
-     too. */
+     What it costs is the tint: everything here normally sits at
+     `--fg-muted`, which needs about 0.79 against this photograph where the
+     shade gives 0.52–0.64. So the links, the toggle and the secondary
+     button all step up to `--fg-default` while the header is transparent,
+     and anything added to this row has to do the same. */
+  .lp-nav:not(.is-stuck) .icon-button,
+  .lp-nav:not(.is-stuck) .btn-secondary,
+  .lp-nav:not(.is-stuck) .lp-nav__links a {
+    color: var(--fg-default);
+  }
+
   .lp-nav:not(.is-stuck) .icon-button,
   .lp-nav:not(.is-stuck) .btn-secondary {
     background-color: transparent;
     border-color: transparent;
-    color: var(--fg-default);
   }
 
   .lp-nav:not(.is-stuck) .icon-button:hover,
@@ -153,27 +160,21 @@
      Hero
      ====================================================================== */
 
-  /* The hero reads as three horizontal bands, each with exactly one job:
-
-       copy      shade holding the words up
-       floor     shade lifted, picture at full strength
-       fade      backdrop dissolving into the page
-
-     The bottom padding is the sum of the last two, so the copy always ends
-     precisely where the floor begins. That is the invariant: change any one
-     of these and the other two follow, and no amount of resizing can slide
-     a fade underneath a line of text.
-
-     Across the copy band the shade also thins left-to-right, since the only
-     thing over the picture on that side is the product card, which brings
-     its own opaque surface. */
+  /* One shade, one strength, everywhere — see `--hero-shade` in tokens.css
+     for why the picture is veiled evenly rather than cleverly. What is left
+     for the hero to decide is only where the backdrop *ends*: a short
+     dissolve into the page at the bottom, and a scroll-linked fade that
+     takes the whole thing away as the reader leaves. */
   .lp-hero {
     position: relative;
     padding: calc(4rem + var(--space-16)) 0 calc(var(--hero-floor) + var(--hero-fade));
     overflow: hidden;
 
+    /* Clear picture below the last line of copy, then the dissolve. The
+       bottom padding is their sum, so the copy always ends exactly where
+       the floor begins and no resize can slide a fade under a word. */
     --hero-floor: var(--space-10);
-    --hero-fade: 7rem;
+    --hero-fade: var(--space-10);
 
     /* Below centre: the crop keeps the ridge line and the meadow, and drops
        the empty upper sky that a short hero would otherwise fill with. */
@@ -185,43 +186,13 @@
        that completes after its subject has left never happened. */
     --hero-lift-range: 68vh;
 
-    --hero-shade-layer:
-      /* The band the floating header sits on. It holds full strength across
-         the header's own height before it starts to go: a band that begins
-         fading at y=0 is already a quarter gone by the row the links sit
-         on, and the guarantee is written for the strength they actually
-         get, not the strength at the very top edge. */
-      linear-gradient(to bottom, var(--hero-band) 0, var(--hero-band) 4rem, transparent 9rem),
-      /* And the copy's own shade: full strength under the words, easing off
-         to nearly nothing on the right, where the product card brings its
-         own opaque surface anyway. */
-      linear-gradient(
-        96deg,
-        var(--hero-shade) 0%,
-        var(--hero-shade) 46%,
-        var(--hero-shade-soft) 68%,
-        var(--hero-shade-edge) 100%
-      );
-
-    /* The shade lifts across the floor and is gone before the fade starts.
-       The two masks meet at that line rather than overlapping: a shade
-       still fading while the picture beneath it fades too leaves a pale
-       ghost of itself with nothing left to protect.
-
-       This is also the only way to open the picture up *underneath* a text
-       column — a gradient cannot vary on both axes at once, so the vertical
-       falloff has to come from a mask rather than from another colour. */
-    --hero-shade-mask: linear-gradient(
-      to bottom,
-      #000 calc(100% - var(--hero-floor) - var(--hero-fade)),
-      transparent calc(100% - var(--hero-fade))
-    );
-
-    /* The dissolve. Stops trace a smoothstep rather than a straight ramp,
-       because a linear fade has a corner at each end — and a corner in the
-       rate of change is visible as a line even when the change itself is
-       gentle. Curving both ends is what removes the seam; length alone only
-       moves it. */
+    /* The dissolve. Short, because the shade is uniform: what used to need
+       length was the step from a *clear* foreground into flat page colour.
+       Stops trace a smoothstep rather than a straight ramp, because a
+       linear fade has a corner in its rate of change at each end, and a
+       corner reads as a line even when the change itself is gentle. That
+       curvature is what removes the seam — length only moves it, which is
+       why this can now be a third of what it was and still not show. */
     --hero-mask: linear-gradient(
       to bottom,
       #000 calc(100% - var(--hero-fade)),
@@ -245,42 +216,10 @@
   @media (max-width: 64rem) {
     .lp-hero { padding-top: calc(4rem + var(--space-10)); }
     .lp-hero__grid { grid-template-columns: minmax(0, 1fr); gap: var(--space-8); }
-
-    /* Stacked, the copy spans the full width — there is no longer a quiet
-       side for the picture to show through, so the shade goes flat. The
-       fade shortens with the narrower hero. */
-    .lp-hero {
-      --hero-fade: 5rem;
-      --hero-shade-layer:
-        linear-gradient(to bottom, var(--hero-band) 0, var(--hero-band) 4rem, transparent 9rem),
-        linear-gradient(var(--hero-shade), var(--hero-shade));
-    }
   }
 
   .lp-hero__copy {
     animation: op-fade-up var(--dur-4) var(--ease-out) backwards;
-  }
-
-  .lp-eyebrow {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-2);
-    margin: 0 0 var(--space-5);
-    padding: 0.25rem var(--space-3);
-    border: 1px solid var(--line-subtle);
-    border-radius: var(--radius-pill);
-    background-color: var(--bg-surface);
-    color: var(--fg-muted);
-    font-size: var(--text-xs);
-    font-weight: var(--weight-medium);
-  }
-
-  .lp-eyebrow__dot {
-    width: 0.375rem;
-    height: 0.375rem;
-    border-radius: 50%;
-    background-color: var(--brand);
-    box-shadow: 0 0 0 3px var(--brand-soft);
   }
 
   .lp-title {
@@ -290,6 +229,29 @@
     line-height: 1.05;
     letter-spacing: -0.035em;
     text-wrap: balance;
+  }
+
+  /* The one piece of brand colour on this page that is not a control.
+     It works here for two reasons that do not generalise: the title is
+     large text, so its floor is 3:1 rather than 4.5:1, and the ends of the
+     gradient are ramp steps chosen for exactly this — see `--brand-900`
+     and `--brand-50`. Do not reach for `--brand` itself; a violet has to
+     sit further from the picture than plain ink does to survive the same
+     shade, and the working steps of the ramp are all inside that margin.
+
+     `color` stays declared: if a browser cannot clip a background to text,
+     it keeps a solid heading instead of an invisible one. */
+  @supports (background-clip: text) or (-webkit-background-clip: text) {
+    .lp-hero .lp-title {
+      background-image: linear-gradient(
+        96deg,
+        var(--hero-title-from),
+        var(--hero-title-to)
+      );
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
   }
 
   .lp-lede {
@@ -355,10 +317,25 @@
      Product shot
      ====================================================================== */
 
+  /* Held slightly off full opacity so the hero shows through it — enough
+     that the card reads as glass sitting on the picture rather than a
+     rectangle punched out of it.
+
+     How far it can go is not a taste question. The binding constraint is
+     the quietest label *inside* the card, not the card itself: at
+     `--fg-subtle` on the inset chrome the photograph may show through by
+     0.088 in the light theme before 4.5:1 breaks, which is why the fill is
+     94% there and can afford 90% in the dark. The blur is what makes those
+     few percent look like anything — and it can only help the guarantee,
+     since blurring moves pixels toward their local mean and never outside
+     the range the test already cleared. */
   .lp-shot {
     border: 1px solid var(--line-default);
     border-radius: var(--radius-lg);
-    background-color: var(--bg-surface);
+    background-color: color-mix(
+      in srgb, var(--bg-surface) var(--hero-card-fill), transparent
+    );
+    backdrop-filter: blur(10px);
     box-shadow: var(--shadow-overlay);
     overflow: hidden;
     animation: op-fade-up var(--dur-4) var(--ease-out) 120ms backwards;
@@ -370,7 +347,9 @@
     gap: 0.375rem;
     padding: var(--space-3) var(--space-4);
     border-bottom: 1px solid var(--line-subtle);
-    background-color: var(--bg-inset);
+    background-color: color-mix(
+      in srgb, var(--bg-inset) var(--hero-card-fill), transparent
+    );
   }
 
   .lp-shot__chrome span {

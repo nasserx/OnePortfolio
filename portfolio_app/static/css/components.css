@@ -1570,15 +1570,16 @@
      hypothetical worst case, which is what leaves the picture looking like
      a picture instead of a wash — see `--hero-shade` in tokens.css.
 
-     Three knobs, each optional, each a different job:
+     Two knobs, each optional:
 
-       --hero-shade-layer  what is painted over the picture
-       --hero-shade-mask   where that paint lifts back off
-       --hero-mask         where the backdrop itself dissolves
+       --hero-shade-layer  what is painted over the picture, if not a flat
+                           `--hero-shade`
+       --hero-mask         where the backdrop dissolves, if it has an edge
+                           to hide
 
-     Nothing here hard-codes a direction. A hero with copy down one side
-     needs a different falloff from a panel with copy through the middle, so
-     the shapes arrive from the page.
+     The default for both is the honest one — an even veil and no dissolve.
+     A hero that reaches for the first knob should be able to say why the
+     picture needs to be less visible in one place than another.
      ====================================================================== */
 
   .hero-media {
@@ -1615,8 +1616,6 @@
     position: absolute;
     inset: 0;
     background: var(--hero-shade-layer, var(--hero-shade));
-    -webkit-mask-image: var(--hero-shade-mask, none);
-    mask-image: var(--hero-shade-mask, none);
   }
 
   /* Scroll-driven lift. The backdrop belongs to the top of the page, so it

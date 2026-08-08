@@ -109,7 +109,7 @@
                                     <th class="small records-cell">Type</th>
                                     <th class="small records-cell records-cell--number">Amount</th>
                                     <th class="small records-cell">Notes</th>
-                                    <th class="small records-cell">Actions</th>
+                                    <th class="small records-cell records-cell--actions">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -130,7 +130,7 @@
                                     <td class="records-cell portfolio-event-notes"{% if event_notes %} title="{{ event_notes }}"{% endif %}>
                                         <small class="text-muted">{{ event_notes if event_notes else '—' }}</small>
                                     </td>
-                                    <td class="records-cell actions-cell">
+                                    <td class="records-cell records-cell--actions actions-cell">
                                         <div class="row-actions" role="group">
                                             <button type="button"
                                                     class="btn btn-icon btn-sm js-edit-portfolio-event-btn"

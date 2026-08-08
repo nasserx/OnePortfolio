@@ -24,6 +24,13 @@ Three rules decide most design questions. When in doubt, apply them in order.
    *Record Withdraw* button read as a gain and a loss, which is what neither
    of them is: both are entries the user chose to make, and the sign belongs
    to the figure they produce, not to the control that produced it.
+
+   Violet is therefore what an action looks like, filled or not: the primary
+   button, the active nav marker, and `.btn-icon` — the row actions, which
+   take the brand colour on no surface at all. The tint is what makes a line
+   of small glyphs read as controls rather than as decoration beside the
+   figures, and `--brand` clears 4.5:1 on every surface, so it can carry
+   that with no fill and no border behind it.
 2. **One hero number per screen.** A screen with five equally-weighted figures
    has no reading order. Promote one; demote the rest to supporting facts.
 3. **Density is a preference, not a constant.** Never hard-code a compact size —
@@ -50,17 +57,27 @@ accident:
   surplus becomes a gutter between the data and the things that act on it.
   Sized to `auto` it collapses onto the last figure, and a value one 12px gap
   from a button reads as belonging to it.
+- **Two tables stacked in one card share their edges, not their columns.**
+  A disclosure's summary row and the record table inside it hold different
+  things and can never align column-for-column. What they can align is where
+  their data stops and where their controls start: `--row-actions-w` is that
+  right-hand zone, declared once on `.disclosure` and consumed by both. The
+  panel is also inset by `--space-4 − --cell-pad-x`, because a row pads
+  itself at the edges while a table pads inside each cell — miss that and
+  both rows sit 16px out of true down their whole length.
 - **The allocation ring shows four slices plus a grouped remainder.** Past four
   wedges the small ones become unlabelable slivers. Full per-portfolio detail
   lives in the summary table directly below, so nothing is hidden — only
   simplified. The cap is `ALLOCATION_TOP_N` in
   `calculators/allocation_charts.py`.
-- **Figures are right-aligned wherever a column repeats.** Tables and the
-  disclosure metric strips both read vertically, card against card, so the
-  decimal points must stack. Left-aligned numbers let them wander by tens of
-  pixels. The overview hero's supporting facts are the exception and stay
-  left-aligned: each is a label/value *pair*, not a column, and right-aligning
-  a value across a half-card-wide cell would strand it away from its own label.
+- **Figures are right-aligned wherever a column of them is meant to be
+  compared.** That is the full ledger on the Overview: it reads vertically,
+  row against row, so the decimal points must stack. Left-aligned numbers let
+  them wander by tens of pixels.
+  Where the unit being read is a label/value *pair* rather than a column, it
+  centres instead — the disclosure summary strips — or stays left, as in the
+  overview hero's supporting facts. The test is what the reader is comparing:
+  a figure against the figure above it, or a figure against its own label.
 - **A column heading and its data must be the same column, structurally.**
   Alignment is not a `text-align` question. If a header row and its body rows
   are separate grid containers, each resolves its own track sizes and any

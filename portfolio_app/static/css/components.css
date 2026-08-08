@@ -197,6 +197,14 @@
      2. ICON & ACTION BUTTONS
      ====================================================================== */
 
+  /* Brand-coloured at rest, on nothing: no fill, no border. These are the
+     product's row actions, and violet is what an action looks like here —
+     the same colour as the primary button and the active nav marker, just
+     without a surface under it. The tint is what makes a row of small
+     glyphs read as controls rather than as decoration beside the figures;
+     `--brand` clears 4.5:1 on every surface, so it can carry that alone.
+     Hover is unchanged: the neutral wash and the near-black glyph are what
+     tell you which one the pointer is on. */
   .btn-icon {
     width: var(--control-h-sm);
     height: var(--control-h-sm);
@@ -204,7 +212,7 @@
     padding: 0;
     border-color: transparent;
     background-color: transparent;
-    color: var(--fg-muted);
+    color: var(--brand);
     border-radius: var(--radius-sm);
   }
 
@@ -498,8 +506,9 @@
   .form-text,
   .withdraw-available-hint,
   .tx-preview,
-  .help-message {
-    font-size: var(--text-2xs);
+  .help-message,
+  .notes-counter {
+    font-size: var(--text-3xs);
   }
 
   .form-text {
@@ -601,7 +610,6 @@
     display: block;
     margin-top: var(--space-1);
     color: var(--fg-subtle);
-    font-size: var(--text-2xs);
     text-align: right;
     transition: color var(--dur-1) var(--ease-out);
   }
@@ -871,7 +879,12 @@
   .records-table .records-col--return     { width: var(--records-col-return, 5.5rem); }
   .records-table .records-col--amount     { width: var(--records-col-amount, 8rem); }
   .records-table .records-col--notes      { width: var(--records-col-notes, auto); }
-  .records-table .records-col--actions    { width: var(--records-col-actions, 6rem); }
+  /* Inside a disclosure this resolves to `--row-actions-w`, the same
+     right-hand zone the summary row above reserves — so the two tables stop
+     their data at the same x and start their controls at the same x, even
+     though they can never share a column. Outside one (the admin table) it
+     falls back to its own width. */
+  .records-table .records-col--actions    { width: var(--records-col-actions, var(--row-actions-w, 6rem)); }
   .records-table .records-col--id         { width: var(--records-col-id, 3.5rem); }
   .records-table .records-col--username   { width: var(--records-col-username, 10rem); }
   .records-table .records-col--email      { width: var(--records-col-email, auto); }
@@ -891,7 +904,15 @@
     font-variant-numeric: tabular-nums;
   }
 
+  /* Right-aligned so the buttons land under the summary row's own cluster
+     rather than 34px inside it. The header follows, because a heading that
+     does not sit over its column is the thing that made these tables look
+     out of true in the first place. */
+  .records-table :is(th, td).records-cell--actions { text-align: right; }
+
   .records-table td.actions-cell { overflow: visible; }
+
+  .records-table td.actions-cell .row-actions { justify-content: flex-end; }
 
   .records-table tbody td small {
     font-size: inherit;

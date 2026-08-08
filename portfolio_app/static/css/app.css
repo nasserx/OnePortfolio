@@ -722,20 +722,28 @@
      The fix is structural, not cosmetic: the tracks are declared once on
      `.ledger` and every row adopts them via `subgrid`, so a header cell and
      the cells beneath it are literally the same column. */
-  /* The action column is a fixed track, not `auto`. Sized to its content it
+  /* Two widths carry the whole rhythm of this table, and they pull in
+     opposite directions.
+
+     The action column is a fixed track, not `auto`. Sized to its content it
      shrinks to the width of "View assets", which leaves the last *figure*
      one 12px gap away from a control — and a number that close to a button
      reads as belonging to it. Giving the track a width the link does not
-     need turns the surplus into a gutter, and because every column is one
-     subgrid, widening it walks the whole table left together. That gap is
-     doing a different job from the gaps between columns: it separates data
-     from the things that act on it. */
+     need turns the surplus into a gutter that separates the data from the
+     things that act on it, and because every column is one subgrid,
+     widening it walks the whole table left together.
+
+     The name column takes an equal share rather than the 1.6 it had. Extra
+     width there is not doing anything — portfolio names are short and
+     ellipsise when they are not — and all it bought was a canyon between
+     the names and the first figure. Equal shares put "Book value" back
+     within reading distance of the row it belongs to. */
   .ledger {
     display: grid;
     grid-template-columns:
-      minmax(9rem, 1.6fr)
+      minmax(9rem, 1fr)
       repeat(4, minmax(5.5rem, 1fr))
-      9.5rem;
+      12rem;
     column-gap: var(--space-3);
     row-gap: 0;
     border: 1px solid var(--line-subtle);
@@ -766,9 +774,9 @@
 
     .ledger__row {
       grid-template-columns:
-        minmax(9rem, 1.6fr)
+        minmax(9rem, 1fr)
         repeat(4, minmax(5.5rem, 1fr))
-        9.5rem;
+        12rem;
     }
   }
 
@@ -960,25 +968,34 @@
      the last figure's right edge lands under the edit/delete buttons, so the
      numbers read as if they belong to the controls; the gutter re-attaches
      them to the name on the left. It is a margin rather than a narrower
-     track list, so every card still resolves identical columns. */
+     track list, so every card still resolves identical columns.
+
+     `--row-actions-w` is that whole right-hand zone — gutter, gap and the
+     buttons themselves — and it is shared with the record table inside the
+     panel below. Two tables stacked in one card cannot share columns; they
+     hold different things. What they can share is where their data stops,
+     and where their controls start. Without that the two rows ended 86px
+     apart and their two button clusters sat 34px out of step, which is what
+     made an otherwise aligned card look crooked. */
   .disclosure__metrics {
     display: grid;
     grid-template-columns: repeat(var(--metric-columns, 5), minmax(0, 1fr));
     gap: var(--space-3);
     flex: 1;
     min-width: 0;
-    margin-right: var(--space-10);
+    margin-right: var(--row-actions-gutter);
   }
 
-  /* Every value in this strip is a figure, and the strip repeats down the
-     page — so the columns are read vertically, card against card. Left
-     alignment let the decimal points wander by up to 28px between cards;
-     right alignment stacks them. The label follows its value so the pair
-     still reads as one unit. */
+  /* Each cell is a label above its own value, not a column of bare figures,
+     and the summary row is the one place in the product where that pair is
+     the unit being read. Centring binds the two lines to each other; the
+     figures then no longer stack decimal-for-decimal down the page, which
+     is the trade — the full ledger on the Overview is where columns of
+     figures are meant to be compared, and it still right-aligns. */
   .metric {
     display: block;
     min-width: 0;
-    text-align: right;
+    text-align: center;
   }
 
   .metric__label {
@@ -1005,14 +1022,36 @@
     text-overflow: ellipsis;
   }
 
+  /* The right-hand zone of a card, declared once and consumed by both rows
+     in it. `cluster` is three icon buttons at `--control-h-sm` plus their
+     two gaps — declared rather than content-sized, so the width does not
+     drift with however many buttons a given page renders. */
+  .disclosure {
+    --row-actions-gutter: var(--space-10);
+    --row-actions-cluster: calc(3 * var(--control-h-sm) + 2 * var(--space-1));
+    --row-actions-w: calc(
+      var(--row-actions-gutter) + var(--space-3) + var(--row-actions-cluster)
+    );
+  }
+
   .disclosure__actions {
     display: flex;
     align-items: center;
+    justify-content: flex-end;
     gap: var(--space-1);
     flex: none;
+    width: var(--row-actions-cluster);
   }
 
+  /* The panel is inset so its table's *cell content* lands on the same left
+     and right edges as the summary row's content above it. The summary row
+     pads itself by `--space-4`; a table pads inside each cell instead, so
+     the difference between the two is what the panel has to make up. Miss
+     it and both rows are 16px out of true down their whole length — the
+     kind of misalignment that reads as sloppiness without ever being
+     obviously wrong. */
   .disclosure__panel {
+    padding-inline: calc(var(--space-4) - var(--cell-pad-x));
     border-top: 1px solid var(--line-subtle);
     background-color: var(--bg-inset);
     animation: op-reveal var(--dur-3) var(--ease-out);
@@ -1031,10 +1070,15 @@
   .disclosure__panel .records-table { font-size: var(--text-detail); }
 
   @media (max-width: 75rem) {
+    .disclosure {
+      /* One knob. The table's action column follows automatically, so the
+         two rows keep the same right edge at every width. */
+      --row-actions-gutter: var(--space-5);
+    }
+
     .disclosure__metrics {
       --metric-columns: 3;
       gap: var(--space-2) var(--space-3);
-      margin-right: var(--space-5);
     }
     .disclosure__identity { width: 8.5rem; }
   }
@@ -1424,7 +1468,10 @@
      ====================================================================== */
 
   /* Column budgets are sized to the widest realistic value plus cell
-     padding — a truncated figure in a ledger is worse than a narrow note. */
+     padding — a truncated figure in a ledger is worse than a narrow note.
+     The action column is the exception: it takes `--row-actions-w` from the
+     disclosure around it, so its width is whatever the summary row above
+     reserves rather than a number of its own. */
   .records-table--asset-entries {
     --records-col-date: 7.5rem;
     --records-col-type: 5.75rem;
@@ -1434,14 +1481,12 @@
     --records-col-total: 7rem;
     --records-col-pnl: 7rem;
     --records-col-return: 6.5rem;
-    --records-col-actions: 5rem;
   }
 
   .records-table--portfolio-events {
     --records-col-date: 7.5rem;
     --records-col-type: 6rem;
     --records-col-amount: 8rem;
-    --records-col-actions: 5rem;
     min-width: 34rem;
   }
 

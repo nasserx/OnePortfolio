@@ -234,12 +234,27 @@
     font-size: var(--text-xs);
   }
 
-  /* `.btn-icon` sets its own colour at rest and on hover, so an outline
-     variant on one only shows through where it is restored explicitly.
-     There is exactly one left to restore: in a row of controls, only the
-     destructive action carries a colour. Everything else — deposit,
-     withdraw, add, edit — is neutral and says what it does with its icon
-     and its tooltip. */
+  /* Hover previews the consequence.
+
+     At rest these are all just actions and all violet — the colour of a
+     control, not of a quantity. On hover the ones that move the ledger take
+     the colour of the direction they will move it: a deposit adds, a
+     withdrawal subtracts, income is income, and they borrow the same three
+     roles the resulting figures will be printed in.
+
+     That is a different claim from labelling the button green, which is
+     what these used to do and what made a deposit read as a gain. A resting
+     colour says "this control is of that kind"; a hover colour says "this
+     is what will happen if you press it", and only the second one is true.
+
+     `.btn-icon` sets its own colour at rest *and* on hover, so each of
+     these has to out-specify it — hence the doubled class. */
+  .btn-icon.btn-icon--pos:hover    { color: var(--pos);    background-color: var(--pos-soft); }
+  .btn-icon.btn-icon--neg:hover    { color: var(--neg);    background-color: var(--neg-soft); }
+  .btn-icon.btn-icon--income:hover { color: var(--income); background-color: var(--income-soft); }
+
+  /* Destruction is the exception that keeps its warning on a separate
+     class, because it is not previewing an entry — it is previewing loss. */
   .btn-icon.btn-outline-danger:hover { color: var(--neg); background-color: var(--neg-soft); }
 
   /* Row actions appear on engagement only.

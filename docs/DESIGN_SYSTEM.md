@@ -31,6 +31,15 @@ Three rules decide most design questions. When in doubt, apply them in order.
    of small glyphs read as controls rather than as decoration beside the
    figures, and `--brand` clears 4.5:1 on every surface, so it can carry
    that with no fill and no border behind it.
+
+   **Hover is the one place a control may borrow a value's colour, because
+   there it means something different.** A resting colour claims "this
+   control is of that kind"; a hover colour says "this is what will happen
+   if you press it" — and only the second is true of a deposit. So
+   `.btn-icon--pos`, `--neg` and `--income` tint on hover only, in the exact
+   roles the resulting figures will be printed in: a deposit adds, a
+   withdrawal subtracts, income is income. Destruction keeps its warning on
+   `.btn-outline-danger`, since it is previewing loss rather than an entry.
 2. **One hero number per screen.** A screen with five equally-weighted figures
    has no reading order. Promote one; demote the rest to supporting facts.
 3. **Density is a preference, not a constant.** Never hard-code a compact size —

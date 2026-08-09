@@ -172,9 +172,11 @@
 
     /* Clear picture below the last line of copy, then the dissolve. The
        bottom padding is their sum, so the copy always ends exactly where
-       the floor begins and no resize can slide a fade under a word. */
-    --hero-floor: var(--space-10);
-    --hero-fade: var(--space-10);
+       the floor begins and no resize can slide a fade under a word. The
+       two are traded against each other rather than raised: the hero keeps
+       the same height it always had. */
+    --hero-floor: var(--space-8);
+    --hero-fade: var(--space-12);
 
     /* Below centre: the crop keeps the ridge line and the meadow, and drops
        the empty upper sky that a short hero would otherwise fill with. */
@@ -186,21 +188,33 @@
        that completes after its subject has left never happened. */
     --hero-lift-range: 68vh;
 
-    /* The dissolve. Short, because the shade is uniform: what used to need
-       length was the step from a *clear* foreground into flat page colour.
-       Stops trace a smoothstep rather than a straight ramp, because a
-       linear fade has a corner in its rate of change at each end, and a
-       corner reads as a line even when the change itself is gentle. That
-       curvature is what removes the seam — length only moves it, which is
-       why this can now be a third of what it was and still not show. */
+    /* The dissolve. Stops trace a curve rather than a straight ramp,
+       because a linear fade has a corner in its rate of change at each
+       end, and a corner reads as a line even when the change itself is
+       gentle. Curvature is what removes the seam; length only moves it.
+
+       The curve is deliberately weighted late. A symmetric smoothstep
+       spends half its travel in the top half of the band, so the picture
+       is already visibly washed well before it reaches the edge — that
+       wash is what reads as "a strong gradient", not the last few pixels
+       where the image is nearly gone anyway. Holding above 0.9 through the
+       first third and doing the work low down leaves the photograph
+       noticeably clearer at every depth that is still legible as a
+       photograph (0.74 where it used to be 0.50, 0.31 where it used to be
+       0.10) while the *steepest* rate in the band is unchanged — about
+       0.22 of alpha per 6px either way. That is the whole trick: this is a
+       weaker fade, not a shorter one, so nothing was borrowed from the
+       seam to pay for it. The band itself grew by 8px to keep that true,
+       taken from the clear floor above it. */
     --hero-mask: linear-gradient(
       to bottom,
       #000 calc(100% - var(--hero-fade)),
-      rgb(0 0 0 / 0.9) calc(100% - var(--hero-fade) * 0.8),
-      rgb(0 0 0 / 0.72) calc(100% - var(--hero-fade) * 0.65),
-      rgb(0 0 0 / 0.5) calc(100% - var(--hero-fade) * 0.5),
-      rgb(0 0 0 / 0.28) calc(100% - var(--hero-fade) * 0.35),
-      rgb(0 0 0 / 0.1) calc(100% - var(--hero-fade) * 0.2),
+      rgb(0 0 0 / 0.97) calc(100% - var(--hero-fade) * 0.75),
+      rgb(0 0 0 / 0.88) calc(100% - var(--hero-fade) * 0.55),
+      rgb(0 0 0 / 0.72) calc(100% - var(--hero-fade) * 0.4),
+      rgb(0 0 0 / 0.52) calc(100% - var(--hero-fade) * 0.28),
+      rgb(0 0 0 / 0.3) calc(100% - var(--hero-fade) * 0.16),
+      rgb(0 0 0 / 0.12) calc(100% - var(--hero-fade) * 0.07),
       transparent 100%
     );
   }
@@ -261,8 +275,6 @@
     font-size: var(--text-lg);
     line-height: var(--leading-relaxed);
   }
-
-  .lp-lede--tight { font-size: var(--text-md); }
 
   .lp-cta {
     display: flex;
@@ -430,7 +442,12 @@
      Sections
      ====================================================================== */
 
-  .lp-section { padding: var(--space-12) 0; }
+  /* Below the hero the page is one column, and every section is measured
+     the same way: a full step of air above and below, so the boundary
+     between two sections is always twice that step and always the largest
+     gap on screen. Nothing else in the page is allowed to open that wide,
+     which is what makes the sequence readable as a sequence. */
+  .lp-section { padding: var(--space-16) 0; }
 
   .lp-section--alt {
     border-block: 1px solid var(--line-subtle);
@@ -438,12 +455,25 @@
   }
 
   @media (max-width: 48rem) {
-    .lp-section { padding: var(--space-10) 0; }
+    .lp-section { padding: var(--space-12) 0; }
   }
 
+  /* Section heads sit on the page's centre line, not its left edge.
+     The point is not symmetry — it is that every section then announces
+     itself in the same place, so the reader follows one vertical axis from
+     the hero to the footer instead of re-finding the start of each block.
+
+     The measure stays narrow (44rem inside an 82rem shell) because centred
+     type is only comfortable in short lines: the eye returns to a moving
+     left edge on every line, and the further it has to travel the more the
+     centring costs. Everything below a head — card copy, step copy — stays
+     ragged-right. Centring an announcement is legible; centring a
+     paragraph is not. */
   .lp-head {
     max-width: 44rem;
-    margin-bottom: var(--space-8);
+    margin-inline: auto;
+    margin-bottom: var(--space-10);
+    text-align: center;
   }
 
   .lp-head h2 {
@@ -454,9 +484,11 @@
   }
 
   .lp-head p {
-    margin: var(--space-3) 0 0;
+    max-width: 52ch;
+    margin: var(--space-3) auto 0;
     color: var(--fg-subtle);
     font-size: var(--text-md);
+    text-wrap: pretty;
   }
 
   .lp-grid {
@@ -588,27 +620,19 @@
   }
 
   /* ---- limits ---------------------------------------------------------- */
-  .lp-limits {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: var(--space-8);
-    align-items: center;
-  }
 
-  @media (max-width: 56rem) {
-    .lp-limits { grid-template-columns: minmax(0, 1fr); gap: var(--space-6); }
-  }
-
-  .lp-limits h2 {
-    font-size: clamp(1.625rem, 1.2rem + 1.4vw, 2.25rem);
-    letter-spacing: -0.03em;
-  }
-
+  /* This section used to be a two-column split, with its heading facing the
+     list across a gutter. It was the one block on the page reading
+     sideways, and it broke the axis exactly where the page is making its
+     most direct claim. It now takes the same head as every other section
+     and puts the list underneath it, on the same 44rem measure — so the
+     head, the list, and the closing panel all share one edge. */
   .lp-limits__list {
     display: flex;
     flex-direction: column;
     gap: var(--space-3);
-    margin: 0;
+    max-width: 44rem;
+    margin: 0 auto;
     padding: 0;
     list-style: none;
   }
@@ -643,20 +667,28 @@
      Close & footer
      ====================================================================== */
 
-  .lp-close { padding: 0 0 var(--space-12); }
+  .lp-close { padding: var(--space-16) 0; }
 
+  @media (max-width: 48rem) {
+    .lp-close { padding: var(--space-12) 0; }
+  }
+
+  /* The last thing on the page is also the narrowest: heading, one line,
+     buttons, stacked on the same centre line the sections have been using.
+     Splitting the ask left-and-right made the reader's eye leave the axis
+     at the exact moment it was being asked to act. */
   .lp-close__panel {
     display: flex;
+    flex-direction: column;
     align-items: center;
-    justify-content: space-between;
     gap: var(--space-6);
-    flex-wrap: wrap;
-    max-width: 82rem;
-    padding: var(--space-8) var(--space-10);
+    max-width: 52rem;
+    padding: var(--space-10);
     border: 1px solid var(--line-subtle);
     border-radius: var(--radius-lg);
     background-color: var(--bg-surface);
     box-shadow: var(--shadow-raised);
+    text-align: center;
   }
 
   .lp-close__panel h2 {
@@ -670,7 +702,12 @@
     font-size: var(--text-sm);
   }
 
-  .lp-close__panel .lp-cta { margin-top: 0; }
+  .lp-close__panel .lp-cta { justify-content: center; margin-top: 0; }
+
+  /* 40px of inset either side is a third of a phone's width. */
+  @media (max-width: 48rem) {
+    .lp-close__panel { padding: var(--space-8) var(--space-5); }
+  }
 
   .lp-footer {
     padding: var(--space-6) 0;

@@ -422,8 +422,20 @@ being stranded as a film over bare page colour.
 **Curvature is what hides a dissolve, not length.** A linear ramp has a
 corner in its *rate of change* at each end, and a corner reads as a line even
 when the change itself is gentle — so lengthening a linear fade only moves
-the seam. `--hero-mask` traces a smoothstep in seven stops instead, which is
-why 2.5rem is now enough where 8rem of straight ramp was not.
+the seam. `--hero-mask` traces a curve in eight stops instead, which is why
+3rem is enough where 8rem of straight ramp was not.
+
+**A weaker fade and a shorter one are different requests.** What reads as "a
+strong gradient" is the stretch where the photograph is *visibly washed but
+still recognisably a photograph* — not the last few pixels, where it has
+nearly gone anyway. A symmetric smoothstep spends half its travel up in that
+stretch. Weighting the curve late instead — above 0.9 through the first
+third, the real work done low down — leaves the picture clearer at every
+depth that still reads as picture, while the *steepest* rate anywhere in the
+band is unchanged. Shortening the band would have bought the same appearance
+by making that rate harsher, which is borrowing from the seam. Judge a change
+here by the maximum slope, not by the length: alpha per pixel is what the eye
+resolves as an edge.
 
 **The backdrop leaves with the page.** `.hero-media--lift` fades the whole
 thing out across the first `--hero-lift-range` of scrolling, driven by
@@ -464,6 +476,27 @@ Two things follow from that, and both are easy to lose:
   this row has to as well —
   `test_the_floating_header_needs_no_veil_of_its_own` is what keeps the shade
   and the header honest with each other.
+
+**Below the hero the marketing page is one centred column.** Every section
+announces itself with `.lp-head` on the page's centre line, on the same 44rem
+measure, with the same step of air above and below — so the reader follows a
+single vertical axis from the hero to the footer instead of re-finding where
+each block starts. Two things were giving that up and both are now gone: the
+"what it isn't" section faced its heading across a two-column gutter, and the
+closing panel split the ask left-and-right, which sent the eye off the axis
+at the exact moment it was being asked to act.
+
+Centring is for announcements only. A centred paragraph makes the eye hunt a
+moving left edge on every line, and the cost grows with the measure — which
+is why heads are capped at 44rem inside an 82rem shell, and why everything
+below a head (card copy, step copy, list rows) stays ragged-right. The rule
+is the same one the tables follow: **centre what is being announced, left
+what is being read.**
+
+Section rhythm carries the rest. `--space-16` above and below each section
+means a section boundary is always twice that and always the largest gap on
+screen; nothing inside a section is allowed to open that wide. That single
+constraint is what makes the sequence legible as a sequence.
 
 ## Command palette
 

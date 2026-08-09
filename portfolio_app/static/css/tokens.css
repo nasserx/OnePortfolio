@@ -246,11 +246,13 @@
     --hero-title-to:   var(--brand-800);
 
     /* How much of a surface floating on the hero stays opaque; the rest is
-       photograph. Bounded by the quietest label *inside* the card, not by
-       the card: measured against the shipped picture the light theme breaks
-       at 91.2%, so there is under a point left here. Dark starts further
-       clear and can afford 87%. */
-    --hero-card-fill: 92%;
+       photograph. Bounded by the quietest ink *inside* the card, never by the
+       card: raise a label a step and the glass follows, which is exactly how
+       this got to 15%. Against the shipped picture the binding pair is now
+       `--pos` on the delta, which breaks at 82.4%; `--fg-muted` on the inset
+       chrome, the old ceiling, is far below at 52.3%. Dark starts further
+       clear — its worst pair is `--income` at 53.2%. */
+    --hero-card-fill: 85%;
 
     /* Hover veil for the semantic solid buttons. It moves *away* from the
        label colour in each theme — darker under white labels, lighter under
@@ -330,7 +332,7 @@
       --hero-shade: rgb(16 16 21 / 0.64);
       --hero-title-from: var(--brand-50);
       --hero-title-to:   var(--brand-100);
-      --hero-card-fill: 87%;
+      --hero-card-fill: 80%;
       --solid-hover-veil: rgb(255 255 255 / 0.14);
       --brand-soft: rgb(157 136 255 / 0.20);
       --brand-soft-hover: rgb(157 136 255 / 0.30);
@@ -409,7 +411,7 @@
     --hero-shade: rgb(16 16 21 / 0.64);
     --hero-title-from: var(--brand-50);
     --hero-title-to:   var(--brand-100);
-    --hero-card-fill: 87%;
+    --hero-card-fill: 80%;
     --solid-hover-veil: rgb(255 255 255 / 0.14);
     --brand-soft: rgb(157 136 255 / 0.20);
     --brand-soft-hover: rgb(157 136 255 / 0.30);

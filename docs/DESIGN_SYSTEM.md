@@ -128,6 +128,15 @@ static/css/
 Templates load `tokens → base → components → app` (or `landing`). **`tokens.css`
 must stay first**: it declares the cascade layer order and imports Bootstrap.
 
+`app.css` and `landing.css` are alternatives, never both — which makes
+`components.css` the only file a class used on both sides may live in. A
+component written into `app.css` and then used in the marketing page's product
+card renders as *unstyled markup*: no error, no missing file, no failing test,
+just an element quietly wearing none of its own rules. `.delta` did this for
+several redesigns and read as plain dark text where the product shows a green
+pill. **If a page outside the app shell uses a class, that class belongs in
+`components.css`.**
+
 ## Cascade layers
 
 ```css
@@ -445,20 +454,36 @@ change either and the other follows, and no resize can slide a dissolve
 underneath a word.
 
 **Surfaces that float on a hero may be glass.** `--hero-card-fill` is how much
-of the marketing card's own surface stays opaque — 92% light, 87% dark. The
-constraint is never the card; it is the quietest label printed on it, which
-is `--fg-subtle` on the inset chrome. `backdrop-filter: blur()` is what makes
-those few percent look like anything, and it is deliberately left out of the
-test: blurring moves pixels toward their local mean, so it can only produce
-values inside the range already cleared.
+of the marketing card's own surface stays opaque — 85% light, 80% dark. The
+constraint is never the card; it is the quietest ink printed on it.
+`backdrop-filter: blur()` is what makes those percent look like anything, and
+it is deliberately left out of the test: blurring moves pixels toward their
+local mean, so it can only produce values inside the range already cleared.
 
-Measured against the shipped photograph, the floor is **91.2% light** and
-**85.4% dark** — so the light theme has under a point of room left. The
-asymmetry is not about the picture: `--fg-subtle` on `--bg-inset` is already
-close to 4.5:1 on a *solid* surface in the light theme, so there is barely
-anything for glass to spend there, while the dark theme starts further clear
-and can afford three times as much. If a request to make the card "a little
-more transparent" cannot be met, that is the number to quote.
+**Transparency is bought from the type, not from the card.** With
+`--fg-subtle` on the labels the light theme broke at **91.2%** — under a point
+of room, and the honest answer to "make it a little more transparent" was *no*.
+One step up to `--fg-muted` moves that floor to **52.3%**, because a step of
+grey is worth far more against a photograph than against a solid surface. The
+hierarchy survives it: those labels are 11px, medium, and tracked out, which is
+the same argument the hero copy makes one layer up — over a photograph,
+hierarchy comes from size and weight, never tint.
+
+So the floor moves to whatever is *next* quietest, and on this card that turned
+out to be a semantic hue: `--pos` in the delta pill, at **82.4% light** (dark
+binds on `--income` at 53.2%). Which leads to the other half of the rule:
+
+**A tinted wash under type of its own hue is a veil running backwards.**
+`--pos-soft` behind `--pos` text moves the background *toward* the ink. On an
+opaque page that is a cost the surface can absorb; on glass it is decisive —
+measured, the full pill wants a **98%** fill to hold 4.5:1, more opaque than
+the card has ever been, so it would have set the ceiling on every percent of
+glass by itself. The marketing card's pill keeps its outline and drops its
+fill.
+
+The test's job is to name every ink the card actually prints, and to be
+re-read whenever the card changes. A role listed that the card does not show
+caps the glass for nothing; a role shown but not listed goes unmeasured.
 
 **How a hero meets the page.** The picture dissolves; it is not painted over.
 Fading it with a wedge of `--bg-canvas` lightens the image on its way out — a
@@ -471,8 +496,14 @@ being stranded as a film over bare page colour.
 **Curvature is what hides a dissolve, not length.** A linear ramp has a
 corner in its *rate of change* at each end, and a corner reads as a line even
 when the change itself is gentle — so lengthening a linear fade only moves
-the seam. `--hero-mask` traces a curve in eight stops instead, which is why
-3rem is enough where 8rem of straight ramp was not.
+the seam. `--hero-mask` traces a curve instead, which is why 4rem is enough
+where 8rem of straight ramp was not.
+
+Write the stops as the integral of a smooth single-peaked rate, sampled at
+even steps of *alpha* rather than of distance. Two things fall out of that:
+the list describes the curve rather than the band, so changing `--hero-fade`
+rescales it without redrawing it; and the rate goes to zero at both ends,
+which is precisely where a corner would otherwise sit.
 
 **A weaker fade and a shorter one are different requests.** What reads as "a
 strong gradient" is the stretch where the photograph is *visibly washed but
@@ -485,14 +516,29 @@ There is a hard limit on how far that goes, and it is worth stating plainly
 because it looks like it should be free: **the curve covers the same 0→1 in
 the same band whatever its shape**, so alpha cannot be raised everywhere
 without raising the rate somewhere. Clearer low down and steeper are one
-statement, not two. What can be chosen is *where* the steepness lands. It is
-spent between alpha 0.2 and 0.4, where the picture is contributing the least
-contrast against the page and an abrupt change is worth the least, and the
-approach into it is monotone, because **a corner — not a rate — is what the
-eye resolves as a line**. Sanity-check any change here in the *light* theme:
-the swing between the shaded picture and the canvas is roughly 84 levels
-there against ~25 in the dark, so the light theme is where a seam shows
-first.
+statement, not two, *at a fixed length*. Which leaves three quantities and
+only two degrees of freedom:
+
+| quantity | what the reader sees | now | before |
+| --- | --- | --- | --- |
+| untouched picture | the mask does nothing here | 41px | 27px |
+| washed stretch | picture, but visibly going | 19px | 19px |
+| peak rate | where a seam would appear | 0.0567 α/px | 0.0565 α/px |
+
+Lengthening the band is what buys the first column without paying in the
+other two — 3rem → 4rem funded a 50% deeper stretch of untouched picture at
+an unchanged transition and an unchanged rate. It is not free either: the
+dissolve now occupies more of the page, which is why the length came out of
+`--hero-floor` rather than being added to the hero. Reach for the band before
+reaching for the rate, because **a corner — not a rate — is what the eye
+resolves as a line**, and the rate is the thing that produces corners.
+
+Sanity-check any change here in the *light* theme: the swing between the
+shaded picture and the canvas is roughly 84 levels there against ~25 in the
+dark, so the light theme is where a seam shows first. Compare crops anchored
+to the *bottom of the hero*, not to a viewport coordinate — a change to the
+floor or the fade moves everything below it, and an 8px shift is enough to
+make a real improvement look like a regression.
 
 **The backdrop leaves with the page.** `.hero-media--lift` fades the whole
 thing out across the first `--hero-lift-range` of scrolling, driven by

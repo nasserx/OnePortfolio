@@ -866,6 +866,34 @@
     white-space: nowrap;
   }
 
+  /* A label-over-figure pair inside a grid. `min-width: 0` is the whole rule:
+     a grid item defaults to `auto`, which refuses to shrink below its content
+     and lets one long number push a four-column row wider than its card. Here
+     for the same reason as `.delta` below — the marketing card uses it. */
+  .fact { min-width: 0; }
+
+  /* The return pill. It lives here rather than with the app shell because
+     the marketing card is built out of product components, and app.css is
+     the one stylesheet that page does not load — so a `.delta` written
+     there rendered as bare text on the landing hero and had been doing so
+     unnoticed. Anything both the product and the marketing page show has to
+     be in this file. */
+  .delta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.125rem var(--space-2);
+    border: 1px solid var(--line-subtle);
+    border-radius: var(--radius-pill);
+    font-size: var(--text-xs);
+    font-weight: var(--weight-medium);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .delta--pos { background-color: var(--pos-soft); border-color: var(--pos-line); color: var(--pos); }
+  .delta--neg { background-color: var(--neg-soft); border-color: var(--neg-line); color: var(--neg); }
+  .delta--flat { color: var(--fg-subtle); }
+
   /* Entry types — Buy / Sell / Income / Deposit / Withdraw.
      Colour alone carries the meaning. A chip around every row's type column
      turns a quiet ledger into a field of pills; the word in the right colour

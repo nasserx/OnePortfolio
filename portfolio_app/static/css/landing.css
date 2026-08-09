@@ -172,9 +172,11 @@
 
     /* Clear picture below the last line of copy, then the dissolve. The
        bottom padding is their sum, so the copy always ends exactly where
-       the floor begins and no resize can slide a fade under a word. */
-    --hero-floor: var(--space-10);
-    --hero-fade: var(--space-10);
+       the floor begins and no resize can slide a fade under a word. The
+       two are traded against each other rather than raised: the hero keeps
+       the same height it always had. */
+    --hero-floor: var(--space-8);
+    --hero-fade: var(--space-12);
 
     /* Below centre: the crop keeps the ridge line and the meadow, and drops
        the empty upper sky that a short hero would otherwise fill with. */
@@ -186,21 +188,42 @@
        that completes after its subject has left never happened. */
     --hero-lift-range: 68vh;
 
-    /* The dissolve. Short, because the shade is uniform: what used to need
-       length was the step from a *clear* foreground into flat page colour.
-       Stops trace a smoothstep rather than a straight ramp, because a
-       linear fade has a corner in its rate of change at each end, and a
-       corner reads as a line even when the change itself is gentle. That
-       curvature is what removes the seam — length only moves it, which is
-       why this can now be a third of what it was and still not show. */
+    /* The dissolve. Stops trace a curve rather than a straight ramp,
+       because a linear fade has a corner in its rate of change at each
+       end, and a corner reads as a line even when the change itself is
+       gentle. Curvature is what removes the seam; length only moves it.
+
+       The curve is weighted hard toward the bottom of the band. What reads
+       as "a strong gradient" is the stretch where the picture is visibly
+       washed but still recognisably a picture — not the last few pixels,
+       where it has nearly gone anyway. A symmetric smoothstep spends half
+       its travel up in that stretch; this one spends almost none, holding
+       0.95 at 26px above the edge where a smoothstep is already at 0.88,
+       and 0.75 at 15px where it is at 0.59.
+
+       Clearer low down and steeper are the same statement — the curve has
+       to cover the same 0→1 in the same band either way, so alpha cannot
+       be raised everywhere without raising the rate somewhere. This spends
+       it deliberately: the peak, ~0.056 of alpha per pixel, falls where
+       alpha is between 0.2 and 0.4, which is where the picture is
+       contributing the least contrast against the page and an abrupt
+       change is worth the least. The approach into it is monotone
+       (0.004 → 0.013 → 0.025 → 0.039 → 0.050 → 0.056), so there is no
+       corner anywhere — and a corner, not a rate, is what the eye resolves
+       as a line. In the light theme, where the swing between the shaded
+       picture and the canvas is roughly 84 levels, that peak works out at
+       under 5 levels per pixel: an ordinary gradient. */
     --hero-mask: linear-gradient(
       to bottom,
       #000 calc(100% - var(--hero-fade)),
-      rgb(0 0 0 / 0.9) calc(100% - var(--hero-fade) * 0.8),
-      rgb(0 0 0 / 0.72) calc(100% - var(--hero-fade) * 0.65),
-      rgb(0 0 0 / 0.5) calc(100% - var(--hero-fade) * 0.5),
-      rgb(0 0 0 / 0.28) calc(100% - var(--hero-fade) * 0.35),
-      rgb(0 0 0 / 0.1) calc(100% - var(--hero-fade) * 0.2),
+      rgb(0 0 0 / 0.985) calc(100% - var(--hero-fade) * 0.75),
+      rgb(0 0 0 / 0.95) calc(100% - var(--hero-fade) * 0.55),
+      rgb(0 0 0 / 0.87) calc(100% - var(--hero-fade) * 0.42),
+      rgb(0 0 0 / 0.75) calc(100% - var(--hero-fade) * 0.32),
+      rgb(0 0 0 / 0.58) calc(100% - var(--hero-fade) * 0.23),
+      rgb(0 0 0 / 0.39) calc(100% - var(--hero-fade) * 0.15),
+      rgb(0 0 0 / 0.2) calc(100% - var(--hero-fade) * 0.08),
+      rgb(0 0 0 / 0.07) calc(100% - var(--hero-fade) * 0.03),
       transparent 100%
     );
   }
@@ -261,8 +284,6 @@
     font-size: var(--text-lg);
     line-height: var(--leading-relaxed);
   }
-
-  .lp-lede--tight { font-size: var(--text-md); }
 
   .lp-cta {
     display: flex;
@@ -430,7 +451,12 @@
      Sections
      ====================================================================== */
 
-  .lp-section { padding: var(--space-12) 0; }
+  /* Below the hero the page is one column, and every section is measured
+     the same way: a full step of air above and below, so the boundary
+     between two sections is always twice that step and always the largest
+     gap on screen. Nothing else in the page is allowed to open that wide,
+     which is what makes the sequence readable as a sequence. */
+  .lp-section { padding: var(--space-16) 0; }
 
   .lp-section--alt {
     border-block: 1px solid var(--line-subtle);
@@ -438,12 +464,25 @@
   }
 
   @media (max-width: 48rem) {
-    .lp-section { padding: var(--space-10) 0; }
+    .lp-section { padding: var(--space-12) 0; }
   }
 
+  /* Section heads sit on the page's centre line, not its left edge.
+     The point is not symmetry — it is that every section then announces
+     itself in the same place, so the reader follows one vertical axis from
+     the hero to the footer instead of re-finding the start of each block.
+
+     The measure stays narrow (44rem inside an 82rem shell) because centred
+     type is only comfortable in short lines: the eye returns to a moving
+     left edge on every line, and the further it has to travel the more the
+     centring costs. Everything below a head — card copy, step copy — stays
+     ragged-right. Centring an announcement is legible; centring a
+     paragraph is not. */
   .lp-head {
     max-width: 44rem;
-    margin-bottom: var(--space-8);
+    margin-inline: auto;
+    margin-bottom: var(--space-10);
+    text-align: center;
   }
 
   .lp-head h2 {
@@ -454,9 +493,11 @@
   }
 
   .lp-head p {
-    margin: var(--space-3) 0 0;
+    max-width: 52ch;
+    margin: var(--space-3) auto 0;
     color: var(--fg-subtle);
     font-size: var(--text-md);
+    text-wrap: pretty;
   }
 
   .lp-grid {
@@ -588,27 +629,19 @@
   }
 
   /* ---- limits ---------------------------------------------------------- */
-  .lp-limits {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: var(--space-8);
-    align-items: center;
-  }
 
-  @media (max-width: 56rem) {
-    .lp-limits { grid-template-columns: minmax(0, 1fr); gap: var(--space-6); }
-  }
-
-  .lp-limits h2 {
-    font-size: clamp(1.625rem, 1.2rem + 1.4vw, 2.25rem);
-    letter-spacing: -0.03em;
-  }
-
+  /* This section used to be a two-column split, with its heading facing the
+     list across a gutter. It was the one block on the page reading
+     sideways, and it broke the axis exactly where the page is making its
+     most direct claim. It now takes the same head as every other section
+     and puts the list underneath it, on the same 44rem measure — so the
+     head, the list, and the closing panel all share one edge. */
   .lp-limits__list {
     display: flex;
     flex-direction: column;
     gap: var(--space-3);
-    margin: 0;
+    max-width: 44rem;
+    margin: 0 auto;
     padding: 0;
     list-style: none;
   }
@@ -643,20 +676,28 @@
      Close & footer
      ====================================================================== */
 
-  .lp-close { padding: 0 0 var(--space-12); }
+  .lp-close { padding: var(--space-16) 0; }
 
+  @media (max-width: 48rem) {
+    .lp-close { padding: var(--space-12) 0; }
+  }
+
+  /* The last thing on the page is also the narrowest: heading, one line,
+     buttons, stacked on the same centre line the sections have been using.
+     Splitting the ask left-and-right made the reader's eye leave the axis
+     at the exact moment it was being asked to act. */
   .lp-close__panel {
     display: flex;
+    flex-direction: column;
     align-items: center;
-    justify-content: space-between;
     gap: var(--space-6);
-    flex-wrap: wrap;
-    max-width: 82rem;
-    padding: var(--space-8) var(--space-10);
+    max-width: 52rem;
+    padding: var(--space-10);
     border: 1px solid var(--line-subtle);
     border-radius: var(--radius-lg);
     background-color: var(--bg-surface);
     box-shadow: var(--shadow-raised);
+    text-align: center;
   }
 
   .lp-close__panel h2 {
@@ -670,7 +711,12 @@
     font-size: var(--text-sm);
   }
 
-  .lp-close__panel .lp-cta { margin-top: 0; }
+  .lp-close__panel .lp-cta { justify-content: center; margin-top: 0; }
+
+  /* 40px of inset either side is a third of a phone's width. */
+  @media (max-width: 48rem) {
+    .lp-close__panel { padding: var(--space-8) var(--space-5); }
+  }
 
   .lp-footer {
     padding: var(--space-6) 0;
@@ -696,10 +742,40 @@
   .lp-footer__links a { color: var(--fg-subtle); }
   .lp-footer__links a:hover { color: var(--fg-default); }
 
+  /* The only link in this row that leaves the site, so it is given a
+     divider and a mark rather than being made to look like the other four.
+     The label stays: a bare glyph asks the reader to recognise a logo
+     before they know whether it is worth clicking. */
+  .lp-footer__source {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-left: var(--space-2);
+    padding-left: var(--space-5);
+    border-left: 1px solid var(--line-subtle);
+  }
+
+  .lp-footer__source .bi {
+    font-size: 1rem;
+    line-height: 1;
+    transition: transform var(--dur-2) var(--ease-out);
+  }
+
+  .lp-footer__source:hover .bi { transform: scale(1.12); }
+
+  @media (max-width: 36rem) {
+    .lp-footer__source {
+      margin-left: 0;
+      padding-left: 0;
+      border-left: 0;
+    }
+  }
+
   /* ======================================================================
      Scroll reveal
-     `data-reveal` starts hidden; shell.js adds .is-revealed when the element
-     enters the viewport. Under reduced motion it is revealed immediately.
+     `data-reveal` starts hidden *if* `data-reveal-ready` is on the root;
+     shell.js adds .is-revealed when the element enters the viewport. Under
+     reduced motion it is revealed immediately.
      ====================================================================== */
 
   /* The reveal runs as an animation, not a transition, on purpose.
@@ -713,15 +789,26 @@
      stagger delay, then hands control back to the cascade when it finishes.
      With `forwards` the final keyframe's `transform: none` would outrank the
      hover lift and the cards would go inert once revealed. */
-  [data-reveal] { opacity: 0; }
+  /* Scoped to the flag, so the page only hides its own content while the
+     script that brings it back is known to be running. Unscoped, a blocked
+     CDN or one thrown error left everything below the hero permanently
+     blank — and blank in a way nothing reports, because the markup is all
+     there and the layout is correct. Content is not allowed to depend on
+     JavaScript for its existence; only its entrance is. */
+  /* Every rule in this block carries the guard, including the ones that
+     un-hide. Scoping only the hiding rule raises its specificity above
+     `.is-revealed` (0,3,0 against 0,2,0), which hides the whole page for
+     good — the reveal still runs, the class still lands, and nothing ever
+     appears. */
+  :root[data-reveal-ready] [data-reveal] { opacity: 0; }
 
-  [data-reveal].is-revealed {
+  :root[data-reveal-ready] [data-reveal].is-revealed {
     opacity: 1;
     animation: op-fade-up var(--dur-4) var(--ease-out) backwards;
     animation-delay: calc(var(--reveal-index, 0) * 70ms);
   }
 
   @media (prefers-reduced-motion: reduce) {
-    [data-reveal] { opacity: 1; }
+    :root[data-reveal-ready] [data-reveal] { opacity: 1; }
   }
 }

@@ -490,6 +490,12 @@
   function ScrollReveal() {}
 
   ScrollReveal.prototype.mount = function () {
+    // Tells the page that the thing which un-hides `[data-reveal]` is alive.
+    // The stylesheet only hides content while this is set — see the inline
+    // head script that sets it before first paint and drops it again if
+    // this never runs.
+    document.documentElement.setAttribute('data-reveal-mounted', '');
+
     var targets = document.querySelectorAll('[data-reveal]');
     if (!targets.length) return;
 
@@ -498,13 +504,25 @@
       return;
     }
 
+    /* Reveal on the first pixel, not on a share of the element.
+       `threshold: 0.12` with a negative bottom margin meant an element had
+       to get an eighth of itself past a line 8% up from the fold before it
+       was allowed to exist — so a block resting at the fold on load was
+       *visible space with nothing in it*, and stayed that way until the
+       reader scrolled. Worse for anyone who does not: at some window
+       heights a section simply never appeared.
+
+       A reveal is decoration. It may choose when to play; it may not
+       decide whether content exists, so its trigger is the loosest one
+       there is and every element still gets its entrance the moment it
+       has any claim on the viewport. */
     var observer = new IntersectionObserver(function (entries) {
       entries.forEach(function (entry) {
         if (!entry.isIntersecting) return;
         entry.target.classList.add('is-revealed');
         observer.unobserve(entry.target);
       });
-    }, { rootMargin: '0px 0px -8% 0px', threshold: 0.12 });
+    }, { threshold: 0 });
 
     targets.forEach(function (element) { observer.observe(element); });
   };

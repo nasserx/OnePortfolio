@@ -845,9 +845,8 @@ function deletePortfolioEvent(id, type) {
     }, true);
 })();
 
-// ── Init tooltips ─────────────────────────────────────────────────
-document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el) {
-    new bootstrap.Tooltip(el, { trigger: 'hover focus' });
-});
+{# Tooltips are mounted once, by TooltipManager in main.js. A second
+   construction over the same element leaves an orphaned instance with live
+   listeners, so pages do not mount their own. #}
 </script>
 {% endblock %}

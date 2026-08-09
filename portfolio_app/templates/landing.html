@@ -27,6 +27,22 @@
                 document.documentElement.setAttribute('data-theme', theme);
             }
         } catch (e) {}
+
+        // Arms the scroll reveal before first paint, so nothing flashes in
+        // and then hides itself. The stylesheet hides `[data-reveal]` only
+        // while this flag is set; shell.js stamps `data-reveal-mounted`
+        // when it takes over. If it never does — a blocked CDN, a thrown
+        // error, scripts switched off after this line ran — the flag comes
+        // back off at `load` and the page is simply visible. The reveal is
+        // an entrance, and an entrance that fails must leave the content
+        // standing, not take it with it.
+        var root = document.documentElement;
+        root.setAttribute('data-reveal-ready', '');
+        window.addEventListener('load', function () {
+            if (!root.hasAttribute('data-reveal-mounted')) {
+                root.removeAttribute('data-reveal-ready');
+            }
+        });
     }());
     </script>
 
@@ -217,14 +233,14 @@
          Saying plainly what the product does not do is a feature, not a
          disclaimer — it is the fastest way to find the right users. -->
     <section class="lp-section" id="limits">
-        <div class="lp-shell lp-limits">
-            <div data-reveal>
+        <div class="lp-shell">
+            <header class="lp-head" data-reveal>
                 <h2>What OnePortfolio isn't</h2>
-                <p class="lp-lede lp-lede--tight">
+                <p>
                     It is a ledger, not a terminal. If you want streaming quotes and
                     broker sync, this is the wrong tool — and that is deliberate.
                 </p>
-            </div>
+            </header>
 
             <ul class="lp-limits__list" data-reveal style="--reveal-index:1">
                 <li><i class="bi bi-x-lg" aria-hidden="true"></i> No live prices and no position valuations</li>
@@ -262,6 +278,13 @@
             <a href="#how">How it works</a>
             <a href="{{ url_for('auth.login') }}">Log in</a>
             <a href="{{ url_for('auth.register') }}">Sign up</a>
+            {# Leaves the site, so it is set apart from the in-page links
+               rather than hidden among them. #}
+            <a class="lp-footer__source" href="https://github.com/nasserx/OnePortfolio"
+               target="_blank" rel="noopener noreferrer">
+                <i class="bi bi-github" aria-hidden="true"></i>
+                <span>Source</span>
+            </a>
         </nav>
     </div>
 </footer>

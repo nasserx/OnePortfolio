@@ -171,24 +171,32 @@
       thumb.style.transform = 'translateX(' + (active.offsetLeft - 3) + 'px)';
     }
 
+    // The thumb has to be re-placed on resize, because its offset is
+    // measured in pixels. What it must be re-placed *under* is whatever is
+    // selected at that moment — reading the selection once at mount and
+    // closing over it meant a resize silently slid the thumb back to the
+    // option the page opened with, leaving the indicator sitting under one
+    // label while the chart showed the other.
+    var current = this.switcher.querySelector('[aria-selected="true"]')
+      || options[0];
+    if (!current) return;
+
     options.forEach(function (option) {
       option.addEventListener('click', function () {
         options.forEach(function (other) {
           other.setAttribute('aria-selected', other === option ? 'true' : 'false');
         });
-        moveThumb(option);
+        current = option;
+        moveThumb(current);
         self.view = option.getAttribute('data-alloc-view');
         self.render();
       });
     });
 
-    var selected = this.switcher.querySelector('[aria-selected="true"]') || options[0];
-    if (selected) {
-      // Layout is not settled during DOMContentLoaded inside a flex row, so
-      // the initial thumb placement waits one frame for real geometry.
-      window.requestAnimationFrame(function () { moveThumb(selected); });
-      window.addEventListener('resize', function () { moveThumb(selected); });
-    }
+    // Layout is not settled during DOMContentLoaded inside a flex row, so
+    // the initial thumb placement waits one frame for real geometry.
+    window.requestAnimationFrame(function () { moveThumb(current); });
+    window.addEventListener('resize', function () { moveThumb(current); });
   };
 
   AllocationChart.prototype.render = function () {

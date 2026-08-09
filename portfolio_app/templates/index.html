@@ -148,10 +148,6 @@
 document.addEventListener('DOMContentLoaded', function () {
     var payload = document.getElementById('allocationData');
     window.initPortfolioAllocationChart(JSON.parse(payload.textContent));
-
-    document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
-        new bootstrap.Tooltip(el, { trigger: 'hover focus' });
-    });
 });
 </script>
 {% endblock %}

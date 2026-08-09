@@ -749,10 +749,22 @@ class TooltipManager {
 
     initialize() {
         const tooltipElements = document.querySelectorAll('[data-bs-toggle="tooltip"]');
-        
+
         tooltipElements.forEach(element => {
             try {
-                new bootstrap.Tooltip(element);
+                // `getOrCreateInstance`, never `new`. Constructing a second
+                // Tooltip over the same element does not replace the first:
+                // Bootstrap overwrites its own instance map, but the orphan
+                // keeps every listener it attached, so the element ends up
+                // with two live tooltips whose show/hide state can drift
+                // apart. The first one also moves `title` into
+                // `data-bs-original-title`, so the second reads an empty
+                // title and which of the two actually renders is incidental.
+                //
+                // This is the one place tooltips are mounted. Templates must
+                // not mount their own — see `TooltipManager` in the design
+                // notes.
+                bootstrap.Tooltip.getOrCreateInstance(element);
             } catch (e) {
                 // Ignore tooltip initialization errors
             }

@@ -253,6 +253,32 @@ transitions with its own. Entrances use `animation` for exactly this reason —
 and with `animation-fill-mode: backwards`, not `forwards`, so the final
 keyframe does not outrank a later hover transform and leave the element inert.
 
+**An entrance may decide when content appears, never whether.** The scroll
+reveal is the only place in the product where CSS hides real content and
+JavaScript brings it back, and both halves of that arrangement have failed
+here at least once:
+
+- *The trigger was too strict.* `threshold: 0.12` with a negative bottom
+  `rootMargin` meant an element had to push an eighth of itself past a line
+  above the fold before it was allowed to exist. A block resting at the fold
+  on load was visible space with nothing in it, and at some window heights a
+  section never appeared at all. It is `threshold: 0` now: any pixel counts.
+  A reveal is decoration and gets the loosest trigger there is.
+- *The hiding rule was unconditional.* `[data-reveal] { opacity: 0 }` applies
+  whether or not the script that removes it ever runs, so one thrown error or
+  one blocked CDN blanked the whole page below the hero — invisibly, since
+  the markup and the layout are both perfectly correct. The rule is now
+  scoped to `:root[data-reveal-ready]`, set inline in the head before first
+  paint and taken back off at `load` if `shell.js` never stamped
+  `data-reveal-mounted`.
+
+Scoping a hiding rule is a specificity trap, and it is worth knowing before
+you repeat it: `:root[data-reveal-ready] [data-reveal]` is 0,3,0 and
+`[data-reveal].is-revealed` is 0,2,0, so guarding only the hiding rule wins
+the cascade and hides the page permanently — the observer still fires and the
+class still lands. **Every rule in the block carries the guard, including the
+ones that un-hide.**
+
 **Charts are the one place a long duration is right.** The allocation ring
 draws itself once, when a page of numbers first appears, and it takes 1150ms
 on `easeInOutQuart` — slow enough to be watched, and eased at *both* ends so
@@ -404,12 +430,20 @@ change either and the other follows, and no resize can slide a dissolve
 underneath a word.
 
 **Surfaces that float on a hero may be glass.** `--hero-card-fill` is how much
-of the marketing card's own surface stays opaque — 94% light, 90% dark. The
+of the marketing card's own surface stays opaque — 92% light, 87% dark. The
 constraint is never the card; it is the quietest label printed on it, which
 is `--fg-subtle` on the inset chrome. `backdrop-filter: blur()` is what makes
 those few percent look like anything, and it is deliberately left out of the
 test: blurring moves pixels toward their local mean, so it can only produce
 values inside the range already cleared.
+
+Measured against the shipped photograph, the floor is **91.2% light** and
+**85.4% dark** — so the light theme has under a point of room left. The
+asymmetry is not about the picture: `--fg-subtle` on `--bg-inset` is already
+close to 4.5:1 on a *solid* surface in the light theme, so there is barely
+anything for glass to spend there, while the dark theme starts further clear
+and can afford three times as much. If a request to make the card "a little
+more transparent" cannot be met, that is the number to quote.
 
 **How a hero meets the page.** The picture dissolves; it is not painted over.
 Fading it with a wedge of `--bg-canvas` lightens the image on its way out — a
@@ -429,13 +463,21 @@ the seam. `--hero-mask` traces a curve in eight stops instead, which is why
 strong gradient" is the stretch where the photograph is *visibly washed but
 still recognisably a photograph* — not the last few pixels, where it has
 nearly gone anyway. A symmetric smoothstep spends half its travel up in that
-stretch. Weighting the curve late instead — above 0.9 through the first
-third, the real work done low down — leaves the picture clearer at every
-depth that still reads as picture, while the *steepest* rate anywhere in the
-band is unchanged. Shortening the band would have bought the same appearance
-by making that rate harsher, which is borrowing from the seam. Judge a change
-here by the maximum slope, not by the length: alpha per pixel is what the eye
-resolves as an edge.
+stretch; weighting the curve late leaves the picture clearer at every depth
+that still reads as picture.
+
+There is a hard limit on how far that goes, and it is worth stating plainly
+because it looks like it should be free: **the curve covers the same 0→1 in
+the same band whatever its shape**, so alpha cannot be raised everywhere
+without raising the rate somewhere. Clearer low down and steeper are one
+statement, not two. What can be chosen is *where* the steepness lands. It is
+spent between alpha 0.2 and 0.4, where the picture is contributing the least
+contrast against the page and an abrupt change is worth the least, and the
+approach into it is monotone, because **a corner — not a rate — is what the
+eye resolves as a line**. Sanity-check any change here in the *light* theme:
+the swing between the shaded picture and the canvas is roughly 84 levels
+there against ~25 in the dark, so the light theme is where a seam shows
+first.
 
 **The backdrop leaves with the page.** `.hero-media--lift` fades the whole
 thing out across the first `--hero-lift-range` of scrolling, driven by
@@ -504,6 +546,27 @@ constraint is what makes the sequence legible as a sequence.
 `base.html`, plus **any element on the page carrying `data-command="Label"`**
 (optionally `data-command-group` and `data-command-icon`). A page extends the
 palette by adding one attribute — there is no registration step.
+
+## Behaviour that lives in one place
+
+Two widgets are mounted globally and must not be mounted again by a page.
+Both failures are silent, which is what makes the rule worth writing down.
+
+- **Tooltips.** `TooltipManager` in `main.js` mounts every
+  `[data-bs-toggle="tooltip"]` on the page, with `getOrCreateInstance`.
+  Constructing a second `bootstrap.Tooltip` over the same element does not
+  replace the first: Bootstrap overwrites its own instance map, but the
+  orphan keeps every listener it attached, so the element carries two live
+  tooltips whose show/hide state can drift apart. The first construction also
+  moves `title` into `data-bs-original-title`, so the second reads an empty
+  title and which of the two renders is incidental. `index.html` and
+  `portfolios.html` each mounted their own on top of the manager.
+- **Pixel positions read once are wrong forever.** The allocation switcher's
+  thumb is placed by measuring the selected option, and its `resize` handler
+  closed over the option selected *at mount*. Resizing the window after
+  switching slid the indicator back under the label the page opened with,
+  while the chart kept showing the other. Anything that re-measures on resize
+  must read current state at that moment, never a captured reference.
 
 ## Avoid
 

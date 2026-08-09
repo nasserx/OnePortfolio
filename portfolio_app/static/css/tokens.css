@@ -290,8 +290,14 @@
 
     /* How much of a surface floating on the hero stays opaque. The rest is
        photograph. The binding constraint is the quietest label inside the
-       card, not the card itself. */
-    --hero-card-fill: 94%;
+       card, not the card itself: measured against the shipped picture, the
+       light theme breaks at 91.2% and this sits just above it. There is
+       almost nothing left here — `--fg-subtle` on `--bg-inset` is already
+       near 4.5:1 on a *solid* surface in this theme, so the glass has very
+       little to spend. Take it lower and
+       `test_a_translucent_card_on_the_hero_still_carries_its_quietest_label`
+       is what will stop you. */
+    --hero-card-fill: 92%;
 
     /* Hover veil for the semantic solid buttons. It moves *away* from the
        label colour in each theme — darker under white labels, lighter under
@@ -375,7 +381,7 @@
       --hero-shade: rgb(16 16 21 / 0.64);
       --hero-title-from: var(--brand-50);
       --hero-title-to:   var(--brand-100);
-      --hero-card-fill: 90%;
+      --hero-card-fill: 87%;
       --solid-hover-veil: rgb(255 255 255 / 0.14);
       --brand-soft: rgb(157 136 255 / 0.20);
       --brand-soft-hover: rgb(157 136 255 / 0.30);
@@ -455,7 +461,7 @@
     --hero-shade: rgb(16 16 21 / 0.64);
     --hero-title-from: var(--brand-50);
     --hero-title-to:   var(--brand-100);
-    --hero-card-fill: 90%;
+    --hero-card-fill: 87%;
     --solid-hover-veil: rgb(255 255 255 / 0.14);
     --brand-soft: rgb(157 136 255 / 0.20);
     --brand-soft-hover: rgb(157 136 255 / 0.30);

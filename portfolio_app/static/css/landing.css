@@ -193,28 +193,37 @@
        end, and a corner reads as a line even when the change itself is
        gentle. Curvature is what removes the seam; length only moves it.
 
-       The curve is deliberately weighted late. A symmetric smoothstep
-       spends half its travel in the top half of the band, so the picture
-       is already visibly washed well before it reaches the edge — that
-       wash is what reads as "a strong gradient", not the last few pixels
-       where the image is nearly gone anyway. Holding above 0.9 through the
-       first third and doing the work low down leaves the photograph
-       noticeably clearer at every depth that is still legible as a
-       photograph (0.74 where it used to be 0.50, 0.31 where it used to be
-       0.10) while the *steepest* rate in the band is unchanged — about
-       0.22 of alpha per 6px either way. That is the whole trick: this is a
-       weaker fade, not a shorter one, so nothing was borrowed from the
-       seam to pay for it. The band itself grew by 8px to keep that true,
-       taken from the clear floor above it. */
+       The curve is weighted hard toward the bottom of the band. What reads
+       as "a strong gradient" is the stretch where the picture is visibly
+       washed but still recognisably a picture — not the last few pixels,
+       where it has nearly gone anyway. A symmetric smoothstep spends half
+       its travel up in that stretch; this one spends almost none, holding
+       0.95 at 26px above the edge where a smoothstep is already at 0.88,
+       and 0.75 at 15px where it is at 0.59.
+
+       Clearer low down and steeper are the same statement — the curve has
+       to cover the same 0→1 in the same band either way, so alpha cannot
+       be raised everywhere without raising the rate somewhere. This spends
+       it deliberately: the peak, ~0.056 of alpha per pixel, falls where
+       alpha is between 0.2 and 0.4, which is where the picture is
+       contributing the least contrast against the page and an abrupt
+       change is worth the least. The approach into it is monotone
+       (0.004 → 0.013 → 0.025 → 0.039 → 0.050 → 0.056), so there is no
+       corner anywhere — and a corner, not a rate, is what the eye resolves
+       as a line. In the light theme, where the swing between the shaded
+       picture and the canvas is roughly 84 levels, that peak works out at
+       under 5 levels per pixel: an ordinary gradient. */
     --hero-mask: linear-gradient(
       to bottom,
       #000 calc(100% - var(--hero-fade)),
-      rgb(0 0 0 / 0.97) calc(100% - var(--hero-fade) * 0.75),
-      rgb(0 0 0 / 0.88) calc(100% - var(--hero-fade) * 0.55),
-      rgb(0 0 0 / 0.72) calc(100% - var(--hero-fade) * 0.4),
-      rgb(0 0 0 / 0.52) calc(100% - var(--hero-fade) * 0.28),
-      rgb(0 0 0 / 0.3) calc(100% - var(--hero-fade) * 0.16),
-      rgb(0 0 0 / 0.12) calc(100% - var(--hero-fade) * 0.07),
+      rgb(0 0 0 / 0.985) calc(100% - var(--hero-fade) * 0.75),
+      rgb(0 0 0 / 0.95) calc(100% - var(--hero-fade) * 0.55),
+      rgb(0 0 0 / 0.87) calc(100% - var(--hero-fade) * 0.42),
+      rgb(0 0 0 / 0.75) calc(100% - var(--hero-fade) * 0.32),
+      rgb(0 0 0 / 0.58) calc(100% - var(--hero-fade) * 0.23),
+      rgb(0 0 0 / 0.39) calc(100% - var(--hero-fade) * 0.15),
+      rgb(0 0 0 / 0.2) calc(100% - var(--hero-fade) * 0.08),
+      rgb(0 0 0 / 0.07) calc(100% - var(--hero-fade) * 0.03),
       transparent 100%
     );
   }
@@ -733,10 +742,40 @@
   .lp-footer__links a { color: var(--fg-subtle); }
   .lp-footer__links a:hover { color: var(--fg-default); }
 
+  /* The only link in this row that leaves the site, so it is given a
+     divider and a mark rather than being made to look like the other four.
+     The label stays: a bare glyph asks the reader to recognise a logo
+     before they know whether it is worth clicking. */
+  .lp-footer__source {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-left: var(--space-2);
+    padding-left: var(--space-5);
+    border-left: 1px solid var(--line-subtle);
+  }
+
+  .lp-footer__source .bi {
+    font-size: 1rem;
+    line-height: 1;
+    transition: transform var(--dur-2) var(--ease-out);
+  }
+
+  .lp-footer__source:hover .bi { transform: scale(1.12); }
+
+  @media (max-width: 36rem) {
+    .lp-footer__source {
+      margin-left: 0;
+      padding-left: 0;
+      border-left: 0;
+    }
+  }
+
   /* ======================================================================
      Scroll reveal
-     `data-reveal` starts hidden; shell.js adds .is-revealed when the element
-     enters the viewport. Under reduced motion it is revealed immediately.
+     `data-reveal` starts hidden *if* `data-reveal-ready` is on the root;
+     shell.js adds .is-revealed when the element enters the viewport. Under
+     reduced motion it is revealed immediately.
      ====================================================================== */
 
   /* The reveal runs as an animation, not a transition, on purpose.
@@ -750,15 +789,26 @@
      stagger delay, then hands control back to the cascade when it finishes.
      With `forwards` the final keyframe's `transform: none` would outrank the
      hover lift and the cards would go inert once revealed. */
-  [data-reveal] { opacity: 0; }
+  /* Scoped to the flag, so the page only hides its own content while the
+     script that brings it back is known to be running. Unscoped, a blocked
+     CDN or one thrown error left everything below the hero permanently
+     blank — and blank in a way nothing reports, because the markup is all
+     there and the layout is correct. Content is not allowed to depend on
+     JavaScript for its existence; only its entrance is. */
+  /* Every rule in this block carries the guard, including the ones that
+     un-hide. Scoping only the hiding rule raises its specificity above
+     `.is-revealed` (0,3,0 against 0,2,0), which hides the whole page for
+     good — the reveal still runs, the class still lands, and nothing ever
+     appears. */
+  :root[data-reveal-ready] [data-reveal] { opacity: 0; }
 
-  [data-reveal].is-revealed {
+  :root[data-reveal-ready] [data-reveal].is-revealed {
     opacity: 1;
     animation: op-fade-up var(--dur-4) var(--ease-out) backwards;
     animation-delay: calc(var(--reveal-index, 0) * 70ms);
   }
 
   @media (prefers-reduced-motion: reduce) {
-    [data-reveal] { opacity: 1; }
+    :root[data-reveal-ready] [data-reveal] { opacity: 1; }
   }
 }

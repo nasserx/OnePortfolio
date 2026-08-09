@@ -1,18 +1,17 @@
 /* ==========================================================================
    OnePortfolio — Design Tokens
    ==========================================================================
+   1  primitives  raw values, never consumed by components directly
+   2  roles       semantic names, the ONLY thing components may use
+   3  bridge      maps roles onto Bootstrap's --bs-* variables
 
-   Layer 1  primitives  raw values, never consumed by components directly
-   Layer 2  roles       semantic names, the ONLY thing components may use
-   Layer 3  bridge      maps roles onto Bootstrap's --bs-* variables
+   Themes come from `data-theme` on <html>, with a system-preference
+   fallback; every role is defined in the light block and redefined in both
+   dark blocks, so none is ever left undefined.
 
-   Themes are driven by `data-theme` on <html> with a system-preference
-   fallback. Every colour is defined once in the light block and redefined
-   in both dark blocks, so no role is ever left undefined in either theme.
-
-   Cascade layers are declared here because this is the first stylesheet the
-   document loads. Bootstrap is imported INTO the `vendor` layer, which puts
-   every rule we write above it without a single !important.
+   This is the first stylesheet the document loads, so the layer order is
+   declared here and Bootstrap is imported into `vendor` — which puts every
+   rule we write above it without a single !important.
    ========================================================================== */
 
 @layer vendor, tokens, base, components, pages, utilities;
@@ -26,49 +25,29 @@
      ====================================================================== */
 
   :root {
-    /* Neutrals.
-       The dark end is a true cool grey. The light end is warmed a few points
-       towards yellow — a paper/cream cast rather than clinical white. Warm
-       ground makes the semantic greens and reds read as saturated instead of
-       washing out, which is the whole job of the light theme here. */
+    /* Neutrals — the light theme's ground, warmed a few points towards
+       yellow so the semantic greens and reds read as saturated rather than
+       washed out. The dark theme is a cooler family and states its own
+       hexes below, so it takes nothing from here. */
     --n-0:   #ffffff;
     --n-25:  #fcfbf8;
     --n-50:  #f7f5f0;
     --n-100: #efece5;
-    --n-150: #e6e2d9;
-    --n-200: #d9d4c9;
-    --n-300: #bcb7ab;
     --n-400: #8a857e;
     --n-500: #726e68;
     --n-600: #575350;
-    --n-700: #3e3b39;
-    --n-750: #2e2e35;
-    --n-800: #212127;
-    --n-850: #18181d;
-    --n-900: #121216;
-    --n-950: #0b0b0e;
-    --n-1000:#07070a;
 
-    /* Brand — indigo-violet. Deliberately off the semantic hues (green /
-       red / blue) so brand surfaces never read as a financial signal.
-       The dark-theme steps are pushed up in chroma: against a near-black
-       ground a desaturated violet reads as grey.
+    /* Brand — indigo-violet, deliberately off the semantic hues so brand
+       surfaces never read as a financial signal.
 
-       The ramp splits into three working bands. 400–200 are the *accent*
-       steps: bright enough to read as text and hairlines on a near-black
-       ground. 600–550 are the *solid* steps: deep enough to carry white
-       label text at 4.5:1. A single step cannot do both jobs — that is
-       why `--brand` and `--brand-solid` are separate roles below.
-
-       The outer pair at each end (900–800, 100–50) exists for one job:
-       brand-tinted type over the hero photograph. Neither of the working
-       bands can go there. A violet has to be *further* from the picture
-       than plain ink is to survive the same shade, so the light theme
-       needs a deeper violet than `--brand-700` and the dark theme a paler
-       one than `--brand-200`. They are ends of a gradient, not fills. */
+       Three bands: 400–300 are *accent* steps (text and hairlines on a
+       near-black ground), 600–550 are *solid* steps (deep enough to carry
+       a white label at 4.5:1). No step does both jobs — hence `--brand`
+       and `--brand-solid`. The outer pairs exist only for brand-tinted
+       type over the hero, where a violet must sit further from the picture
+       than plain ink does. */
     --brand-50:  #e2ddff;
     --brand-100: #d1c8ff;
-    --brand-200: #bdb0ff;
     --brand-300: #b3a1ff;
     --brand-400: #9d88ff;
     --brand-500: #7358ff;
@@ -117,7 +96,6 @@
     --text-lg:  1rem;       /* 16px — section titles          */
     --text-xl:  1.125rem;   /* 18px — page titles             */
     --text-2xl: 1.375rem;   /* 22px — headings                */
-    --text-3xl: 1.75rem;
 
     /* For the record rows revealed inside a disclosure. The summary row
        above them is the primary read; dropping the detail a full step makes
@@ -128,11 +106,9 @@
     /* Number ramp — kept independent so figures can be tuned without
        dragging the prose scale along with them. */
     --num-sm:   0.8125rem;
-    --num-md:   0.9375rem;
     --num-lg:   1.125rem;
     --num-hero: clamp(2rem, 1.2rem + 2.6vw, 3.25rem);
 
-    --weight-normal: 400;
     --weight-medium: 500;
     --weight-semibold: 600;
 
@@ -157,7 +133,6 @@
     --space-10: 2.5rem;
     --space-12: 3rem;
     --space-16: 4rem;
-    --space-20: 5rem;
 
     /* ------------------------------------------------------------------
        Radius — three steps, each with a job
@@ -197,15 +172,16 @@
     --dur-4: 460ms;   /* entrances, scroll reveals   */
 
     --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
-    --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
     --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
 
+    /* Backdrop and modal are Bootstrap's own values, restated here because
+       everything above them is chosen relative to them. */
     --z-sticky: 20;
     --z-sidebar: 60;
     --z-backdrop: 1040;
     --z-modal: 1055;
-    --z-datepicker: 1100;
     --z-toast: 1090;
+    --z-datepicker: 1100;
     --z-palette: 1200;
   }
 
@@ -240,46 +216,27 @@
     --line-default: rgb(62 59 57 / 0.15);
     --line-strong: rgb(62 59 57 / 0.26);
 
-    /* Brand — two roles, not one.
-       `--brand` is the accent: brand-coloured *text*, icons, hairlines and
-       markers drawn on a page surface.
-       `--brand-solid` is the fill: any block of brand colour with a label
-       on top of it (primary button, checked box, selected calendar day).
-       In light they coincide; in dark they must not, because a violet
-       bright enough to read as text on near-black cannot also carry white
-       text on itself. */
+    /* `--brand` is the accent (brand-coloured text, icons, hairlines);
+       `--brand-solid` is the fill (anything with a label on top of it).
+       They coincide in light and must not in dark: a violet bright enough
+       to read as text on near-black cannot carry white text itself. */
     --brand: var(--brand-600);
     --brand-hover: var(--brand-700);
     --brand-solid: var(--brand-600);
     --brand-solid-hover: var(--brand-700);
-    /* Hero backdrop. One veil of the canvas colour, laid over the whole
-       photograph at one strength — no falloff in either direction.
 
-       Uniformity is the point. Every earlier version varied the veil to buy
-       clarity where nothing was written, and every one of them read as a
-       *stain*: the eye has no trouble at all seeing that one part of a
-       photograph is hazier than the rest, and it looks like a rendering
-       fault rather than a design. A picture that is 12% less visible
-       everywhere reads as a picture. So there is exactly one number, and
-       anything floating on the hero is guaranteed against it.
+    /* Hero backdrop: one veil of the canvas colour over the whole
+       photograph, at one strength. Uniformity is the point — every version
+       that varied it to buy clarity where nothing was written read as a
+       stain rather than a design.
 
-       `shade` is derived, not chosen. It is the lightest veil under which
-       hero copy still clears its contrast floor against the darkest and
-       brightest pixels the shipped photograph actually contains — measured
-       from the file itself by `tests/test_hero_legibility.py`, which
-       re-derives the floor on every run and fails if the image and these
-       values drift apart.
-
-       That is the whole reason the picture is visible. Sizing a scrim for a
-       *hypothetical* photograph means sizing it for pure black and pure
-       white, and no real photograph is ever both; the difference is roughly
-       0.3 of alpha, which is the difference between a backdrop and a wash.
-       The trade is explicit: swap the photograph and the test recomputes,
-       so a darker picture would demand a heavier shade and say so.
-
-       Because the shade is uniform, a header floating on the hero needs no
-       veil of its own — which is why there is no band token here any more,
-       and why the marketing header is genuinely invisible until it sticks. */
+       Derived, not chosen: the lightest veil under which hero copy still
+       clears its floor against the darkest and brightest pixels the shipped
+       picture actually contains, measured from the file by
+       `tests/test_hero_legibility.py` and re-derived on every run. Sizing a
+       scrim for a *hypothetical* photograph means sizing it for pure black
+       and pure white at once — about 0.3 more alpha, which is the
+       difference between a backdrop and a wash. */
     --hero-shade: rgb(247 245 240 / 0.52);
 
     /* The two ends of the hero title's gradient. Large text, so the floor
@@ -288,15 +245,11 @@
     --hero-title-from: var(--brand-900);
     --hero-title-to:   var(--brand-800);
 
-    /* How much of a surface floating on the hero stays opaque. The rest is
-       photograph. The binding constraint is the quietest label inside the
-       card, not the card itself: measured against the shipped picture, the
-       light theme breaks at 91.2% and this sits just above it. There is
-       almost nothing left here — `--fg-subtle` on `--bg-inset` is already
-       near 4.5:1 on a *solid* surface in this theme, so the glass has very
-       little to spend. Take it lower and
-       `test_a_translucent_card_on_the_hero_still_carries_its_quietest_label`
-       is what will stop you. */
+    /* How much of a surface floating on the hero stays opaque; the rest is
+       photograph. Bounded by the quietest label *inside* the card, not by
+       the card: measured against the shipped picture the light theme breaks
+       at 91.2%, so there is under a point left here. Dark starts further
+       clear and can afford 87%. */
     --hero-card-fill: 92%;
 
     /* Hover veil for the semantic solid buttons. It moves *away* from the
@@ -339,11 +292,7 @@
       0 4px 14px -4px rgb(48 42 34 / 0.14);
 
     --focus-ring: var(--brand-500);
-    --focus-ring-halo: rgb(115 88 255 / 0.26);
 
-    /* Chart roles */
-    --chart-grid: var(--line-subtle);
-    --chart-axis: var(--fg-faint);
     --chart-ring-gap: var(--bg-surface);
 
     --select-caret: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23726e68' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.6' d='m3.5 6 4.5 4.5L12.5 6'/%3e%3c/svg%3e");
@@ -413,7 +362,6 @@
         0 6px 18px -6px rgb(0 0 0 / 0.5);
 
       --focus-ring: var(--brand-300);
-      --focus-ring-halo: rgb(179 161 255 / 0.32);
 
       --chart-ring-gap: var(--bg-surface);
 
@@ -493,7 +441,6 @@
       0 6px 18px -6px rgb(0 0 0 / 0.5);
 
     --focus-ring: var(--brand-300);
-    --focus-ring-halo: rgb(179 161 255 / 0.32);
 
     --chart-ring-gap: var(--bg-surface);
 

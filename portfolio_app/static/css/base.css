@@ -12,9 +12,17 @@
     box-sizing: border-box;
   }
 
+  /* `auto` is a deliberate override, not a default: Bootstrap's reboot sets
+     `scroll-behavior: smooth` on the root, and on the root scroller that
+     animates *every* programmatic scroll — including ones no one asked to
+     animate. `scrollTo(0, 0)` takes about a second, and the browser's own
+     scroll restoration after a reload, which this app does after every
+     modal action, becomes a page that sits still and then glides on its
+     own. The marketing page opts back in for its jump links; see
+     landing.css. */
   html {
     -webkit-text-size-adjust: 100%;
-    scroll-behavior: smooth;
+    scroll-behavior: auto;
   }
 
   body {
@@ -171,17 +179,10 @@
     white-space: nowrap;
   }
 
-  .num--pos,
-  .profit { color: var(--pos); }
-
-  .num--neg,
-  .loss { color: var(--neg); }
-
-  .num--income,
-  .dividend { color: var(--income); }
-
-  .num--flat,
-  .neutral { color: var(--flat); }
+  .num--pos { color: var(--pos); }
+  .num--neg { color: var(--neg); }
+  .num--income { color: var(--income); }
+  .num--flat { color: var(--flat); }
 
   /* ---------------------------------------------------------------------
      Motion primitives
@@ -201,11 +202,6 @@
   @keyframes op-scale-in {
     from { opacity: 0; transform: scale(0.97); }
     to   { opacity: 1; transform: none; }
-  }
-
-  @keyframes op-shimmer {
-    from { background-position: -160% 0; }
-    to   { background-position: 260% 0; }
   }
 
   .enter {
@@ -254,8 +250,6 @@
      is expected to degrade through this block rather than guard itself.
      --------------------------------------------------------------------- */
   @media (prefers-reduced-motion: reduce) {
-    html { scroll-behavior: auto; }
-
     *,
     *::before,
     *::after {

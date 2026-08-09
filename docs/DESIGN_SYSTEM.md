@@ -147,12 +147,27 @@ bridge at the bottom of `tokens.css` rather than trying to out-cascade it.
 
 **Which is exactly why a utility must never be stapled to an element a
 component already styles.** It does not merge with the component's decision;
-it silently outranks it, and nothing in the stylesheet shows that it happened.
-Three cases had drifted this way: `.text-muted` on the withdraw hint rendered
-it a full step darker than every other hint on the same form, and
-`border-0 text-secondary` on the pagination arrows overrode the colour and
-border `.tx-pagination-bar .btn` had already set. If a component gets the
-wrong colour, change the component.
+it silently outranks it, and nothing in the stylesheet shows that it
+happened. If a component gets the wrong colour, change the component.
+
+The tell that this has been happening is an `!important` in one of *our*
+layers, because that is the only way to win the argument back. Four had
+accumulated — `.table .text-muted`, `.records-table tbody td small.text-muted`,
+`.sell-max-btn`'s padding fighting `p-0`, and `.admin-badge-you` fighting
+`bg-primary` — and every one was removed by taking the utility off the
+element rather than by escalating. What is left is three legitimate uses:
+`.visually-hidden`, the reduced-motion block, and `.sym-filter-hide`, which
+has to beat whatever `display` the element it lands on already has.
+
+**Bootstrap's reboot is a source of behaviour, not just of looks.** It sets
+`scroll-behavior: smooth` on the root, which on the root scroller animates
+*every* programmatic scroll — `scrollTo(0, 0)` takes about a second, and the
+browser's own scroll restoration after a reload (which this app does after
+every modal action) becomes a page that sits still and then glides on its
+own. `base.css` overrides it to `auto`; deleting our declaration is not
+enough, because then the vendor layer simply wins. The marketing page opts
+back in from `landing.css`, where it is wanted for jump links and where the
+`pages` layer outranks `base`.
 
 ## Tokens
 

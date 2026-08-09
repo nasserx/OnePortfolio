@@ -1,5 +1,3 @@
-
-
 const AppConfig = {
     successDismissDelay: 3000,  // 3 seconds for success messages
     errorDismissDelay: 6000,    // 6 seconds for error messages
@@ -17,14 +15,11 @@ const AppConfig = {
 
 
 const Utils = {
-    /**
-     * Sanitize decimal input to allow only valid decimal numbers
-     */
     sanitizeDecimalInput(value) {
         const raw = String(value || '');
         let output = '';
         let dotSeen = false;
-        
+
         for (const char of raw) {
             if (char >= '0' && char <= '9') {
                 output += char;
@@ -33,20 +28,14 @@ const Utils = {
                 dotSeen = true;
             }
         }
-        
+
         return output;
     },
 
-    /**
-     * Normalize stock symbol to uppercase
-     */
     normalizeSymbol(raw) {
         return String(raw || '').trim().toUpperCase();
     },
 
-    /**
-     * Format number as money
-     */
     formatMoney(value) {
         if (!Number.isFinite(value)) return '0.00';
         return value.toLocaleString(
@@ -58,54 +47,42 @@ const Utils = {
         );
     },
 
-    /**
-     * Validate stock symbol format
-     */
     isValidSymbol(raw) {
         const value = this.normalizeSymbol(raw);
         if (!value) return false;
         return AppConfig.validation.symbolPattern.test(value);
     },
 
-    /**
-     * Parse number strictly (reject invalid formats)
-     */
     parseNumberStrict(raw) {
         const str = String(raw || '').trim();
         if (!str) return { ok: false, value: null };
-        
+
         if (!AppConfig.validation.numberPattern.test(str)) {
             return { ok: false, value: null };
         }
-        
+
         const num = Number(str);
         if (!Number.isFinite(num)) {
             return { ok: false, value: null };
         }
-        
+
         return { ok: true, value: num };
     },
 
-    /**
-     * Validate date in YYYY-MM-DD format
-     */
     isValidDateYMD(raw) {
         const str = String(raw || '').trim();
         if (!str) return false;
-        
+
         if (!AppConfig.validation.datePattern.test(str)) return false;
-        
+
         const [year, month, day] = str.split('-').map(x => parseInt(x, 10));
         const date = new Date(Date.UTC(year, month - 1, day));
-        
-        return date.getUTCFullYear() === year && 
-               (date.getUTCMonth() + 1) === month && 
+
+        return date.getUTCFullYear() === year &&
+               (date.getUTCMonth() + 1) === month &&
                date.getUTCDate() === day;
     },
 
-    /**
-     * Convert exponential notation to plain decimal string
-     */
     toPlainDecimalString(numStr) {
         if (!numStr || typeof numStr !== 'string') return numStr;
         if (!/[eE]/.test(numStr)) return numStr;
@@ -153,18 +130,12 @@ const Utils = {
         return sign + digits.slice(0, newIndex) + '.' + digits.slice(newIndex);
     },
 
-    /**
-     * Find field container element
-     */
     findFieldContainer(element) {
-        return element.closest('.mb-3') || 
-               element.closest('.form-group') || 
+        return element.closest('.mb-3') ||
+               element.closest('.form-group') ||
                element.parentElement;
     },
 
-    /**
-     * Get or create feedback element for validation
-     */
     ensureFeedbackElement(inputElement) {
         const container = this.findFieldContainer(inputElement);
         if (!container) return null;
@@ -178,32 +149,15 @@ const Utils = {
         return feedback;
     },
 
-    /**
-     * Escape HTML special characters to prevent XSS
-     */
     escapeHtml(text) {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
     },
 
-    /**
-     * Extract a user-facing error message from a JSON failure response.
-     *
-     * The server can answer with either of two shapes — the inline
-     * AJAX handlers were previously only checking the legacy one and
-     * silently fell back to "Operation failed" whenever a real
-     * service-layer message arrived under ``errors.__all__``:
-     *
-     *     { success: false, errors: { __all__: "...", field: "..." } }   ← modern
-     *     { success: false, error:  "..." }                              ← legacy
-     *
-     * Resolution order:
-     *   1. ``errors.__all__``           — modal-level banner message
-     *   2. first non-empty field error  — so the user sees *something*
-     *   3. ``error`` (legacy single)
-     *   4. caller's ``fallback``        — only when nothing usable arrived
-     */
+    // The server answers with either { errors: { __all__, field } } or a
+    // legacy { error }. Checking only the legacy shape is what used to turn
+    // a real service-layer message into "Operation failed".
     extractAjaxError(data, fallback) {
         if (data && data.errors && typeof data.errors === 'object') {
             if (data.errors.__all__) return data.errors.__all__;
@@ -292,7 +246,7 @@ class FormValidator {
         this.rules = rules;
         this.touched = new Set();
         this.submittedOnce = false;
-        
+
         if (this.form) {
             this.initialize();
         }
@@ -344,7 +298,7 @@ class FormValidator {
         if (!rule) return true;
 
         const result = this.validateRule(rule);
-        
+
         if (!this.shouldShowError(fieldName)) {
             return result.ok;
         }
@@ -364,13 +318,13 @@ class FormValidator {
 
         for (const rule of this.rules) {
             const result = this.validateRule(rule);
-            
+
             if (!result.ok) {
                 allValid = false;
                 if (!firstInvalidField) {
                     firstInvalidField = result;
                 }
-                
+
                 if (this.shouldShowError(rule.name)) {
                     this.setFieldError(result.element, result.message);
                 }
@@ -390,10 +344,10 @@ class FormValidator {
 
     setFieldError(inputElement, message) {
         if (!inputElement) return;
-        
+
         inputElement.classList.add('is-invalid');
         const feedback = Utils.ensureFeedbackElement(inputElement);
-        
+
         if (feedback) {
             feedback.textContent = String(message || 'Invalid input.');
             feedback.style.display = 'block';
@@ -402,10 +356,10 @@ class FormValidator {
 
     clearFieldError(inputElement) {
         if (!inputElement) return;
-        
+
         inputElement.classList.remove('is-invalid');
         const feedback = Utils.ensureFeedbackElement(inputElement);
-        
+
         if (feedback) {
             feedback.textContent = '';
             feedback.style.display = 'none';
@@ -452,7 +406,7 @@ class FormValidator {
     attachSubmitListener() {
         this.form.addEventListener('submit', (event) => {
             this.submittedOnce = true;
-            
+
             if (!this.validateAll()) {
                 event.preventDefault();
                 event.stopImmediatePropagation();
@@ -466,9 +420,9 @@ class FormValidator {
             if (!element) continue;
 
             const feedback = Utils.ensureFeedbackElement(element);
-            
-            if (feedback && 
-                !feedback.textContent.trim() && 
+
+            if (feedback &&
+                !feedback.textContent.trim() &&
                 !element.classList.contains('is-invalid')) {
                 feedback.style.display = 'none';
             }
@@ -514,7 +468,7 @@ class DecimalInputHandler {
             const normalizeDisplay = () => {
                 const value = String(input.value || '');
                 if (!/[eE]/.test(value)) return;
-                
+
                 const plain = Utils.toPlainDecimalString(value);
                 if (plain && plain !== value) {
                     input.value = plain;
@@ -556,7 +510,7 @@ class TransactionFormHandler {
         this.feesInput = document.getElementById('fees');
         this.typeInput = document.getElementById('transaction_type');
         this.preview = document.getElementById('total_cost_preview');
-        
+
         if (this.form && this.preview) {
             this.initialize();
         }
@@ -572,15 +526,15 @@ class TransactionFormHandler {
         const price = parseFloat(this.priceInput.value) || 0;
         const quantity = parseFloat(this.quantityInput.value) || 0;
         const fees = parseFloat(this.feesInput.value) || 0;
-        
+
         const gross = price * quantity;
         const isSell = (this.typeInput && this.typeInput.value === 'Sell');
         const total = isSell ? (gross - fees) : (gross + fees);
-        
+
         const hasType = Boolean(
             this.typeInput && String(this.typeInput.value || '').trim()
         );
-        
+
         if (!hasType) {
             this.preview.textContent = '';
             return;
@@ -618,7 +572,7 @@ class TransactionFormHandler {
     attachBuySelectors() {
         const buyButton = document.getElementById('add_tx_type_buy_btn');
         const sellButton = document.getElementById('add_tx_type_sell_btn');
-        
+
         const triggerChange = () => {
             try {
                 this.typeInput?.dispatchEvent(new Event('change'));
@@ -647,7 +601,7 @@ class ModalManager {
             const trigger = event.target?.closest?.(
                 '[data-bs-toggle="modal"],[data-bs-target]'
             );
-            
+
             if (!trigger) return;
 
             const targetSelector = trigger.getAttribute('data-bs-target');
@@ -816,7 +770,7 @@ const ValidationRules = {
         validate: (raw, element) => {
             const value = Utils.normalizeSymbol(raw);
             if (element) element.value = value;
-            
+
             if (!value) {
                 return { ok: false, message: 'This field is required.' };
             }
@@ -875,7 +829,7 @@ const ValidationRules = {
         validate: (raw) => {
             const str = String(raw || '').trim();
             if (!str) return { ok: true };
-            
+
             const parsed = Utils.parseNumberStrict(str);
             if (!parsed.ok) {
                 return { ok: false, message: 'Invalid fees.' };

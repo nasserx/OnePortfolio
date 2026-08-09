@@ -430,8 +430,10 @@
     this.list.querySelectorAll('[data-index]').forEach(function (row, index) {
       var selected = index === self.activeIndex;
       row.setAttribute('aria-selected', selected ? 'true' : 'false');
+      // Explicitly instant: this follows a keypress, so it has to be where
+      // the caret is by the next one, not easing towards it.
       if (selected && row.scrollIntoView) {
-        row.scrollIntoView({ block: 'nearest' });
+        row.scrollIntoView({ block: 'nearest', behavior: 'instant' });
       }
     });
   };

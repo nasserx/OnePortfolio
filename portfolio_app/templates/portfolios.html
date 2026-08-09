@@ -115,7 +115,7 @@
                             <tbody>
                                 {% for event in item.events %}
                                 <tr>
-                                    <td class="records-cell"><small class="text-muted">{{ event.date_short }}</small></td>
+                                    <td class="records-cell"><small>{{ event.date_short }}</small></td>
                                     <td class="records-cell">
                                         {% if event.event_type in ('Deposit', 'Initial') %}
                                             <span class="tx-type-label tx-type-buy type-deposit">Deposit</span>
@@ -128,7 +128,7 @@
                                     </td>
                                     {% set event_notes = event.notes or '' %}
                                     <td class="records-cell portfolio-event-notes"{% if event_notes %} title="{{ event_notes }}"{% endif %}>
-                                        <small class="text-muted">{{ event_notes if event_notes else '—' }}</small>
+                                        <small>{{ event_notes if event_notes else '—' }}</small>
                                     </td>
                                     <td class="records-cell records-cell--actions actions-cell">
                                         <div class="row-actions" role="group">
@@ -269,7 +269,7 @@
                                            placeholder="0.00"
                                            value="{{ _with_vals.get('amount_delta', '') }}">
                                     <span class="sell-max-inline">
-                                        <button type="button" class="btn btn-link btn-sm p-0 sell-max-btn" id="withdraw_max_btn">Max</button>
+                                        <button type="button" class="btn btn-link btn-sm sell-max-btn" id="withdraw_max_btn">Max</button>
                                     </span>
                                 </div>
                                 {% if _with_errs.get('amount_delta') %}

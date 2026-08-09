@@ -14,7 +14,7 @@
    10. Toasts & alerts
    11. Tooltips
    12. Pagination
-   13. Empty states & skeletons
+   13. Empty states
    14. Allocation legend & markers
    15. Avatar & brand mark
    16. Date picker (flatpickr)
@@ -110,15 +110,11 @@
     --btn-line-hover: var(--brand-solid-hover);
   }
 
-  /* The only solid that is not the brand. Red here is not decoration and
-     not a category — it is the warning on a button that destroys something,
-     and it is the last colour left in this file that a *control* may carry.
-
-     There is deliberately no `.btn-success` and no `.btn-warning`. Green,
-     red and amber mean a signed financial value in this product; borrowing
-     them for actions was what made a deposit look like a gain and a
-     withdrawal look like a loss, when both are just entries the user chose
-     to make. Every action that is not destructive is `.btn-primary`. */
+  /* The only solid that is not the brand: the warning on a button that
+     destroys something. There is deliberately no `.btn-success` and no
+     `.btn-warning` — green, red and amber mean a signed financial value
+     here, and borrowing them for actions made a deposit look like a gain.
+     Every action that is not destructive is `.btn-primary`. */
   .btn-danger {
     --btn-bg: var(--neg);
     --btn-fg: var(--fg-on-solid);
@@ -127,15 +123,10 @@
     --btn-line-hover: var(--neg);
   }
 
-  /* It has no second hand-tuned colour, so it brightens on hover through a
-     veil. The veil is theme-aware: it darkens the fill under light theme's
-     white label and lightens it under dark theme's near-black one, so hover
-     always moves away from the label.
-
-     `.btn-primary` is deliberately NOT in this rule. It has a real hover
-     step (`--brand-solid-hover`), and stacking a 12% white wash on top of
-     it pushed the white label from 4.60:1 down to 3.77:1 — the button lost
-     legibility exactly as the pointer landed on it. */
+  /* No second hand-tuned colour, so it hovers through a veil that moves
+     away from the label in each theme. `.btn-primary` is deliberately not
+     here: it has a real hover step, and stacking a wash on top of that took
+     its white label from 4.60:1 to 3.77:1. */
   .btn-danger:hover {
     background-image: linear-gradient(var(--solid-hover-veil), var(--solid-hover-veil));
   }
@@ -182,29 +173,14 @@
     text-underline-offset: 3px;
   }
 
-  .btn-group {
-    display: inline-flex;
-    gap: var(--space-1);
-  }
-
-  /* The stock Bootstrap group welds buttons into a single pill; these are
-     discrete row actions, so they stay individually hit-testable. */
-  .btn-group > .btn {
-    border-radius: var(--radius-sm);
-  }
-
   /* ======================================================================
      2. ICON & ACTION BUTTONS
      ====================================================================== */
 
-  /* Brand-coloured at rest, on nothing: no fill, no border. These are the
-     product's row actions, and violet is what an action looks like here —
-     the same colour as the primary button and the active nav marker, just
-     without a surface under it. The tint is what makes a row of small
-     glyphs read as controls rather than as decoration beside the figures;
-     `--brand` clears 4.5:1 on every surface, so it can carry that alone.
-     Hover is unchanged: the neutral wash and the near-black glyph are what
-     tell you which one the pointer is on. */
+  /* Brand-coloured at rest on nothing — no fill, no border. The tint is
+     what makes a row of small glyphs read as controls rather than
+     decoration beside the figures, and `--brand` clears 4.5:1 on every
+     surface so it can carry that alone. */
   .btn-icon {
     width: var(--control-h-sm);
     height: var(--control-h-sm);
@@ -234,21 +210,13 @@
     font-size: var(--text-xs);
   }
 
-  /* Hover previews the consequence.
+  /* Hover previews the consequence: the actions that move the ledger take
+     the colour of the direction they will move it, borrowing the same roles
+     the resulting figures are printed in. A resting colour would claim
+     "this control is of that kind"; only the hover claim is true.
 
-     At rest these are all just actions and all violet — the colour of a
-     control, not of a quantity. On hover the ones that move the ledger take
-     the colour of the direction they will move it: a deposit adds, a
-     withdrawal subtracts, income is income, and they borrow the same three
-     roles the resulting figures will be printed in.
-
-     That is a different claim from labelling the button green, which is
-     what these used to do and what made a deposit read as a gain. A resting
-     colour says "this control is of that kind"; a hover colour says "this
-     is what will happen if you press it", and only the second one is true.
-
-     `.btn-icon` sets its own colour at rest *and* on hover, so each of
-     these has to out-specify it — hence the doubled class. */
+     `.btn-icon` sets its colour at rest *and* on hover, so these have to
+     out-specify it — hence the doubled class. */
   .btn-icon.btn-icon--pos:hover    { color: var(--pos);    background-color: var(--pos-soft); }
   .btn-icon.btn-icon--neg:hover    { color: var(--neg);    background-color: var(--neg-soft); }
   .btn-icon.btn-icon--income:hover { color: var(--income); background-color: var(--income-soft); }
@@ -257,12 +225,10 @@
      class, because it is not previewing an entry — it is previewing loss. */
   .btn-icon.btn-outline-danger:hover { color: var(--neg); background-color: var(--neg-soft); }
 
-  /* Row actions appear on engagement only.
-     Hidden with opacity — not `visibility` or `display` — so the buttons
-     stay in the tab order and in the accessibility tree. Tabbing to one
-     trips :focus-within on its row, which reveals it. `pointer-events: none`
-     is what stops a click landing on an invisible control; it does not
-     affect keyboard focus. The row's width is reserved either way, so
+  /* Hidden with opacity, not `visibility` or `display`, so the buttons stay
+     in the tab order — tabbing to one trips `:focus-within` on its row.
+     `pointer-events: none` stops a click landing on an invisible control
+     without affecting keyboard focus. Width is reserved either way, so
      revealing them never reflows the table. */
   .row-actions {
     display: inline-flex;
@@ -444,24 +410,15 @@
     appearance: none;
   }
 
-  /* Validation states change colour and nothing else.
-     Bootstrap also injects a status icon and widens the right padding, which
-     makes an invalid field a visibly different size and shape from the one
-     next to it — so a field jumps as you fill the form, and the error border
-     reads as a different component. Both are reset here, for every way
-     Bootstrap can flag a field. */
-  .form-control.is-invalid,
-  .form-control.is-valid,
-  .was-validated .form-control:invalid,
-  .was-validated .form-control:valid {
+  /* Validation changes colour and nothing else. Bootstrap also injects a
+     status icon and widens the right padding, so a field jumps as you fill
+     the form; both are reset here. */
+  .form-control.is-invalid {
     padding-right: var(--control-pad-x);
     background-image: none;
   }
 
-  .form-select.is-invalid,
-  .form-select.is-valid,
-  .was-validated .form-select:invalid,
-  .was-validated .form-select:valid {
+  .form-select.is-invalid {
     padding-right: 2.25rem;
     background-image: var(--select-caret);
     background-position: right 0.75rem center;
@@ -469,47 +426,29 @@
   }
 
   /* A fully saturated red hairline next to a 14%-alpha neutral one reads as
-     a different weight class — the error looked like a stray wire rather
-     than the same field in a different state. The line tokens sit at the
-     same alpha, so `--neg-line` plus a faint wash carries the error at the
-     weight of everything around it. The red message below does the telling. */
+     a different weight class. `--neg-line` sits at the same alpha as the
+     neutral one, so the error carries at the weight of everything around
+     it and the red message below does the telling. */
   .form-control.is-invalid,
-  .form-select.is-invalid,
-  .was-validated .form-control:invalid,
-  .was-validated .form-select:invalid {
+  .form-select.is-invalid {
     border-color: var(--neg-line);
     background-color: var(--neg-soft);
   }
 
-  .form-control.is-valid,
-  .form-select.is-valid,
-  .was-validated .form-control:valid,
-  .was-validated .form-select:valid {
-    border-color: var(--pos-line);
-    background-color: var(--pos-soft);
-  }
-
-  /* Focused-and-invalid takes the same 2px crisp edge as a normal focus,
-     in red. Identical mechanism, different hue. */
   .form-control.is-invalid:focus,
-  .form-select.is-invalid:focus,
-  .was-validated .form-control:invalid:focus,
-  .was-validated .form-select:invalid:focus {
+  .form-select.is-invalid:focus {
     border-color: var(--neg);
     background-color: var(--neg-soft);
     box-shadow: inset 0 0 0 1px var(--neg);
   }
 
-  .invalid-feedback,
-  .valid-feedback {
+  .invalid-feedback {
     display: none;
     margin-top: var(--space-1);
+    color: var(--neg);
     font-size: var(--text-xs);
     line-height: var(--leading-snug);
   }
-
-  .invalid-feedback { color: var(--neg); }
-  .valid-feedback { color: var(--pos); }
 
   .is-invalid ~ .invalid-feedback,
   .invalid-feedback.d-block { display: block; }
@@ -521,7 +460,6 @@
   .form-text,
   .withdraw-available-hint,
   .tx-preview,
-  .help-message,
   .notes-counter {
     font-size: var(--text-3xs);
   }
@@ -530,6 +468,8 @@
     margin-top: var(--space-1);
     color: var(--fg-subtle);
   }
+
+  .form-text--ok { color: var(--pos); }
 
   .form-check-input {
     width: 1rem;
@@ -559,13 +499,6 @@
     color: var(--fg-muted);
     font-size: var(--text-sm);
     cursor: pointer;
-  }
-
-  .input-group-text {
-    border: 1px solid var(--line-default);
-    background-color: var(--bg-sunken);
-    color: var(--fg-muted);
-    font-size: var(--text-sm);
   }
 
   /* ---- field with leading icon / trailing action ---------------------- */
@@ -613,14 +546,9 @@
     background-color: var(--bg-hover);
   }
 
-  /* ---- notes counter --------------------------------------------------
-     `--fg-subtle`, not `--fg-faint`. The faint step is for text nobody has
-     to read — placeholders, disabled hints, decorative icons — and it holds
-     3:1, not 4.5:1. A character counter is the opposite: it is the only
-     warning a user gets that their note is about to be cut off, and at
-     3.66:1 in the light theme it was the quietest thing on the form. It
-     belongs with the field help text it sits beside.
-     -------------------------------------------------------------------- */
+  /* `--fg-subtle`, not `--fg-faint`: the faint step holds 3:1 and is for
+     text nobody has to read. A character counter is the only warning that a
+     note is about to be cut off. */
   .notes-counter {
     display: block;
     margin-top: var(--space-1);
@@ -640,7 +568,7 @@
   }
 
   .sell-max-btn {
-    padding: 0 var(--space-2) !important;
+    padding: 0 var(--space-2);
     min-height: 1.5rem;
     border-radius: var(--radius-xs);
     background-color: var(--brand-soft);
@@ -718,23 +646,18 @@
     font-variant-numeric: tabular-nums;
   }
 
-  /* This one used to carry Bootstrap's `.text-muted` as well, which — being
-     a `!important` utility, and so above every layer we write — quietly won
-     and rendered it a full step darker than every other hint on the same
-     form. Utilities beating components is the documented cost of the layer
-     system; the fix is never to staple one onto an element a component
-     already styles. */
+  /* This once carried Bootstrap's `.text-muted` too, which — being an
+     `!important` utility, above every layer we write — quietly won and made
+     it a step darker than every sibling hint. Never staple a utility onto
+     an element a component already styles. */
   .withdraw-available-hint {
     display: block;
     margin-top: var(--space-1);
     color: var(--fg-subtle);
   }
 
-  .help-message {
-    color: var(--fg-subtle);
-  }
-
-  /* Hidden by the assets page's symbol filter. */
+  /* Set by the assets page's symbol filter; has to beat whatever display
+     the element it lands on already has. */
   .sym-filter-hide { display: none !important; }
 
   /* ---- one-time-code input -------------------------------------------- */
@@ -777,10 +700,7 @@
     box-shadow: var(--shadow-raised);
   }
 
-  .card-body { padding: var(--card-pad); }
-
-  .card-header,
-  .panel__header {
+  .card-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -791,23 +711,11 @@
     border-radius: var(--radius-md) var(--radius-md) 0 0;
   }
 
-  .card-footer {
-    padding: var(--space-3) var(--card-pad);
-    border-top: 1px solid var(--line-subtle);
-    background-color: transparent;
-  }
-
   .panel__title {
     margin: 0;
     font-size: var(--text-sm);
     font-weight: var(--weight-semibold);
     color: var(--fg-default);
-  }
-
-  .panel__subtitle {
-    margin: 0;
-    color: var(--fg-subtle);
-    font-size: var(--text-xs);
   }
 
   /* ======================================================================
@@ -872,7 +780,6 @@
     color: var(--fg-default);
   }
 
-  .table .text-muted { color: var(--fg-subtle) !important; }
 
   /* ---- records tables --------------------------------------------------
      A shared shell for every ledger-style table in the product. Column
@@ -929,15 +836,16 @@
 
   .records-table td.actions-cell .row-actions { justify-content: flex-end; }
 
+  /* Dates and notes. These used to inherit the cell and carry Bootstrap's
+     `.text-muted` on top, which needed an `!important` of our own to beat
+     back; the table states the quiet step itself instead. */
   .records-table tbody td small {
     font-size: inherit;
-    color: inherit;
+    color: var(--fg-subtle);
   }
 
   .records-table .tx-type-label,
   .records-table .badge-dividend { font-size: inherit; }
-
-  .records-table tbody td small.text-muted { color: var(--fg-subtle) !important; }
 
   /* ======================================================================
      7. BADGES, PILLS & TYPE LABELS
@@ -1009,9 +917,9 @@
   }
 
   .admin-badge-you {
-    background-color: var(--brand-soft) !important;
+    background-color: var(--brand-soft);
     border-color: var(--brand-line);
-    color: var(--brand) !important;
+    color: var(--brand);
   }
 
   /* ======================================================================
@@ -1033,8 +941,7 @@
     transform-origin: top center;
   }
 
-  .dropdown-item,
-  .settings-item {
+  .dropdown-item {
     display: flex;
     align-items: center;
     gap: var(--space-2);
@@ -1051,8 +958,7 @@
   }
 
   .dropdown-item:hover,
-  .dropdown-item:focus,
-  .settings-item:hover {
+  .dropdown-item:focus {
     background-color: var(--bg-hover);
     color: var(--fg-default);
   }
@@ -1144,7 +1050,6 @@
   }
 
   .modal-title-icon { color: var(--fg-subtle); }
-  .modal-header .modal-title .text-danger { color: var(--neg) !important; }
 
   .modal-body { padding: var(--space-5); }
 
@@ -1277,7 +1182,6 @@
     font-size: var(--text-sm);
   }
 
-  .alert-success { background-color: var(--pos-soft); border-color: var(--pos-line); color: var(--pos); }
   .alert-danger  { background-color: var(--neg-soft); border-color: var(--neg-line); color: var(--neg); }
   .alert-warning { background-color: var(--warn-soft); border-color: var(--warn-line); color: var(--warn); }
   .alert-info    { background-color: var(--income-soft); border-color: var(--income-line); color: var(--income); }
@@ -1286,6 +1190,8 @@
      11. TOOLTIPS
      ====================================================================== */
 
+  /* Bootstrap animates the tip's opacity inline; the panel below is drawn
+     with our own tokens and must not be faded by it. */
   .tooltip { opacity: 1 !important; }
 
   .tooltip .tooltip-inner {
@@ -1370,7 +1276,7 @@
   }
 
   /* ======================================================================
-     13. EMPTY STATES & SKELETONS
+     13. EMPTY STATES
      ====================================================================== */
 
   .empty-state {
@@ -1414,19 +1320,6 @@
     color: var(--fg-subtle);
     font-size: var(--text-sm);
     text-align: center;
-  }
-
-  .skeleton {
-    border-radius: var(--radius-sm);
-    background-color: var(--bg-inset);
-    background-image: linear-gradient(
-      90deg,
-      transparent 0%,
-      var(--bg-hover) 50%,
-      transparent 100%
-    );
-    background-size: 220% 100%;
-    animation: op-shimmer 1.4s linear infinite;
   }
 
   /* ======================================================================
@@ -1575,27 +1468,17 @@
 
   /* ======================================================================
      16. HERO BACKDROP
-     A photograph behind a hero is the one place this product lets an image
-     carry mood rather than information. It is always decorative (`alt=""`,
-     `aria-hidden` wrapper) and always under a shade, because copy
-     legibility cannot depend on which pixel of a photograph lands under a
-     word.
+     Always decorative (empty `alt`, `aria-hidden` wrapper) and always under
+     a shade, because copy legibility cannot depend on which pixel of a
+     photograph lands under a word.
 
-     The point of the shade is to be as light as that guarantee allows. It
-     is derived from the shipped photograph's own pixels rather than from a
-     hypothetical worst case, which is what leaves the picture looking like
-     a picture instead of a wash — see `--hero-shade` in tokens.css.
-
-     Two knobs, each optional:
+     Two optional knobs:
 
        --hero-shade-layer  what is painted over the picture, if not a flat
                            `--hero-shade`
        --hero-mask         where the backdrop dissolves, if it has an edge
-                           to hide
 
-     The default for both is the honest one — an even veil and no dissolve.
-     A hero that reaches for the first knob should be able to say why the
-     picture needs to be less visible in one place than another.
+     Both default to the honest answer: an even veil, no dissolve.
      ====================================================================== */
 
   .hero-media {
@@ -1634,20 +1517,12 @@
     background: var(--hero-shade-layer, var(--hero-shade));
   }
 
-  /* Scroll-driven lift. The backdrop belongs to the top of the page, so it
-     leaves with it: by the time the reader has scrolled past the hero the
-     picture has gone and the sections below arrive on clean ground.
-
-     Contrast is safe throughout the fade. Both ends are colours the copy is
-     already guaranteed against — shaded photograph at one end, page canvas
-     at the other — and a linear blend between two luminances stays between
-     them, so every frame in between is at least as legible as the worse of
-     the two.
-
-     Opted into per page, and only where the browser drives it off the
-     compositor. There is no JS fallback on purpose: a scroll handler that
-     writes opacity on every frame is a jank generator, and the static hero
-     it would replace is already correct. */
+  /* Scroll-driven lift: the backdrop belongs to the top of the page and
+     leaves with it. Contrast holds through every frame — both ends are
+     colours the copy is guaranteed against, and a blend between two
+     luminances stays between them. Opted into per page, and only where the
+     browser drives it off the compositor; a JS fallback writing opacity
+     every frame would be a jank generator for no gain. */
   @supports (animation-timeline: scroll()) {
     @media (prefers-reduced-motion: no-preference) {
       .hero-media--lift {

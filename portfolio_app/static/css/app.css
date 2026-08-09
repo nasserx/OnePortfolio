@@ -185,15 +185,6 @@
     background-color: var(--line-subtle);
   }
 
-  .sidenav__section {
-    padding: var(--space-3) var(--space-3) var(--space-1);
-    color: var(--fg-faint);
-    font-size: var(--text-2xs);
-    font-weight: var(--weight-medium);
-    letter-spacing: var(--tracking-label);
-    white-space: nowrap;
-  }
-
   /* ---- footer ---------------------------------------------------------- */
   .sidenav__footer {
     display: flex;
@@ -267,7 +258,6 @@
     .nav-search__label,
     .userchip__name,
     .userchip__chevron,
-    .sidenav__section,
     .nav-search .kbd
   ) {
     width: 0;
@@ -349,7 +339,7 @@
 
     :root[data-sidebar="collapsed"] :is(
       .brand__word, .navlink__text, .nav-search__label,
-      .userchip__name, .userchip__chevron, .sidenav__section
+      .userchip__name, .userchip__chevron
     ) {
       width: auto;
       opacity: 1;
@@ -492,12 +482,6 @@
     letter-spacing: -0.02em;
   }
 
-  .page__subtitle {
-    margin: 0;
-    color: var(--fg-subtle);
-    font-size: var(--text-sm);
-  }
-
   /* `flex: 1` hands the actions cluster all the space the title does not
      use. Without it the cluster is sized to max-content and rounds down,
      wrapping the last control onto a second row. */
@@ -600,12 +584,9 @@
   .delta--neg { background-color: var(--neg-soft); border-color: var(--neg-line); color: var(--neg); }
   .delta--flat { color: var(--fg-subtle); }
 
-  /* The card is stretched to the height of the chart panel beside it, which
-     leaves roughly 120px of slack. Pinning the facts to the bottom just
-     relocates that slack into one dead band under the headline. Instead the
-     facts block *absorbs* it: it claims the remaining height and spreads its
-     rows through it, so the lower half of the card is a filled 2x2 stat grid
-     rather than an empty gap with a strip at the bottom. */
+  /* The card is stretched to the chart panel beside it, leaving ~120px of
+     slack. The facts block absorbs it rather than being pinned to the
+     bottom, which would only relocate the gap under the headline. */
   .hero-figure__facts {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
@@ -651,13 +632,6 @@
     letter-spacing: -0.015em;
     overflow: hidden;
     text-overflow: ellipsis;
-  }
-
-  .fact__sub {
-    display: block;
-    margin-top: 2px;
-    font-size: var(--text-2xs);
-    font-weight: var(--weight-normal);
   }
 
   /* ---- allocation panel ------------------------------------------------ */
@@ -713,31 +687,22 @@
   }
 
   /* ---- portfolio ledger table ------------------------------------------
-     Every row is its own grid, so every row used to resolve its own track
-     sizes. The last column is content-sized, and the header's last cell is
-     an empty "Actions" label while each body row holds a "View assets"
-     link — a ~110px difference that pushed all four `1fr` figure columns
-     out of step with their own headings. `Return` sat above the link.
+     Tracks are declared once on `.ledger` and every row adopts them via
+     `subgrid`, so a header cell and the cells beneath it are literally the
+     same column. When each row resolved its own tracks, the ~110px between
+     an empty "Actions" heading and a "View assets" link pushed all four
+     figure columns out of step with their own headings. */
+  /* Two widths carry the rhythm of this table.
 
-     The fix is structural, not cosmetic: the tracks are declared once on
-     `.ledger` and every row adopts them via `subgrid`, so a header cell and
-     the cells beneath it are literally the same column. */
-  /* Two widths carry the whole rhythm of this table, and they pull in
-     opposite directions.
+     The action column is a fixed track, not `auto`: sized to its content it
+     leaves the last figure 12px from a control, and a number that close to
+     a button reads as belonging to it. The surplus is the gutter that
+     separates data from the things that act on it, and because the columns
+     are one subgrid, widening it walks the whole table left together.
 
-     The action column is a fixed track, not `auto`. Sized to its content it
-     shrinks to the width of "View assets", which leaves the last *figure*
-     one 12px gap away from a control — and a number that close to a button
-     reads as belonging to it. Giving the track a width the link does not
-     need turns the surplus into a gutter that separates the data from the
-     things that act on it, and because every column is one subgrid,
-     widening it walks the whole table left together.
-
-     The name column takes an equal share rather than the 1.6 it had. Extra
-     width there is not doing anything — portfolio names are short and
-     ellipsise when they are not — and all it bought was a canyon between
-     the names and the first figure. Equal shares put "Book value" back
-     within reading distance of the row it belongs to. */
+     The name column takes an equal share, not the 1.6 it had — names are
+     short, and the extra width only opened a canyon before the first
+     figure. */
   .ledger {
     display: grid;
     grid-template-columns:
@@ -964,19 +929,15 @@
     font-weight: var(--weight-semibold);
   }
 
-  /* The strip stops short of the action cluster. Run to the full width and
-     the last figure's right edge lands under the edit/delete buttons, so the
-     numbers read as if they belong to the controls; the gutter re-attaches
-     them to the name on the left. It is a margin rather than a narrower
-     track list, so every card still resolves identical columns.
+  /* The strip stops short of the action cluster; run full width and the
+     last figure sits under the edit/delete buttons, reading as if it
+     belongs to them. A margin rather than a narrower track list, so every
+     card still resolves identical columns.
 
-     `--row-actions-w` is that whole right-hand zone — gutter, gap and the
-     buttons themselves — and it is shared with the record table inside the
-     panel below. Two tables stacked in one card cannot share columns; they
-     hold different things. What they can share is where their data stops,
-     and where their controls start. Without that the two rows ended 86px
-     apart and their two button clusters sat 34px out of step, which is what
-     made an otherwise aligned card look crooked. */
+     `--row-actions-w` is that whole right-hand zone — gutter, gap and
+     buttons — and it is shared with the record table in the panel below.
+     Two tables in one card cannot share columns; what they can share is
+     where their data stops and their controls start. */
   .disclosure__metrics {
     display: grid;
     grid-template-columns: repeat(var(--metric-columns, 5), minmax(0, 1fr));
@@ -986,12 +947,10 @@
     margin-right: var(--row-actions-gutter);
   }
 
-  /* Each cell is a label above its own value, not a column of bare figures,
-     and the summary row is the one place in the product where that pair is
-     the unit being read. Centring binds the two lines to each other; the
-     figures then no longer stack decimal-for-decimal down the page, which
-     is the trade — the full ledger on the Overview is where columns of
-     figures are meant to be compared, and it still right-aligns. */
+  /* Each cell is a label above its value, and that pair is the unit being
+     read here — centring binds the two lines together. The trade is that
+     the figures no longer stack decimal-for-decimal; the Overview ledger is
+     where columns of figures are compared, and it still right-aligns. */
   .metric {
     display: block;
     min-width: 0;
@@ -1043,13 +1002,9 @@
     width: var(--row-actions-cluster);
   }
 
-  /* The panel is inset so its table's *cell content* lands on the same left
-     and right edges as the summary row's content above it. The summary row
-     pads itself by `--space-4`; a table pads inside each cell instead, so
-     the difference between the two is what the panel has to make up. Miss
-     it and both rows are 16px out of true down their whole length — the
-     kind of misalignment that reads as sloppiness without ever being
-     obviously wrong. */
+  /* Inset so the table's *cell content* lands on the same edges as the
+     summary row above it: the summary row pads itself, a table pads inside
+     each cell, and the difference is what the panel makes up. */
   .disclosure__panel {
     padding-inline: calc(var(--space-4) - var(--cell-pad-x));
     border-top: 1px solid var(--line-subtle);
@@ -1106,13 +1061,6 @@
   /* ======================================================================
      6. ASSETS TOOLBAR
      ====================================================================== */
-
-  .toolbar {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    flex-wrap: wrap;
-  }
 
   /* A percentage width here would resolve against a shrink-to-fit flex
      parent and force the toolbar onto a second row; a flex basis does not. */
@@ -1348,25 +1296,15 @@
     font-weight: var(--weight-semibold);
   }
 
-  .auth-coming-soon {
-    color: var(--fg-faint);
-    font-size: var(--text-xs);
-  }
-
-  .google-brand-icon { width: 1rem; height: 1rem; }
-
   /* ---- showcase side ---------------------------------------------------
      A muted, static portrait of the product. It is decoration with a job:
      it tells a first-time visitor what they are signing in to.
      -------------------------------------------------------------------- */
-  /* A flat shade, not a gradient. The copy here is vertically centred, so
-     its position within the panel moves with the viewport height — any
-     directional falloff would land the quote in a different band on a
-     laptop than on a desktop, and the legibility guarantee would hold only
-     at the height it was eyeballed on. Nothing dissolves either: this is a
-     bounded panel with its own border, so it has no edge to hide. The
-     surface colour stays as the base layer, so the panel still looks
-     deliberate if the picture never arrives. */
+  /* A flat shade, not a gradient: the copy is vertically centred, so its
+     band within the panel moves with the viewport and any falloff would
+     hold only at the height it was eyeballed on. Nothing dissolves either —
+     a bounded panel has no edge to hide. The surface colour stays beneath,
+     so the panel still looks deliberate if the picture never arrives. */
   .auth__showcase {
     position: relative;
     display: flex;
@@ -1460,6 +1398,7 @@
   }
 
   .admin-table-id { color: var(--fg-faint); }
+  .admin-table-cell { color: var(--fg-subtle); }
 
   /* ======================================================================
      10. RECORD SUB-TABLES
@@ -1499,12 +1438,5 @@
 
 @layer utilities {
   .text-emphasis { color: var(--fg-default); font-weight: var(--weight-medium); }
-  .text-neutral { color: var(--flat); }
-  .fw-400 { font-weight: 400; }
   .fw-500 { font-weight: 500; }
-  .fw-600 { font-weight: 600; }
-  .icon-sm { font-size: 0.85rem; }
-  .u-nowrap { white-space: nowrap; }
-  .u-truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .u-mono { font-family: var(--font-mono); }
 }

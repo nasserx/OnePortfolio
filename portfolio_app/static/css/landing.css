@@ -1,12 +1,7 @@
 /* ==========================================================================
    OnePortfolio — Marketing page
-   ==========================================================================
-   Loaded instead of app.css. It reuses tokens.css, base.css and
-   components.css, so buttons, numbers, and the allocation legend on this
-   page are literally the product's components — not lookalikes.
-
-   This is the one surface where a gradient is allowed: a single, very low
-   contrast aura behind the hero. Everywhere else the restraint holds.
+   Loaded instead of app.css, on top of tokens/base/components — so the
+   buttons, numbers and legend here are the product's own components.
    ========================================================================== */
 
 @layer pages {
@@ -30,10 +25,8 @@
      Navigation
      ====================================================================== */
 
-  /* Fixed rather than sticky, so the hero's picture runs to the top edge of
-     the viewport and the header sits *on* it. Sticky keeps the header in
-     flow, which would push the image down by its own height and put a band
-     of flat page colour above the photograph. */
+  /* Fixed, not sticky: sticky stays in flow and would push the hero down by
+     the header's height, putting a band of flat colour above the picture. */
   .lp-nav {
     position: fixed;
     top: 0;
@@ -47,27 +40,19 @@
       border-color var(--dur-2) var(--ease-out);
   }
 
-  /* At rest the header is nothing but its contents. The panel only appears
-     once the page has scrolled and the header is genuinely floating over
-     content it needs to be separated from. */
+  /* The panel appears only once the header is genuinely floating over
+     content it needs separating from. */
   .lp-nav.is-stuck {
     border-bottom-color: var(--line-subtle);
     background-color: color-mix(in srgb, var(--bg-canvas) 82%, transparent);
     backdrop-filter: blur(12px);
   }
 
-  /* At rest the header leaves no mark on the picture at all: no panel, no
-     hairline, and no veil of its own. Nothing but the letters, sitting on
-     the same uniform `--hero-shade` as everything else on the hero — which
-     is exactly what makes that shade worth having. Earlier versions paid
-     for this header with a dark band down the top of the sky, and in the
-     dark theme that band was the most conspicuous thing on the page.
-
-     What it costs is the tint: everything here normally sits at
-     `--fg-muted`, which needs about 0.79 against this photograph where the
-     shade gives 0.52–0.64. So the links, the toggle and the secondary
-     button all step up to `--fg-default` while the header is transparent,
-     and anything added to this row has to do the same. */
+  /* Over the picture the header has no veil of its own — it stands on the
+     uniform `--hero-shade`. That costs the tint: `--fg-muted` needs about
+     0.79 of shade against this photograph where the hero ships 0.52–0.64,
+     so everything in this row steps up to `--fg-default` while the header
+     is transparent. Anything added here has to do the same. */
   .lp-nav:not(.is-stuck) .icon-button,
   .lp-nav:not(.is-stuck) .btn-secondary,
   .lp-nav:not(.is-stuck) .lp-nav__links a {
@@ -86,9 +71,15 @@
     border-color: transparent;
   }
 
-  /* The header no longer occupies flow, so in-page anchors would otherwise
-     scroll their target underneath it. */
-  :root { scroll-padding-top: 5rem; }
+  /* Both of these exist for the section links, and both are scoped here
+     because landing.css is the only stylesheet this page loads instead of
+     app.css. The header is out of flow, so without the padding an anchor
+     scrolls its target underneath it; the smooth behaviour is wanted on
+     jump links and nowhere else in the product (see base.css). */
+  :root {
+    scroll-padding-top: 5rem;
+    scroll-behavior: smooth;
+  }
 
   .lp-nav__inner {
     display: flex;
@@ -160,59 +151,38 @@
      Hero
      ====================================================================== */
 
-  /* One shade, one strength, everywhere — see `--hero-shade` in tokens.css
-     for why the picture is veiled evenly rather than cleverly. What is left
-     for the hero to decide is only where the backdrop *ends*: a short
-     dissolve into the page at the bottom, and a scroll-linked fade that
-     takes the whole thing away as the reader leaves. */
+  /* The shade is uniform (see `--hero-shade`), so all the hero decides is
+     where the backdrop ends: a dissolve at the bottom, and a scroll-linked
+     fade that takes it away as the reader leaves. */
   .lp-hero {
     position: relative;
     padding: calc(4rem + var(--space-16)) 0 calc(var(--hero-floor) + var(--hero-fade));
     overflow: hidden;
 
     /* Clear picture below the last line of copy, then the dissolve. The
-       bottom padding is their sum, so the copy always ends exactly where
-       the floor begins and no resize can slide a fade under a word. The
-       two are traded against each other rather than raised: the hero keeps
-       the same height it always had. */
+       bottom padding is their sum, so no resize can slide a fade under a
+       word; the two are traded against each other, never both raised. */
     --hero-floor: var(--space-8);
     --hero-fade: var(--space-12);
 
-    /* Below centre: the crop keeps the ridge line and the meadow, and drops
-       the empty upper sky that a short hero would otherwise fill with. */
+    /* Below centre: keeps the ridge line and the meadow, drops empty sky. */
     --hero-focus: 50% 62%;
 
-    /* Gone by the time the reader is most of a screen down. Long enough to
-       read as the hero letting go rather than a light being switched off,
-       short enough to finish while the hero is still on screen — a fade
-       that completes after its subject has left never happened. */
+    /* Long enough to read as the hero letting go, short enough to finish
+       while the hero is still on screen. */
     --hero-lift-range: 68vh;
 
-    /* The dissolve. Stops trace a curve rather than a straight ramp,
-       because a linear fade has a corner in its rate of change at each
-       end, and a corner reads as a line even when the change itself is
-       gentle. Curvature is what removes the seam; length only moves it.
+    /* The dissolve. A curve, not a straight ramp: a linear fade has a
+       corner in its rate of change at each end, and a corner is what the
+       eye resolves as a line. Curvature removes the seam; length only
+       moves it.
 
-       The curve is weighted hard toward the bottom of the band. What reads
-       as "a strong gradient" is the stretch where the picture is visibly
-       washed but still recognisably a picture — not the last few pixels,
-       where it has nearly gone anyway. A symmetric smoothstep spends half
-       its travel up in that stretch; this one spends almost none, holding
-       0.95 at 26px above the edge where a smoothstep is already at 0.88,
-       and 0.75 at 15px where it is at 0.59.
-
-       Clearer low down and steeper are the same statement — the curve has
-       to cover the same 0→1 in the same band either way, so alpha cannot
-       be raised everywhere without raising the rate somewhere. This spends
-       it deliberately: the peak, ~0.056 of alpha per pixel, falls where
-       alpha is between 0.2 and 0.4, which is where the picture is
-       contributing the least contrast against the page and an abrupt
-       change is worth the least. The approach into it is monotone
-       (0.004 → 0.013 → 0.025 → 0.039 → 0.050 → 0.056), so there is no
-       corner anywhere — and a corner, not a rate, is what the eye resolves
-       as a line. In the light theme, where the swing between the shaded
-       picture and the canvas is roughly 84 levels, that peak works out at
-       under 5 levels per pixel: an ordinary gradient. */
+       Weighted hard toward the bottom, because what reads as "a strong
+       gradient" is the stretch where the picture is washed but still
+       recognisable, not the last few pixels. Alpha cannot be raised
+       everywhere without raising the rate somewhere, so the peak
+       (~0.056/px) is spent between alpha 0.2 and 0.4, where the picture
+       contributes least contrast, and the approach into it is monotone. */
     --hero-mask: linear-gradient(
       to bottom,
       #000 calc(100% - var(--hero-fade)),
@@ -254,16 +224,12 @@
     text-wrap: balance;
   }
 
-  /* The one piece of brand colour on this page that is not a control.
-     It works here for two reasons that do not generalise: the title is
-     large text, so its floor is 3:1 rather than 4.5:1, and the ends of the
-     gradient are ramp steps chosen for exactly this — see `--brand-900`
-     and `--brand-50`. Do not reach for `--brand` itself; a violet has to
-     sit further from the picture than plain ink does to survive the same
-     shade, and the working steps of the ramp are all inside that margin.
-
-     `color` stays declared: if a browser cannot clip a background to text,
-     it keeps a solid heading instead of an invisible one. */
+  /* The one piece of brand colour here that is not a control. It works for
+     two reasons that do not generalise: the title is large text, so its
+     floor is 3:1, and the gradient's ends are ramp steps chosen for it.
+     Not `--brand` — the working steps cannot survive the shade. `color`
+     stays declared so a browser without background-clip keeps a solid
+     heading rather than an invisible one. */
   @supports (background-clip: text) or (-webkit-background-clip: text) {
     .lp-hero .lp-title {
       background-image: linear-gradient(
@@ -304,12 +270,9 @@
     list-style: none;
   }
 
-  /* One step brighter than the same list would be on a flat surface. Over a
-     photograph the background is whatever the picture is doing, so the
-     quietest text steps have no headroom left — `--fg-subtle` at 12px only
-     reaches 4.06:1 through the scrim, and `--fg-faint` misses even the
-     non-text floor. Small print over imagery is exactly where legibility
-     quietly fails, so it does not go below `--fg-muted` here. */
+  /* Nothing on the hero goes below `--fg-muted`: through the scrim
+     `--fg-subtle` at 12px reaches only 4.06:1 and `--fg-faint` misses even
+     the non-text floor. */
   .lp-proof li {
     display: inline-flex;
     align-items: center;
@@ -320,14 +283,10 @@
 
   .lp-proof .bi { color: var(--fg-subtle); }
 
-  /* Over the photograph, hierarchy comes from size and weight — never from
-     tint. Greying text down is a trick that only works on flat ground: the
-     quieter a role is, the more veil it needs to survive an image, and
-     `--fg-muted` needs roughly 0.79 against this picture where
-     `--fg-default` needs 0.49. Tinting the lede would therefore have cost
-     the whole photograph, to save an effect the type scale already
-     delivers. So everything loose over the hero speaks at full strength,
-     and the title outranks it by being four times the size. */
+  /* Over a photograph, hierarchy comes from size and weight, never tint:
+     the quieter a role is the more veil it needs, so greying the lede down
+     would have cost the whole picture to buy an effect the type scale
+     already delivers. */
   .lp-hero .lp-lede,
   .lp-hero .lp-proof li,
   .lp-hero .lp-proof .bi {
@@ -338,18 +297,11 @@
      Product shot
      ====================================================================== */
 
-  /* Held slightly off full opacity so the hero shows through it — enough
-     that the card reads as glass sitting on the picture rather than a
-     rectangle punched out of it.
-
-     How far it can go is not a taste question. The binding constraint is
-     the quietest label *inside* the card, not the card itself: at
-     `--fg-subtle` on the inset chrome the photograph may show through by
-     0.088 in the light theme before 4.5:1 breaks, which is why the fill is
-     94% there and can afford 90% in the dark. The blur is what makes those
-     few percent look like anything — and it can only help the guarantee,
-     since blurring moves pixels toward their local mean and never outside
-     the range the test already cleared. */
+  /* Glass, not a rectangle punched out of the picture. How far it can go is
+     set by the quietest label *inside* it, not by taste — see
+     `--hero-card-fill`. The blur is what makes those few percent look like
+     anything, and it can only help the guarantee: blurring moves pixels
+     toward their local mean. */
   .lp-shot {
     border: 1px solid var(--line-default);
     border-radius: var(--radius-lg);
@@ -451,11 +403,9 @@
      Sections
      ====================================================================== */
 
-  /* Below the hero the page is one column, and every section is measured
-     the same way: a full step of air above and below, so the boundary
-     between two sections is always twice that step and always the largest
-     gap on screen. Nothing else in the page is allowed to open that wide,
-     which is what makes the sequence readable as a sequence. */
+  /* One step of air above and below each section, so a section boundary is
+     always twice that and always the widest gap on screen. Nothing inside a
+     section may open that far. */
   .lp-section { padding: var(--space-16) 0; }
 
   .lp-section--alt {
@@ -467,17 +417,11 @@
     .lp-section { padding: var(--space-12) 0; }
   }
 
-  /* Section heads sit on the page's centre line, not its left edge.
-     The point is not symmetry — it is that every section then announces
-     itself in the same place, so the reader follows one vertical axis from
-     the hero to the footer instead of re-finding the start of each block.
-
-     The measure stays narrow (44rem inside an 82rem shell) because centred
-     type is only comfortable in short lines: the eye returns to a moving
-     left edge on every line, and the further it has to travel the more the
-     centring costs. Everything below a head — card copy, step copy — stays
-     ragged-right. Centring an announcement is legible; centring a
-     paragraph is not. */
+  /* Section heads sit on the page's centre line so every section announces
+     itself in the same place. The measure stays narrow (44rem inside an
+     82rem shell) because centred type only reads in short lines — the eye
+     returns to a moving left edge on each one. Everything below a head
+     stays ragged-right: centre an announcement, not a paragraph. */
   .lp-head {
     max-width: 44rem;
     margin-inline: auto;
@@ -630,12 +574,10 @@
 
   /* ---- limits ---------------------------------------------------------- */
 
-  /* This section used to be a two-column split, with its heading facing the
-     list across a gutter. It was the one block on the page reading
-     sideways, and it broke the axis exactly where the page is making its
-     most direct claim. It now takes the same head as every other section
-     and puts the list underneath it, on the same 44rem measure — so the
-     head, the list, and the closing panel all share one edge. */
+  /* Same head as every other section, list underneath on the same 44rem
+     measure. It used to face its heading across a two-column gutter — the
+     one block reading sideways, and it broke the axis exactly where the
+     page makes its most direct claim. */
   .lp-limits__list {
     display: flex;
     flex-direction: column;
@@ -682,10 +624,9 @@
     .lp-close { padding: var(--space-12) 0; }
   }
 
-  /* The last thing on the page is also the narrowest: heading, one line,
-     buttons, stacked on the same centre line the sections have been using.
-     Splitting the ask left-and-right made the reader's eye leave the axis
-     at the exact moment it was being asked to act. */
+  /* Stacked on the same centre line as everything above. Splitting the ask
+     left-and-right took the eye off the axis at the moment it was being
+     asked to act. */
   .lp-close__panel {
     display: flex;
     flex-direction: column;
@@ -742,10 +683,9 @@
   .lp-footer__links a { color: var(--fg-subtle); }
   .lp-footer__links a:hover { color: var(--fg-default); }
 
-  /* The only link in this row that leaves the site, so it is given a
-     divider and a mark rather than being made to look like the other four.
-     The label stays: a bare glyph asks the reader to recognise a logo
-     before they know whether it is worth clicking. */
+  /* The only link here that leaves the site, so it gets a divider and a
+     mark. The label stays: a bare glyph asks the reader to recognise a logo
+     before knowing whether it is worth clicking. */
   .lp-footer__source {
     display: inline-flex;
     align-items: center;
@@ -773,33 +713,19 @@
 
   /* ======================================================================
      Scroll reveal
-     `data-reveal` starts hidden *if* `data-reveal-ready` is on the root;
-     shell.js adds .is-revealed when the element enters the viewport. Under
-     reduced motion it is revealed immediately.
+     `data-reveal` hides only while `data-reveal-ready` is on the root, so a
+     page whose script never runs stays visible. shell.js adds
+     `.is-revealed` as each element enters the viewport.
      ====================================================================== */
 
-  /* The reveal runs as an animation, not a transition, on purpose.
-     `data-reveal` sits on the same elements that have their own hover
-     transitions (.lp-card), and a `transition` shorthand here would replace
-     theirs wholesale — the card's border and shadow would stop animating and
-     its lift would inherit the reveal's 460ms. An animation leaves the
-     `transition` property untouched.
+  /* An animation, not a transition: these elements have their own hover
+     transitions (.lp-card) and a `transition` shorthand would replace them.
+     `backwards`, not `forwards`, so the last keyframe's `transform: none`
+     cannot outrank the hover lift and leave the card inert.
 
-     Fill mode is `backwards`, not `forwards`: it hides the element during the
-     stagger delay, then hands control back to the cascade when it finishes.
-     With `forwards` the final keyframe's `transform: none` would outrank the
-     hover lift and the cards would go inert once revealed. */
-  /* Scoped to the flag, so the page only hides its own content while the
-     script that brings it back is known to be running. Unscoped, a blocked
-     CDN or one thrown error left everything below the hero permanently
-     blank — and blank in a way nothing reports, because the markup is all
-     there and the layout is correct. Content is not allowed to depend on
-     JavaScript for its existence; only its entrance is. */
-  /* Every rule in this block carries the guard, including the ones that
-     un-hide. Scoping only the hiding rule raises its specificity above
-     `.is-revealed` (0,3,0 against 0,2,0), which hides the whole page for
-     good — the reveal still runs, the class still lands, and nothing ever
-     appears. */
+     Every rule here carries the guard, including the ones that un-hide:
+     guarding only the hiding rule puts it at 0,3,0 against `.is-revealed`'s
+     0,2,0 and hides the page for good. */
   :root[data-reveal-ready] [data-reveal] { opacity: 0; }
 
   :root[data-reveal-ready] [data-reveal].is-revealed {

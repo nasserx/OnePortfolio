@@ -568,22 +568,6 @@
     font-size: var(--text-xs);
   }
 
-  .delta {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    padding: 0.125rem var(--space-2);
-    border: 1px solid var(--line-subtle);
-    border-radius: var(--radius-pill);
-    font-size: var(--text-xs);
-    font-weight: var(--weight-medium);
-    font-variant-numeric: tabular-nums;
-  }
-
-  .delta--pos { background-color: var(--pos-soft); border-color: var(--pos-line); color: var(--pos); }
-  .delta--neg { background-color: var(--neg-soft); border-color: var(--neg-line); color: var(--neg); }
-  .delta--flat { color: var(--fg-subtle); }
-
   /* The card is stretched to the chart panel beside it, leaving ~120px of
      slack. The facts block absorbs it rather than being pinned to the
      bottom, which would only relocate the gap under the headline. */
@@ -605,8 +589,6 @@
       margin-top: var(--space-6);
     }
   }
-
-  .fact { min-width: 0; }
 
   .fact__label {
     display: flex;

@@ -79,12 +79,28 @@ HEADER_REGION = (0.00, 1.00, 0.00, 0.18)
 # left, because a horizontal crop slides the mapping inward.
 CARD_REGION = (0.45, 1.00, 0.00, 1.00)
 
-# What is printed on that card, and the floor each needs. `--fg-subtle` is
-# the quietest thing on it — the column labels and the allocation
-# percentages — and it is what decides how far the fill can drop.
+# What is printed on that card, and the floor each needs. Listing the inks
+# the preview actually shows is the point: the fill is bounded by the worst
+# of them, so a guess in either direction is wrong. A role the card does not
+# print would cap the glass for nothing, and a role it does print but that
+# nobody listed goes unmeasured — which is how the delta pill came to sit
+# under the floor while this test passed.
+#
+# `--fg-muted` covers the labels and the legend, `--fg-default` the figures,
+# and the two semantic hues are what the sample data happens to show. In the
+# light theme `--pos` is the binding one: a small green number stands further
+# from a cream surface than grey type does.
 CARD_SURFACES = {
-    'bg-surface': {'fg-subtle': TEXT_MIN, 'fg-faint': LARGE_TEXT_MIN},
-    'bg-inset': {'fg-subtle': TEXT_MIN, 'fg-faint': LARGE_TEXT_MIN},
+    'bg-surface': {
+        'fg-muted': TEXT_MIN,
+        'fg-default': TEXT_MIN,
+        'pos': TEXT_MIN,
+        'income': TEXT_MIN,
+    },
+    # The chrome carries no type today. `--fg-muted` is checked on it anyway
+    # because it is the more hostile of the two surfaces, so a label that
+    # lands there later fails here rather than in a screenshot.
+    'bg-inset': {'fg-muted': TEXT_MIN},
 }
 
 # Sample at 1/4 scale. Averaging 4x4 blocks is not a shortcut: a glyph stroke
@@ -290,10 +306,16 @@ def test_a_translucent_card_on_the_hero_still_carries_its_quietest_label(
 ):
     """The product card is glass, and glass lets the picture into the type.
 
-    The constraint is never the card — it is the smallest, faintest thing
-    printed on it, which here is `--fg-subtle` on the inset chrome. The
-    photograph is sampled under the shade first, exactly as it reaches the
-    card, and then the card's own fill is composited on top.
+    The constraint is never the card — it is the quietest ink printed on it,
+    and raising that ink is what buys transparency. The photograph is sampled
+    under the shade first, exactly as it reaches the card, and then the card's
+    own fill is composited on top.
+
+    Anything the card lays *over* its own surface has to come off before it
+    reaches here: a tinted wash under type of the same hue pulls the
+    background toward the ink, which is a veil running the wrong way. The
+    delta pill on the marketing card drops its `--pos-soft` fill for exactly
+    that reason.
 
     `backdrop-filter: blur()` is deliberately not modelled. Blurring moves
     every pixel toward its local mean and so can never produce a value

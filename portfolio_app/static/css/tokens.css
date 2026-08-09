@@ -236,8 +236,17 @@
        `tests/test_hero_legibility.py` and re-derived on every run. Sizing a
        scrim for a *hypothetical* photograph means sizing it for pure black
        and pure white at once — about 0.3 more alpha, which is the
-       difference between a backdrop and a wash. */
-    --hero-shade: rgb(247 245 240 / 0.52);
+       difference between a backdrop and a wash.
+
+       This sits just above the floor, not comfortably above it: 0.487 is
+       where the auth showcase's copy breaks — that panel crops the widest
+       part of the frame, so it sees the harshest pixels — with the title
+       gradient's lighter stop at 0.481 right behind it. The 0.013 left is
+       for a re-encode of the picture, nothing more. If the photograph
+       should read clearer than this, the veil is no longer what is in the
+       way; the picture is 1600px wide and the hero is drawn at roughly
+       2800 device px on a 2x screen. */
+    --hero-shade: rgb(247 245 240 / 0.50);
 
     /* The two ends of the hero title's gradient. Large text, so the floor
        is 3:1 rather than 4.5:1 — that headroom is the only reason a violet
@@ -246,11 +255,13 @@
     --hero-title-to:   var(--brand-800);
 
     /* How much of a surface floating on the hero stays opaque; the rest is
-       photograph. Bounded by the quietest label *inside* the card, not by
-       the card: measured against the shipped picture the light theme breaks
-       at 91.2%, so there is under a point left here. Dark starts further
-       clear and can afford 87%. */
-    --hero-card-fill: 92%;
+       photograph. Bounded by the quietest ink *inside* the card, never by the
+       card: raise a label a step and the glass follows, which is exactly how
+       this got to 15%. Against the shipped picture the binding pair is now
+       `--pos` on the delta, which breaks at 83.0%; `--fg-muted` on the inset
+       chrome, the old ceiling, is far below at 54.0%. Dark starts further
+       clear — its worst pair is `--income` at 55.5%. */
+    --hero-card-fill: 85%;
 
     /* Hover veil for the semantic solid buttons. It moves *away* from the
        label colour in each theme — darker under white labels, lighter under
@@ -327,10 +338,10 @@
       --brand-hover: var(--brand-300);
       --brand-solid: var(--brand-550);
       --brand-solid-hover: var(--brand-500);
-      --hero-shade: rgb(16 16 21 / 0.64);
+      --hero-shade: rgb(16 16 21 / 0.625);
       --hero-title-from: var(--brand-50);
       --hero-title-to:   var(--brand-100);
-      --hero-card-fill: 87%;
+      --hero-card-fill: 80%;
       --solid-hover-veil: rgb(255 255 255 / 0.14);
       --brand-soft: rgb(157 136 255 / 0.20);
       --brand-soft-hover: rgb(157 136 255 / 0.30);
@@ -406,10 +417,10 @@
     --brand-hover: var(--brand-300);
     --brand-solid: var(--brand-550);
     --brand-solid-hover: var(--brand-500);
-    --hero-shade: rgb(16 16 21 / 0.64);
+    --hero-shade: rgb(16 16 21 / 0.625);
     --hero-title-from: var(--brand-50);
     --hero-title-to:   var(--brand-100);
-    --hero-card-fill: 87%;
+    --hero-card-fill: 80%;
     --solid-hover-veil: rgb(255 255 255 / 0.14);
     --brand-soft: rgb(157 136 255 / 0.20);
     --brand-soft-hover: rgb(157 136 255 / 0.30);

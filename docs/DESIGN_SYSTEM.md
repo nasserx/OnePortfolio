@@ -416,10 +416,18 @@ everywhere reads as a picture.
 
 Four rules follow, and the tests enforce all of them:
 
-1. **Copy sits on `--hero-shade`** — 0.52 light, 0.64 dark, each a few points
-   above its measured floor. Never raise it "for safety": a second test fails
-   if the shade drifts more than 0.10 above what the picture requires,
+1. **Copy sits on `--hero-shade`** — 0.50 light, 0.625 dark, each just above
+   its measured floor (0.487 and 0.611; the binding case in both is the auth
+   showcase, where the crop exposes nearly the whole frame). What is left is
+   for a re-encode of the picture. Never raise it "for safety": a second test
+   fails if the shade drifts more than 0.10 above what the picture requires,
    because the image being visible is a requirement too.
+
+   **And when someone asks for the photograph to read clearer, check whether
+   the veil is what is in the way.** It is worth ~0.02 here and no more. The
+   picture ships at 1600×900 and the hero box is about 1422×643 CSS px, which
+   on a 2× display is 2844 device px across — a 1.8× upscale, and no
+   stylesheet fixes that. Past this point clarity is a *file*, not a token.
 2. **Chrome floating on a hero gets no veil of its own.** The sky at the top
    of the picture is shaded exactly as much as the mountains under the title,
    so the marketing header is already standing on the guarantee — which is
@@ -441,17 +449,9 @@ Four rules follow, and the tests enforce all of them:
    picture than plain ink does to survive the same shade, so every working
    step of the ramp, `--brand` included, is already inside it.
 
-**Two bands, and one sum.** A full-bleed hero is read vertically as:
-
-| band | extent | job |
-| --- | --- | --- |
-| floor | `--hero-floor` | clear picture below the last line of copy |
-| fade | `--hero-fade` | backdrop dissolving into the page |
-
-The hero's `padding-bottom` is `calc(floor + fade)`, so the copy always ends
-exactly where the floor begins. That single expression is the guarantee:
-change either and the other follows, and no resize can slide a dissolve
-underneath a word.
+**A backdrop ends where its box ends.** The hero's `padding-bottom` is clear
+picture below the last line of copy, and then a straight edge. There is no
+dissolve and no `--hero-mask`; see *Why there is no dissolve* below.
 
 **Surfaces that float on a hero may be glass.** `--hero-card-fill` is how much
 of the marketing card's own surface stays opaque — 85% light, 80% dark. The
@@ -461,17 +461,17 @@ it is deliberately left out of the test: blurring moves pixels toward their
 local mean, so it can only produce values inside the range already cleared.
 
 **Transparency is bought from the type, not from the card.** With
-`--fg-subtle` on the labels the light theme broke at **91.2%** — under a point
+`--fg-subtle` on the labels the light theme broke at **91.5%** — under a point
 of room, and the honest answer to "make it a little more transparent" was *no*.
-One step up to `--fg-muted` moves that floor to **52.3%**, because a step of
+One step up to `--fg-muted` moves that floor to **54%**, because a step of
 grey is worth far more against a photograph than against a solid surface. The
 hierarchy survives it: those labels are 11px, medium, and tracked out, which is
 the same argument the hero copy makes one layer up — over a photograph,
 hierarchy comes from size and weight, never tint.
 
 So the floor moves to whatever is *next* quietest, and on this card that turned
-out to be a semantic hue: `--pos` in the delta pill, at **82.4% light** (dark
-binds on `--income` at 53.2%). Which leads to the other half of the rule:
+out to be a semantic hue: `--pos` in the delta pill, at **83.0% light** (dark
+binds on `--income` at 55.5%). Which leads to the other half of the rule:
 
 **A tinted wash under type of its own hue is a veil running backwards.**
 `--pos-soft` behind `--pos` text moves the background *toward* the ink. On an
@@ -485,60 +485,39 @@ The test's job is to name every ink the card actually prints, and to be
 re-read whenever the card changes. A role listed that the card does not show
 caps the glass for nothing; a role shown but not listed goes unmeasured.
 
-**How a hero meets the page.** The picture dissolves; it is not painted over.
-Fading it with a wedge of `--bg-canvas` lightens the image on its way out — a
-milky band in light mode, a smear of black in dark — because a wash *changes*
-a colour in order to hide it. A mask only removes, so the page shows through
-cleanly and one rule covers both themes. `--hero-mask` sits on `.hero-media`
-rather than on the `<img>`, so the shade leaves with the picture instead of
-being stranded as a film over bare page colour.
+**Why there is no dissolve.** A masked fade at the bottom of the hero went
+through four rounds — linear, then curved, then weighted late, then
+lengthened — each one asked for by the same complaint, that the gradient was
+too strong. The last version was as good as the shape gets: 41px of picture
+the mask never touched, a 19px washed stretch, a peak of 0.0567 alpha/px.
 
-**Curvature is what hides a dissolve, not length.** A linear ramp has a
-corner in its *rate of change* at each end, and a corner reads as a line even
-when the change itself is gentle — so lengthening a linear fade only moves
-the seam. `--hero-mask` traces a curve instead, which is why 4rem is enough
-where 8rem of straight ramp was not.
+It still lost to a straight cut, and the arithmetic says why. Alpha has to
+travel the whole way from 1 to 0, so a dissolve *must* spend a stretch of
+photograph making itself invisible — that spent stretch is precisely what a
+reader calls "a strong gradient". Shape decides where it lands and how fast
+it goes; nothing removes it. An edge spends nothing, because it has no
+boundary to hide: it *is* the boundary.
 
-Write the stops as the integral of a smooth single-peaked rate, sampled at
-even steps of *alpha* rather than of distance. Two things fall out of that:
-the list describes the curve rather than the band, so changing `--hero-fade`
-rescales it without redrawing it; and the rate goes to zero at both ends,
-which is precisely where a corner would otherwise sit.
+What made the edge affordable is that the backdrop is already leaving. The
+scroll-driven lift takes the whole thing away within the first `68vh`, so the
+cut is only on screen while the reader is at the very top of the page —
+short of a dissolve's job and out of the way before it could become one.
 
-**A weaker fade and a shorter one are different requests.** What reads as "a
-strong gradient" is the stretch where the photograph is *visibly washed but
-still recognisably a photograph* — not the last few pixels, where it has
-nearly gone anyway. A symmetric smoothstep spends half its travel up in that
-stretch; weighting the curve late leaves the picture clearer at every depth
-that still reads as picture.
+Two things go with that decision. Keep them written down, because both were
+found the hard way:
 
-There is a hard limit on how far that goes, and it is worth stating plainly
-because it looks like it should be free: **the curve covers the same 0→1 in
-the same band whatever its shape**, so alpha cannot be raised everywhere
-without raising the rate somewhere. Clearer low down and steeper are one
-statement, not two, *at a fixed length*. Which leaves three quantities and
-only two degrees of freedom:
-
-| quantity | what the reader sees | now | before |
-| --- | --- | --- | --- |
-| untouched picture | the mask does nothing here | 41px | 27px |
-| washed stretch | picture, but visibly going | 19px | 19px |
-| peak rate | where a seam would appear | 0.0567 α/px | 0.0565 α/px |
-
-Lengthening the band is what buys the first column without paying in the
-other two — 3rem → 4rem funded a 50% deeper stretch of untouched picture at
-an unchanged transition and an unchanged rate. It is not free either: the
-dissolve now occupies more of the page, which is why the length came out of
-`--hero-floor` rather than being added to the hero. Reach for the band before
-reaching for the rate, because **a corner — not a rate — is what the eye
-resolves as a line**, and the rate is the thing that produces corners.
-
-Sanity-check any change here in the *light* theme: the swing between the
-shaded picture and the canvas is roughly 84 levels there against ~25 in the
-dark, so the light theme is where a seam shows first. Compare crops anchored
-to the *bottom of the hero*, not to a viewport coordinate — a change to the
-floor or the fade moves everything below it, and an 8px shift is enough to
-make a real improvement look like a regression.
+- If a dissolve ever comes back, mask, do not wash. Fading the picture out
+  with a wedge of `--bg-canvas` *changes* colours to hide them — a milky
+  band in light mode, a smear of black in dark — where a mask only removes,
+  so the page shows through cleanly and one rule covers both themes. And put
+  it on `.hero-media`, not the `<img>`, or the shade is stranded as a film
+  over bare page colour.
+- Judge any change to the bottom of the hero in the *light* theme, in crops
+  anchored to the bottom of the hero rather than to a viewport coordinate.
+  The light swing between shaded picture and canvas is ~84 levels against
+  ~25 in dark, so that is where an edge or a seam shows first; and a change
+  to the padding moves everything below it, which is enough to make an
+  improvement look like a regression.
 
 **The backdrop leaves with the page.** `.hero-media--lift` fades the whole
 thing out across the first `--hero-lift-range` of scrolling, driven by

@@ -50,7 +50,7 @@
 
   /* Over the picture the header has no veil of its own — it stands on the
      uniform `--hero-shade`. That costs the tint: `--fg-muted` needs about
-     0.79 of shade against this photograph where the hero ships 0.52–0.64,
+     0.79 of shade against this photograph where the hero ships 0.50–0.625,
      so everything in this row steps up to `--fg-default` while the header
      is transparent. Anything added here has to do the same. */
   .lp-nav:not(.is-stuck) .icon-button,
@@ -152,21 +152,16 @@
      ====================================================================== */
 
   /* The shade is uniform (see `--hero-shade`), so all the hero decides is
-     where the backdrop ends: a dissolve at the bottom, and a scroll-linked
-     fade that takes it away as the reader leaves. */
+     where the backdrop ends — and it ends on a straight edge. Four rounds
+     of masked dissolve came before this one and every one of them was asked
+     to be weaker, because a dissolve has to spend a stretch of photograph
+     hiding its own boundary and that spent stretch is the thing people see.
+     An edge spends none. The bottom padding is therefore one number: clear
+     picture below the last line of copy. */
   .lp-hero {
     position: relative;
-    padding: calc(4rem + var(--space-16)) 0 calc(var(--hero-floor) + var(--hero-fade));
+    padding: calc(4rem + var(--space-16)) 0 calc(var(--space-16) + var(--space-6));
     overflow: hidden;
-
-    /* Clear picture below the last line of copy, then the dissolve. The
-       bottom padding is their sum, so no resize can slide a fade under a
-       word; a longer dissolve is paid for out of the floor, not added to
-       it. The floor is the smaller number of the two and still buys more
-       clear picture than it looks — the dissolve does nothing for its own
-       first 41px. */
-    --hero-floor: var(--space-6);
-    --hero-fade: var(--space-16);
 
     /* Below centre: keeps the ridge line and the meadow, drops empty sky. */
     --hero-focus: 50% 62%;
@@ -174,43 +169,6 @@
     /* Long enough to read as the hero letting go, short enough to finish
        while the hero is still on screen. */
     --hero-lift-range: 68vh;
-
-    /* The dissolve. A curve, not a straight ramp: a linear fade has a
-       corner in its rate of change at each end, and a corner is what the
-       eye resolves as a line. Curvature removes the seam; length only
-       moves it.
-
-       What reads as "a strong gradient" is the stretch where the picture is
-       washed but still recognisable, and that stretch is the only thing
-       worth shortening. Alpha has to travel the whole way from 1 to 0
-       whatever the shape, so buying more untouched picture costs either a
-       steeper rate or a longer band — and the band is the cheaper of the
-       two, because rate is what produces a seam.
-
-       Both were spent together here: the band went 3rem -> 4rem and the
-       weight moved further down it, which leaves 41px of picture the mask
-       does not touch (was 27), a washed stretch of 19px (was 19), and a
-       peak of 0.0567 alpha/px (was 0.0565). More picture, same transition,
-       same rate.
-
-       The stops are the integral of a smooth single-peaked rate, sampled at
-       even steps of alpha rather than of distance — so the list describes
-       the curve instead of the band, and the rate is zero at both ends,
-       which is where a corner would otherwise be. */
-    --hero-mask: linear-gradient(
-      to bottom,
-      #000 calc(100% - var(--hero-fade)),
-      rgb(0 0 0 / 0.99) calc(100% - var(--hero-fade) * 0.54),
-      rgb(0 0 0 / 0.96) calc(100% - var(--hero-fade) * 0.44),
-      rgb(0 0 0 / 0.9) calc(100% - var(--hero-fade) * 0.36),
-      rgb(0 0 0 / 0.8) calc(100% - var(--hero-fade) * 0.29),
-      rgb(0 0 0 / 0.66) calc(100% - var(--hero-fade) * 0.22),
-      rgb(0 0 0 / 0.5) calc(100% - var(--hero-fade) * 0.17),
-      rgb(0 0 0 / 0.33) calc(100% - var(--hero-fade) * 0.12),
-      rgb(0 0 0 / 0.17) calc(100% - var(--hero-fade) * 0.08),
-      rgb(0 0 0 / 0.05) calc(100% - var(--hero-fade) * 0.04),
-      transparent 100%
-    );
   }
 
   .lp-hero__grid {
@@ -359,8 +317,8 @@
   /* One step up from the app's label colour, and that step is what buys the
      glass. The fill is bounded by the quietest ink on the card, so every
      percent of picture behind it is paid for in the labels: at `--fg-subtle`
-     the card cannot go below 91% without breaking 4.5:1, at `--fg-muted` it
-     could go to 52%. The hierarchy survives the trade because these labels
+     the card cannot go below 91.5% without breaking 4.5:1, at `--fg-muted`
+     it could go to 54%. The hierarchy survives the trade because these labels
      are 11px, medium, and tracked out — the same argument the hero copy
      already makes, one layer in. */
   .lp-shot__label,
@@ -388,7 +346,7 @@
      toward the ink. Measured, the full pill wants a 98% fill in the light
      theme to hold 4.5:1 — more opaque than this card has ever been, so it
      would have been the binding constraint on every percent of glass here.
-     Outline only, and the same ink clears at 82%. */
+     Outline only, and the same ink clears at 83%. */
   .lp-shot__hero .delta {
     margin-top: var(--space-2);
     background-color: transparent;

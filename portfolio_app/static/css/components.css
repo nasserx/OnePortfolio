@@ -1500,13 +1500,9 @@
      a shade, because copy legibility cannot depend on which pixel of a
      photograph lands under a word.
 
-     Two optional knobs:
-
-       --hero-shade-layer  what is painted over the picture, if not a flat
-                           `--hero-shade`
-       --hero-mask         where the backdrop dissolves, if it has an edge
-
-     Both default to the honest answer: an even veil, no dissolve.
+     A backdrop ends where its box ends. Both heroes stop on that edge
+     rather than dissolving into it — see DESIGN_SYSTEM.md, "Why there is no
+     dissolve", before adding a mask back.
      ====================================================================== */
 
   .hero-media {
@@ -1515,11 +1511,6 @@
     z-index: 0;
     overflow: hidden;
     pointer-events: none;
-    /* Applies to the picture *and* the shade above it, so the whole backdrop
-       leaves together. Anything that dissolved the photograph alone would
-       strand the shade as a film over bare page colour. */
-    -webkit-mask-image: var(--hero-mask, none);
-    mask-image: var(--hero-mask, none);
   }
 
   .hero-media picture {
@@ -1542,7 +1533,7 @@
     content: "";
     position: absolute;
     inset: 0;
-    background: var(--hero-shade-layer, var(--hero-shade));
+    background: var(--hero-shade);
   }
 
   /* Scroll-driven lift: the backdrop belongs to the top of the page and

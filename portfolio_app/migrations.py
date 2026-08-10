@@ -4,7 +4,7 @@ from portfolio_app import db
 # Bumped whenever a new migration step is added below. Stored in the SQLite
 # header (PRAGMA user_version) after a successful migration so subsequent
 # boots can short-circuit the whole inspection pass.
-TARGET_SCHEMA_VERSION = 30
+TARGET_SCHEMA_VERSION = 31
 
 
 def run_migrations(app):
@@ -546,6 +546,19 @@ def _apply_migration_steps(conn, sa):
             conn.execute(sa.text(
                 'ALTER TABLE pending_registration '
                 'ADD COLUMN failed_otp_attempts INTEGER NOT NULL DEFAULT 0'
+            ))
+            conn.commit()
+
+    # ── Step 31: per-user authentication generation ───────────────────
+    # Flask-Login identities carry this value. Incrementing it in the same
+    # transaction as a password change/reset makes older session and remember
+    # cookies fail server-side without introducing session persistence.
+    if 'user' in tables:
+        user_cols = {c['name'] for c in inspector.get_columns('user')}
+        if 'auth_generation' not in user_cols:
+            conn.execute(sa.text(
+                'ALTER TABLE "user" '
+                'ADD COLUMN auth_generation INTEGER NOT NULL DEFAULT 0'
             ))
             conn.commit()
 

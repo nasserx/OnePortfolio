@@ -57,6 +57,16 @@ def test_fresh_database_startup_creates_schema_and_sets_user_version(tmp_path):
     }.issubset(_table_names(app))
     assert _pragma_scalar(app, 'user_version') == TARGET_SCHEMA_VERSION
 
+    with app.app_context():
+        columns = {
+            row[1]: row
+            for row in db.session.execute(text('PRAGMA table_info("user")')).fetchall()
+        }
+        auth_generation = columns['auth_generation']
+        assert auth_generation[2].upper() == 'INTEGER'
+        assert auth_generation[3] == 1
+        assert auth_generation[4] == '0'
+
 
 def test_warm_startup_is_idempotent_and_preserves_existing_data(tmp_path):
     db_path = tmp_path / 'warm.sqlite'
@@ -238,4 +248,67 @@ def test_migration_repairs_version_29_pending_registration_missing_otp_counter(t
             'SELECT failed_otp_attempts FROM pending_registration '
             'WHERE email = :email'
         ), {'email': 'pending@example.com'}).scalar() == 0
+        assert db.session.execute(text('PRAGMA user_version')).scalar() == TARGET_SCHEMA_VERSION
+
+
+def test_migration_adds_auth_generation_and_preserves_existing_user(tmp_path):
+    db_path = tmp_path / 'auth-generation-upgrade.sqlite'
+    import sqlite3
+
+    con = sqlite3.connect(db_path)
+    try:
+        con.executescript('''
+            CREATE TABLE "user" (
+                id                                INTEGER PRIMARY KEY AUTOINCREMENT,
+                username                          VARCHAR(80) NOT NULL UNIQUE,
+                email                             VARCHAR(120) UNIQUE,
+                password_hash                     VARCHAR(255) NOT NULL,
+                is_admin                          BOOLEAN NOT NULL DEFAULT 0,
+                is_verified                       BOOLEAN NOT NULL DEFAULT 0,
+                created_at                        DATETIME,
+                last_login                        DATETIME,
+                verification_code                 VARCHAR(6),
+                verification_code_expires_at      DATETIME,
+                verification_code_failed_attempts INTEGER NOT NULL DEFAULT 0,
+                pending_email                     VARCHAR(120),
+                deletion_code                     VARCHAR(6),
+                deletion_code_expires_at          DATETIME,
+                deletion_code_failed_attempts     INTEGER NOT NULL DEFAULT 0,
+                failed_login_attempts              INTEGER NOT NULL DEFAULT 0,
+                locked_until                       DATETIME,
+                password_reset_jti                 VARCHAR(32)
+            );
+            INSERT INTO "user" (
+                username, email, password_hash, is_verified
+            ) VALUES (
+                'existing', 'existing@example.com', 'preserved-hash', 1
+            );
+            PRAGMA user_version = 30;
+        ''')
+        con.commit()
+    finally:
+        con.close()
+
+    app = create_app(_config_for(db_path))
+
+    with app.app_context():
+        columns = {
+            row[1]: row
+            for row in db.session.execute(text('PRAGMA table_info("user")')).fetchall()
+        }
+        auth_generation = columns['auth_generation']
+        assert auth_generation[2].upper() == 'INTEGER'
+        assert auth_generation[3] == 1
+        assert auth_generation[4] == '0'
+
+        user = User.query.filter_by(email='existing@example.com').one()
+        assert user.password_hash == 'preserved-hash'
+        assert user.auth_generation == 0
+        user.auth_generation = 3
+        db.session.commit()
+
+    restarted_app = create_app(_config_for(db_path))
+    with restarted_app.app_context():
+        user = User.query.filter_by(email='existing@example.com').one()
+        assert user.auth_generation == 3
         assert db.session.execute(text('PRAGMA user_version')).scalar() == TARGET_SCHEMA_VERSION

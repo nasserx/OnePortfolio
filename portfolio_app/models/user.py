@@ -4,6 +4,7 @@ import hashlib
 from datetime import datetime, timezone
 import bcrypt
 from flask_login import UserMixin
+from sqlalchemy import text
 from werkzeug.security import check_password_hash
 from portfolio_app import db
 
@@ -66,6 +67,16 @@ class User(UserMixin, db.Model):
     # reset so the same link can never be used twice — even within the
     # itsdangerous 1-hour window.
     password_reset_jti = db.Column(db.String(32), nullable=True)
+
+    # Server-authoritative generation bound into every Flask-Login identity.
+    # Password changes and resets increment it, invalidating older signed
+    # session and remember-cookie identities without storing each session.
+    auth_generation = db.Column(
+        db.Integer,
+        default=0,
+        server_default=text('0'),
+        nullable=False,
+    )
 
     portfolios = db.relationship(
         'Portfolio',
@@ -137,6 +148,10 @@ class User(UserMixin, db.Model):
         """Return True if the most recent successful :meth:`check_password`
         matched a legacy hash format and the stored hash should be upgraded."""
         return getattr(self, '_needs_rehash_after_check', False)
+
+    def get_id(self) -> str:
+        """Return the versioned Flask-Login identity for this credential era."""
+        return f'v1:{self.id}:{self.auth_generation}'
 
     def is_locked(self, now: datetime = None) -> bool:
         """Return True if the account is currently locked out from logging in."""

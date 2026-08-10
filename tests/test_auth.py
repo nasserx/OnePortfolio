@@ -25,6 +25,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from config import Config
 from portfolio_app import create_app, db, limiter
 from portfolio_app.models.dividend import Dividend
+from portfolio_app.models.oauth_identity import OAuthIdentity
 from portfolio_app.models.portfolio import Portfolio
 from portfolio_app.models.portfolio_event import PortfolioEvent
 from portfolio_app.models.symbol import Symbol
@@ -629,8 +630,9 @@ class TestSettingsAndDeletion:
         assert 'The code is incorrect or has expired. Please request a new one.' in resp.get_data(as_text=True)
         with app.app_context():
             user = User.query.filter_by(email='alice@example.com').one()
+            expected_identity = user.get_id()
         with client.session_transaction() as sess:
-            assert sess.get('_user_id') == str(user.id)
+            assert sess.get('_user_id') == expected_identity
 
     def test_expired_deletion_code_does_not_delete_or_logout(self, app, client, email_log):
         _signup_and_verify(app, client, email_log)
@@ -658,8 +660,9 @@ class TestSettingsAndDeletion:
         assert 'The code is incorrect or has expired. Please request a new one.' in resp.get_data(as_text=True)
         with app.app_context():
             user = User.query.filter_by(email='alice@example.com').one()
+            expected_identity = user.get_id()
         with client.session_transaction() as sess:
-            assert sess.get('_user_id') == str(user.id)
+            assert sess.get('_user_id') == expected_identity
 
     def test_correct_deletion_code_deletes_account_immediately_and_logs_out(
         self, app, client, email_log,
@@ -800,8 +803,9 @@ class TestSettingsAndDeletion:
         assert 'The code is incorrect or has expired. Please request a new one.' in resp.get_data(as_text=True)
         with app.app_context():
             bob = User.query.filter_by(email='bob@example.com').one()
+            expected_identity = bob.get_id()
         with client.session_transaction() as sess:
-            assert sess.get('_user_id') == str(bob.id)
+            assert sess.get('_user_id') == expected_identity
 
     def test_another_users_deletion_code_cannot_delete_current_user(self, app, client, email_log):
         _signup_and_verify(app, client, email_log)
@@ -865,8 +869,9 @@ class TestSettingsAndDeletion:
         with app.app_context():
             user = User.query.filter_by(email='alice@example.com').one()
             assert user.deletion_code == deletion_code
+            expected_identity = user.get_id()
         with client.session_transaction() as sess:
-            assert sess.get('_user_id') == str(user.id)
+            assert sess.get('_user_id') == expected_identity
 
         monkeypatch.setattr(UserRepository, 'commit', original_commit)
         resp = client.post(
@@ -887,6 +892,168 @@ class TestSettingsAndDeletion:
 # ---------------------------------------------------------------------------
 
 class TestTokenAndSession:
+
+    def test_password_change_revokes_existing_sessions_and_remember_state(
+        self, app, client, email_log,
+    ):
+        old_password = 'CorrectHorse9'
+        new_password = 'ChangedHorse10'
+        _signup_and_verify(app, client, email_log)
+
+        with app.app_context():
+            user = User.query.filter_by(email='alice@example.com').one()
+            user_id = user.id
+            original_generation = user.auth_generation
+            db.session.add(OAuthIdentity(
+                user_id=user.id,
+                provider='google',
+                provider_subject='google-sub-alice',
+            ))
+            db.session.commit()
+
+        client_b = app.test_client()
+        assert client.post('/login', data={
+            'username': 'alice@example.com',
+            'password': old_password,
+        }).status_code in (302, 303)
+        assert client_b.post('/login', data={
+            'username': 'alice@example.com',
+            'password': old_password,
+            'remember': 'on',
+        }).status_code in (302, 303)
+
+        remember_cookie = client_b.get_cookie('remember_token')
+        assert remember_cookie is not None
+        remember_only_client = app.test_client()
+        remember_only_client.set_cookie('remember_token', remember_cookie.value)
+        remember_control_client = app.test_client()
+        remember_control_client.set_cookie('remember_token', remember_cookie.value)
+
+        # Prove the copied cookie can restore authentication before revocation.
+        # The untouched remember_only_client remains cookie-only until after
+        # the generation advances.
+        assert remember_control_client.get('/settings').status_code == 200
+
+        # Pre-release id-only identities are deliberately compatible only
+        # while the database-backed generation is still zero.
+        legacy_client = app.test_client()
+        with legacy_client.session_transaction() as sess:
+            sess['_user_id'] = str(user_id)
+            sess['_fresh'] = True
+        assert legacy_client.get('/settings').status_code == 200
+
+        response = client.post('/change-password', data={
+            'current_password': old_password,
+            'new_password': new_password,
+            'confirm_new_password': new_password,
+        }, follow_redirects=False)
+
+        assert response.status_code in (302, 303)
+        assert response.headers['Location'].endswith('/login')
+        with client.session_transaction() as sess:
+            assert sess.get('_user_id') is None
+
+        # Client B's normal session and an independent remember-only client
+        # both carry authentication issued before the password changed.
+        for stale_client in (client_b, remember_only_client):
+            stale_response = stale_client.get('/settings', follow_redirects=False)
+            assert stale_response.status_code in (302, 303)
+            assert '/login' in stale_response.headers['Location']
+
+        # The same signed legacy identity must fail after generation zero.
+        legacy_response = legacy_client.get('/settings', follow_redirects=False)
+        assert legacy_response.status_code in (302, 303)
+        assert '/login' in legacy_response.headers['Location']
+
+        with app.app_context():
+            user = db.session.get(User, user_id)
+            assert user.auth_generation == original_generation + 1
+            assert OAuthIdentity.query.filter_by(
+                user_id=user_id,
+                provider='google',
+                provider_subject='google-sub-alice',
+            ).count() == 1
+
+        fresh_client = app.test_client()
+        assert fresh_client.post('/login', data={
+            'username': 'alice@example.com',
+            'password': new_password,
+        }).status_code in (302, 303)
+        assert fresh_client.get('/settings').status_code == 200
+
+        # Loading and using a current identity is read-only with respect to
+        # the server-authoritative generation.
+        assert fresh_client.get('/settings').status_code == 200
+        with app.app_context():
+            assert db.session.get(User, user_id).auth_generation == original_generation + 1
+
+    def test_password_reset_revokes_existing_sessions_and_remember_state(
+        self, app, client, email_log,
+    ):
+        old_password = 'CorrectHorse9'
+        new_password = 'ResetHorse123'
+        _signup_and_verify(app, client, email_log)
+
+        with app.app_context():
+            user = User.query.filter_by(email='alice@example.com').one()
+            user_id = user.id
+            original_generation = user.auth_generation
+
+        session_client = app.test_client()
+        assert session_client.post('/login', data={
+            'username': 'alice@example.com',
+            'password': old_password,
+            'remember': 'on',
+        }).status_code in (302, 303)
+
+        remember_cookie = session_client.get_cookie('remember_token')
+        assert remember_cookie is not None
+        remember_only_client = app.test_client()
+        remember_only_client.set_cookie('remember_token', remember_cookie.value)
+        remember_control_client = app.test_client()
+        remember_control_client.set_cookie('remember_token', remember_cookie.value)
+
+        # This separate control proves restoration works while preserving an
+        # untouched remember-only client for the post-reset assertion.
+        assert remember_control_client.get('/settings').status_code == 200
+
+        reset_client = app.test_client()
+        reset_request = reset_client.post(
+            '/forgot-password',
+            data={'email': 'alice@example.com'},
+            follow_redirects=False,
+        )
+        assert reset_request.status_code in (302, 303)
+        reset_token = next(
+            value.split(':', 1)[1]
+            for _, value in reversed(email_log)
+            if value.startswith('reset:')
+        )
+        reset_response = reset_client.post(
+            f'/reset-password/{reset_token}',
+            data={
+                'password': new_password,
+                'confirm_password': new_password,
+            },
+            follow_redirects=False,
+        )
+        assert reset_response.status_code in (302, 303)
+        assert reset_response.headers['Location'].endswith('/login')
+
+        for stale_client in (session_client, remember_only_client):
+            stale_response = stale_client.get('/settings', follow_redirects=False)
+            assert stale_response.status_code in (302, 303)
+            assert '/login' in stale_response.headers['Location']
+
+        with app.app_context():
+            assert db.session.get(User, user_id).auth_generation == original_generation + 1
+
+        fresh_client = app.test_client()
+        assert fresh_client.post('/login', data={
+            'username': 'alice@example.com',
+            'password': new_password,
+        }).status_code in (302, 303)
+        assert fresh_client.get('/settings').status_code == 200
 
     def test_otp_is_single_use(self, app, client, email_log):
         _register(client)

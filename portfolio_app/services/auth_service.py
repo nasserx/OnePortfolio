@@ -58,8 +58,9 @@ class AuthService:
         """Stage a new sign-up and generate a 6-digit verification code.
 
         The account is **not** inserted into the ``user`` table until the
-        OTP is confirmed via :meth:`verify_user`. Any prior pending row for
-        the same email is deleted so its token/OTP can no longer be used.
+        OTP is confirmed via :meth:`verify_user`. A live pending row for the
+        same email is preserved so an unauthenticated retry cannot replace
+        its staged credentials; the existing resend flow can issue a new OTP.
 
         Args:
             email: User's email address (stored lowercase).
@@ -70,7 +71,8 @@ class AuthService:
             Tuple of (created PendingRegistration, 6-digit verification code).
 
         Raises:
-            ValueError: If the email is already taken by an existing user.
+            ValueError: If the email is already taken by an existing user or
+                has a live pending registration.
         """
         # Tidy stale staged rows so old reservations don't block new sign-ups.
         self.pending_repo.purge_expired(datetime.now(timezone.utc))
@@ -81,9 +83,11 @@ class AuthService:
         if self.user_repo.get_by_email(email_lc):
             raise ValueError(MESSAGES['EMAIL_ALREADY_EXISTS'])
 
-        # Same-email sign-up: invalidate any prior staged token for this
-        # email by deleting the pending row outright.
-        self.pending_repo.delete_by_email(email_lc)
+        # Never let a second unauthenticated sign-up replace credentials that
+        # are already waiting for the email owner to verify them. Legitimate
+        # users can refresh only the OTP through the existing resend flow.
+        if self.pending_repo.get_by_email(email_lc):
+            raise ValueError(MESSAGES['EMAIL_ALREADY_EXISTS'])
 
         username = self._generate_username(email_lc)
 

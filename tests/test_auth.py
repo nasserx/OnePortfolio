@@ -315,35 +315,58 @@ class TestSignup:
             assert user.is_verified is True
             assert user.password_hash.startswith('$2')
 
-    def test_resignup_invalidates_previous_token(self, app, client, email_log):
-        _register(client)
-        first_code = email_log[-1][1]
+    def test_resignup_cannot_replace_pending_credentials(self, app, client, email_log):
+        original_password = 'CorrectHorse9'
+        substituted_password = 'SecondPw9999'
 
-        # Same email signs up again — old OTP must no longer work.
-        _register(client, email='alice@example.com', password='SecondPw9999')
-        new_code = email_log[-1][1]
-        assert new_code != first_code  # very high probability — 1-in-900k otherwise
+        _register(client, password=original_password)
+        original_code = email_log[-1][1]
 
-        # Old code is rejected.
-        resp = client.post(
-            '/verify-code?email=alice@example.com',
-            data={'code': first_code},
+        # A second unauthenticated attempt cannot replace either the staged
+        # password or the verification path for the original registration.
+        attacker = app.test_client()
+        resp = _register(
+            attacker,
+            email='alice@example.com',
+            password=substituted_password,
         )
         assert resp.status_code == 200
-        with app.app_context():
-            assert User.query.count() == 0
-            assert PendingRegistration.query.count() == 1
+        assert len(email_log) == 1
 
-        # New code works.
         resp = client.post(
             '/verify-code?email=alice@example.com',
-            data={'code': new_code},
+            data={'code': original_code},
             follow_redirects=False,
         )
         assert resp.status_code in (302, 303)
-        with app.app_context():
-            assert User.query.count() == 1
-            assert PendingRegistration.query.count() == 0
+        client.post('/logout')
+
+        # The attacker's substituted password cannot authenticate the
+        # resulting account, while the victim's original password still can.
+        resp = attacker.post(
+            '/login',
+            data={
+                'username': 'alice@example.com',
+                'password': substituted_password,
+            },
+            follow_redirects=False,
+        )
+        assert resp.status_code == 200
+        with attacker.session_transaction() as sess:
+            assert sess.get('_user_id') is None
+
+        fresh_client = app.test_client()
+        resp = fresh_client.post(
+            '/login',
+            data={
+                'username': 'alice@example.com',
+                'password': original_password,
+            },
+            follow_redirects=False,
+        )
+        assert resp.status_code in (302, 303)
+        with fresh_client.session_transaction() as sess:
+            assert sess.get('_user_id') is not None
 
 
 # ---------------------------------------------------------------------------

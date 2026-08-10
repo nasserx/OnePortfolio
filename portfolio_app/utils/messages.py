@@ -151,6 +151,7 @@ MESSAGES = {
     'REGISTRATION_FAILED':         "Registration failed. Please try again.",
     'RATE_LIMIT_SIGNUP':           "Too many sign-up attempts. Please try again later.",
     'RATE_LIMIT_RESEND':           "Too many resend requests. Please try again later.",
+    'RATE_LIMIT_PASSWORD_RESET':   "Too many password reset requests. Please try again later.",
     'GOOGLE_SIGNIN_COMING_SOON':   "Google sign-in is coming soon.",
     'GOOGLE_SIGNIN_NOT_CONFIGURED': "Google sign-in is not configured yet.",
     'GOOGLE_SIGNIN_FAILED':        "Google sign-in could not be completed. Please try again.",

@@ -28,6 +28,8 @@ The Google OAuth backend uses Authlib and is disabled by default. When enabled w
 
 Flask-Login authentication uses the signed client-side Flask session and its signed remember cookie; individual sessions are not stored server-side. Each serialized login identity binds the user id to the database-backed `User.auth_generation`. A successful local password change or password reset increments that generation in the same database commit as the new password, so sessions and remember state issued for an earlier generation no longer authenticate on their next request. New local and Google OIDC logins use the current generation, and password changes do not alter stored OAuth identity links. Pre-generation id-only identities are treated explicitly as generation zero for upgrade compatibility and stop authenticating after the user's generation advances.
 
+Public password-reset initiation is rate-limited both by client origin and by normalized target email before reset state is rotated or mail is sent. Known and unknown addresses retain the same public confirmation response. Flask-Limiter currently uses process-local in-memory storage, so these limits are authoritative only in a single-worker deployment; shared multi-worker enforcement requires configuring a shared limiter backend.
+
 ## Services Container
 
 `portfolio_app/services/factory.py` provides a `Services` container. Routes call `get_services()`, which stores one container per request on Flask `g`.

@@ -163,7 +163,7 @@ def test_password_login_form_remains_present_and_functional(app_factory):
         user.set_password('CorrectHorse9')
         db.session.add(user)
         db.session.commit()
-        user_id = str(user.id)
+        expected_identity = user.get_id()
 
     client = app.test_client()
     html = client.get('/login').get_data(as_text=True)
@@ -177,7 +177,7 @@ def test_password_login_form_remains_present_and_functional(app_factory):
     )
     assert resp.status_code in (302, 303)
     with client.session_transaction() as sess:
-        assert sess.get('_user_id') == user_id
+        assert sess.get('_user_id') == expected_identity
 
 
 def test_google_oauth_secrets_tokens_and_provider_data_not_rendered(app_factory):

@@ -26,6 +26,8 @@ The Google OAuth backend uses Authlib and is disabled by default. When enabled w
 
 `OAuthIdentity` stores the persistent provider-subject link. Automatic registration, manual account-management UI, unlinking, and OAuth token or provider-payload persistence are not implemented.
 
+Flask-Login authentication uses the signed client-side Flask session and its signed remember cookie; individual sessions are not stored server-side. Each serialized login identity binds the user id to the database-backed `User.auth_generation`. A successful local password change or password reset increments that generation in the same database commit as the new password, so sessions and remember state issued for an earlier generation no longer authenticate on their next request. New local and Google OIDC logins use the current generation, and password changes do not alter stored OAuth identity links. Pre-generation id-only identities are treated explicitly as generation zero for upgrade compatibility and stop authenticating after the user's generation advances.
+
 ## Services Container
 
 `portfolio_app/services/factory.py` provides a `Services` container. Routes call `get_services()`, which stores one container per request on Flask `g`.

@@ -156,6 +156,11 @@ def _login_session_user_id(client):
         return sess.get('_user_id')
 
 
+def _current_auth_identity(app, user_id):
+    with app.app_context():
+        return db.session.get(User, user_id).get_id()
+
+
 def test_unauthenticated_disconnect_preserves_login_required_behavior(app, client):
     user_id = _create_user(app)
     _create_google_identity(app, user_id)
@@ -182,7 +187,7 @@ def test_google_disconnect_requires_csrf_with_normal_csrf_enabled_config(app_fac
     user_id = _create_user(app)
     _create_google_identity(app, user_id)
     with client.session_transaction() as sess:
-        sess['_user_id'] = str(user_id)
+        sess['_user_id'] = _current_auth_identity(app, user_id)
         sess['_fresh'] = True
 
     response = client.post(
@@ -273,7 +278,7 @@ def test_successful_disconnect_keeps_user_authenticated(app, client):
 
     client.post('/settings/google/disconnect', data={'current_password': PASSWORD})
 
-    assert _login_session_user_id(client) == str(user_id)
+    assert _login_session_user_id(client) == _current_auth_identity(app, user_id)
 
 
 def test_successful_disconnect_does_not_modify_user_fields_or_password_hash(app, client):
@@ -425,7 +430,7 @@ def test_existing_password_login_still_works_after_disconnect(app, client):
     _logout(client)
     _login(client)
 
-    assert _login_session_user_id(client) == str(user_id)
+    assert _login_session_user_id(client) == _current_auth_identity(app, user_id)
 
 
 def test_later_google_callback_can_recreate_link_after_disconnect(app_factory):
@@ -447,4 +452,4 @@ def test_later_google_callback_can_recreate_link_after_disconnect(app_factory):
 
     assert response.status_code in (302, 303)
     assert _identity_for_user(app, user_id).provider_subject == GOOGLE_SUBJECT
-    assert _login_session_user_id(client) == str(user_id)
+    assert _login_session_user_id(client) == _current_auth_identity(app, user_id)

@@ -1,4 +1,5 @@
 import sqlite3
+import re
 
 from flask import Flask, current_app
 from flask_sqlalchemy import SQLAlchemy
@@ -24,6 +25,8 @@ csrf = CSRFProtect()
 login_manager = LoginManager()
 mail = Mail()
 ONEPORTFOLIO_OAUTH_EXTENSION_KEY = 'oneportfolio_oauth'
+_AUTH_IDENTITY_RE = re.compile(r'\Av1:([1-9][0-9]*):(0|[1-9][0-9]*)\Z')
+_LEGACY_AUTH_IDENTITY_RE = re.compile(r'\A[1-9][0-9]*\Z')
 # In-memory backend — fine for a single-worker deployment. For multi-worker
 # scale, point ``RATELIMIT_STORAGE_URI`` at a Redis instance.
 limiter = Limiter(
@@ -137,9 +140,29 @@ def create_app(config_class=Config):
     login_manager.login_message = ''
 
     @login_manager.user_loader
-    def load_user(user_id: str):
+    def load_user(identity: str):
         from portfolio_app.models.user import User
-        return db.session.get(User, int(user_id))
+
+        # Current identities explicitly bind the database id to the user's
+        # authentication generation. Pre-release id-only identities represent
+        # generation zero, preserving a controlled upgrade path; malformed
+        # values fail closed as anonymous without raising on normal requests.
+        if not isinstance(identity, str):
+            return None
+        match = _AUTH_IDENTITY_RE.fullmatch(identity)
+        if match:
+            user_id = int(match.group(1))
+            generation = int(match.group(2))
+        elif _LEGACY_AUTH_IDENTITY_RE.fullmatch(identity):
+            user_id = int(identity)
+            generation = 0
+        else:
+            return None
+
+        user = db.session.get(User, user_id)
+        if user is None or user.auth_generation != generation:
+            return None
+        return user
 
     @app.errorhandler(CSRFError)
     def _handle_csrf_error(e: CSRFError):

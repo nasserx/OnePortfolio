@@ -359,6 +359,7 @@ class AuthService:
         if not user.check_password(current_password):
             raise ValueError(MESSAGES['CURRENT_PASSWORD_INCORRECT'])
         user.set_password(new_password)
+        user.auth_generation = User.auth_generation + 1
         self.user_repo.commit()
 
     def begin_password_reset(self, user: User) -> str:
@@ -394,6 +395,7 @@ class AuthService:
             return None
         user.set_password(new_password)
         user.password_reset_jti = None  # one-shot — done
+        user.auth_generation = User.auth_generation + 1
         # A successful reset implicitly clears any active lockout.
         user.failed_login_attempts = 0
         user.locked_until = None

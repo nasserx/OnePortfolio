@@ -173,6 +173,11 @@ def _get_user_snapshot(app, user_id):
         }
 
 
+def _current_auth_identity(app, user_id):
+    with app.app_context():
+        return db.session.get(User, user_id).get_id()
+
+
 def _google_identity(sub='google-sub-alice', email='alice@example.com', verified=True):
     return {
         'sub': sub,
@@ -257,12 +262,28 @@ def test_google_callback_logs_in_existing_verified_user(app, client):
     assert resp.headers['Location'] == '/'
     assert fake_google.parse_id_token_called is False
     with client.session_transaction() as sess:
-        assert sess.get('_user_id') == str(user_id)
+        assert sess.get('_user_id') == _current_auth_identity(app, user_id)
     assert _identity_snapshot(app) == [{
         'user_id': user_id,
         'provider': 'google',
         'provider_subject': 'google-sub-alice',
     }]
+
+
+def test_google_callback_uses_current_auth_generation(app, client):
+    user_id = _create_verified_user(app)
+    with app.app_context():
+        user = db.session.get(User, user_id)
+        user.auth_generation = 4
+        db.session.commit()
+    _install_fake_oauth(app, FakeGoogleClient())
+
+    response = client.get('/auth/google/callback')
+
+    assert response.status_code in (302, 303)
+    with client.session_transaction() as sess:
+        assert sess.get('_user_id') == f'v1:{user_id}:4'
+    assert client.get('/settings').status_code == 200
 
 
 def test_google_callback_existing_provider_subject_logs_in_linked_verified_user(app, client):
@@ -277,7 +298,7 @@ def test_google_callback_existing_provider_subject_logs_in_linked_verified_user(
 
     assert resp.status_code in (302, 303)
     with client.session_transaction() as sess:
-        assert sess.get('_user_id') == str(user_id)
+        assert sess.get('_user_id') == _current_auth_identity(app, user_id)
 
 
 def test_google_callback_linked_login_does_not_require_current_google_email_match(app, client):
@@ -291,7 +312,7 @@ def test_google_callback_linked_login_does_not_require_current_google_email_matc
     client.get('/auth/google/callback')
 
     with client.session_transaction() as sess:
-        assert sess.get('_user_id') == str(user_id)
+        assert sess.get('_user_id') == _current_auth_identity(app, user_id)
 
 
 def test_google_callback_linked_login_does_not_create_another_identity(app, client):
@@ -341,7 +362,7 @@ def test_google_callback_matches_email_case_insensitively(app, client):
     client.get('/auth/google/callback')
 
     with client.session_transaction() as sess:
-        assert sess.get('_user_id') == str(user_id)
+        assert sess.get('_user_id') == _current_auth_identity(app, user_id)
 
 
 def test_google_callback_uses_userinfo_from_access_token(app, client):
@@ -363,7 +384,7 @@ def test_google_callback_uses_userinfo_from_access_token(app, client):
 
     assert fake_google.parse_id_token_called is False
     with client.session_transaction() as sess:
-        assert sess.get('_user_id') == str(user_id)
+        assert sess.get('_user_id') == _current_auth_identity(app, user_id)
 
 
 def test_google_callback_redirects_to_default_authenticated_destination(app, client):
@@ -519,7 +540,7 @@ def test_google_callback_first_link_creates_google_identity_for_verified_email(a
         'provider_subject': 'NewSub-CaseSensitive',
     }]
     with client.session_transaction() as sess:
-        assert sess.get('_user_id') == str(user_id)
+        assert sess.get('_user_id') == _current_auth_identity(app, user_id)
 
 
 def test_google_callback_created_identity_stores_subject_unchanged(app, client):
@@ -549,7 +570,7 @@ def test_google_callback_subject_is_opaque_and_case_sensitive(app, client):
     client.get('/auth/google/callback')
 
     with client.session_transaction() as sess:
-        assert sess.get('_user_id') == str(new_user_id)
+        assert sess.get('_user_id') == _current_auth_identity(app, new_user_id)
     assert sorted(row['provider_subject'] for row in _identity_snapshot(app)) == [
         'CaseSensitiveSub',
         'casesensitivesub',
@@ -690,7 +711,7 @@ def test_google_callback_race_resolving_same_user_and_subject_logs_in(app, clien
 
     assert resp.status_code in (302, 303)
     with client.session_transaction() as sess:
-        assert sess.get('_user_id') == str(user_id)
+        assert sess.get('_user_id') == _current_auth_identity(app, user_id)
     assert _identity_snapshot(app) == [{
         'user_id': user_id,
         'provider': 'google',

@@ -7,8 +7,8 @@ Covers the ``feat/auth-refactor`` flow:
 * Login is blocked for unverified accounts, lets verified accounts in,
   hides the existence of accounts behind a single generic error, and
   trips a 30-minute lockout after 5 consecutive wrong passwords.
-* Rate limiting protects ``/register`` (5/h/IP) and ``/resend-code``
-  (3/h/email).
+* Rate limiting protects ``/register`` (5/h/IP), ``/resend-code``
+  (3/h/email), and ``/forgot-password`` (10/h/IP and 3/h/email).
 
 The test file is self-contained: it builds its own Flask app per test so
 DB state, the rate-limiter store, and email mocks never leak across tests.
@@ -1119,6 +1119,118 @@ class TestTokenAndSession:
 # ---------------------------------------------------------------------------
 
 class TestRateLimits:
+
+    def test_forgot_password_target_limit_preserves_last_reset_link(
+        self, rate_limited_app, rate_limited_client, email_log,
+    ):
+        _signup_and_verify(rate_limited_app, rate_limited_client, email_log)
+        email_log.clear()
+
+        email_variants = (
+            'alice@example.com',
+            'ALICE@EXAMPLE.COM',
+            ' Alice@Example.com ',
+        )
+        for attempt, email in enumerate(email_variants, start=1):
+            request_client = rate_limited_app.test_client()
+            response = request_client.post(
+                '/forgot-password',
+                data={'email': email},
+                environ_overrides={'REMOTE_ADDR': f'198.51.100.{attempt}'},
+                follow_redirects=True,
+            )
+            assert response.status_code == 200
+            assert "If an account with that email exists" in response.get_data(as_text=True)
+
+        reset_messages = [
+            value for recipient, value in email_log
+            if recipient == 'alice@example.com' and value.startswith('reset:')
+        ]
+        assert len(reset_messages) == 3
+        last_token = reset_messages[-1].split(':', 1)[1]
+
+        with rate_limited_app.app_context():
+            jti_before_rejection = User.query.filter_by(
+                email='alice@example.com',
+            ).one().password_reset_jti
+            assert jti_before_rejection
+
+        # A fourth equivalent spelling comes from another origin, proving the
+        # normalized target bucket cannot be bypassed by client rotation.
+        rejected = rate_limited_app.test_client().post(
+            '/forgot-password',
+            data={'email': 'aLiCe@eXaMpLe.CoM'},
+            environ_overrides={'REMOTE_ADDR': '198.51.100.4'},
+        )
+        assert rejected.status_code == 429
+        assert len(email_log) == 3
+
+        with rate_limited_app.app_context():
+            assert User.query.filter_by(
+                email='alice@example.com',
+            ).one().password_reset_jti == jti_before_rejection
+
+        new_password = 'ResetHorse123'
+        reset_client = rate_limited_app.test_client()
+        reset_response = reset_client.post(
+            f'/reset-password/{last_token}',
+            data={
+                'password': new_password,
+                'confirm_password': new_password,
+            },
+            follow_redirects=False,
+        )
+        assert reset_response.status_code in (302, 303)
+        assert reset_response.headers['Location'].endswith('/login')
+        assert reset_client.post('/login', data={
+            'username': 'alice@example.com',
+            'password': new_password,
+        }).status_code in (302, 303)
+
+    def test_forgot_password_keeps_generic_known_and_unknown_responses(
+        self, rate_limited_app, rate_limited_client, email_log,
+    ):
+        _signup_and_verify(rate_limited_app, rate_limited_client, email_log)
+        email_log.clear()
+
+        responses = []
+        for address, remote_addr in (
+            ('alice@example.com', '198.51.100.20'),
+            ('nobody@example.com', '198.51.100.21'),
+        ):
+            responses.append(rate_limited_app.test_client().post(
+                '/forgot-password',
+                data={'email': address},
+                environ_overrides={'REMOTE_ADDR': remote_addr},
+                follow_redirects=True,
+            ))
+
+        for response in responses:
+            assert response.status_code == 200
+            assert "If an account with that email exists" in response.get_data(as_text=True)
+        assert [recipient for recipient, value in email_log if value.startswith('reset:')] == [
+            'alice@example.com',
+        ]
+
+    def test_forgot_password_client_origin_limit_is_independent(
+        self, rate_limited_app, email_log,
+    ):
+        client = rate_limited_app.test_client()
+        for attempt in range(10):
+            response = client.post(
+                '/forgot-password',
+                data={'email': f'unknown-{attempt}@example.com'},
+                follow_redirects=False,
+            )
+            assert response.status_code in (302, 303)
+
+        rejected = client.post(
+            '/forgot-password',
+            data={'email': 'unknown-10@example.com'},
+            follow_redirects=False,
+        )
+        assert rejected.status_code == 429
+        assert email_log == []
 
     def test_signup_blocked_after_five_per_hour(self, rate_limited_client, email_log):
         # Five attempts succeed; the 6th comes back 429.

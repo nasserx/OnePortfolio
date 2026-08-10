@@ -39,6 +39,7 @@ logger = logging.getLogger(__name__)
 auth_bp = Blueprint('auth', __name__)
 _GOOGLE_OAUTH_NEXT_SESSION_KEY = 'google_oauth_next'
 _GOOGLE_OAUTH_PROVIDER = 'google'
+_EMAIL_RATE_LIMIT_KEY_MAX_LENGTH = 120
 
 
 def _safe_local_redirect(target):
@@ -55,6 +56,12 @@ def _safe_local_redirect(target):
     ):
         return None
     return target
+
+
+def _forgot_password_target_key():
+    """Return a bounded reset-request key matching email form normalization."""
+    email = (request.form.get('email', '') or '').strip().lower()
+    return f"forgot-password:{email[:_EMAIL_RATE_LIMIT_KEY_MAX_LENGTH]}"
 
 
 def _google_oauth_client_or_404():
@@ -570,8 +577,20 @@ def update_email():
 # ---------------------------------------------------------------------------
 
 @auth_bp.route('/forgot-password', methods=['GET', 'POST'])
+@limiter.limit(
+    "10 per hour",
+    methods=['POST'],
+    key_func=get_remote_address,
+    error_message=MESSAGES['RATE_LIMIT_PASSWORD_RESET'],
+)
+@limiter.limit(
+    "3 per hour",
+    methods=['POST'],
+    key_func=_forgot_password_target_key,
+    error_message=MESSAGES['RATE_LIMIT_PASSWORD_RESET'],
+)
 def forgot_password():
-    """Forgot password page. Sends a reset link to the user's email."""
+    """Send reset links, bounded per client origin and normalized email."""
     if current_user.is_authenticated:
         return redirect(url_for('dashboard.index'))
 

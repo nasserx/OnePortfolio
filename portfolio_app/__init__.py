@@ -258,8 +258,8 @@ def create_app(config_class=Config):
             ), 429
 
         if endpoint == 'auth.resend_code':
-            # GET-only endpoint — flash + bounce the user back to the page
-            # they came from (the verify-code screen).
+            # Flash + bounce the user back to the verify-code screen after a
+            # rate-limited resend form submission.
             flash(message, 'warning')
             email = request.args.get('email', '')
             if email:

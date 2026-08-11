@@ -27,17 +27,28 @@ def _require_secret_key() -> str:
 
 
 def _default_cookie_secure() -> bool:
-    """Default the Secure cookie flag ON in production-like environments.
+    """Resolve the Secure cookie flag from an explicit or automatic setting.
 
     The historical default was '0' (off), which meant a production deploy
     that forgot to set SESSION_COOKIE_SECURE would ship its session cookie
     over plain HTTP. We only default to '0' in dev/test (FLASK_DEBUG=1 or
     pytest); everything else is treated as production and defaults to
-    Secure=True. The env variable still wins when explicitly set.
+    Secure=True. Blank values retain that automatic behavior. Nonblank values
+    must be an explicit true or false spelling so configuration mistakes fail
+    at startup instead of silently disabling Secure cookies.
     """
     explicit = os.environ.get('SESSION_COOKIE_SECURE')
     if explicit is not None:
-        return explicit in ('1', 'true', 'True')
+        normalized = explicit.strip().lower()
+        if normalized in ('1', 'true'):
+            return True
+        if normalized in ('0', 'false'):
+            return False
+        if normalized:
+            raise RuntimeError(
+                'SESSION_COOKIE_SECURE must be unset, blank, or one of: '
+                '1, true, 0, false.'
+            )
     in_dev = (
         os.environ.get('FLASK_DEBUG') in ('1', 'true', 'True')
         or 'pytest' in sys.modules
@@ -63,7 +74,8 @@ class Config:
     WTF_CSRF_ENABLED = True
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = 'Lax'
-    # Secure-by-default in production; opt-out only in dev/test (see helper).
+    # Secure-by-default in production; explicit false remains available for
+    # operators serving an intentional HTTP-only environment (see helper).
     SESSION_COOKIE_SECURE = _default_cookie_secure()
 
     # Cap request body size to blunt cheap DoS via huge multipart/form

@@ -637,9 +637,8 @@ def reset_password(token):
         return redirect(url_for('dashboard.index'))
 
     # Validate the token up front so expired/tampered links show an error
-    # immediately. We don't pre-check the jti against the user here — the
-    # service does that under a single transaction so an attacker can't
-    # race two redemptions of the same link.
+    # immediately. We don't pre-check the jti against the user here: the
+    # service consumes it through the conditional password-reset UPDATE.
     payload = verify_reset_token(token)
     if not payload:
         flash(MESSAGES['PASSWORD_RESET_LINK_INVALID'], 'danger')

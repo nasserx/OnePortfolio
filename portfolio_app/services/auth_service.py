@@ -382,25 +382,36 @@ class AuthService:
 
         Returns ``None`` for any of: unknown email, no live jti, jti
         mismatch (token already used or never issued for this user). On
-        success the jti is cleared, lockouts are reset, and the password
-        is rehashed under the current scheme.
+        success one conditional database UPDATE clears the jti, resets
+        lockouts, advances the authentication generation, and stores a
+        password hash produced under the current scheme.
         """
+        if not jti:
+            return None
+
+        # Cheap advisory rejection before bcrypt. The conditional UPDATE
+        # below remains authoritative if this state changes after the read.
         user = self.user_repo.get_by_email(email)
         if not user:
             return None
-        # The jti must be both present and identical — empty/None on
-        # either side means the link has already been consumed.
         stored = user.password_reset_jti or ''
-        if not stored or not jti or not hmac.compare_digest(stored, jti):
+        if not stored or not hmac.compare_digest(stored, jti):
             return None
-        user.set_password(new_password)
-        user.password_reset_jti = None  # one-shot — done
-        user.auth_generation = User.auth_generation + 1
-        # A successful reset implicitly clears any active lockout.
-        user.failed_login_attempts = 0
-        user.locked_until = None
-        self.user_repo.commit()
-        return user
+
+        # Reuse the model's authoritative bcrypt hashing behavior without
+        # attaching a transient object to the database session.
+        password_holder = User()
+        password_holder.set_password(new_password)
+
+        consumed = self.user_repo.consume_password_reset(
+            email,
+            jti,
+            password_holder.password_hash,
+        )
+        if not consumed:
+            return None
+
+        return self.user_repo.get_by_email(email)
 
     # ------------------------------------------------------------------
     # Account self-deletion (OTP-confirmed)

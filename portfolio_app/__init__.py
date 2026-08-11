@@ -28,12 +28,11 @@ mail = Mail()
 ONEPORTFOLIO_OAUTH_EXTENSION_KEY = 'oneportfolio_oauth'
 _AUTH_IDENTITY_RE = re.compile(r'\Av1:([1-9][0-9]*):(0|[1-9][0-9]*)\Z')
 _LEGACY_AUTH_IDENTITY_RE = re.compile(r'\A[1-9][0-9]*\Z')
-# In-memory backend — fine for a single-worker deployment. For multi-worker
-# scale, point ``RATELIMIT_STORAGE_URI`` at a Redis instance.
+# ``RATELIMIT_STORAGE_URI`` is owned by application configuration and consumed
+# by ``init_app``. No constructor value should override that deployment choice.
 limiter = Limiter(
     key_func=get_remote_address,
     default_limits=[],
-    storage_uri="memory://",
 )
 
 

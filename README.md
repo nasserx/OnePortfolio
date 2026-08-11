@@ -103,6 +103,7 @@ Supported environment variables are defined in [config.py](config.py):
 | `EMAIL_PASSWORD` | Gmail app password for the sender account. |
 | `APP_BASE_URL` | Public base URL used in email links, without a trailing slash. |
 | `SESSION_COOKIE_SECURE` | Controls Secure session and remember cookies and HSTS. Unset/blank uses automatic mode: secure outside debug/test contexts. Explicit values are `1`/`true` or `0`/`false`; other values fail startup. |
+| `RATELIMIT_STORAGE_URI` | Flask-Limiter storage URI. Unset/blank uses process-local `memory://`, suitable when one application process is authoritative for counters. Multi-process deployments require a shared Flask-Limiter backend and its deployment-specific client/service; none is bundled by this repository. |
 | `DEV_AUTO_LOGIN` | Development-only first-user auto-login. Never enable in production. |
 | `FLASK_DEBUG` | Enables Flask debug mode when set by your run environment. Also allows the dev-only secret fallback. |
 | `GOOGLE_OAUTH_ENABLED` | Optional backend Google OAuth route flag. Disabled by default; existing-account Google sign-in is available only when explicitly configured. |

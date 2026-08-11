@@ -34,6 +34,7 @@ from portfolio_app.models.user import User
 from portfolio_app.models.pending_registration import PendingRegistration
 from portfolio_app.repositories.user_repository import UserRepository
 from portfolio_app.services.auth_service import MAX_OTP_ATTEMPTS
+from portfolio_app.utils.messages import MESSAGES
 
 
 # ---------------------------------------------------------------------------
@@ -216,6 +217,13 @@ def _pending_verification_state(app, email):
             pending.verification_code_expires_at,
             pending.failed_otp_attempts,
         )
+
+
+def _assert_no_registration_started(app, email_log):
+    assert email_log == []
+    with app.app_context():
+        assert PendingRegistration.query.count() == 0
+        assert User.query.count() == 0
 
 
 def _expire_pending_otp(app, email):
@@ -534,6 +542,86 @@ class TestResendVerificationCode:
         assert _pending_verification_state(
             app, 'alice@example.com',
         ) == state_before
+
+
+class TestCsrfRedirectSafety:
+
+    def test_local_referrer_is_preserved_with_feedback_and_no_mutation(
+        self, csrf_app, csrf_client, email_log,
+    ):
+        response = csrf_client.post(
+            '/register',
+            data={
+                'email': 'alice@example.com',
+                'password': 'CorrectHorse9',
+            },
+            headers={'Referer': '/register?source=csrf'},
+            follow_redirects=False,
+        )
+
+        assert response.status_code in (302, 303)
+        assert response.headers['Location'] == '/register?source=csrf'
+        _assert_no_registration_started(csrf_app, email_log)
+
+        destination = csrf_client.get(response.headers['Location'])
+        assert MESSAGES['CSRF_CHECK_FAILED'] in destination.get_data(as_text=True)
+
+    @pytest.mark.parametrize(
+        'referrer',
+        (
+            'https://evil.example/phish',
+            '//evil.example/phish',
+            'http://[malformed',
+            'http://localhost/register?source=csrf',
+            None,
+        ),
+        ids=(
+            'external-https',
+            'scheme-relative-external',
+            'malformed',
+            'same-origin-absolute-not-in-local-helper-contract',
+            'missing',
+        ),
+    )
+    def test_unsafe_or_absent_referrer_uses_internal_fallback_without_mutation(
+        self, csrf_app, csrf_client, email_log, referrer,
+    ):
+        headers = {'Referer': referrer} if referrer is not None else {}
+        response = csrf_client.post(
+            '/register',
+            data={
+                'email': 'alice@example.com',
+                'password': 'CorrectHorse9',
+            },
+            headers=headers,
+            follow_redirects=False,
+        )
+
+        assert response.status_code in (302, 303)
+        assert response.headers['Location'] == '/'
+        assert response.headers['Location'] != referrer
+        _assert_no_registration_started(csrf_app, email_log)
+
+    def test_json_csrf_failure_preserves_json_response_without_redirect_or_mutation(
+        self, csrf_app, csrf_client, email_log,
+    ):
+        response = csrf_client.post(
+            '/register',
+            json={
+                'email': 'alice@example.com',
+                'password': 'CorrectHorse9',
+            },
+            headers={'Referer': 'https://evil.example/phish'},
+            follow_redirects=False,
+        )
+
+        assert response.status_code == 400
+        assert response.get_json() == {
+            'success': False,
+            'error': MESSAGES['SESSION_EXPIRED'],
+        }
+        assert 'Location' not in response.headers
+        _assert_no_registration_started(csrf_app, email_log)
 
 
 # ---------------------------------------------------------------------------

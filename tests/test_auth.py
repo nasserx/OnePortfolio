@@ -34,6 +34,7 @@ from portfolio_app.models.user import User
 from portfolio_app.models.pending_registration import PendingRegistration
 from portfolio_app.repositories.user_repository import UserRepository
 from portfolio_app.services.auth_service import MAX_OTP_ATTEMPTS
+from portfolio_app.services.factory import Services
 from portfolio_app.utils.messages import MESSAGES
 
 
@@ -1144,6 +1145,165 @@ class TestSettingsAndDeletion:
 # ---------------------------------------------------------------------------
 # Token & session tests
 # ---------------------------------------------------------------------------
+
+class TestPasswordResetAtomicConsumption:
+
+    def test_matching_jti_consumes_reset_state_exactly_once(
+        self, app, client, email_log, monkeypatch,
+    ):
+        _signup_and_verify(app, client, email_log)
+        locked_until = datetime.now(timezone.utc) + timedelta(minutes=20)
+
+        with app.app_context():
+            user = User.query.filter_by(email='alice@example.com').one()
+            user.failed_login_attempts = 5
+            user.locked_until = locked_until
+            db.session.commit()
+
+            service = Services().auth_service
+            live_jti = service.begin_password_reset(user)
+            original_generation = user.auth_generation
+
+            first_result = service.reset_password_with_token(
+                user.email,
+                live_jti,
+                'ResetHorse123',
+            )
+            assert first_result is not None
+
+            db.session.expire_all()
+            reset_user = User.query.filter_by(email='alice@example.com').one()
+            assert reset_user.check_password('ResetHorse123')
+            assert reset_user.password_reset_jti is None
+            assert reset_user.auth_generation == original_generation + 1
+            assert reset_user.failed_login_attempts == 0
+            assert reset_user.locked_until is None
+
+            generation_after_first_reset = reset_user.auth_generation
+
+            def fail_if_replay_hashes(_user, _password):
+                pytest.fail('consumed reset state must be rejected before hashing')
+
+            monkeypatch.setattr(User, 'set_password', fail_if_replay_hashes)
+            replay_result = service.reset_password_with_token(
+                reset_user.email,
+                live_jti,
+                'SubstituteHorse456',
+            )
+            assert replay_result is None
+
+            db.session.expire_all()
+            replayed_user = User.query.filter_by(email='alice@example.com').one()
+            assert replayed_user.check_password('ResetHorse123')
+            assert not replayed_user.check_password('SubstituteHorse456')
+            assert replayed_user.password_reset_jti is None
+            assert replayed_user.auth_generation == generation_after_first_reset
+            assert replayed_user.failed_login_attempts == 0
+            assert replayed_user.locked_until is None
+
+    @pytest.mark.parametrize('submitted_jti', ['nonmatching-jti', ''])
+    def test_nonmatching_or_empty_jti_preserves_all_reset_state(
+        self, app, client, email_log, submitted_jti, monkeypatch,
+    ):
+        _signup_and_verify(app, client, email_log)
+
+        with app.app_context():
+            user = User.query.filter_by(email='alice@example.com').one()
+            user.failed_login_attempts = 4
+            user.locked_until = datetime.now(timezone.utc) + timedelta(minutes=20)
+            db.session.commit()
+
+            service = Services().auth_service
+            live_jti = service.begin_password_reset(user)
+            db.session.expire_all()
+            unchanged_user = User.query.filter_by(email='alice@example.com').one()
+            original_generation = unchanged_user.auth_generation
+            original_failed_attempts = unchanged_user.failed_login_attempts
+            original_locked_until = unchanged_user.locked_until
+
+            hash_calls = []
+
+            def record_password_hash(_user, password):
+                hash_calls.append(password)
+
+            monkeypatch.setattr(User, 'set_password', record_password_hash)
+            result = service.reset_password_with_token(
+                unchanged_user.email,
+                submitted_jti,
+                'SubstituteHorse456',
+            )
+            assert result is None
+            assert hash_calls == []
+
+            db.session.expire_all()
+            preserved_user = User.query.filter_by(email='alice@example.com').one()
+            assert preserved_user.check_password('CorrectHorse9')
+            assert not preserved_user.check_password('SubstituteHorse456')
+            assert preserved_user.password_reset_jti == live_jti
+            assert preserved_user.auth_generation == original_generation
+            assert preserved_user.failed_login_attempts == original_failed_attempts
+            assert preserved_user.locked_until == original_locked_until
+
+    def test_http_reset_replay_uses_existing_generic_invalid_link_flow(
+        self, app, client, email_log,
+    ):
+        _signup_and_verify(app, client, email_log)
+        reset_client = app.test_client()
+        request_response = reset_client.post(
+            '/forgot-password',
+            data={'email': 'alice@example.com'},
+            follow_redirects=False,
+        )
+        assert request_response.status_code in (302, 303)
+        reset_token = next(
+            value.split(':', 1)[1]
+            for _, value in reversed(email_log)
+            if value.startswith('reset:')
+        )
+
+        success = reset_client.post(
+            f'/reset-password/{reset_token}',
+            data={
+                'password': 'ResetHorse123',
+                'confirm_password': 'ResetHorse123',
+            },
+            follow_redirects=False,
+        )
+        assert success.status_code in (302, 303)
+        assert success.headers['Location'].endswith('/login')
+
+        replay = reset_client.post(
+            f'/reset-password/{reset_token}',
+            data={
+                'password': 'SubstituteHorse456',
+                'confirm_password': 'SubstituteHorse456',
+            },
+            follow_redirects=False,
+        )
+        assert replay.status_code in (302, 303)
+        assert replay.headers['Location'].endswith('/forgot-password')
+
+        with reset_client.session_transaction() as session:
+            assert (
+                'danger',
+                MESSAGES['PASSWORD_RESET_LINK_INVALID'],
+            ) in session.get('_flashes', [])
+
+        assert reset_client.post('/login', data={
+            'username': 'alice@example.com',
+            'password': 'ResetHorse123',
+        }).status_code in (302, 303)
+        failed_login_client = app.test_client()
+        failed_login = failed_login_client.post(
+            '/login',
+            data={
+                'username': 'alice@example.com',
+                'password': 'SubstituteHorse456',
+            },
+            follow_redirects=True,
+        )
+        assert MESSAGES['INVALID_CREDENTIALS'] in failed_login.get_data(as_text=True)
+
 
 class TestTokenAndSession:
 

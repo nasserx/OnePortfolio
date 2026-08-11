@@ -6,7 +6,6 @@ user settings, and account deletion.
 import logging
 from collections.abc import Mapping
 from functools import wraps
-from urllib.parse import urlparse
 from flask import Blueprint, abort, current_app, render_template, request, redirect, url_for, flash, jsonify, session
 from flask_login import login_user, logout_user, login_required, current_user
 from flask_limiter.util import get_remote_address
@@ -33,6 +32,7 @@ from portfolio_app.utils.email import (
     send_reset_email,
 )
 from portfolio_app.utils.messages import MESSAGES
+from portfolio_app.utils.redirects import safe_local_redirect
 
 logger = logging.getLogger(__name__)
 
@@ -40,22 +40,6 @@ auth_bp = Blueprint('auth', __name__)
 _GOOGLE_OAUTH_NEXT_SESSION_KEY = 'google_oauth_next'
 _GOOGLE_OAUTH_PROVIDER = 'google'
 _EMAIL_RATE_LIMIT_KEY_MAX_LENGTH = 120
-
-
-def _safe_local_redirect(target):
-    """Return a safe local redirect path, or None for unsafe values."""
-    if not target:
-        return None
-    parsed = urlparse(target)
-    if (
-        parsed.scheme
-        or parsed.netloc
-        or not target.startswith('/')
-        or target.startswith('//')
-        or target.startswith('/\\')
-    ):
-        return None
-    return target
 
 
 def _forgot_password_target_key():
@@ -211,7 +195,7 @@ def login():
                 # no scheme/netloc. The previous netloc-only check let
                 # 'javascript:alert(1)' through (empty netloc) — Safari
                 # historically followed that as a Location header.
-                next_page = _safe_local_redirect(request.args.get('next'))
+                next_page = safe_local_redirect(request.args.get('next'))
                 redirect_url = next_page or url_for('dashboard.index')
                 if from_modal:
                     return jsonify({'ok': True, 'redirect': redirect_url})
@@ -231,7 +215,7 @@ def login():
         form_errors=form_errors,
         form_values=form_values,
         google_oauth_available=_google_oauth_available(),
-        safe_next=_safe_local_redirect(request.args.get('next')),
+        safe_next=safe_local_redirect(request.args.get('next')),
     )
 
 
@@ -317,7 +301,7 @@ def register():
 def google_signin():
     """Begin Google OAuth sign-in for existing accounts only."""
     google = _google_oauth_client_or_404()
-    next_page = _safe_local_redirect(request.args.get('next'))
+    next_page = safe_local_redirect(request.args.get('next'))
     if next_page:
         session[_GOOGLE_OAUTH_NEXT_SESSION_KEY] = next_page
     else:
@@ -331,7 +315,7 @@ def google_signin():
 def google_callback():
     """Complete Google OAuth sign-in for an existing verified local account."""
     google = _google_oauth_client_or_404()
-    next_page = _safe_local_redirect(
+    next_page = safe_local_redirect(
         session.pop(_GOOGLE_OAUTH_NEXT_SESSION_KEY, None)
     )
 

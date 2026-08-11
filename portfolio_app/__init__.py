@@ -19,6 +19,7 @@ from portfolio_app.utils import (
     fmt_display_percent,
     fmt_money,
 )
+from portfolio_app.utils.redirects import safe_local_redirect
 
 db = SQLAlchemy()
 csrf = CSRFProtect()
@@ -178,10 +179,13 @@ def create_app(config_class=Config):
         except Exception:
             pass
 
-        ref = request.referrer
-        if ref:
-            return redirect(ref)
-        return redirect(url_for("dashboard.index"))
+        # Reuse the same strict local-path contract as auth ``next`` values.
+        # Malformed URLs fail closed to the deterministic internal fallback.
+        try:
+            safe_referrer = safe_local_redirect(request.referrer)
+        except ValueError:
+            safe_referrer = None
+        return redirect(safe_referrer or url_for("dashboard.index"))
 
     # Template filters
     app.jinja_env.filters['fmt_decimal'] = fmt_decimal

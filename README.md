@@ -102,7 +102,7 @@ Supported environment variables are defined in [config.py](config.py):
 | `EMAIL_USER` | Gmail sender address for verification and reset emails. |
 | `EMAIL_PASSWORD` | Gmail app password for the sender account. |
 | `APP_BASE_URL` | Public base URL used in email links, without a trailing slash. |
-| `SESSION_COOKIE_SECURE` | Set to `1` when served over HTTPS. Defaults secure outside debug/test contexts. |
+| `SESSION_COOKIE_SECURE` | Controls Secure session and remember cookies and HSTS. Unset/blank uses automatic mode: secure outside debug/test contexts. Explicit values are `1`/`true` or `0`/`false`; other values fail startup. |
 | `DEV_AUTO_LOGIN` | Development-only first-user auto-login. Never enable in production. |
 | `FLASK_DEBUG` | Enables Flask debug mode when set by your run environment. Also allows the dev-only secret fallback. |
 | `GOOGLE_OAUTH_ENABLED` | Optional backend Google OAuth route flag. Disabled by default; existing-account Google sign-in is available only when explicitly configured. |

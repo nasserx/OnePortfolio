@@ -434,9 +434,10 @@ def verify_code():
     )
 
 
-@auth_bp.route('/resend-code')
+@auth_bp.route('/resend-code', methods=['POST'])
 @limiter.limit(
     "3 per hour",
+    methods=['POST'],
     key_func=lambda: (request.args.get('email', '') or '').lower(),
     error_message=MESSAGES['RATE_LIMIT_RESEND'],
 )

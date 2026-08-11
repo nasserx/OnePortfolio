@@ -55,6 +55,11 @@ class _RateLimitedTestConfig(_BaseTestConfig):
     RATELIMIT_ENABLED = True
 
 
+class _CsrfTestConfig(_BaseTestConfig):
+    """Exercise state-changing auth routes with normal CSRF protection."""
+    WTF_CSRF_ENABLED = True
+
+
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -149,6 +154,22 @@ def rate_limited_client(rate_limited_app):
     return rate_limited_app.test_client()
 
 
+@pytest.fixture
+def csrf_app(_isolate_db):
+    app = create_app(_CsrfTestConfig)
+    with app.app_context():
+        db.drop_all()
+        db.create_all()
+    yield app
+    with app.app_context():
+        db.session.remove()
+
+
+@pytest.fixture
+def csrf_client(csrf_app):
+    return csrf_app.test_client()
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -162,9 +183,39 @@ def _register(client, **overrides):
     return client.post('/register', data=payload, follow_redirects=False)
 
 
+def _csrf_token_from(response):
+    match = re.search(
+        r'name="csrf_token"\s+value="([^"]+)"',
+        response.get_data(as_text=True),
+    )
+    assert match is not None
+    return match.group(1)
+
+
+def _register_with_csrf(client, **overrides):
+    token = _csrf_token_from(client.get('/register'))
+    payload = {
+        'email': 'alice@example.com',
+        'password': 'CorrectHorse9',
+        'csrf_token': token,
+    }
+    payload.update(overrides)
+    return client.post('/register', data=payload, follow_redirects=False)
+
+
 def _last_pending(app, email):
     with app.app_context():
         return PendingRegistration.query.filter_by(email=email.lower()).first()
+
+
+def _pending_verification_state(app, email):
+    with app.app_context():
+        pending = PendingRegistration.query.filter_by(email=email.lower()).one()
+        return (
+            pending.verification_code,
+            pending.verification_code_expires_at,
+            pending.failed_otp_attempts,
+        )
 
 
 def _expire_pending_otp(app, email):
@@ -368,6 +419,121 @@ class TestSignup:
         assert resp.status_code in (302, 303)
         with fresh_client.session_transaction() as sess:
             assert sess.get('_user_id') is not None
+
+
+class TestResendVerificationCode:
+
+    def test_get_is_not_allowed_and_does_not_mutate_or_send(
+        self, app, client, email_log,
+    ):
+        _register(client)
+        state_before = _pending_verification_state(app, 'alice@example.com')
+        emails_before = list(email_log)
+
+        response = client.get(
+            '/resend-code?email=alice@example.com',
+            follow_redirects=False,
+        )
+
+        assert response.status_code == 405
+        assert email_log == emails_before
+        assert _pending_verification_state(
+            app, 'alice@example.com',
+        ) == state_before
+
+    def test_csrf_protected_post_resends_once_and_new_code_verifies(
+        self, csrf_app, csrf_client, email_log, monkeypatch,
+    ):
+        codes = iter((1, 2))
+        monkeypatch.setattr(
+            'portfolio_app.services.auth_service.secrets.randbelow',
+            lambda upper_bound: next(codes),
+        )
+        _register_with_csrf(csrf_client)
+        assert email_log == [('alice@example.com', '100001')]
+
+        verify_page = csrf_client.get(
+            '/verify-code?email=alice@example.com',
+        )
+        verify_html = verify_page.get_data(as_text=True)
+        resend_form = re.search(
+            r'<form\b[^>]*action="([^"]*resend-code[^"]*)"[^>]*>(.*?)</form>',
+            verify_html,
+            re.DOTALL,
+        )
+        assert resend_form is not None
+        assert re.search(r'\bmethod="POST"', resend_form.group(0), re.IGNORECASE)
+        assert 'href="/resend-code' not in verify_html
+        csrf_match = re.search(
+            r'name="csrf_token"\s+value="([^"]+)"',
+            resend_form.group(2),
+        )
+        assert csrf_match is not None
+        response = csrf_client.post(
+            resend_form.group(1),
+            data={'csrf_token': csrf_match.group(1)},
+            follow_redirects=False,
+        )
+
+        assert response.status_code in (302, 303)
+        assert '/verify-code' in response.headers['Location']
+        assert email_log == [
+            ('alice@example.com', '100001'),
+            ('alice@example.com', '100002'),
+        ]
+        assert _pending_verification_state(
+            csrf_app, 'alice@example.com',
+        )[0] == '100002'
+
+        verify_page = csrf_client.get(response.headers['Location'])
+        verify_token = _csrf_token_from(verify_page)
+        verified = csrf_client.post(
+            '/verify-code?email=alice@example.com',
+            data={'code': '100002', 'csrf_token': verify_token},
+            follow_redirects=False,
+        )
+        assert verified.status_code in (302, 303)
+        with csrf_app.app_context():
+            assert PendingRegistration.query.filter_by(
+                email='alice@example.com',
+            ).first() is None
+            assert User.query.filter_by(email='alice@example.com').one()
+
+    def test_post_without_csrf_does_not_mutate_or_send(
+        self, csrf_app, csrf_client, email_log,
+    ):
+        _register_with_csrf(csrf_client)
+        state_before = _pending_verification_state(
+            csrf_app, 'alice@example.com',
+        )
+        emails_before = list(email_log)
+
+        response = csrf_client.post(
+            '/resend-code?email=alice@example.com',
+            follow_redirects=False,
+        )
+
+        assert response.status_code in (302, 303)
+        assert email_log == emails_before
+        assert _pending_verification_state(
+            csrf_app, 'alice@example.com',
+        ) == state_before
+
+    def test_post_without_email_does_not_mutate_or_send(
+        self, app, client, email_log,
+    ):
+        _register(client)
+        state_before = _pending_verification_state(app, 'alice@example.com')
+        emails_before = list(email_log)
+
+        response = client.post('/resend-code', follow_redirects=False)
+
+        assert response.status_code in (302, 303)
+        assert '/register' in response.headers['Location']
+        assert email_log == emails_before
+        assert _pending_verification_state(
+            app, 'alice@example.com',
+        ) == state_before
 
 
 # ---------------------------------------------------------------------------
@@ -1265,23 +1431,38 @@ class TestRateLimits:
             },
         )
         # 1 verification email was sent during registration.
-        emails_for_bob_before = sum(1 for row in email_log if row[0] == 'bob@example.com')
+        emails_for_bob_before = sum(
+            1 for row in email_log if row[0].lower() == 'bob@example.com'
+        )
 
-        # Three resends are allowed.
-        for i in range(3):
-            resp = rate_limited_client.get('/resend-code?email=bob@example.com')
+        # Three resends are allowed. Equivalent email casing shares the
+        # existing normalized per-email limiter key.
+        for i, email in enumerate((
+            'bob@example.com',
+            'Bob@Example.com',
+            'BOB@EXAMPLE.COM',
+        )):
+            resp = rate_limited_client.post(f'/resend-code?email={email}')
             assert resp.status_code in (200, 302, 303), f"resend {i}: {resp.status_code}"
 
-        # The 4th is rate-limited. The 429 handler is route-aware: for
-        # /resend-code (a GET-only endpoint) it flashes a warning and
-        # redirects back to /verify-code instead of returning a bare 429
-        # page, so the user lands on a real screen with feedback.
-        resp = rate_limited_client.get(
-            '/resend-code?email=bob@example.com', follow_redirects=False,
+        state_after_third = _pending_verification_state(
+            rate_limited_app, 'bob@example.com',
+        )
+
+        # The 4th POST is rate-limited. The route-aware 429 handler flashes a
+        # warning and redirects to the verify-code screen.
+        resp = rate_limited_client.post(
+            '/resend-code?email=Bob@Example.com', follow_redirects=False,
         )
         assert resp.status_code in (302, 303)
         assert '/verify-code' in resp.headers.get('Location', '')
 
-        # And the rate-limited 4th attempt did NOT actually send a 4th code.
-        emails_for_bob_after = sum(1 for row in email_log if row[0] == 'bob@example.com')
+        # The rejected request neither sends another message nor rotates the
+        # code, expiry, or failed-attempt state.
+        emails_for_bob_after = sum(
+            1 for row in email_log if row[0].lower() == 'bob@example.com'
+        )
         assert emails_for_bob_after - emails_for_bob_before == 3
+        assert _pending_verification_state(
+            rate_limited_app, 'bob@example.com',
+        ) == state_after_third

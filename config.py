@@ -56,6 +56,12 @@ def _default_cookie_secure() -> bool:
     return not in_dev
 
 
+def _rate_limit_storage_uri() -> str:
+    """Return the configured limiter storage URI or the local default."""
+    configured = os.environ.get('RATELIMIT_STORAGE_URI', '').strip()
+    return configured or 'memory://'
+
+
 class Config:
     """Base configuration"""
     SECRET_KEY = _require_secret_key()
@@ -82,6 +88,10 @@ class Config:
     # uploads or oversized JSON. 1 MB is well above any legitimate form
     # in this app (notes are capped at 300 chars, no file uploads).
     MAX_CONTENT_LENGTH = 1 * 1024 * 1024
+
+    # Flask-Limiter storage. The default remains process-local; deployments
+    # with multiple authoritative processes must configure a shared backend.
+    RATELIMIT_STORAGE_URI = _rate_limit_storage_uri()
 
     # Flask-Login
     REMEMBER_COOKIE_DURATION = timedelta(days=30)

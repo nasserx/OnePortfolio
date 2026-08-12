@@ -10,7 +10,7 @@
    6.  Assets toolbar
    7.  Settings
    8.  Auth
-   9.  Admin
+   9.  Record sub-tables
    10. Utilities
    ========================================================================== */
 
@@ -1002,8 +1002,8 @@
   .disclosure__panel .table thead th { background-color: var(--bg-inset); }
 
   /* Records revealed inside a disclosure are one level below the summary row
-     that opened them, and read half a step smaller to say so. Scoped to the
-     panel: the admin table is a page's primary content, not a detail view. */
+     that opened them, and read half a step smaller to say so. Page-level
+     record tables retain the base size. */
   .disclosure__panel .records-table { font-size: var(--text-detail); }
 
   @media (max-width: 75rem) {
@@ -1371,19 +1371,7 @@
   }
 
   /* ======================================================================
-     9. ADMIN
-     ====================================================================== */
-
-  .admin-note {
-    color: var(--fg-subtle);
-    font-size: var(--text-xs);
-  }
-
-  .admin-table-id { color: var(--fg-faint); }
-  .admin-table-cell { color: var(--fg-subtle); }
-
-  /* ======================================================================
-     10. RECORD SUB-TABLES
+     9. RECORD SUB-TABLES
      Column budgets for the two ledger tables. Declared here rather than in
      components.css because the budget is a page decision, not a component one.
      ====================================================================== */
@@ -1411,7 +1399,6 @@
     min-width: 34rem;
   }
 
-  .records-table--admin-users { min-width: 56rem; }
 }
 
 /* ==========================================================================

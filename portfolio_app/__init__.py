@@ -282,10 +282,9 @@ def create_app(config_class=Config):
     # protection, MIME sniffing protection, locked-down referrer/permission
     # policy, and a CSP scoped to the origins this app actually loads from
     # (Bootstrap + bootstrap-icons via jsdelivr, Roboto via Google Fonts).
-    # ``'unsafe-inline'`` is currently required for the inline <script> /
-    # <style> blocks in base.html and the inline event handlers in admin
-    # templates; tightening that is a separate refactor (move scripts to
-    # external files + nonces).
+    # ``'unsafe-inline'`` is currently required for inline <script> / <style>
+    # blocks and event handlers in templates; tightening that is a separate
+    # refactor (move scripts to external files + nonces).
     _CSP = (
         "default-src 'self'; "
         "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "

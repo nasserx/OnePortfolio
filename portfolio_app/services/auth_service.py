@@ -6,9 +6,6 @@ import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Tuple, Union
 
-from sqlalchemy import text
-
-from portfolio_app import db
 from portfolio_app.models.user import User
 from portfolio_app.models.pending_registration import PendingRegistration
 from portfolio_app.repositories.user_repository import UserRepository
@@ -206,15 +203,11 @@ class AuthService:
                 self.pending_repo.commit()
                 return FAIL
 
-            # Insert the user as a regular account; promote to admin in a
-            # separate atomic UPDATE that only fires when no admin already
-            # exists. This closes the race window where two simultaneous
-            # first-time sign-ups could both observe count() == 0 and both
-            # come up as admins.
+            # Verified registrations always create ordinary user accounts.
+            # Cross-user privilege is not part of the application contract.
             user = User(
                 username=pending.username,
                 email=pending.email,
-                is_admin=False,
                 is_verified=True,
                 created_at=datetime.now(timezone.utc),
             )
@@ -222,19 +215,6 @@ class AuthService:
             self.user_repo.add(user)
             self.pending_repo.delete(pending)
             self.user_repo.commit()
-
-            # Atomic first-admin election. The NOT EXISTS predicate on the
-            # same UPDATE means at most one row is ever flipped to admin.
-            db.session.execute(
-                text(
-                    'UPDATE "user" SET is_admin = 1 '
-                    'WHERE id = :id '
-                    '  AND NOT EXISTS (SELECT 1 FROM "user" WHERE is_admin = 1)'
-                ),
-                {'id': user.id},
-            )
-            db.session.commit()
-            db.session.refresh(user)
             return True, ''
 
         # ── Case 3: no pending state for this email ──
@@ -456,29 +436,6 @@ class AuthService:
             and bool(user.deletion_code_expires_at)
             and datetime.now(timezone.utc) <= self._as_utc(user.deletion_code_expires_at)
         )
-
-    # ------------------------------------------------------------------
-    # Admin-only operations
-    # ------------------------------------------------------------------
-
-    def toggle_admin(self, user_id: int, current_user: User) -> User:
-        user = self.user_repo.get_by_id(user_id)
-        if not user:
-            raise ValueError(MESSAGES['USER_NOT_FOUND'])
-        if user.id == current_user.id:
-            raise ValueError(MESSAGES['ADMIN_CANNOT_CHANGE_OWN_STATUS'])
-        user.is_admin = not user.is_admin
-        self.user_repo.commit()
-        return user
-
-    def delete_user(self, user_id: int, current_user: User) -> None:
-        user = self.user_repo.get_by_id(user_id)
-        if not user:
-            raise ValueError(MESSAGES['USER_NOT_FOUND'])
-        if user.id == current_user.id:
-            raise ValueError(MESSAGES['ADMIN_CANNOT_DELETE_SELF'])
-        self.user_repo.delete(user)
-        self.user_repo.commit()
 
     # ------------------------------------------------------------------
     # Private helpers

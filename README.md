@@ -40,7 +40,7 @@ For exact formulas, see [docs/DOMAIN_AND_CALCULATIONS.md](docs/DOMAIN_AND_CALCUL
 - Separate income tracking.
 - Overview totals, portfolio summaries, assets page, and Overview allocation charts based on recorded data.
 - Multi-user accounts with per-user data scoping.
-- Email verification, password reset, account settings, and admin user management.
+- Self-service email verification, password reset, and account settings.
 - Responsive dark-only UI using Bootstrap, Bootstrap Icons, and local design tokens.
 
 ## Tech Stack
@@ -87,7 +87,7 @@ cp .env.example .env
 python app.py
 ```
 
-The development server runs at `http://127.0.0.1:5000` by default. The first registered user is promoted to admin.
+The development server runs at `http://127.0.0.1:5000` by default. Registered users manage only their own accounts and tenant-scoped portfolio data; the public application exposes no privileged cross-user role. Exceptional deployment or database maintenance remains outside the application authorization model.
 
 ## Configuration
 

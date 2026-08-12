@@ -4,7 +4,7 @@ from portfolio_app import db
 # Bumped whenever a new migration step is added below. Stored in the SQLite
 # header (PRAGMA user_version) after a successful migration so subsequent
 # boots can short-circuit the whole inspection pass.
-TARGET_SCHEMA_VERSION = 31
+TARGET_SCHEMA_VERSION = 32
 
 
 def run_migrations(app):
@@ -562,6 +562,14 @@ def _apply_migration_steps(conn, sa):
             ))
             conn.commit()
 
+    # ── Step 32: remove the obsolete application-admin flag ───────────
+    # The application no longer has a privileged cross-user role. Rebuild
+    # the table because the supported SQLite baseline predates DROP COLUMN.
+    # Child tables are left intact while the migration runner has foreign-key
+    # enforcement disabled; their user_id values continue to reference the
+    # preserved primary keys after the replacement table is renamed.
+    _rebuild_user_without_admin(conn, sa)
+
     # ── Step 24: rebuild tables with stale FK constraints / dropped cols ─
     # Older databases were created when the parent table was named
     # ``capital`` (later ``fund`` then ``portfolio``). SQLite RENAME TABLE
@@ -578,6 +586,78 @@ def _apply_migration_steps(conn, sa):
     # denormalized column — net deposits are now derived on read from the
     # PortfolioEvent log, so the column is no longer a source of truth.
     _rebuild_tables(conn, sa, inspector)
+
+
+def _rebuild_user_without_admin(conn, sa):
+    """Drop the legacy user.is_admin column while preserving user identity."""
+    user_cols = {
+        row[1]
+        for row in conn.execute(sa.text('PRAGMA table_info("user")')).fetchall()
+    }
+    if 'is_admin' not in user_cols:
+        return
+
+    columns = [
+        'id',
+        'username',
+        'email',
+        'password_hash',
+        'is_verified',
+        'created_at',
+        'last_login',
+        'verification_code',
+        'verification_code_expires_at',
+        'verification_code_failed_attempts',
+        'pending_email',
+        'deletion_code',
+        'deletion_code_expires_at',
+        'deletion_code_failed_attempts',
+        'failed_login_attempts',
+        'locked_until',
+        'password_reset_jti',
+        'auth_generation',
+    ]
+    columns_csv = ', '.join(columns)
+
+    conn.execute(sa.text('DROP TABLE IF EXISTS _new_user'))
+    conn.execute(sa.text('''
+        CREATE TABLE _new_user (
+            id                                INTEGER NOT NULL PRIMARY KEY,
+            username                          VARCHAR(80) NOT NULL,
+            email                             VARCHAR(120),
+            password_hash                     VARCHAR(255) NOT NULL,
+            is_verified                       BOOLEAN NOT NULL,
+            created_at                        DATETIME,
+            last_login                        DATETIME,
+            verification_code                 VARCHAR(6),
+            verification_code_expires_at      DATETIME,
+            verification_code_failed_attempts INTEGER NOT NULL,
+            pending_email                     VARCHAR(120),
+            deletion_code                     VARCHAR(6),
+            deletion_code_expires_at          DATETIME,
+            deletion_code_failed_attempts     INTEGER NOT NULL,
+            failed_login_attempts              INTEGER NOT NULL,
+            locked_until                       DATETIME,
+            password_reset_jti                 VARCHAR(32),
+            auth_generation                   INTEGER NOT NULL DEFAULT 0
+        )
+    '''))
+    conn.execute(sa.text(
+        f'INSERT INTO _new_user ({columns_csv}) '
+        f'SELECT {columns_csv} FROM "user"'
+    ))
+
+    for index_name in ('ix_user_username', 'ix_user_email'):
+        conn.execute(sa.text(f'DROP INDEX IF EXISTS "{index_name}"'))
+    conn.execute(sa.text('DROP TABLE "user"'))
+    conn.execute(sa.text('ALTER TABLE _new_user RENAME TO "user"'))
+    conn.execute(sa.text(
+        'CREATE UNIQUE INDEX ix_user_username ON "user" (username)'
+    ))
+    conn.execute(sa.text(
+        'CREATE UNIQUE INDEX ix_user_email ON "user" (email)'
+    ))
+    conn.commit()
 
 
 def _rebuild_tables(conn, sa, inspector):

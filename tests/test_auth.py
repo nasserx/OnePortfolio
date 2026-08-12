@@ -641,85 +641,25 @@ def _signup_and_verify(app, client, email_log, **kw):
     return 'alice'
 
 
-class TestSuperAdminRemoval:
+class TestRemovedAdminSurface:
 
-    def test_first_and_later_verified_users_remain_non_privileged(
-        self, app, client, email_log,
-    ):
-        _signup_and_verify(
-            app,
-            client,
-            email_log,
-            email='first@example.com',
-        )
-        _signup_and_verify(
-            app,
-            client,
-            email_log,
-            email='later@example.com',
-        )
-
+    def test_authenticated_user_has_no_admin_web_capability(self, app, client):
         with app.app_context():
-            first = User.query.filter_by(email='first@example.com').one()
-            later = User.query.filter_by(email='later@example.com').one()
-            assert first.is_admin is False
-            assert later.is_admin is False
-
-    def test_registration_does_not_rebootstrap_after_last_legacy_flag_is_removed(
-        self, app, client, email_log,
-    ):
-        with app.app_context():
-            legacy_admin = User(
-                username='legacy',
-                email='legacy@example.com',
-                is_admin=True,
+            user = User(
+                username='alice',
+                email='alice@example.com',
                 is_verified=True,
             )
-            legacy_admin.set_password('LegacyPassword9')
-            existing_user = User(
-                username='existing',
-                email='existing@example.com',
-                is_verified=True,
-            )
-            existing_user.set_password('ExistingPassword9')
-            db.session.add_all([legacy_admin, existing_user])
+            user.set_password('CorrectHorse9')
+            db.session.add(user)
             db.session.commit()
-            db.session.delete(legacy_admin)
-            db.session.commit()
-            assert User.query.count() == 1
-            assert User.query.filter_by(is_admin=True).count() == 0
-
-        _signup_and_verify(
-            app,
-            client,
-            email_log,
-            email='replacement@example.com',
-        )
-
-        with app.app_context():
-            replacement = User.query.filter_by(
-                email='replacement@example.com',
-            ).one()
-            assert replacement.is_admin is False
-
-    def test_legacy_admin_flag_grants_no_web_capability(self, app, client):
-        with app.app_context():
-            legacy_admin = User(
-                username='legacy',
-                email='legacy@example.com',
-                is_admin=True,
-                is_verified=True,
-            )
-            legacy_admin.set_password('LegacyPassword9')
-            db.session.add(legacy_admin)
-            db.session.commit()
-            user_id = legacy_admin.id
+            user_id = user.id
 
         login_response = client.post(
             '/login',
             data={
-                'username': 'legacy@example.com',
-                'password': 'LegacyPassword9',
+                'username': 'alice@example.com',
+                'password': 'CorrectHorse9',
             },
             follow_redirects=False,
         )

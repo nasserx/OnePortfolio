@@ -40,6 +40,35 @@ def _pragma_scalar(app, pragma_name):
         return db.session.execute(text(f'PRAGMA {pragma_name}')).scalar()
 
 
+def _table_column_contract(app, table_name):
+    with app.app_context():
+        return tuple(
+            (row[1], row[2].upper(), row[3], row[4], row[5])
+            for row in db.session.execute(
+                text(f'PRAGMA table_info("{table_name}")')
+            ).fetchall()
+        )
+
+
+def _table_index_contract(app, table_name):
+    with app.app_context():
+        indexes = db.session.execute(
+            text(f'PRAGMA index_list("{table_name}")')
+        ).fetchall()
+        return sorted(
+            (
+                index[2],
+                tuple(
+                    row[2]
+                    for row in db.session.execute(
+                        text(f'PRAGMA index_info("{index[1]}")')
+                    ).fetchall()
+                ),
+            )
+            for index in indexes
+        )
+
+
 def test_fresh_database_startup_creates_schema_and_sets_user_version(tmp_path):
     db_path = tmp_path / 'fresh.sqlite'
     app = create_app(_config_for(db_path))
@@ -66,6 +95,7 @@ def test_fresh_database_startup_creates_schema_and_sets_user_version(tmp_path):
         assert auth_generation[2].upper() == 'INTEGER'
         assert auth_generation[3] == 1
         assert auth_generation[4] == '0'
+        assert 'is_admin' not in columns
 
 
 def test_warm_startup_is_idempotent_and_preserves_existing_data(tmp_path):
@@ -300,6 +330,7 @@ def test_migration_adds_auth_generation_and_preserves_existing_user(tmp_path):
         assert auth_generation[2].upper() == 'INTEGER'
         assert auth_generation[3] == 1
         assert auth_generation[4] == '0'
+        assert 'is_admin' not in columns
 
         user = User.query.filter_by(email='existing@example.com').one()
         assert user.password_hash == 'preserved-hash'
@@ -312,3 +343,139 @@ def test_migration_adds_auth_generation_and_preserves_existing_user(tmp_path):
         user = User.query.filter_by(email='existing@example.com').one()
         assert user.auth_generation == 3
         assert db.session.execute(text('PRAGMA user_version')).scalar() == TARGET_SCHEMA_VERSION
+
+
+def test_migration_removes_legacy_admin_column_and_preserves_user_graph(tmp_path):
+    import sqlite3
+
+    upgraded_path = tmp_path / 'legacy-admin-upgrade.sqlite'
+    con = sqlite3.connect(upgraded_path)
+    try:
+        con.executescript('''
+            PRAGMA foreign_keys = ON;
+            CREATE TABLE "user" (
+                id                                INTEGER NOT NULL PRIMARY KEY,
+                username                          VARCHAR(80) NOT NULL UNIQUE,
+                email                             VARCHAR(120) UNIQUE,
+                password_hash                     VARCHAR(255) NOT NULL,
+                is_admin                          BOOLEAN NOT NULL DEFAULT 0,
+                is_verified                       BOOLEAN NOT NULL,
+                created_at                        DATETIME,
+                last_login                        DATETIME,
+                verification_code                 VARCHAR(6),
+                verification_code_expires_at      DATETIME,
+                verification_code_failed_attempts INTEGER NOT NULL,
+                pending_email                     VARCHAR(120),
+                deletion_code                     VARCHAR(6),
+                deletion_code_expires_at          DATETIME,
+                deletion_code_failed_attempts     INTEGER NOT NULL,
+                failed_login_attempts              INTEGER NOT NULL,
+                locked_until                       DATETIME,
+                password_reset_jti                 VARCHAR(32),
+                auth_generation                   INTEGER NOT NULL DEFAULT 0
+            );
+            CREATE INDEX ix_user_username ON "user" (username);
+            CREATE INDEX ix_user_email ON "user" (email);
+            CREATE TABLE portfolio (
+                id         INTEGER NOT NULL PRIMARY KEY,
+                user_id    INTEGER NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+                name       VARCHAR(50) NOT NULL,
+                created_at DATETIME,
+                updated_at DATETIME
+            );
+            CREATE INDEX ix_portfolio_user_id ON portfolio (user_id);
+            CREATE TABLE oauth_identity (
+                id               INTEGER NOT NULL PRIMARY KEY,
+                user_id          INTEGER NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+                provider         VARCHAR(50) NOT NULL,
+                provider_subject VARCHAR(255) NOT NULL,
+                created_at       DATETIME NOT NULL,
+                updated_at       DATETIME NOT NULL,
+                CONSTRAINT uq_oauth_identity_provider_subject
+                    UNIQUE (provider, provider_subject),
+                CONSTRAINT uq_oauth_identity_user_provider
+                    UNIQUE (user_id, provider)
+            );
+            CREATE INDEX ix_oauth_identity_user_id ON oauth_identity (user_id);
+            INSERT INTO "user" VALUES (
+                41, 'legacy-true', 'true@example.com', 'hash-true', 1, 1,
+                '2026-01-01 01:02:03', '2026-02-01 02:03:04', '123456',
+                '2026-03-01 03:04:05', 2, 'new-true@example.com', '654321',
+                '2026-04-01 04:05:06', 3, 4, '2026-05-01 05:06:07',
+                'jti-true', 7
+            );
+            INSERT INTO "user" VALUES (
+                84, 'legacy-false', 'false@example.com', 'hash-false', 0, 0,
+                '2025-01-01 01:02:03', NULL, NULL, NULL, 0, NULL, NULL,
+                NULL, 0, 0, NULL, NULL, 0
+            );
+            INSERT INTO portfolio VALUES (
+                501, 41, 'Preserved Portfolio',
+                '2026-06-01 06:07:08', '2026-07-01 07:08:09'
+            );
+            INSERT INTO oauth_identity VALUES (
+                601, 84, 'google', 'preserved-subject',
+                '2026-08-01 08:09:10', '2026-08-02 09:10:11'
+            );
+            PRAGMA user_version = 31;
+        ''')
+        con.commit()
+    finally:
+        con.close()
+
+    upgraded_app = create_app(_config_for(upgraded_path))
+
+    with upgraded_app.app_context():
+        columns = {
+            row[1]
+            for row in db.session.execute(text('PRAGMA table_info("user")'))
+        }
+        assert 'is_admin' not in columns
+        assert db.session.execute(text('''
+            SELECT id, username, email, password_hash, is_verified, created_at,
+                   last_login, verification_code, verification_code_expires_at,
+                   verification_code_failed_attempts, pending_email,
+                   deletion_code, deletion_code_expires_at,
+                   deletion_code_failed_attempts, failed_login_attempts,
+                   locked_until, password_reset_jti, auth_generation
+            FROM "user" ORDER BY id
+        ''')).fetchall() == [
+            (
+                41, 'legacy-true', 'true@example.com', 'hash-true', 1,
+                '2026-01-01 01:02:03', '2026-02-01 02:03:04', '123456',
+                '2026-03-01 03:04:05', 2, 'new-true@example.com', '654321',
+                '2026-04-01 04:05:06', 3, 4, '2026-05-01 05:06:07',
+                'jti-true', 7,
+            ),
+            (
+                84, 'legacy-false', 'false@example.com', 'hash-false', 0,
+                '2025-01-01 01:02:03', None, None, None, 0, None, None,
+                None, 0, 0, None, None, 0,
+            ),
+        ]
+        assert db.session.execute(text(
+            'SELECT id, user_id, name FROM portfolio'
+        )).one() == (501, 41, 'Preserved Portfolio')
+        assert db.session.execute(text('''
+            SELECT id, user_id, provider, provider_subject FROM oauth_identity
+        ''')).one() == (601, 84, 'google', 'preserved-subject')
+        for child_table in ('portfolio', 'oauth_identity'):
+            assert any(
+                row[2] == 'user' and row[3] == 'user_id' and row[4] == 'id'
+                for row in db.session.execute(
+                    text(f'PRAGMA foreign_key_list("{child_table}")')
+                ).fetchall()
+            )
+        assert db.session.execute(text('PRAGMA foreign_key_check')).fetchall() == []
+        assert db.session.execute(text('PRAGMA foreign_keys')).scalar() == 1
+        assert db.session.execute(text('PRAGMA user_version')).scalar() == 32
+
+    fresh_app = create_app(_config_for(tmp_path / 'fresh-equivalent.sqlite'))
+    assert _table_column_contract(upgraded_app, 'user') == _table_column_contract(
+        fresh_app,
+        'user',
+    )
+    assert _table_index_contract(upgraded_app, 'user') == _table_index_contract(
+        fresh_app,
+        'user',
+    )

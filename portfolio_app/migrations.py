@@ -4,7 +4,7 @@ from portfolio_app import db
 # Bumped whenever a new migration step is added below. Stored in the SQLite
 # header (PRAGMA user_version) after a successful migration so subsequent
 # boots can short-circuit the whole inspection pass.
-TARGET_SCHEMA_VERSION = 32
+TARGET_SCHEMA_VERSION = 33
 
 
 def run_migrations(app):
@@ -570,6 +570,12 @@ def _apply_migration_steps(conn, sa):
     # preserved primary keys after the replacement table is renamed.
     _rebuild_user_without_admin(conn, sa)
 
+    # ── Step 33: keyed-digest storage for numeric OTP credentials ───────
+    # Legacy six-digit plaintext values are deliberately invalidated rather
+    # than supported through a dual verification path. Rebuild both owning
+    # tables so upgraded declarations match fresh model-created schemas.
+    _harden_otp_storage(conn, sa)
+
     # ── Step 24: rebuild tables with stale FK constraints / dropped cols ─
     # Older databases were created when the parent table was named
     # ``capital`` (later ``fund`` then ``portfolio``). SQLite RENAME TABLE
@@ -656,6 +662,134 @@ def _rebuild_user_without_admin(conn, sa):
     ))
     conn.execute(sa.text(
         'CREATE UNIQUE INDEX ix_user_email ON "user" (email)'
+    ))
+    conn.commit()
+
+
+def _harden_otp_storage(conn, sa):
+    """Widen legacy OTP fields and invalidate their pre-HMAC workflows."""
+    tables = {
+        row[0]
+        for row in conn.execute(
+            sa.text("SELECT name FROM sqlite_master WHERE type='table'")
+        ).fetchall()
+    }
+
+    if 'user' in tables:
+        user_columns = {
+            row[1]: row
+            for row in conn.execute(sa.text('PRAGMA table_info("user")')).fetchall()
+        }
+        digest_columns_are_current = all(
+            user_columns[name][2].upper() == 'VARCHAR(64)'
+            for name in ('verification_code', 'deletion_code')
+        )
+        if not digest_columns_are_current:
+            _rebuild_user_with_digest_otp_columns(conn, sa)
+
+    if 'pending_registration' in tables:
+        pending_columns = {
+            row[1]: row
+            for row in conn.execute(
+                sa.text('PRAGMA table_info(pending_registration)')
+            ).fetchall()
+        }
+        if pending_columns['verification_code'][2].upper() != 'VARCHAR(64)':
+            _rebuild_empty_pending_registration_with_digest_otp(conn, sa)
+
+
+def _rebuild_user_with_digest_otp_columns(conn, sa):
+    """Rebuild User with 64-character OTP digests and preserved identity."""
+    conn.execute(sa.text('DROP TABLE IF EXISTS _new_user'))
+    conn.execute(sa.text('''
+        CREATE TABLE _new_user (
+            id                                INTEGER NOT NULL PRIMARY KEY,
+            username                          VARCHAR(80) NOT NULL,
+            email                             VARCHAR(120),
+            password_hash                     VARCHAR(255) NOT NULL,
+            is_verified                       BOOLEAN NOT NULL,
+            created_at                        DATETIME,
+            last_login                        DATETIME,
+            verification_code                 VARCHAR(64),
+            verification_code_expires_at      DATETIME,
+            verification_code_failed_attempts INTEGER NOT NULL,
+            pending_email                     VARCHAR(120),
+            deletion_code                     VARCHAR(64),
+            deletion_code_expires_at          DATETIME,
+            deletion_code_failed_attempts     INTEGER NOT NULL,
+            failed_login_attempts              INTEGER NOT NULL,
+            locked_until                       DATETIME,
+            password_reset_jti                 VARCHAR(32),
+            auth_generation                   INTEGER NOT NULL DEFAULT 0
+        )
+    '''))
+    conn.execute(sa.text('''
+        INSERT INTO _new_user (
+            id, username, email, password_hash, is_verified, created_at,
+            last_login, verification_code, verification_code_expires_at,
+            verification_code_failed_attempts, pending_email, deletion_code,
+            deletion_code_expires_at, deletion_code_failed_attempts,
+            failed_login_attempts, locked_until, password_reset_jti,
+            auth_generation
+        )
+        SELECT
+            id, username, email, password_hash, is_verified, created_at,
+            last_login, NULL, NULL, 0, NULL, NULL, NULL, 0,
+            failed_login_attempts, locked_until, password_reset_jti,
+            auth_generation
+        FROM "user"
+    '''))
+    for index_name in ('ix_user_username', 'ix_user_email'):
+        conn.execute(sa.text(f'DROP INDEX IF EXISTS "{index_name}"'))
+    conn.execute(sa.text('DROP TABLE "user"'))
+    conn.execute(sa.text('ALTER TABLE _new_user RENAME TO "user"'))
+    conn.execute(sa.text(
+        'CREATE UNIQUE INDEX ix_user_username ON "user" (username)'
+    ))
+    conn.execute(sa.text(
+        'CREATE UNIQUE INDEX ix_user_email ON "user" (email)'
+    ))
+    conn.commit()
+
+
+def _rebuild_empty_pending_registration_with_digest_otp(conn, sa):
+    """Replace PendingRegistration while invalidating every legacy row."""
+    conn.execute(sa.text('DROP TABLE IF EXISTS _new_pending_registration'))
+    conn.execute(sa.text('''
+        CREATE TABLE _new_pending_registration (
+            id                           INTEGER NOT NULL PRIMARY KEY,
+            token                        VARCHAR(64) NOT NULL,
+            username                     VARCHAR(80) NOT NULL,
+            email                        VARCHAR(120) NOT NULL,
+            password_hash                VARCHAR(255) NOT NULL,
+            verification_code            VARCHAR(64) NOT NULL,
+            verification_code_expires_at DATETIME NOT NULL,
+            failed_otp_attempts           INTEGER NOT NULL,
+            created_at                   DATETIME NOT NULL,
+            expires_at                   DATETIME NOT NULL
+        )
+    '''))
+    for index_name in (
+        'ix_pending_registration_token',
+        'ix_pending_registration_username',
+        'ix_pending_registration_email',
+    ):
+        conn.execute(sa.text(f'DROP INDEX IF EXISTS "{index_name}"'))
+    conn.execute(sa.text('DROP TABLE pending_registration'))
+    conn.execute(sa.text(
+        'ALTER TABLE _new_pending_registration RENAME TO pending_registration'
+    ))
+    conn.execute(sa.text(
+        'CREATE UNIQUE INDEX ix_pending_registration_token '
+        'ON pending_registration (token)'
+    ))
+    conn.execute(sa.text(
+        'CREATE UNIQUE INDEX ix_pending_registration_username '
+        'ON pending_registration (username)'
+    ))
+    conn.execute(sa.text(
+        'CREATE UNIQUE INDEX ix_pending_registration_email '
+        'ON pending_registration (email)'
     ))
     conn.commit()
 

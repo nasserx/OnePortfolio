@@ -41,7 +41,8 @@ class User(UserMixin, db.Model):
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     last_login = db.Column(db.DateTime, nullable=True)
 
-    verification_code = db.Column(db.String(6), nullable=True)
+    # Keyed HMAC-SHA-256 digest of the delivered six-digit email-change OTP.
+    verification_code = db.Column(db.String(64), nullable=True)
     verification_code_expires_at = db.Column(db.DateTime, nullable=True)
     # Number of consecutive bad-OTP attempts on the pending-email-update flow.
     # Reset on success or when a new code is generated; the code is wiped
@@ -50,7 +51,8 @@ class User(UserMixin, db.Model):
 
     pending_email = db.Column(db.String(120), nullable=True)
 
-    deletion_code = db.Column(db.String(6), nullable=True)
+    # Keyed HMAC-SHA-256 digest of the delivered six-digit deletion OTP.
+    deletion_code = db.Column(db.String(64), nullable=True)
     deletion_code_expires_at = db.Column(db.DateTime, nullable=True)
     # Same lockout idea for the account-deletion OTP.
     deletion_code_failed_attempts = db.Column(db.Integer, default=0, nullable=False)

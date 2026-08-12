@@ -71,19 +71,12 @@ class AuthService:
             ValueError: If the email is already taken by an existing user or
                 has a live pending registration.
         """
-        # Tidy stale staged rows so old reservations don't block new sign-ups.
-        self.pending_repo.purge_expired(datetime.now(timezone.utc))
-
         email_lc = email.lower()
 
-        # Guard against collisions with verified accounts first.
-        if self.user_repo.get_by_email(email_lc):
-            raise ValueError(MESSAGES['EMAIL_ALREADY_EXISTS'])
-
-        # Never let a second unauthenticated sign-up replace credentials that
-        # are already waiting for the email owner to verify them. Legitimate
-        # users can refresh only the OTP through the existing resend flow.
-        if self.pending_repo.get_by_email(email_lc):
+        # Completed accounts, live email-change reservations, and live staged
+        # registrations all own the address for the duration of their
+        # respective workflows. Stale state is cleaned by the shared check.
+        if self.email_is_unavailable(email_lc):
             raise ValueError(MESSAGES['EMAIL_ALREADY_EXISTS'])
 
         username = self._generate_username(email_lc)
@@ -140,16 +133,8 @@ class AuthService:
         FAIL = (False, MESSAGES['VERIFICATION_CODE_INVALID_OR_EXPIRED'])
 
         # ── Case 1: pending email update for an already-verified account ──
-        user_pending_email = self.user_repo.get_by_pending_email(email_lc)
+        user_pending_email = self._get_live_pending_email_user(email_lc, now)
         if user_pending_email:
-            if (
-                not user_pending_email.verification_code
-                or not user_pending_email.verification_code_expires_at
-            ):
-                return FAIL
-            expires_at = self._as_utc(user_pending_email.verification_code_expires_at)
-            if now > expires_at:
-                return FAIL
             if not hmac.compare_digest(user_pending_email.verification_code, code):
                 # Burn an attempt; wipe the code (and the staged email) once
                 # the cap is hit so the user must request a fresh OTP.
@@ -157,18 +142,12 @@ class AuthService:
                     (user_pending_email.verification_code_failed_attempts or 0) + 1
                 )
                 if user_pending_email.verification_code_failed_attempts >= MAX_OTP_ATTEMPTS:
-                    user_pending_email.verification_code = None
-                    user_pending_email.verification_code_expires_at = None
-                    user_pending_email.pending_email = None
-                    user_pending_email.verification_code_failed_attempts = 0
+                    self._clear_pending_email_state(user_pending_email)
                 self.user_repo.commit()
                 return FAIL
 
             user_pending_email.email = user_pending_email.pending_email
-            user_pending_email.pending_email = None
-            user_pending_email.verification_code = None
-            user_pending_email.verification_code_expires_at = None
-            user_pending_email.verification_code_failed_attempts = 0
+            self._clear_pending_email_state(user_pending_email)
             self.user_repo.commit()
             return True, ''
 
@@ -231,26 +210,10 @@ class AuthService:
         email_lc = email.lower()
         now = datetime.now(timezone.utc)
 
-        # Pending sign-up — extend OTP, but not the row's hard TTL.
-        pending = self.pending_repo.get_by_email(email_lc)
-        if pending:
-            if self._as_utc(pending.expires_at) < now:
-                # Hard TTL expired; force the user to re-register.
-                self.pending_repo.delete(pending)
-                self.pending_repo.commit()
-                return None
-            code = self._make_verification_code()
-            pending.verification_code = code
-            pending.verification_code_expires_at = (
-                now + timedelta(minutes=VERIFICATION_CODE_EXPIRY_MINUTES)
-            )
-            # Fresh code, fresh attempt counter.
-            pending.failed_otp_attempts = 0
-            self.pending_repo.commit()
-            return code
-
-        # Pending email update for a verified user.
-        user = self.user_repo.get_by_pending_email(email_lc)
+        # A live email-change claim takes the same precedence here as it does
+        # during verification. Expired/malformed state is cleared and cannot
+        # be revived by resend; the authenticated user must start over.
+        user = self._get_live_pending_email_user(email_lc, now)
         if user:
             code = self._make_verification_code()
             user.verification_code = code
@@ -259,6 +222,20 @@ class AuthService:
             )
             user.verification_code_failed_attempts = 0
             self.user_repo.commit()
+            return code
+
+        # Pending sign-up — extend OTP, but not the row's hard TTL.
+        self._purge_expired_pending_registrations(now)
+        pending = self.pending_repo.get_by_email(email_lc)
+        if pending:
+            code = self._make_verification_code()
+            pending.verification_code = code
+            pending.verification_code_expires_at = (
+                now + timedelta(minutes=VERIFICATION_CODE_EXPIRY_MINUTES)
+            )
+            # Fresh code, fresh attempt counter.
+            pending.failed_otp_attempts = 0
+            self.pending_repo.commit()
             return code
 
         return None
@@ -324,8 +301,12 @@ class AuthService:
         if not user.check_password(password):
             raise ValueError(MESSAGES['CURRENT_PASSWORD_INCORRECT'])
 
+        email_lc = new_email.lower()
+        if self.email_is_unavailable(email_lc):
+            raise ValueError(MESSAGES['EMAIL_IN_USE'])
+
         code = self._make_verification_code()
-        user.pending_email = new_email.lower()
+        user.pending_email = email_lc
         user.verification_code = code
         user.verification_code_expires_at = (
             datetime.now(timezone.utc) + timedelta(minutes=VERIFICATION_CODE_EXPIRY_MINUTES)
@@ -333,6 +314,23 @@ class AuthService:
         user.verification_code_failed_attempts = 0
         self.user_repo.commit()
         return code
+
+    def email_is_unavailable(self, email: str) -> bool:
+        """Return whether an email is owned by a live account workflow.
+
+        A pending email change owns its target only while its complete OTP
+        state is live. Stale user state and expired staged registrations are
+        cleaned here so routes/forms do not duplicate expiry policy.
+        """
+        email_lc = email.lower()
+        now = datetime.now(timezone.utc)
+        live_pending_user = self._get_live_pending_email_user(email_lc, now)
+        self._purge_expired_pending_registrations(now)
+        return (
+            self.user_repo.get_by_email(email_lc) is not None
+            or live_pending_user is not None
+            or self.pending_repo.get_by_email(email_lc) is not None
+        )
 
     def change_password(self, user: User, current_password: str, new_password: str) -> None:
         """Change user password after verifying the current one."""
@@ -440,6 +438,41 @@ class AuthService:
     # ------------------------------------------------------------------
     # Private helpers
     # ------------------------------------------------------------------
+
+    def _get_live_pending_email_user(
+        self,
+        email: str,
+        now: datetime,
+    ) -> Optional[User]:
+        """Return the live pending-email owner, cleaning stale state."""
+        user = self.user_repo.get_by_pending_email(email)
+        if not user:
+            return None
+        if self._pending_email_is_live(user, now):
+            return user
+
+        self._clear_pending_email_state(user)
+        self.user_repo.commit()
+        return None
+
+    def _pending_email_is_live(self, user: User, now: datetime) -> bool:
+        return (
+            bool(user.pending_email)
+            and bool(user.verification_code)
+            and bool(user.verification_code_expires_at)
+            and now <= self._as_utc(user.verification_code_expires_at)
+        )
+
+    @staticmethod
+    def _clear_pending_email_state(user: User) -> None:
+        user.pending_email = None
+        user.verification_code = None
+        user.verification_code_expires_at = None
+        user.verification_code_failed_attempts = 0
+
+    def _purge_expired_pending_registrations(self, now: datetime) -> None:
+        if self.pending_repo.purge_expired(now):
+            self.pending_repo.commit()
 
     @staticmethod
     def _make_verification_code() -> str:

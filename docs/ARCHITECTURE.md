@@ -42,7 +42,7 @@ Repositories wrap database access. User-owned records are scoped through `Portfo
 
 This is a core safety property. Service and route code should avoid bypassing repositories for user-scoped mutations unless it preserves the same scoping.
 
-Application users manage their own accounts and tenant-scoped portfolio data. The public application exposes no privileged cross-user role; exceptional deployment or database maintenance is outside its authorization model. The legacy `User.is_admin` column is retained temporarily for schema compatibility but has no runtime effect.
+Application users manage their own accounts and tenant-scoped portfolio data. The public application exposes no privileged cross-user role; exceptional deployment or database maintenance is outside its authorization model.
 
 ## Models
 

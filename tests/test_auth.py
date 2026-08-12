@@ -33,7 +33,7 @@ from portfolio_app.models.transaction import Transaction
 from portfolio_app.models.user import User
 from portfolio_app.models.pending_registration import PendingRegistration
 from portfolio_app.repositories.user_repository import UserRepository
-from portfolio_app.services.auth_service import MAX_OTP_ATTEMPTS
+from portfolio_app.services.auth_service import AuthService, MAX_OTP_ATTEMPTS
 from portfolio_app.services.factory import Services
 from portfolio_app.utils.messages import MESSAGES
 
@@ -234,6 +234,34 @@ def _expire_pending_otp(app, email):
         assert row is not None
         row.verification_code_expires_at = datetime.now(timezone.utc) - timedelta(minutes=1)
         db.session.commit()
+
+
+def _pending_email_state(app, current_email):
+    with app.app_context():
+        user = User.query.filter_by(email=current_email.lower()).one()
+        return (
+            user.pending_email,
+            user.verification_code,
+            user.verification_code_expires_at,
+            user.verification_code_failed_attempts,
+        )
+
+
+def _login(client, email, password):
+    response = client.post(
+        '/login',
+        data={'username': email, 'password': password},
+        follow_redirects=False,
+    )
+    assert response.status_code in (302, 303)
+
+
+def _stage_email_change(client, target_email, password):
+    return client.post(
+        '/update-email',
+        data={'email': target_email, 'password': password},
+        follow_redirects=False,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -639,6 +667,417 @@ def _signup_and_verify(app, client, email_log, **kw):
     # from an unauthenticated state.
     client.post('/logout')
     return 'alice'
+
+
+class TestPendingEmailReservationLifecycle:
+
+    def test_initiation_requires_password_and_stores_normalized_live_state(
+        self, app, client, email_log,
+    ):
+        password = 'CorrectHorse9'
+        _signup_and_verify(app, client, email_log, password=password)
+        _login(client, 'alice@example.com', password)
+        emails_before = list(email_log)
+
+        rejected = _stage_email_change(
+            client,
+            'Target@Example.com',
+            'WrongPassword9',
+        )
+        assert rejected.status_code == 200
+        assert _pending_email_state(app, 'alice@example.com') == (
+            None, None, None, 0,
+        )
+        assert email_log == emails_before
+
+        accepted = _stage_email_change(
+            client,
+            ' Target@Example.com ',
+            password,
+        )
+        assert accepted.status_code in (302, 303)
+        assert '/verify-code' in accepted.headers['Location']
+
+        pending_email, code, expires_at, failed_attempts = _pending_email_state(
+            app, 'alice@example.com',
+        )
+        assert pending_email == 'target@example.com'
+        assert code
+        assert expires_at.replace(tzinfo=timezone.utc) > datetime.now(timezone.utc)
+        assert failed_attempts == 0
+        assert email_log[-1] == ('target@example.com', code)
+
+    def test_successful_verification_applies_email_and_clears_pending_state(
+        self, app, client, email_log,
+    ):
+        password = 'CorrectHorse9'
+        _signup_and_verify(app, client, email_log, password=password)
+        _login(client, 'alice@example.com', password)
+        assert _stage_email_change(
+            client, 'new-alice@example.com', password,
+        ).status_code in (302, 303)
+        code = email_log[-1][1]
+
+        response = client.post(
+            '/verify-code?email=new-alice@example.com',
+            data={'code': code},
+            follow_redirects=False,
+        )
+
+        assert response.status_code in (302, 303)
+        with app.app_context():
+            user = User.query.filter_by(email='new-alice@example.com').one()
+            assert user.pending_email is None
+            assert user.verification_code is None
+            assert user.verification_code_expires_at is None
+            assert user.verification_code_failed_attempts == 0
+            assert User.query.filter_by(email='alice@example.com').first() is None
+
+    def test_live_pending_email_blocks_another_users_email_change(
+        self, app, client, email_log,
+    ):
+        alice_password = 'CorrectHorse9'
+        bob_password = 'CorrectHorse10'
+        _signup_and_verify(app, client, email_log, password=alice_password)
+        bob_client = app.test_client()
+        _signup_and_verify(
+            app,
+            bob_client,
+            email_log,
+            email='bob@example.com',
+            password=bob_password,
+        )
+
+        _login(client, 'alice@example.com', alice_password)
+        assert _stage_email_change(
+            client, 'claimed@example.com', alice_password,
+        ).status_code in (302, 303)
+        _login(bob_client, 'bob@example.com', bob_password)
+        rejected = _stage_email_change(
+            bob_client, 'CLAIMED@example.com', bob_password,
+        )
+
+        assert rejected.status_code == 200
+        assert _pending_email_state(app, 'bob@example.com') == (
+            None, None, None, 0,
+        )
+        assert _pending_email_state(app, 'alice@example.com')[0] == (
+            'claimed@example.com'
+        )
+
+    def test_expired_pending_email_is_cleaned_and_does_not_block_email_change(
+        self, app, client, email_log,
+    ):
+        alice_password = 'CorrectHorse9'
+        bob_password = 'CorrectHorse10'
+        _signup_and_verify(app, client, email_log, password=alice_password)
+        bob_client = app.test_client()
+        _signup_and_verify(
+            app,
+            bob_client,
+            email_log,
+            email='bob@example.com',
+            password=bob_password,
+        )
+
+        _login(client, 'alice@example.com', alice_password)
+        _stage_email_change(client, 'released@example.com', alice_password)
+        with app.app_context():
+            alice = User.query.filter_by(email='alice@example.com').one()
+            alice.verification_code_failed_attempts = 3
+            alice.verification_code_expires_at = (
+                datetime.now(timezone.utc) - timedelta(minutes=1)
+            )
+            db.session.commit()
+
+        _login(bob_client, 'bob@example.com', bob_password)
+        accepted = _stage_email_change(
+            bob_client, 'Released@Example.com', bob_password,
+        )
+
+        assert accepted.status_code in (302, 303)
+        assert _pending_email_state(app, 'alice@example.com') == (
+            None, None, None, 0,
+        )
+        bob_state = _pending_email_state(app, 'bob@example.com')
+        assert bob_state[0] == 'released@example.com'
+        assert bob_state[1]
+        assert bob_state[2]
+        assert bob_state[3] == 0
+
+    def test_live_pending_email_blocks_registration(
+        self, app, client, email_log,
+    ):
+        password = 'CorrectHorse9'
+        _signup_and_verify(app, client, email_log, password=password)
+        _login(client, 'alice@example.com', password)
+        _stage_email_change(client, 'reserved@example.com', password)
+        emails_before = list(email_log)
+
+        response = _register(
+            app.test_client(),
+            email='RESERVED@example.com',
+            password='AnotherHorse9',
+        )
+
+        assert response.status_code == 200
+        assert email_log == emails_before
+        with app.app_context():
+            assert PendingRegistration.query.filter_by(
+                email='reserved@example.com',
+            ).first() is None
+        assert _pending_email_state(app, 'alice@example.com')[0] == (
+            'reserved@example.com'
+        )
+
+    @pytest.mark.parametrize(
+        'missing_field',
+        ['verification_code', 'verification_code_expires_at'],
+    )
+    def test_incomplete_pending_email_state_is_non_reserving(
+        self, app, client, email_log, missing_field,
+    ):
+        password = 'CorrectHorse9'
+        _signup_and_verify(app, client, email_log, password=password)
+        _login(client, 'alice@example.com', password)
+        _stage_email_change(client, 'released@example.com', password)
+        with app.app_context():
+            alice = User.query.filter_by(email='alice@example.com').one()
+            alice.verification_code_failed_attempts = 3
+            setattr(alice, missing_field, None)
+            db.session.commit()
+
+        response = _register(
+            app.test_client(),
+            email='released@example.com',
+            password='AnotherHorse9',
+        )
+
+        assert response.status_code in (302, 303)
+        assert _pending_email_state(app, 'alice@example.com') == (
+            None, None, None, 0,
+        )
+        with app.app_context():
+            assert PendingRegistration.query.filter_by(
+                email='released@example.com',
+            ).one()
+
+    def test_expired_pending_email_does_not_block_registration(
+        self, app, client, email_log,
+    ):
+        password = 'CorrectHorse9'
+        _signup_and_verify(app, client, email_log, password=password)
+        _login(client, 'alice@example.com', password)
+        _stage_email_change(client, 'released@example.com', password)
+        with app.app_context():
+            alice = User.query.filter_by(email='alice@example.com').one()
+            alice.verification_code_expires_at = (
+                datetime.now(timezone.utc) - timedelta(minutes=1)
+            )
+            db.session.commit()
+
+        response = _register(
+            app.test_client(),
+            email='Released@Example.com',
+            password='AnotherHorse9',
+        )
+
+        assert response.status_code in (302, 303)
+        assert _pending_email_state(app, 'alice@example.com') == (
+            None, None, None, 0,
+        )
+        with app.app_context():
+            pending = PendingRegistration.query.filter_by(
+                email='released@example.com',
+            ).one()
+            assert pending.verification_code
+            assert pending.expires_at
+
+    def test_expired_pending_email_cannot_shadow_registration_verification(
+        self, app, client, email_log,
+    ):
+        password = 'CorrectHorse9'
+        _signup_and_verify(app, client, email_log, password=password)
+        registration_client = app.test_client()
+        assert _register(
+            registration_client,
+            email='future-owner@example.com',
+            password='AnotherHorse9',
+        ).status_code in (302, 303)
+        registration_code = email_log[-1][1]
+
+        # Represent stale overlapping state from an older deployment/race.
+        with app.app_context():
+            alice = User.query.filter_by(email='alice@example.com').one()
+            alice.pending_email = 'future-owner@example.com'
+            alice.verification_code = '111111'
+            alice.verification_code_expires_at = (
+                datetime.now(timezone.utc) - timedelta(minutes=1)
+            )
+            alice.verification_code_failed_attempts = 2
+            db.session.commit()
+
+        verified = registration_client.post(
+            '/verify-code?email=future-owner@example.com',
+            data={'code': registration_code},
+            follow_redirects=False,
+        )
+
+        assert verified.status_code in (302, 303)
+        assert _pending_email_state(app, 'alice@example.com') == (
+            None, None, None, 0,
+        )
+        with app.app_context():
+            assert User.query.filter_by(email='future-owner@example.com').one()
+            assert PendingRegistration.query.filter_by(
+                email='future-owner@example.com',
+            ).first() is None
+
+    def test_live_pending_registration_blocks_email_change(
+        self, app, client, email_log,
+    ):
+        password = 'CorrectHorse9'
+        _signup_and_verify(app, client, email_log, password=password)
+        assert _register(
+            app.test_client(),
+            email='staged@example.com',
+            password='AnotherHorse9',
+        ).status_code in (302, 303)
+
+        _login(client, 'alice@example.com', password)
+        rejected = _stage_email_change(
+            client, 'STAGED@example.com', password,
+        )
+
+        assert rejected.status_code == 200
+        assert _pending_email_state(app, 'alice@example.com') == (
+            None, None, None, 0,
+        )
+        with app.app_context():
+            assert PendingRegistration.query.filter_by(
+                email='staged@example.com',
+            ).one()
+
+    def test_expired_pending_registration_does_not_block_email_change(
+        self, app, client, email_log,
+    ):
+        password = 'CorrectHorse9'
+        _signup_and_verify(app, client, email_log, password=password)
+        _register(
+            app.test_client(),
+            email='staged@example.com',
+            password='AnotherHorse9',
+        )
+        with app.app_context():
+            pending = PendingRegistration.query.filter_by(
+                email='staged@example.com',
+            ).one()
+            pending.expires_at = datetime.now(timezone.utc) - timedelta(minutes=1)
+            db.session.commit()
+
+        _login(client, 'alice@example.com', password)
+        accepted = _stage_email_change(client, 'staged@example.com', password)
+
+        assert accepted.status_code in (302, 303)
+        with app.app_context():
+            assert PendingRegistration.query.filter_by(
+                email='staged@example.com',
+            ).first() is None
+        state = _pending_email_state(app, 'alice@example.com')
+        assert state[0] == 'staged@example.com'
+        assert state[1]
+        assert state[2]
+
+    def test_live_email_change_resend_rotates_code_and_resets_attempts(
+        self, app, client, email_log, monkeypatch,
+    ):
+        password = 'CorrectHorse9'
+        _signup_and_verify(app, client, email_log, password=password)
+        _login(client, 'alice@example.com', password)
+        _stage_email_change(client, 'resend@example.com', password)
+        with app.app_context():
+            alice = User.query.filter_by(email='alice@example.com').one()
+            alice.verification_code = '111111'
+            alice.verification_code_failed_attempts = 3
+            old_expiry = datetime.now(timezone.utc) + timedelta(minutes=1)
+            alice.verification_code_expires_at = old_expiry
+            db.session.commit()
+        monkeypatch.setattr(
+            AuthService,
+            '_make_verification_code',
+            staticmethod(lambda: '222222'),
+        )
+        emails_before = len(email_log)
+
+        response = client.post(
+            '/resend-code?email=resend@example.com',
+            follow_redirects=False,
+        )
+
+        assert response.status_code in (302, 303)
+        state = _pending_email_state(app, 'alice@example.com')
+        assert state[0] == 'resend@example.com'
+        assert state[1] == '222222'
+        assert state[2].replace(tzinfo=timezone.utc) > old_expiry
+        assert state[3] == 0
+        assert len(email_log) == emails_before + 1
+        assert email_log[-1] == ('resend@example.com', '222222')
+
+    def test_expired_email_change_resend_cleans_state_and_restart_reclaims(
+        self, app, client, email_log,
+    ):
+        password = 'CorrectHorse9'
+        _signup_and_verify(app, client, email_log, password=password)
+        _login(client, 'alice@example.com', password)
+        _stage_email_change(client, 'restart@example.com', password)
+        with app.app_context():
+            alice = User.query.filter_by(email='alice@example.com').one()
+            alice.verification_code_failed_attempts = 4
+            alice.verification_code_expires_at = (
+                datetime.now(timezone.utc) - timedelta(minutes=1)
+            )
+            db.session.commit()
+        emails_before = list(email_log)
+
+        resend = client.post(
+            '/resend-code?email=restart@example.com',
+            follow_redirects=False,
+        )
+
+        assert resend.status_code in (302, 303)
+        assert email_log == emails_before
+        assert _pending_email_state(app, 'alice@example.com') == (
+            None, None, None, 0,
+        )
+
+        restarted = _stage_email_change(client, 'restart@example.com', password)
+        assert restarted.status_code in (302, 303)
+        state = _pending_email_state(app, 'alice@example.com')
+        assert state[0] == 'restart@example.com'
+        assert state[1]
+        assert state[2]
+        assert state[3] == 0
+        assert len(email_log) == len(emails_before) + 1
+
+    def test_five_live_incorrect_codes_clear_complete_pending_email_state(
+        self, app, client, email_log,
+    ):
+        password = 'CorrectHorse9'
+        _signup_and_verify(app, client, email_log, password=password)
+        _login(client, 'alice@example.com', password)
+        _stage_email_change(client, 'attempts@example.com', password)
+
+        for _ in range(MAX_OTP_ATTEMPTS):
+            response = client.post(
+                '/verify-code?email=attempts@example.com',
+                data={'code': '000000'},
+                follow_redirects=False,
+            )
+            assert response.status_code == 200
+
+        assert _pending_email_state(app, 'alice@example.com') == (
+            None, None, None, 0,
+        )
 
 
 class TestRemovedAdminSurface:

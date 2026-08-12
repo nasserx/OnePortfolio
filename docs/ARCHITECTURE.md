@@ -57,6 +57,10 @@ Models live in `portfolio_app/models/`:
 - `Transaction`: buy/sell asset entries.
 - `Dividend`: current model name for income records.
 
+Pending email-change claims are bounded by their verification-code lifetime.
+Expired or incomplete pending-email state is non-reserving and is cleared when
+an account workflow encounters it, so it cannot indefinitely hold an address.
+
 The user-facing term is Income even though the model is still named `Dividend`.
 
 ## Calculators

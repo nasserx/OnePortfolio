@@ -250,12 +250,9 @@ def register():
         from_modal = bool(request.form.get('_modal'))
         svc = get_services()
 
-        def _email_taken(e: str) -> bool:
-            return svc.user_repo.get_by_email(e) is not None
-
         form = RegisterForm(
             request.form,
-            check_email_taken=_email_taken,
+            check_email_taken=svc.auth_service.email_is_unavailable,
         )
 
         if form.validate():
@@ -519,10 +516,7 @@ def update_email():
 
         form = UpdateEmailForm(
             request.form,
-            check_email_taken=lambda e: (
-                svc.user_repo.get_by_email(e) is not None or
-                svc.user_repo.get_by_pending_email(e) is not None
-            ),
+            check_email_taken=svc.auth_service.email_is_unavailable,
         )
 
         if form.validate():
@@ -539,7 +533,12 @@ def update_email():
                 return redirect(url_for('auth.verify_code', email=data['email']))
 
             except ValueError as e:
-                form_errors['password'] = str(e)
+                field = (
+                    'email'
+                    if str(e) == MESSAGES['EMAIL_IN_USE']
+                    else 'password'
+                )
+                form_errors[field] = str(e)
                 form_values = request.form
             except Exception:
                 logger.exception('Email update failed')

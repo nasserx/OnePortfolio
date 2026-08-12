@@ -36,10 +36,6 @@ MESSAGES = {
     'SYMBOL_DELETE_FAILED':        "We couldn't stop tracking this asset. Please try again in a moment.",
     'PASSWORD_CHANGE_FAILED':      "We couldn't change your password. Please try again in a moment.",
     'EMAIL_UPDATE_FAILED':         "We couldn't update your email. Please try again in a moment.",
-    'ADMIN_TOGGLE_ADMIN_FAILED':   "We couldn't update admin access. Please try again in a moment.",
-    'ADMIN_DELETE_USER_FAILED':    "We couldn't remove this user. Please try again in a moment.",
-    'ADMIN_RESET_EMAIL_FAILED':    "We couldn't send the reset email. Please try again in a moment.",
-
     # Not-found errors
     'PORTFOLIO_NOT_FOUND':         "This portfolio no longer exists.",
     'TRANSACTION_NOT_FOUND':       "This asset entry no longer exists.",
@@ -180,25 +176,7 @@ MESSAGES = {
     'DELETION_CODE_SEND_FAILED':   "Failed to send the confirmation code. Please try again.",
     'DELETION_CONFIRMED':          "Your account has been permanently deleted.",
     'DELETION_INVALID_CODE':       "The code is incorrect or has expired. Please request a new one.",
-    'DELETION_NO_EMAIL':           "No email address is linked to your account. Please contact an administrator for help.",
-
-    # Admin panel
-    'USER_NOT_FOUND':              "User not found.",
-    'ADMIN_USER_REMOVED':          "User account removed.",
-    'ADMIN_ACCESS_DENIED':         "You don't have permission to access this page.",
-    'ADMIN_EMAIL_SEND_FAILED':     "Failed to send the email. Please try again.",
-    'ADMIN_CANNOT_CHANGE_OWN_STATUS': "You cannot change your own admin status.",
-    'ADMIN_CANNOT_DELETE_SELF':    "You cannot delete your own account.",
-
-    # Admin — dynamic messages
-    'ADMIN_NO_EMAIL_ON_FILE_USERNAME':
-        "{username} has no email address on file.",
-    'ADMIN_RESET_EMAIL_SENT_USERNAME_EMAIL':
-        "Password reset email sent to {username} ({email}).",
-    'ADMIN_ACCESS_GRANTED_USERNAME':
-        "Admin access granted for {username}.",
-    'ADMIN_ACCESS_REVOKED_USERNAME':
-        "Admin access revoked for {username}.",
+    'DELETION_NO_EMAIL':           "Add and verify an email address before deleting your account.",
 }
 
 

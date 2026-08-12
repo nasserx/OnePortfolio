@@ -641,6 +641,113 @@ def _signup_and_verify(app, client, email_log, **kw):
     return 'alice'
 
 
+class TestSuperAdminRemoval:
+
+    def test_first_and_later_verified_users_remain_non_privileged(
+        self, app, client, email_log,
+    ):
+        _signup_and_verify(
+            app,
+            client,
+            email_log,
+            email='first@example.com',
+        )
+        _signup_and_verify(
+            app,
+            client,
+            email_log,
+            email='later@example.com',
+        )
+
+        with app.app_context():
+            first = User.query.filter_by(email='first@example.com').one()
+            later = User.query.filter_by(email='later@example.com').one()
+            assert first.is_admin is False
+            assert later.is_admin is False
+
+    def test_registration_does_not_rebootstrap_after_last_legacy_flag_is_removed(
+        self, app, client, email_log,
+    ):
+        with app.app_context():
+            legacy_admin = User(
+                username='legacy',
+                email='legacy@example.com',
+                is_admin=True,
+                is_verified=True,
+            )
+            legacy_admin.set_password('LegacyPassword9')
+            existing_user = User(
+                username='existing',
+                email='existing@example.com',
+                is_verified=True,
+            )
+            existing_user.set_password('ExistingPassword9')
+            db.session.add_all([legacy_admin, existing_user])
+            db.session.commit()
+            db.session.delete(legacy_admin)
+            db.session.commit()
+            assert User.query.count() == 1
+            assert User.query.filter_by(is_admin=True).count() == 0
+
+        _signup_and_verify(
+            app,
+            client,
+            email_log,
+            email='replacement@example.com',
+        )
+
+        with app.app_context():
+            replacement = User.query.filter_by(
+                email='replacement@example.com',
+            ).one()
+            assert replacement.is_admin is False
+
+    def test_legacy_admin_flag_grants_no_web_capability(self, app, client):
+        with app.app_context():
+            legacy_admin = User(
+                username='legacy',
+                email='legacy@example.com',
+                is_admin=True,
+                is_verified=True,
+            )
+            legacy_admin.set_password('LegacyPassword9')
+            db.session.add(legacy_admin)
+            db.session.commit()
+            user_id = legacy_admin.id
+
+        login_response = client.post(
+            '/login',
+            data={
+                'username': 'legacy@example.com',
+                'password': 'LegacyPassword9',
+            },
+            follow_redirects=False,
+        )
+        assert login_response.status_code in (302, 303)
+
+        assert not any(
+            rule.endpoint.startswith('admin.')
+            for rule in app.url_map.iter_rules()
+        )
+        for method, path in (
+            ('GET', '/admin/users'),
+            ('POST', f'/admin/users/{user_id}/send-reset-email'),
+            ('POST', f'/admin/users/{user_id}/toggle-admin'),
+            ('POST', f'/admin/users/{user_id}/delete'),
+        ):
+            response = client.open(path, method=method)
+            assert response.status_code == 404
+
+        dashboard = client.get('/')
+        settings = client.get('/settings')
+        assert dashboard.status_code == 200
+        assert settings.status_code == 200
+        rendered = dashboard.get_data(as_text=True) + settings.get_data(as_text=True)
+        assert 'href="/admin/users"' not in rendered
+        assert 'Administrator' not in rendered
+        assert 'nav-admin-badge' not in rendered
+
+
 class TestLogin:
 
     def test_correct_credentials_logs_in(self, app, client, email_log):

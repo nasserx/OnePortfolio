@@ -160,11 +160,10 @@ it silently outranks it, and nothing in the stylesheet shows that it
 happened. If a component gets the wrong colour, change the component.
 
 The tell that this has been happening is an `!important` in one of *our*
-layers, because that is the only way to win the argument back. Four had
+layers, because that is the only way to win the argument back. Three had
 accumulated — `.table .text-muted`, `.records-table tbody td small.text-muted`,
-`.sell-max-btn`'s padding fighting `p-0`, and `.admin-badge-you` fighting
-`bg-primary` — and every one was removed by taking the utility off the
-element rather than by escalating. What is left is three legitimate uses:
+and `.sell-max-btn`'s padding fighting `p-0` — and every one was removed by
+taking the utility off the element rather than by escalating. What is left is three legitimate uses:
 `.visually-hidden`, the reduced-motion block, and `.sym-filter-hide`, which
 has to beat whatever `display` the element it lands on already has.
 

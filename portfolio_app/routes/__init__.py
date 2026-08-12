@@ -9,10 +9,8 @@ def register_blueprints(app: Flask) -> None:
     from portfolio_app.routes.portfolios import portfolios_bp
     from portfolio_app.routes.transactions import transactions_bp
     from portfolio_app.routes.auth import auth_bp
-    from portfolio_app.routes.admin import admin_bp
 
     app.register_blueprint(auth_bp)
-    app.register_blueprint(admin_bp, url_prefix='/admin')
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(portfolios_bp, url_prefix='/portfolios')
     app.register_blueprint(transactions_bp, url_prefix='/transactions')

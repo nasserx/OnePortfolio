@@ -804,16 +804,9 @@
   /* Inside a disclosure this resolves to `--row-actions-w`, the same
      right-hand zone the summary row above reserves — so the two tables stop
      their data at the same x and start their controls at the same x, even
-     though they can never share a column. Outside one (the admin table) it
-     falls back to its own width. */
+     though they can never share a column. Outside a disclosure it falls back
+     to its own width. */
   .records-table .records-col--actions    { width: var(--records-col-actions, var(--row-actions-w, 6rem)); }
-  .records-table .records-col--id         { width: var(--records-col-id, 3.5rem); }
-  .records-table .records-col--username   { width: var(--records-col-username, 10rem); }
-  .records-table .records-col--email      { width: var(--records-col-email, auto); }
-  .records-table .records-col--role       { width: var(--records-col-role, 6rem); }
-  .records-table .records-col--status     { width: var(--records-col-status, 7rem); }
-  .records-table .records-col--registered { width: var(--records-col-registered, 7rem); }
-  .records-table .records-col--last-login { width: var(--records-col-last-login, 9.5rem); }
 
   .records-table :is(th, td).records-cell {
     overflow: hidden;
@@ -922,33 +915,6 @@
 
   .type-income,
   .badge-dividend { color: var(--income); }
-
-  .nav-admin-badge,
-  .admin-badge--admin {
-    background-color: var(--brand-soft);
-    border-color: var(--brand-line);
-    color: var(--brand);
-  }
-
-  .admin-badge--user { background-color: var(--bg-sunken); }
-
-  .admin-badge--verified {
-    background-color: var(--pos-soft);
-    border-color: var(--pos-line);
-    color: var(--pos);
-  }
-
-  .admin-badge--unverified {
-    background-color: var(--warn-soft);
-    border-color: var(--warn-line);
-    color: var(--warn);
-  }
-
-  .admin-badge-you {
-    background-color: var(--brand-soft);
-    border-color: var(--brand-line);
-    color: var(--brand);
-  }
 
   /* ======================================================================
      8. DROPDOWNS

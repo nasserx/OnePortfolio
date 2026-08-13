@@ -281,13 +281,16 @@ def create_app(config_class=Config):
     # Defence-in-depth: HSTS (only when serving over HTTPS), clickjacking
     # protection, MIME sniffing protection, locked-down referrer/permission
     # policy, and a CSP scoped to the origins this app actually loads from
-    # (Bootstrap + bootstrap-icons via jsdelivr, Roboto via Google Fonts).
-    # ``'unsafe-inline'`` is currently required for inline <script> / <style>
-    # blocks and event handlers in templates; tightening that is a separate
-    # refactor (move scripts to external files + nonces).
+    # (Bootstrap + bootstrap-icons via jsdelivr, Inter via Google Fonts).
+    # Inline <script> blocks remain temporarily allowed by ``script-src
+    # 'unsafe-inline'`` pending the F11b nonce migration; ``style-src
+    # 'unsafe-inline'`` separately permits inline styles. Inline HTML event-
+    # handler attributes are explicitly prohibited by ``script-src-attr 'none'``.
     _CSP = (
         "default-src 'self'; "
+        "object-src 'none'; "
         "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+        "script-src-attr 'none'; "
         "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; "
         "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; "
         "img-src 'self' data:; "

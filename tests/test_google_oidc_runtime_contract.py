@@ -24,6 +24,7 @@ from portfolio_app import (
 )
 from portfolio_app.models.oauth_identity import OAuthIdentity
 from portfolio_app.models.user import User
+from portfolio_app.utils.messages import MESSAGES
 
 
 CLIENT_ID = 'oidc-contract-client-id'
@@ -227,29 +228,22 @@ def _assert_account_processing_unreachable(monkeypatch):
     return reached
 
 
-def _complete_rejected_callback(client, state, reached):
-    response = None
-    error = None
-    try:
-        response = client.get(
-            f'/auth/google/callback?code=provider-code&state={state}'
-        )
-    except Exception as exc:  # Authlib versions expose different JOSE errors.
-        error = exc
+def _assert_generic_google_failure(client, response):
+    assert response.status_code in (302, 303)
+    assert urlparse(response.headers['Location']).path == '/login'
+    with client.session_transaction() as session:
+        assert session.get('_flashes') == [
+            ('warning', MESSAGES['GOOGLE_SIGNIN_FAILED'])
+        ]
 
+
+def _complete_rejected_callback(client, state, reached):
+    response = client.get(
+        f'/auth/google/callback?code=provider-code&state={state}'
+    )
     assert reached['value'] is False
-    if error is not None:
-        assert type(error).__name__ in {
-            'BadSignatureError',
-            'ExpiredTokenError',
-            'InvalidClaimError',
-            'InvalidKeyIdError',
-            'MissingClaimError',
-            'ValueError',
-        }
-    else:
-        assert response.status_code in (302, 303, 500)
-    return response, error
+    _assert_generic_google_failure(client, response)
+    return response
 
 
 def test_valid_signed_oidc_callback_links_and_logs_in_user(oidc_app, provider):
@@ -333,7 +327,7 @@ def test_wrong_state_is_rejected_before_token_endpoint(oidc_app, provider, monke
 
     response = client.get('/auth/google/callback?code=provider-code&state=wrong')
 
-    assert response.status_code in (302, 303)
+    _assert_generic_google_failure(client, response)
     assert provider.token_calls == 0
     assert reached['value'] is False
 
@@ -350,7 +344,7 @@ def test_state_from_another_session_is_rejected_before_token_endpoint(
         f'/auth/google/callback?code=provider-code&state={state}'
     )
 
-    assert response.status_code in (302, 303)
+    _assert_generic_google_failure(second_client, response)
     assert provider.token_calls == 0
     assert reached['value'] is False
 
@@ -367,9 +361,7 @@ def test_invalid_nonce_is_rejected_by_authlib(
         provider.claim_overrides['nonce'] = 'wrong-nonce'
     reached = _assert_account_processing_unreachable(monkeypatch)
 
-    _response, error = _complete_rejected_callback(client, state, reached)
-
-    assert type(error).__name__ in {'InvalidClaimError', 'MissingClaimError'}
+    _complete_rejected_callback(client, state, reached)
 
 
 def test_invalid_signature_is_rejected_by_authlib(oidc_app, provider, monkeypatch):
@@ -378,9 +370,7 @@ def test_invalid_signature_is_rejected_by_authlib(oidc_app, provider, monkeypatc
     provider.jwt_key = provider.other_key
     reached = _assert_account_processing_unreachable(monkeypatch)
 
-    _response, error = _complete_rejected_callback(client, state, reached)
-
-    assert type(error).__name__ == 'BadSignatureError'
+    _complete_rejected_callback(client, state, reached)
 
 
 def test_unknown_signing_key_is_rejected_by_authlib(oidc_app, provider, monkeypatch):
@@ -390,15 +380,8 @@ def test_unknown_signing_key_is_rejected_by_authlib(oidc_app, provider, monkeypa
     provider.jwt_kid = 'unknown-signing-key'
     reached = _assert_account_processing_unreachable(monkeypatch)
 
-    _response, error = _complete_rejected_callback(client, state, reached)
+    _complete_rejected_callback(client, state, reached)
 
-    if error is not None:
-        assert type(error).__name__ in {'InvalidKeyIdError', 'ValueError'}
-    else:
-        # Older supported Authlib releases surface the second unknown-kid
-        # lookup as ValueError, which the application already handles as an
-        # expected OAuth failure response.
-        assert _response.status_code in (302, 303)
     assert provider.jwks_calls == 2
 
 
@@ -408,9 +391,7 @@ def test_wrong_issuer_is_rejected_by_authlib(oidc_app, provider, monkeypatch):
     provider.claim_overrides['iss'] = 'https://wrong-issuer.test'
     reached = _assert_account_processing_unreachable(monkeypatch)
 
-    _response, error = _complete_rejected_callback(client, state, reached)
-
-    assert type(error).__name__ == 'InvalidClaimError'
+    _complete_rejected_callback(client, state, reached)
 
 
 def test_wrong_audience_with_matching_azp_is_rejected_by_authlib(
@@ -424,9 +405,7 @@ def test_wrong_audience_with_matching_azp_is_rejected_by_authlib(
     })
     reached = _assert_account_processing_unreachable(monkeypatch)
 
-    _response, error = _complete_rejected_callback(client, state, reached)
-
-    assert type(error).__name__ == 'InvalidClaimError'
+    _complete_rejected_callback(client, state, reached)
 
 
 def test_expired_id_token_is_rejected_by_authlib(oidc_app, provider, monkeypatch):
@@ -435,9 +414,7 @@ def test_expired_id_token_is_rejected_by_authlib(oidc_app, provider, monkeypatch
     provider.claim_overrides['exp'] = int(time.time()) - 600
     reached = _assert_account_processing_unreachable(monkeypatch)
 
-    _response, error = _complete_rejected_callback(client, state, reached)
-
-    assert type(error).__name__ == 'ExpiredTokenError'
+    _complete_rejected_callback(client, state, reached)
 
 
 def test_userinfo_without_id_token_cannot_reach_identity_processing(
@@ -453,8 +430,28 @@ def test_userinfo_without_id_token_cannot_reach_identity_processing(
         f'/auth/google/callback?code=provider-code&state={state}'
     )
 
-    assert response.status_code in (302, 303)
-    assert response.headers['Location'].endswith('/login')
+    _assert_generic_google_failure(client, response)
     assert reached['value'] is False
     with oidc_app.app_context():
         assert OAuthIdentity.query.count() == 0
+
+
+def test_post_authlib_application_type_error_is_not_normalized(
+    oidc_app, provider, monkeypatch
+):
+    client = oidc_app.test_client()
+    state = _begin_authorization(client, provider)
+
+    def _raise_post_authlib_type_error():
+        raise TypeError('post-authlib application sentinel')
+
+    monkeypatch.setattr(
+        'portfolio_app.routes.auth.get_services',
+        _raise_post_authlib_type_error,
+    )
+
+    with pytest.raises(TypeError, match='^post-authlib application sentinel$'):
+        client.get(f'/auth/google/callback?code=provider-code&state={state}')
+
+    assert provider.token_calls == 1
+    assert provider.jwks_calls == 1

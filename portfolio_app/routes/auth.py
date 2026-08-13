@@ -9,8 +9,16 @@ from functools import wraps
 from flask import Blueprint, abort, current_app, render_template, request, redirect, url_for, flash, jsonify, session
 from flask_login import login_user, logout_user, login_required, current_user
 from flask_limiter.util import get_remote_address
-from authlib.integrations.base_client import MismatchingStateError, OAuthError
+from authlib.common.errors import AuthlibBaseError
+from authlib.integrations.base_client import OAuthError
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+
+try:
+    from joserfc.errors import JoseError as _JoserfcJoseError
+except ModuleNotFoundError as exc:
+    if exc.name != 'joserfc':
+        raise
+    _JoserfcJoseError = None
 
 from portfolio_app import GOOGLE_OIDC_ACCEPTED_ISSUERS, get_oauth, limiter
 from portfolio_app.services import get_services
@@ -35,6 +43,15 @@ from portfolio_app.utils.messages import MESSAGES
 from portfolio_app.utils.redirects import safe_local_redirect
 
 logger = logging.getLogger(__name__)
+
+_GOOGLE_OAUTH_PROTOCOL_ERRORS = (
+    OAuthError,
+    AuthlibBaseError,
+    TypeError,
+    ValueError,
+)
+if _JoserfcJoseError is not None:
+    _GOOGLE_OAUTH_PROTOCOL_ERRORS += (_JoserfcJoseError,)
 
 auth_bp = Blueprint('auth', __name__)
 _GOOGLE_OAUTH_NEXT_SESSION_KEY = 'google_oauth_next'
@@ -321,19 +338,20 @@ def google_callback():
             'iss': {'values': list(GOOGLE_OIDC_ACCEPTED_ISSUERS)},
             'aud': {'values': [current_app.config['GOOGLE_CLIENT_ID']]},
         })
-        if not isinstance(token, Mapping):
-            return _redirect_to_login_with_google_failure()
-        # ``userinfo`` is trusted only when Authlib processed an OpenID Connect
-        # ID token. Never accept an arbitrary token-response field by itself.
-        if not token.get('id_token'):
-            return _redirect_to_login_with_google_failure()
-        identity = token.get('userinfo')
-    except (OAuthError, MismatchingStateError, TypeError, ValueError) as exc:
+    except _GOOGLE_OAUTH_PROTOCOL_ERRORS as exc:
         logger.info(
             'Google OAuth authorization failed: %s',
             type(exc).__name__,
         )
         return _redirect_to_login_with_google_failure()
+
+    if not isinstance(token, Mapping):
+        return _redirect_to_login_with_google_failure()
+    # ``userinfo`` is trusted only when Authlib processed an OpenID Connect
+    # ID token. Never accept an arbitrary token-response field by itself.
+    if not token.get('id_token'):
+        return _redirect_to_login_with_google_failure()
+    identity = token.get('userinfo')
 
     if not isinstance(identity, Mapping):
         return _redirect_to_login_with_google_failure()

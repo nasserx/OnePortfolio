@@ -433,13 +433,12 @@ def resend_code():
     new_code = svc.auth_service.resend_verification_code(email)
 
     if new_code:
-        email_sent = send_verification_email(email, new_code)
-        if email_sent:
-            flash(MESSAGES['VERIFICATION_CODE_SENT'], 'success')
-        else:
-            flash(MESSAGES['VERIFICATION_CODE_SEND_FAILED'], 'danger')
-    else:
-        flash(MESSAGES['VERIFICATION_CODE_RESEND_UNAVAILABLE'], 'warning')
+        send_verification_email(email, new_code)
+
+    # Keep workflow existence and synchronous delivery outcomes private.
+    # The service remains responsible for deciding whether live state can be
+    # rotated; this public boundary always reports the same conditional result.
+    flash(MESSAGES['VERIFICATION_CODE_RESEND_RESULT'], 'info')
 
     return redirect(url_for('auth.verify_code', email=email))
 

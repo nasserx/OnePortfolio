@@ -35,6 +35,7 @@ from portfolio_app.models.pending_registration import PendingRegistration
 from portfolio_app.repositories.user_repository import UserRepository
 from portfolio_app.services.auth_service import AuthService, MAX_OTP_ATTEMPTS
 from portfolio_app.services.factory import Services
+from portfolio_app.utils import email as email_utils
 from portfolio_app.utils.messages import MESSAGES
 
 
@@ -269,6 +270,19 @@ def _assert_stored_otp_digest(stored_value, delivered_code):
     assert len(delivered_code) == 6
     assert stored_value != delivered_code
     assert re.fullmatch(r'[0-9a-f]{64}', stored_value)
+
+
+def _resend_public_result(client, email):
+    """Return the externally visible redirect and flash for one resend."""
+    with client.session_transaction() as session:
+        session.pop('_flashes', None)
+    response = client.post(
+        f'/resend-code?email={email}',
+        follow_redirects=False,
+    )
+    with client.session_transaction() as session:
+        flashes = tuple(session.pop('_flashes', ()))
+    return response.status_code, response.headers.get('Location'), flashes
 
 
 # ---------------------------------------------------------------------------
@@ -586,6 +600,271 @@ class TestResendVerificationCode:
         assert _pending_verification_state(
             app, 'alice@example.com',
         ) == state_before
+
+
+class TestResendEnumerationNormalization:
+
+    def test_pending_registration_and_unknown_share_public_result(
+        self, app, client, email_log, monkeypatch,
+    ):
+        codes = iter(('111111', '222222'))
+        monkeypatch.setattr(
+            AuthService,
+            '_make_verification_code',
+            staticmethod(lambda: next(codes)),
+        )
+        _register(client)
+        original_digest = _pending_verification_state(
+            app, 'alice@example.com',
+        )[0]
+        _expire_pending_otp(app, 'alice@example.com')
+
+        live_result = _resend_public_result(client, 'alice@example.com')
+
+        assert live_result[2] == ((
+            'info', MESSAGES['VERIFICATION_CODE_RESEND_RESULT'],
+        ),)
+        rotated_digest = _pending_verification_state(
+            app, 'alice@example.com',
+        )[0]
+        assert rotated_digest != original_digest
+        _assert_stored_otp_digest(rotated_digest, '222222')
+        assert email_log == [
+            ('alice@example.com', '111111'),
+            ('alice@example.com', '222222'),
+        ]
+
+        emails_before_unknown = list(email_log)
+        unknown_result = _resend_public_result(client, 'unknown@example.com')
+
+        assert unknown_result[0] == live_result[0]
+        assert unknown_result[1].split('?', 1)[0] == live_result[1].split('?', 1)[0]
+        assert unknown_result[2] == live_result[2]
+        assert email_log == emails_before_unknown
+        with app.app_context():
+            assert PendingRegistration.query.count() == 1
+            assert User.query.count() == 0
+
+        rejected_old_code = client.post(
+            '/verify-code?email=alice@example.com',
+            data={'code': '111111'},
+        )
+        assert rejected_old_code.status_code == 200
+        accepted_new_code = client.post(
+            '/verify-code?email=alice@example.com',
+            data={'code': '222222'},
+            follow_redirects=False,
+        )
+        assert accepted_new_code.status_code in (302, 303)
+        with app.app_context():
+            assert PendingRegistration.query.count() == 0
+            assert User.query.filter_by(email='alice@example.com').one()
+
+    def test_pending_email_and_unknown_share_public_result(
+        self, app, client, email_log, monkeypatch,
+    ):
+        password = 'CorrectHorse9'
+        _signup_and_verify(app, client, email_log, password=password)
+        _login(client, 'alice@example.com', password)
+        codes = iter(('333333', '444444'))
+        monkeypatch.setattr(
+            AuthService,
+            '_make_verification_code',
+            staticmethod(lambda: next(codes)),
+        )
+        _stage_email_change(client, 'target@example.com', password)
+        original_digest = _pending_email_state(
+            app, 'alice@example.com',
+        )[1]
+
+        live_result = _resend_public_result(client, 'target@example.com')
+
+        assert live_result[2] == ((
+            'info', MESSAGES['VERIFICATION_CODE_RESEND_RESULT'],
+        ),)
+        pending_state = _pending_email_state(app, 'alice@example.com')
+        assert pending_state[1] != original_digest
+        _assert_stored_otp_digest(pending_state[1], '444444')
+        assert email_log[-2:] == [
+            ('target@example.com', '333333'),
+            ('target@example.com', '444444'),
+        ]
+
+        emails_before_unknown = list(email_log)
+        unknown_result = _resend_public_result(client, 'unknown@example.com')
+
+        assert unknown_result[0] == live_result[0]
+        assert unknown_result[1].split('?', 1)[0] == live_result[1].split('?', 1)[0]
+        assert unknown_result[2] == live_result[2]
+        assert email_log == emails_before_unknown
+        assert _pending_email_state(
+            app, 'alice@example.com',
+        ) == pending_state
+
+        rejected_old_code = client.post(
+            '/verify-code?email=target@example.com',
+            data={'code': '333333'},
+        )
+        assert rejected_old_code.status_code == 200
+        accepted_new_code = client.post(
+            '/verify-code?email=target@example.com',
+            data={'code': '444444'},
+            follow_redirects=False,
+        )
+        assert accepted_new_code.status_code in (302, 303)
+        with app.app_context():
+            user = User.query.filter_by(email='target@example.com').one()
+            assert user.pending_email is None
+            assert user.verification_code is None
+
+    def test_expired_pending_email_and_unknown_share_public_result(
+        self, app, client, email_log,
+    ):
+        password = 'CorrectHorse9'
+        _signup_and_verify(app, client, email_log, password=password)
+        _login(client, 'alice@example.com', password)
+        _stage_email_change(client, 'expired@example.com', password)
+        with app.app_context():
+            user = User.query.filter_by(email='alice@example.com').one()
+            user.verification_code_expires_at = (
+                datetime.now(timezone.utc) - timedelta(minutes=1)
+            )
+            db.session.commit()
+        emails_before = list(email_log)
+
+        expired_result = _resend_public_result(client, 'expired@example.com')
+        unknown_result = _resend_public_result(client, 'expired@example.com')
+
+        assert expired_result == unknown_result
+        assert expired_result[2] == ((
+            'info', MESSAGES['VERIFICATION_CODE_RESEND_RESULT'],
+        ),)
+        assert email_log == emails_before
+        assert _pending_email_state(app, 'alice@example.com') == (
+            None, None, None, 0,
+        )
+
+    def test_expired_registration_is_purged_without_public_disclosure(
+        self, app, client, email_log,
+    ):
+        _register(client, email='expired-registration@example.com')
+        with app.app_context():
+            pending = PendingRegistration.query.filter_by(
+                email='expired-registration@example.com',
+            ).one()
+            pending.expires_at = datetime.now(timezone.utc) - timedelta(minutes=1)
+            db.session.commit()
+        emails_before = list(email_log)
+
+        expired_result = _resend_public_result(
+            client, 'expired-registration@example.com',
+        )
+        unknown_result = _resend_public_result(
+            client, 'expired-registration@example.com',
+        )
+
+        assert expired_result == unknown_result
+        assert email_log == emails_before
+        with app.app_context():
+            assert PendingRegistration.query.filter_by(
+                email='expired-registration@example.com',
+            ).first() is None
+            assert User.query.count() == 0
+
+    def test_delivery_success_and_failure_share_public_result(
+        self, app, client, email_log, monkeypatch,
+    ):
+        _register(client, email='delivery@example.com')
+        codes = iter(('555555', '666666'))
+        monkeypatch.setattr(
+            AuthService,
+            '_make_verification_code',
+            staticmethod(lambda: next(codes)),
+        )
+        delivery_attempts = []
+
+        def failed_delivery(email, code):
+            delivery_attempts.append(('failed', email, code))
+            return False
+
+        monkeypatch.setattr(
+            'portfolio_app.routes.auth.send_verification_email',
+            failed_delivery,
+        )
+        failed_result = _resend_public_result(client, 'delivery@example.com')
+        failed_digest = _pending_verification_state(
+            app, 'delivery@example.com',
+        )[0]
+        _assert_stored_otp_digest(failed_digest, '555555')
+
+        def successful_delivery(email, code):
+            delivery_attempts.append(('sent', email, code))
+            return True
+
+        monkeypatch.setattr(
+            'portfolio_app.routes.auth.send_verification_email',
+            successful_delivery,
+        )
+        successful_result = _resend_public_result(
+            client, 'delivery@example.com',
+        )
+        successful_digest = _pending_verification_state(
+            app, 'delivery@example.com',
+        )[0]
+
+        assert successful_result == failed_result
+        assert delivery_attempts == [
+            ('failed', 'delivery@example.com', '555555'),
+            ('sent', 'delivery@example.com', '666666'),
+        ]
+        assert successful_digest != failed_digest
+        _assert_stored_otp_digest(successful_digest, '666666')
+
+    def test_message_construction_failure_shares_unknown_public_result(
+        self, app, client, email_log, monkeypatch, caplog,
+    ):
+        _register(client, email='construction@example.com')
+        monkeypatch.setattr(
+            AuthService,
+            '_make_verification_code',
+            staticmethod(lambda: '777777'),
+        )
+
+        def failed_message_construction(*args, **kwargs):
+            raise RuntimeError('simulated message construction failure')
+
+        monkeypatch.setattr(email_utils, 'Message', failed_message_construction)
+        monkeypatch.setattr(
+            'portfolio_app.routes.auth.send_verification_email',
+            email_utils.send_verification_email,
+        )
+
+        live_result = _resend_public_result(client, 'construction@example.com')
+        stored_digest = _pending_verification_state(
+            app, 'construction@example.com',
+        )[0]
+        unknown_result = _resend_public_result(client, 'unknown@example.com')
+
+        assert unknown_result[0] == live_result[0]
+        assert unknown_result[1].split('?', 1)[0] == live_result[1].split('?', 1)[0]
+        assert unknown_result[2] == live_result[2]
+        _assert_stored_otp_digest(stored_digest, '777777')
+        assert 'Failed to send verification code to construction@example.com' in caplog.text
+        assert '777777' not in caplog.text
+        assert stored_digest not in caplog.text
+
+    def test_unknown_resend_creates_no_state_or_delivery(
+        self, app, client, email_log,
+    ):
+        result = _resend_public_result(client, 'unknown@example.com')
+
+        assert result[2] == ((
+            'info', MESSAGES['VERIFICATION_CODE_RESEND_RESULT'],
+        ),)
+        assert email_log == []
+        with app.app_context():
+            assert User.query.count() == 0
+            assert PendingRegistration.query.count() == 0
 
 
 class TestCsrfRedirectSafety:

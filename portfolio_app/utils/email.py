@@ -54,12 +54,12 @@ def send_verification_email(recipient_email: str, code: str) -> bool:
     Returns:
         True if sent successfully, False otherwise.
     """
-    msg = Message(
-        subject="OnePortfolio - Email Verification Code",
-        recipients=[recipient_email],
-        body=_build_verification_body(code),
-    )
     try:
+        msg = Message(
+            subject="OnePortfolio - Email Verification Code",
+            recipients=[recipient_email],
+            body=_build_verification_body(code),
+        )
         mail.send(msg)
         logger.info("Verification code sent to %s", recipient_email)
         return True

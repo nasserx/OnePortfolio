@@ -152,14 +152,6 @@ class VerifyCodeForm(BaseForm):
 class UpdateEmailForm(BaseForm):
     """Form for updating the logged-in user's email address."""
 
-    def __init__(
-        self,
-        data: dict,
-        check_email_taken: Optional[Callable[[str], bool]] = None,
-    ):
-        super().__init__(data)
-        self.check_email_taken = check_email_taken
-
     def validate(self) -> bool:
         # --- New email ---
         email = self._validate_required_string('email', MESSAGES['EMAIL_REQUIRED'])
@@ -169,8 +161,6 @@ class UpdateEmailForm(BaseForm):
                 self.errors['email'] = MESSAGES['EMAIL_INVALID']
             elif len(email) > 120:
                 self.errors['email'] = MESSAGES['EMAIL_TOO_LONG']
-            elif self.check_email_taken and self.check_email_taken(email):
-                self.errors['email'] = MESSAGES['EMAIL_IN_USE']
             else:
                 self.cleaned_data['email'] = email
 

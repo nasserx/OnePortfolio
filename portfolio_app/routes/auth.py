@@ -511,10 +511,7 @@ def update_email():
     if request.method == 'POST':
         svc = get_services()
 
-        form = UpdateEmailForm(
-            request.form,
-            check_email_taken=svc.auth_service.email_is_unavailable,
-        )
+        form = UpdateEmailForm(request.form)
 
         if form.validate():
             data = form.get_cleaned_data()

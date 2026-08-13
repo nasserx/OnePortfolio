@@ -1104,6 +1104,197 @@ class TestPendingEmailReservationLifecycle:
         )
 
 
+class TestEmailChangeEnumerationHardening:
+
+    @staticmethod
+    def _assert_current_password_failure(response):
+        assert response.status_code == 200
+        body = response.get_data(as_text=True)
+        assert MESSAGES['CURRENT_PASSWORD_INCORRECT'] in body
+        assert MESSAGES['EMAIL_IN_USE'] not in body
+
+    def test_wrong_password_hides_all_target_availability_states(
+        self, app, client, email_log,
+    ):
+        alice_password = 'CorrectHorse9'
+        bob_password = 'CorrectHorse10'
+        _signup_and_verify(app, client, email_log, password=alice_password)
+
+        bob_client = app.test_client()
+        _signup_and_verify(
+            app,
+            bob_client,
+            email_log,
+            email='bob@example.com',
+            password=bob_password,
+        )
+        _login(bob_client, 'bob@example.com', bob_password)
+        assert _stage_email_change(
+            bob_client,
+            'reserved@example.com',
+            bob_password,
+        ).status_code in (302, 303)
+
+        assert _register(
+            app.test_client(),
+            email='staged@example.com',
+            password='AnotherHorse9',
+        ).status_code in (302, 303)
+
+        _login(client, 'alice@example.com', alice_password)
+        emails_before = list(email_log)
+        bob_pending_before = _pending_email_state(app, 'bob@example.com')
+        with app.app_context():
+            staged = PendingRegistration.query.filter_by(
+                email='staged@example.com',
+            ).one()
+            staged_before = (
+                staged.password_hash,
+                staged.verification_code,
+                staged.verification_code_expires_at,
+                staged.failed_otp_attempts,
+            )
+
+        targets = (
+            'available@example.com',
+            'bob@example.com',
+            'reserved@example.com',
+            'staged@example.com',
+            'alice@example.com',
+        )
+        for target in targets:
+            response = _stage_email_change(
+                client,
+                target,
+                'WrongPassword9',
+            )
+            self._assert_current_password_failure(response)
+
+        assert email_log == emails_before
+        assert _pending_email_state(app, 'alice@example.com') == (
+            None, None, None, 0,
+        )
+        assert _pending_email_state(app, 'bob@example.com') == bob_pending_before
+        with app.app_context():
+            staged = PendingRegistration.query.filter_by(
+                email='staged@example.com',
+            ).one()
+            assert (
+                staged.password_hash,
+                staged.verification_code,
+                staged.verification_code_expires_at,
+                staged.failed_otp_attempts,
+            ) == staged_before
+
+    def test_wrong_password_skips_availability_and_otp_generation(
+        self, app, client, email_log, monkeypatch,
+    ):
+        password = 'CorrectHorse9'
+        _signup_and_verify(app, client, email_log, password=password)
+        _login(client, 'alice@example.com', password)
+        emails_before = list(email_log)
+
+        monkeypatch.setattr(
+            AuthService,
+            'email_is_unavailable',
+            lambda *args, **kwargs: pytest.fail(
+                'availability must not be evaluated before password verification'
+            ),
+        )
+        monkeypatch.setattr(
+            AuthService,
+            '_make_verification_code',
+            staticmethod(lambda: pytest.fail(
+                'wrong-password email change must not generate an OTP'
+            )),
+        )
+
+        response = _stage_email_change(
+            client,
+            'available@example.com',
+            'WrongPassword9',
+        )
+
+        self._assert_current_password_failure(response)
+        assert email_log == emails_before
+        assert _pending_email_state(app, 'alice@example.com') == (
+            None, None, None, 0,
+        )
+
+    def test_correct_password_preserves_unavailable_and_success_contracts(
+        self, app, client, email_log,
+    ):
+        alice_password = 'CorrectHorse9'
+        _signup_and_verify(app, client, email_log, password=alice_password)
+        _signup_and_verify(
+            app,
+            app.test_client(),
+            email_log,
+            email='bob@example.com',
+            password='CorrectHorse10',
+        )
+        _login(client, 'alice@example.com', alice_password)
+        emails_before = list(email_log)
+
+        for target in ('bob@example.com', 'alice@example.com'):
+            rejected = _stage_email_change(client, target, alice_password)
+            assert rejected.status_code == 200
+            body = rejected.get_data(as_text=True)
+            assert MESSAGES['EMAIL_IN_USE'] in body
+            assert MESSAGES['CURRENT_PASSWORD_INCORRECT'] not in body
+
+        assert email_log == emails_before
+        assert _pending_email_state(app, 'alice@example.com') == (
+            None, None, None, 0,
+        )
+
+        accepted = _stage_email_change(
+            client,
+            ' Available@Example.com ',
+            alice_password,
+        )
+
+        assert accepted.status_code in (302, 303)
+        assert '/verify-code' in accepted.headers['Location']
+        assert email_log[-1][0] == 'available@example.com'
+        pending_email, digest, expires_at, failed_attempts = (
+            _pending_email_state(app, 'alice@example.com')
+        )
+        assert pending_email == 'available@example.com'
+        assert digest
+        assert expires_at
+        assert failed_attempts == 0
+
+    def test_malformed_email_is_rejected_before_service_execution(
+        self, app, client, email_log, monkeypatch,
+    ):
+        password = 'CorrectHorse9'
+        _signup_and_verify(app, client, email_log, password=password)
+        _login(client, 'alice@example.com', password)
+        emails_before = list(email_log)
+
+        monkeypatch.setattr(
+            AuthService,
+            'update_email',
+            lambda *args, **kwargs: pytest.fail(
+                'malformed email must be rejected by form validation'
+            ),
+        )
+
+        response = _stage_email_change(
+            client,
+            'not-an-email',
+            password,
+        )
+
+        assert response.status_code == 200
+        assert MESSAGES['EMAIL_INVALID'] in response.get_data(as_text=True)
+        assert email_log == emails_before
+        assert _pending_email_state(app, 'alice@example.com') == (
+            None, None, None, 0,
+        )
+
+
 class TestOtpHmacStorage:
 
     def test_identical_raw_code_is_bound_to_purpose_and_stable_context(

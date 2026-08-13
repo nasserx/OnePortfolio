@@ -146,7 +146,7 @@
    payload out of the executable script and makes it trivially inspectable. #}
 <script type="application/json" id="allocationData">{{ chart_data | tojson }}</script>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 document.addEventListener('DOMContentLoaded', function () {
     var payload = document.getElementById('allocationData');
     window.initPortfolioAllocationChart(JSON.parse(payload.textContent));

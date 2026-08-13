@@ -76,7 +76,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
+<script nonce="{{ csp_nonce }}">
     // Auto-submit when 6 digits are entered
     document.getElementById('code').addEventListener('input', function () {
         if (this.value.replace(/\D/g, '').length === 6) {

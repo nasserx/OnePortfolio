@@ -109,8 +109,12 @@ stylesheets loaded directly by production HTML carry SHA-384 Subresource
 Integrity metadata and anonymous CORS mode. Bootstrap CSS remains an explicit
 exception because `tokens.css` imports it into the `vendor` cascade layer;
 Google Fonts responses are also not assigned fixed integrity values. The
-enforced CSP still temporarily permits inline scripts pending the request-scoped
-nonce migration, and inline styles remain permitted for current UI behavior.
+enforced CSP uses one cryptographically random nonce per request for executable
+inline scripts, with the same nonce present in the response header and rendered
+script elements; script `unsafe-inline` is disabled and inline event-handler
+attributes remain prohibited. Inline styles remain permitted for current UI
+behavior. jsDelivr remains an explicit external-script trust boundary, with
+intended directly loaded stable assets protected by the integrity metadata above.
 
 See [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md) for UI constraints.
 

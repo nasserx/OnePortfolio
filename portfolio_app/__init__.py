@@ -1,7 +1,8 @@
 import sqlite3
 import re
+import secrets
 
-from flask import Flask, current_app
+from flask import Flask, current_app, g
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf.csrf import CSRFProtect, CSRFError
 from flask_login import LoginManager
@@ -200,9 +201,19 @@ def create_app(config_class=Config):
     # template can use `v=ASSET_VERSION` instead of carrying its own literal.
     ASSET_VERSION = '20260810-6'
 
+    def _get_csp_nonce():
+        """Return the single cryptographically random nonce for this request."""
+        if not hasattr(g, 'csp_nonce'):
+            g.csp_nonce = secrets.token_urlsafe(32)
+        return g.csp_nonce
+
     @app.context_processor
     def inject_template_globals():
-        return {'MESSAGES': MESSAGES, 'ASSET_VERSION': ASSET_VERSION}
+        return {
+            'MESSAGES': MESSAGES,
+            'ASSET_VERSION': ASSET_VERSION,
+            'csp_nonce': _get_csp_nonce(),
+        }
 
     # Health check route
     @app.route('/health')
@@ -282,14 +293,13 @@ def create_app(config_class=Config):
     # protection, MIME sniffing protection, locked-down referrer/permission
     # policy, and a CSP scoped to the origins this app actually loads from
     # (Bootstrap + bootstrap-icons via jsdelivr, Inter via Google Fonts).
-    # Inline <script> blocks remain temporarily allowed by ``script-src
-    # 'unsafe-inline'`` pending the F11b nonce migration; ``style-src
-    # 'unsafe-inline'`` separately permits inline styles. Inline HTML event-
-    # handler attributes are explicitly prohibited by ``script-src-attr 'none'``.
-    _CSP = (
+    # Executable inline <script> blocks use one request-scoped nonce; inline
+    # HTML event-handler attributes remain prohibited by ``script-src-attr
+    # 'none'``. ``style-src 'unsafe-inline'`` separately permits inline styles.
+    _CSP_TEMPLATE = (
         "default-src 'self'; "
         "object-src 'none'; "
-        "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+        "script-src 'self' 'nonce-{nonce}' https://cdn.jsdelivr.net; "
         "script-src-attr 'none'; "
         "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; "
         "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; "
@@ -317,7 +327,10 @@ def create_app(config_class=Config):
                 'Strict-Transport-Security',
                 'max-age=31536000; includeSubDomains',
             )
-        resp.headers.setdefault('Content-Security-Policy', _CSP)
+        resp.headers.setdefault(
+            'Content-Security-Policy',
+            _CSP_TEMPLATE.format(nonce=_get_csp_nonce()),
+        )
         return resp
 
     # Register blueprints

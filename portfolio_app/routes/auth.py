@@ -147,12 +147,9 @@ def inject_demo_flag():
 def login():
     """Login page. Blocks unverified accounts.
 
-    The per-IP rate limit raises the cost of brute-force sweeps and
-    blunts the lockout-DoS pattern (where any IP that knows a username
-    could trip the per-account lockout in five POSTs). The per-account
-    lockout still applies on top, so a distributed attacker is still
-    rejected — they just can't bring the lockout down on a single user
-    from a single host.
+    The per-IP rate limit raises the cost of brute-force sweeps. The
+    per-account lockout still applies on top, while locked-account state is
+    disclosed only after the submitted password has been verified.
     """
     if current_user.is_authenticated:
         return redirect(url_for('dashboard.index'))

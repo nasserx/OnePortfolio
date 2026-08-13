@@ -31,6 +31,13 @@ MAX_OTP_ATTEMPTS = 5
 USERNAME_MAX_LENGTH = 80
 _USERNAME_SAFE_RE = re.compile(r'[^a-z0-9]+')
 
+# Fixed current-scheme bcrypt hash whose random source password was discarded.
+# Verifying attacker input against it exercises the same current + legacy
+# bcrypt checks as a real wrong password without creating or persisting a user.
+_DUMMY_PASSWORD_HASH = (
+    '$2b$12$Cy5DRkakgcRAcXpTEgrSKuV2IH01/2lcFoxfCJ7ZSLJghiTNXlOAS'
+)
+
 
 class AuthService:
     """Service handling registration, login, and password management.
@@ -270,8 +277,8 @@ class AuthService:
 
         Returns:
             * The authenticated :class:`User` on success.
-            * ``'locked'`` if the account is currently locked from too many
-              failed attempts.
+            * ``'locked'`` if the account is currently locked and the
+              submitted password is correct.
             * ``'pending'`` if the identifier matches a staged sign-up that
               hasn't been verified yet.
             * ``None`` if the credentials are invalid.
@@ -282,10 +289,14 @@ class AuthService:
         """
         user = self.user_repo.get_by_username_or_email(identifier)
         if user:
+            password_matches = user.check_password(password)
             if user.is_locked():
-                return 'locked'
+                # Wrong guesses against locked accounts stay generic and do
+                # not extend the existing lockout. A legitimate user who
+                # proves the password may still be told to wait.
+                return 'locked' if password_matches else None
 
-            if user.check_password(password):
+            if password_matches:
                 # Transparent upgrade to bcrypt for legacy hashes.
                 if user.needs_rehash():
                     user.set_password(password)
@@ -308,10 +319,17 @@ class AuthService:
         # route can prompt the user to finish verification.
         pending = self.pending_repo.get_by_username(identifier) or \
             self.pending_repo.get_by_email(identifier.lower())
+        self._verify_dummy_password(password)
         if pending:
             return 'pending'
 
         return None
+
+    @staticmethod
+    def _verify_dummy_password(password: str) -> None:
+        """Burn the real wrong-password verification path without DB state."""
+        dummy_user = User(password_hash=_DUMMY_PASSWORD_HASH)
+        dummy_user.check_password(password)
 
     # ------------------------------------------------------------------
     # Password management

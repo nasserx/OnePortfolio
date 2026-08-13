@@ -1314,8 +1314,19 @@ class TestLogin:
         _signup_and_verify(app, client, email_log)
 
         # Five consecutive wrong-password attempts must trip the lockout.
-        for _ in range(5):
-            client.post('/login', data={'username': 'alice@example.com', 'password': 'Bad9999999'})
+        for attempt in range(1, 6):
+            response = client.post(
+                '/login',
+                data={
+                    'username': 'alice@example.com',
+                    'password': 'Bad9999999',
+                },
+            )
+            assert MESSAGES['INVALID_CREDENTIALS'] in response.get_data(as_text=True)
+            assert MESSAGES['ACCOUNT_LOCKED'] not in response.get_data(as_text=True)
+            with app.app_context():
+                user = User.query.filter_by(username='alice').one()
+                assert user.failed_login_attempts == attempt
 
         # The 6th attempt — even with the *correct* password — is locked.
         resp = client.post(
@@ -1329,6 +1340,238 @@ class TestLogin:
         with app.app_context():
             user = User.query.filter_by(username='alice').one()
             assert user.locked_until is not None
+
+
+class TestLoginEnumerationHardening:
+
+    @staticmethod
+    def _assert_generic_html_failure(response):
+        assert response.status_code == 200
+        body = response.get_data(as_text=True)
+        assert MESSAGES['INVALID_CREDENTIALS'] in body
+        assert MESSAGES['ACCOUNT_LOCKED'] not in body
+        assert 'Location' not in response.headers
+
+    def test_unknown_and_pending_identifiers_match_real_wrong_password_without_state(
+        self, app, client, email_log,
+    ):
+        _signup_and_verify(app, client, email_log)
+        pending_client = app.test_client()
+        _register(
+            pending_client,
+            email='pending@example.com',
+            password='PendingHorse9',
+        )
+
+        with app.app_context():
+            pending = PendingRegistration.query.filter_by(
+                email='pending@example.com',
+            ).one()
+            pending_state = (
+                pending.password_hash,
+                pending.verification_code,
+                pending.failed_otp_attempts,
+            )
+
+        responses = (
+            client.post('/login', data={
+                'username': 'alice@example.com',
+                'password': 'WrongHorse99',
+            }),
+            client.post('/login', data={
+                'username': 'unknown@example.com',
+                'password': 'WrongHorse99',
+            }),
+            client.post('/login', data={
+                'username': 'unknown_username',
+                'password': 'WrongHorse99',
+            }),
+            client.post('/login', data={
+                'username': 'pending@example.com',
+                'password': 'PendingHorse9',
+            }),
+        )
+
+        for response in responses:
+            self._assert_generic_html_failure(response)
+
+        with app.app_context():
+            user = User.query.filter_by(email='alice@example.com').one()
+            assert user.failed_login_attempts == 1
+            assert User.query.count() == 1
+            pending = PendingRegistration.query.filter_by(
+                email='pending@example.com',
+            ).one()
+            assert (
+                pending.password_hash,
+                pending.verification_code,
+                pending.failed_otp_attempts,
+            ) == pending_state
+
+    def test_real_unknown_pending_and_locked_wrong_paths_use_same_bcrypt_checks(
+        self, app, client, email_log, monkeypatch,
+    ):
+        _signup_and_verify(app, client, email_log)
+        _register(
+            app.test_client(),
+            email='pending@example.com',
+            password='PendingHorse9',
+        )
+
+        checkpw_calls = []
+
+        def reject_password(candidate, stored_hash):
+            checkpw_calls.append((candidate, stored_hash))
+            return False
+
+        monkeypatch.setattr(
+            'portfolio_app.models.user.bcrypt.checkpw',
+            reject_password,
+        )
+        monkeypatch.setattr(
+            'portfolio_app.models.user.bcrypt.hashpw',
+            lambda *args, **kwargs: pytest.fail(
+                'login verification must not generate a bcrypt hash'
+            ),
+        )
+
+        identifiers = (
+            'alice@example.com',
+            'unknown@example.com',
+            'pending@example.com',
+        )
+        call_groups = []
+        for identifier in identifiers:
+            before = len(checkpw_calls)
+            response = client.post('/login', data={
+                'username': identifier,
+                'password': 'WrongHorse99',
+            })
+            self._assert_generic_html_failure(response)
+            call_groups.append(checkpw_calls[before:])
+
+        with app.app_context():
+            user = User.query.filter_by(email='alice@example.com').one()
+            user.failed_login_attempts = 5
+            user.locked_until = datetime.now(timezone.utc) + timedelta(minutes=20)
+            db.session.commit()
+
+        before = len(checkpw_calls)
+        locked_response = client.post('/login', data={
+            'username': 'alice@example.com',
+            'password': 'WrongHorse99',
+        })
+        self._assert_generic_html_failure(locked_response)
+        call_groups.append(checkpw_calls[before:])
+
+        # Current bcrypt misses perform the prehashed check and the retained
+        # raw-bcrypt compatibility fallback. Dummy and locked paths do both.
+        assert [len(group) for group in call_groups] == [2, 2, 2, 2]
+        costs = []
+        for group in call_groups:
+            assert group[0][1] == group[1][1]
+            costs.append(group[0][1].split(b'$')[2])
+        assert costs == [costs[0]] * len(costs)
+
+    def test_locked_password_is_verified_without_mutating_lockout(
+        self, app, client, email_log, monkeypatch,
+    ):
+        _signup_and_verify(app, client, email_log)
+        with app.app_context():
+            user = User.query.filter_by(email='alice@example.com').one()
+            user.failed_login_attempts = 5
+            user.locked_until = datetime.now(timezone.utc) + timedelta(minutes=20)
+            db.session.commit()
+            user_id = user.id
+            failed_attempts_before = user.failed_login_attempts
+            locked_until_before = user.locked_until
+
+        original_check_password = User.check_password
+        checked_users = []
+
+        def record_check(user, password):
+            checked_users.append((user.id, password))
+            return original_check_password(user, password)
+
+        monkeypatch.setattr(User, 'check_password', record_check)
+
+        wrong = client.post('/login', data={
+            'username': 'alice@example.com',
+            'password': 'WrongHorse99',
+        })
+        self._assert_generic_html_failure(wrong)
+
+        correct = client.post('/login', data={
+            'username': 'alice@example.com',
+            'password': 'CorrectHorse9',
+        })
+        assert correct.status_code == 200
+        correct_body = correct.get_data(as_text=True)
+        assert MESSAGES['ACCOUNT_LOCKED'] in correct_body
+        assert MESSAGES['INVALID_CREDENTIALS'] not in correct_body
+
+        assert checked_users == [
+            (user_id, 'WrongHorse99'),
+            (user_id, 'CorrectHorse9'),
+        ]
+        with client.session_transaction() as session:
+            assert session.get('_user_id') is None
+        with app.app_context():
+            user = User.query.filter_by(email='alice@example.com').one()
+            assert user.failed_login_attempts == failed_attempts_before
+            assert user.locked_until == locked_until_before
+
+    def test_modal_failures_match_html_semantics(self, app, client, email_log):
+        _signup_and_verify(app, client, email_log)
+        _register(
+            app.test_client(),
+            email='pending@example.com',
+            password='PendingHorse9',
+        )
+
+        expected_invalid = {
+            'ok': False,
+            'errors': {'__all__': MESSAGES['INVALID_CREDENTIALS']},
+        }
+        for identifier in (
+            'alice@example.com',
+            'unknown@example.com',
+            'pending@example.com',
+        ):
+            response = client.post('/login', data={
+                '_modal': '1',
+                'username': identifier,
+                'password': 'WrongHorse99',
+            })
+            assert response.status_code == 422
+            assert response.get_json() == expected_invalid
+
+        with app.app_context():
+            user = User.query.filter_by(email='alice@example.com').one()
+            user.failed_login_attempts = 5
+            user.locked_until = datetime.now(timezone.utc) + timedelta(minutes=20)
+            db.session.commit()
+
+        locked_wrong = client.post('/login', data={
+            '_modal': '1',
+            'username': 'alice@example.com',
+            'password': 'WrongHorse99',
+        })
+        assert locked_wrong.status_code == 422
+        assert locked_wrong.get_json() == expected_invalid
+
+        locked_correct = client.post('/login', data={
+            '_modal': '1',
+            'username': 'alice@example.com',
+            'password': 'CorrectHorse9',
+        })
+        assert locked_correct.status_code == 422
+        assert locked_correct.get_json() == {
+            'ok': False,
+            'errors': {'__all__': MESSAGES['ACCOUNT_LOCKED']},
+        }
+        with client.session_transaction() as session:
+            assert session.get('_user_id') is None
 
 
 # ---------------------------------------------------------------------------

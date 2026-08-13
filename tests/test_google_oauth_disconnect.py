@@ -76,9 +76,10 @@ class FakeGoogleClient:
         'email_verified': True,
     })
 
-    def authorize_access_token(self):
+    def authorize_access_token(self, **_kwargs):
         return {
             'access_token': 'test-only-token',
+            'id_token': 'validated-by-test-fake',
             'userinfo': self.identity,
         }
 

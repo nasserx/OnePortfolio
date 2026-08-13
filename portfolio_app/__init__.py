@@ -27,6 +27,11 @@ csrf = CSRFProtect()
 login_manager = LoginManager()
 mail = Mail()
 ONEPORTFOLIO_OAUTH_EXTENSION_KEY = 'oneportfolio_oauth'
+GOOGLE_OIDC_ISSUER = 'https://accounts.google.com'
+GOOGLE_OIDC_ACCEPTED_ISSUERS = (
+    GOOGLE_OIDC_ISSUER,
+    'accounts.google.com',
+)
 _AUTH_IDENTITY_RE = re.compile(r'\Av1:([1-9][0-9]*):(0|[1-9][0-9]*)\Z')
 _LEGACY_AUTH_IDENTITY_RE = re.compile(r'\A[1-9][0-9]*\Z')
 # ``RATELIMIT_STORAGE_URI`` is owned by application configuration and consumed
@@ -65,7 +70,9 @@ def _register_google_oauth_client(app, oauth_client):
         name='google',
         client_id=app.config['GOOGLE_CLIENT_ID'],
         client_secret=app.config['GOOGLE_CLIENT_SECRET'],
-        server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
+        server_metadata_url=(
+            f'{GOOGLE_OIDC_ISSUER}/.well-known/openid-configuration'
+        ),
         client_kwargs={'scope': 'openid email profile'},
         redirect_uri=app.config['GOOGLE_REDIRECT_URI'],
     )

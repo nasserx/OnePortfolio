@@ -24,7 +24,7 @@
       the wrong palette. Kept inline and tiny on purpose — a blocking
       request here would defeat the point.
     #}
-    <script>
+    <script nonce="{{ csp_nonce }}">
     (function () {
         try {
             var theme = localStorage.getItem('op:theme');

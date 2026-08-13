@@ -2,6 +2,7 @@
 
 from html.parser import HTMLParser
 from pathlib import Path
+import re
 
 from portfolio_app import db
 from portfolio_app.models.user import User
@@ -56,6 +57,8 @@ class _TemplateSecurityParser(HTMLParser):
     def __init__(self):
         super().__init__()
         self.resources = []
+        self.executable_inline_scripts = []
+        self.data_scripts = []
         self.executable_attributes = []
         self.javascript_urls = []
 
@@ -64,6 +67,14 @@ class _TemplateSecurityParser(HTMLParser):
         resource_url = None
         if tag == 'script':
             resource_url = attrs_map.get('src')
+            if not resource_url:
+                script_type = (attrs_map.get('type') or '').strip().lower()
+                target = (
+                    self.data_scripts
+                    if script_type in {'application/json', 'application/ld+json'}
+                    else self.executable_inline_scripts
+                )
+                target.append(attrs_map)
         elif tag == 'link' and 'stylesheet' in (attrs_map.get('rel') or '').lower():
             resource_url = attrs_map.get('href')
         if resource_url and resource_url.startswith('https://'):
@@ -106,17 +117,32 @@ def _authenticated_client(app):
     return client
 
 
+def _response_csp_nonce(response):
+    directives = _parse_csp(response.headers['Content-Security-Policy'])
+    nonce_sources = [
+        source
+        for source in directives['script-src']
+        if source.startswith("'nonce-")
+    ]
+    assert len(nonce_sources) == 1
+    nonce_source = nonce_sources[0]
+    assert nonce_source.endswith("'")
+    nonce = nonce_source[len("'nonce-"):-1]
+    assert re.fullmatch(r'[A-Za-z0-9_-]{43}', nonce)
+    return directives, nonce
+
+
 def _assert_security_header_contract(response):
     assert response.headers['X-Content-Type-Options'] == 'nosniff'
     assert response.headers['X-Frame-Options'] == 'DENY'
     assert response.headers['Referrer-Policy'] == 'strict-origin-when-cross-origin'
     assert response.headers['Permissions-Policy'] == 'geolocation=(), microphone=(), camera=()'
 
-    directives = _parse_csp(response.headers['Content-Security-Policy'])
+    directives, nonce = _response_csp_nonce(response)
     assert directives['default-src'] == {"'self'"}
     assert directives['script-src'] == {
         "'self'",
-        "'unsafe-inline'",
+        f"'nonce-{nonce}'",
         'https://cdn.jsdelivr.net',
     }
     assert directives['script-src-attr'] == {"'none'"}
@@ -138,8 +164,10 @@ def _assert_security_header_contract(response):
     assert directives['base-uri'] == {"'self'"}
     assert directives['form-action'] == {"'self'"}
     assert "'unsafe-eval'" not in directives['script-src']
+    assert "'unsafe-inline'" not in directives['script-src']
     assert 'data:' not in directives['script-src']
     assert 'blob:' not in directives['script-src']
+    return nonce
 
 
 def test_representative_flask_responses_receive_security_headers(app):
@@ -158,8 +186,48 @@ def test_representative_flask_responses_receive_security_headers(app):
     assert responses['JSON'].is_json
     assert responses['application error'].status_code == 404
     assert responses['Flask static'].status_code == 200
-    for response in responses.values():
-        _assert_security_header_contract(response)
+    nonces = [_assert_security_header_contract(response) for response in responses.values()]
+    assert len(set(nonces)) == len(responses)
+
+
+def test_rendered_executable_scripts_share_their_response_nonce(app):
+    guest_client = app.test_client()
+    authenticated_client = _authenticated_client(app)
+    responses = {
+        'landing shell': guest_client.get('/'),
+        'authentication shell': guest_client.get('/login'),
+        'primary application shell': authenticated_client.get('/'),
+        'dynamic assets page': authenticated_client.get('/transactions/'),
+    }
+
+    expected_executable_counts = {
+        'landing shell': 1,
+        'authentication shell': 2,
+        'primary application shell': 2,
+        'dynamic assets page': 2,
+    }
+    for name, response in responses.items():
+        assert response.status_code == 200
+        nonce = _assert_security_header_contract(response)
+        parser = _TemplateSecurityParser()
+        parser.feed(response.get_data(as_text=True))
+        assert len(parser.executable_inline_scripts) == expected_executable_counts[name]
+        assert {
+            attrs.get('nonce') for attrs in parser.executable_inline_scripts
+        } == {nonce}
+        assert all('nonce' not in attrs for attrs in parser.data_scripts)
+
+
+def test_csp_nonce_is_request_scoped_and_not_stored_in_session(app):
+    client = app.test_client()
+    first_nonce = _assert_security_header_contract(client.get('/login'))
+    second_nonce = _assert_security_header_contract(client.get('/login'))
+
+    assert first_nonce != second_nonce
+    with client.session_transaction() as session:
+        assert 'csp_nonce' not in session
+        assert first_nonce not in session.values()
+        assert second_nonce not in session.values()
 
 
 def test_every_eligible_production_asset_has_exact_sri_and_cors_mode():
@@ -205,3 +273,15 @@ def test_production_templates_have_no_inline_handlers_or_javascript_urls():
     parser = _parse_production_templates()
     assert parser.executable_attributes == []
     assert parser.javascript_urls == []
+
+
+def test_every_production_inline_script_has_the_correct_nonce_contract():
+    parser = _parse_production_templates()
+
+    assert len(parser.executable_inline_scripts) == 11
+    assert {
+        attrs.get('nonce') for attrs in parser.executable_inline_scripts
+    } == {'{{ csp_nonce }}'}
+    assert len(parser.data_scripts) == 2
+    assert all(attrs.get('type') == 'application/json' for attrs in parser.data_scripts)
+    assert all('nonce' not in attrs for attrs in parser.data_scripts)

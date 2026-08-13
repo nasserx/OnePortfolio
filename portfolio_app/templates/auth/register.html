@@ -84,7 +84,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
+<script nonce="{{ csp_nonce }}">
     const toggleBtn = document.getElementById('togglePassword');
     const passInput = document.getElementById('password');
     const toggleIcon = document.getElementById('toggleIcon');

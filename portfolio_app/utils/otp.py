@@ -2,7 +2,7 @@
 
 import hashlib
 import hmac
-from collections.abc import Sequence
+from typing import Sequence
 
 from flask import current_app
 

@@ -12,7 +12,7 @@ from flask_limiter.util import get_remote_address
 from authlib.integrations.base_client import MismatchingStateError, OAuthError
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
-from portfolio_app import get_oauth, limiter
+from portfolio_app import GOOGLE_OIDC_ACCEPTED_ISSUERS, get_oauth, limiter
 from portfolio_app.services import get_services
 from portfolio_app.utils.constants import DEMO_USERNAME
 from portfolio_app.forms.auth_forms import (
@@ -314,8 +314,18 @@ def google_callback():
     )
 
     try:
-        token = google.authorize_access_token()
+        # Supplying custom claims options disables Authlib's metadata-derived
+        # issuer default, so constrain both claims explicitly. Authlib remains
+        # responsible for decoding and validating the signed ID token.
+        token = google.authorize_access_token(claims_options={
+            'iss': {'values': list(GOOGLE_OIDC_ACCEPTED_ISSUERS)},
+            'aud': {'values': [current_app.config['GOOGLE_CLIENT_ID']]},
+        })
         if not isinstance(token, Mapping):
+            return _redirect_to_login_with_google_failure()
+        # ``userinfo`` is trusted only when Authlib processed an OpenID Connect
+        # ID token. Never accept an arbitrary token-response field by itself.
+        if not token.get('id_token'):
             return _redirect_to_login_with_google_failure()
         identity = token.get('userinfo')
     except (OAuthError, MismatchingStateError, TypeError, ValueError) as exc:

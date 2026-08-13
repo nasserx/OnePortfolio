@@ -22,7 +22,7 @@ Supporting layers:
 
 Routes should stay thin: they parse HTTP concerns, call forms/services/calculators, and select templates or JSON responses.
 
-The Google OAuth backend uses Authlib and is disabled by default. When enabled with complete configuration, the app registers a Google OpenID Connect client during app creation. The auth blueprint exposes backend login and callback routes for existing verified local accounts only. Previously linked Google identities resolve by provider plus Google's stable OpenID Connect `sub` claim. On first successful Google sign-in, a verified Google email may create one Google identity link for a matching verified local account.
+The Google OAuth backend uses Authlib and is disabled by default. When enabled with complete configuration, the app registers a Google OpenID Connect client during app creation. Authlib owns state, nonce, signature, issuer, audience, and expiry validation; the callback explicitly constrains the issuer to Google's accepted issuer identifiers and the audience to the configured client ID, and requires an ID token before consuming Authlib-produced userinfo. Transport-isolated real-Authlib contract tests protect that delegated boundary. The auth blueprint exposes backend login and callback routes for existing verified local accounts only. Previously linked Google identities resolve by provider plus Google's stable OpenID Connect `sub` claim. On first successful Google sign-in, a verified Google email may create one Google identity link for a matching verified local account.
 
 `OAuthIdentity` stores the persistent provider-subject link. Automatic registration, manual account-management UI, unlinking, and OAuth token or provider-payload persistence are not implemented.
 

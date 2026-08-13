@@ -65,13 +65,16 @@ class FakeGoogleClient:
         self.redirect_uris.append(redirect_uri)
         return redirect('/fake-google-authorize')
 
-    def authorize_access_token(self):
+    def authorize_access_token(self, **_kwargs):
         if self.oauth_error:
             raise self.oauth_error
         if self.token is not None:
+            if isinstance(self.token, dict) and 'userinfo' in self.token:
+                return {'id_token': 'validated-by-test-fake', **self.token}
             return self.token
         return {
             'access_token': 'test-only-token',
+            'id_token': 'validated-by-test-fake',
             'userinfo': self.identity,
         }
 

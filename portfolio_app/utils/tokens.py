@@ -5,8 +5,8 @@ time-limited signed tokens. The payload is a dict carrying the user's
 email and a single-use token id (jti) that the DB cross-checks so each
 link can only be redeemed once.
 
-Note: Email verification now uses a 6-digit OTP code stored in the database,
-not a URL token. Only password reset still uses URL tokens.
+Note: Email verification uses a 6-digit OTP delivered to the user and stores
+only its keyed digest in the database. Only password reset uses URL tokens.
 """
 
 from typing import Optional, Tuple

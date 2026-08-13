@@ -264,6 +264,13 @@ def _stage_email_change(client, target_email, password):
     )
 
 
+def _assert_stored_otp_digest(stored_value, delivered_code):
+    assert delivered_code.isdigit()
+    assert len(delivered_code) == 6
+    assert stored_value != delivered_code
+    assert re.fullmatch(r'[0-9a-f]{64}', stored_value)
+
+
 # ---------------------------------------------------------------------------
 # Sign-up tests
 # ---------------------------------------------------------------------------
@@ -282,7 +289,10 @@ class TestSignup:
             # Stored hash is bcrypt — never plaintext.
             assert pending.password_hash.startswith('$2')
             assert pending.password_hash != 'CorrectHorse9'
-            assert len(pending.verification_code) == 6
+            _assert_stored_otp_digest(
+                pending.verification_code,
+                email_log[-1][1],
+            )
 
         # Exactly one verification email was queued.
         assert len(email_log) == 1
@@ -488,6 +498,9 @@ class TestResendVerificationCode:
         )
         _register_with_csrf(csrf_client)
         assert email_log == [('alice@example.com', '100001')]
+        state_before_resend = _pending_verification_state(
+            csrf_app, 'alice@example.com',
+        )
 
         verify_page = csrf_client.get(
             '/verify-code?email=alice@example.com',
@@ -518,9 +531,11 @@ class TestResendVerificationCode:
             ('alice@example.com', '100001'),
             ('alice@example.com', '100002'),
         ]
-        assert _pending_verification_state(
+        state_after_resend = _pending_verification_state(
             csrf_app, 'alice@example.com',
-        )[0] == '100002'
+        )
+        assert state_after_resend[0] != state_before_resend[0]
+        _assert_stored_otp_digest(state_after_resend[0], '100002')
 
         verify_page = csrf_client.get(response.headers['Location'])
         verify_token = _csrf_token_from(verify_page)
@@ -705,7 +720,9 @@ class TestPendingEmailReservationLifecycle:
         assert code
         assert expires_at.replace(tzinfo=timezone.utc) > datetime.now(timezone.utc)
         assert failed_attempts == 0
-        assert email_log[-1] == ('target@example.com', code)
+        delivered_code = email_log[-1][1]
+        assert email_log[-1][0] == 'target@example.com'
+        _assert_stored_otp_digest(code, delivered_code)
 
     def test_successful_verification_applies_email_and_clears_pending_state(
         self, app, client, email_log,
@@ -910,7 +927,7 @@ class TestPendingEmailReservationLifecycle:
         with app.app_context():
             alice = User.query.filter_by(email='alice@example.com').one()
             alice.pending_email = 'future-owner@example.com'
-            alice.verification_code = '111111'
+            alice.verification_code = 'a' * 64
             alice.verification_code_expires_at = (
                 datetime.now(timezone.utc) - timedelta(minutes=1)
             )
@@ -994,13 +1011,19 @@ class TestPendingEmailReservationLifecycle:
         password = 'CorrectHorse9'
         _signup_and_verify(app, client, email_log, password=password)
         _login(client, 'alice@example.com', password)
+        monkeypatch.setattr(
+            AuthService,
+            '_make_verification_code',
+            staticmethod(lambda: '111111'),
+        )
         _stage_email_change(client, 'resend@example.com', password)
+        assert email_log[-1] == ('resend@example.com', '111111')
         with app.app_context():
             alice = User.query.filter_by(email='alice@example.com').one()
-            alice.verification_code = '111111'
             alice.verification_code_failed_attempts = 3
             old_expiry = datetime.now(timezone.utc) + timedelta(minutes=1)
             alice.verification_code_expires_at = old_expiry
+            old_digest = alice.verification_code
             db.session.commit()
         monkeypatch.setattr(
             AuthService,
@@ -1017,7 +1040,8 @@ class TestPendingEmailReservationLifecycle:
         assert response.status_code in (302, 303)
         state = _pending_email_state(app, 'alice@example.com')
         assert state[0] == 'resend@example.com'
-        assert state[1] == '222222'
+        assert state[1] != old_digest
+        _assert_stored_otp_digest(state[1], '222222')
         assert state[2].replace(tzinfo=timezone.utc) > old_expiry
         assert state[3] == 0
         assert len(email_log) == emails_before + 1
@@ -1078,6 +1102,98 @@ class TestPendingEmailReservationLifecycle:
         assert _pending_email_state(app, 'alice@example.com') == (
             None, None, None, 0,
         )
+
+
+class TestOtpHmacStorage:
+
+    def test_identical_raw_code_is_bound_to_purpose_and_stable_context(
+        self, app, client, email_log, monkeypatch,
+    ):
+        raw_code = '123456'
+        monkeypatch.setattr(
+            AuthService,
+            '_make_verification_code',
+            staticmethod(lambda: raw_code),
+        )
+
+        assert _register(client).status_code in (302, 303)
+        bob_client = app.test_client()
+        assert _register(
+            bob_client,
+            email='bob@example.com',
+            password='AnotherHorse9',
+        ).status_code in (302, 303)
+        with app.app_context():
+            registration_digests = [
+                row.verification_code
+                for row in PendingRegistration.query.order_by(
+                    PendingRegistration.email,
+                ).all()
+            ]
+        assert len(set(registration_digests)) == 2
+        for digest in registration_digests:
+            _assert_stored_otp_digest(digest, raw_code)
+
+        verified = client.post(
+            '/verify-code?email=alice@example.com',
+            data={'code': raw_code},
+            follow_redirects=False,
+        )
+        assert verified.status_code in (302, 303)
+
+        changed = _stage_email_change(
+            client,
+            'new-alice@example.com',
+            'CorrectHorse9',
+        )
+        assert changed.status_code in (302, 303)
+        with app.app_context():
+            email_change_digest = User.query.filter_by(
+                email='alice@example.com',
+            ).one().verification_code
+        _assert_stored_otp_digest(email_change_digest, raw_code)
+
+        verified_change = client.post(
+            '/verify-code?email=new-alice@example.com',
+            data={'code': raw_code},
+            follow_redirects=False,
+        )
+        assert verified_change.status_code in (302, 303)
+
+        requested_deletion = client.post(
+            '/settings/delete/request',
+            follow_redirects=False,
+        )
+        assert requested_deletion.status_code in (302, 303)
+        with app.app_context():
+            deletion_digest = User.query.filter_by(
+                email='new-alice@example.com',
+            ).one().deletion_code
+        _assert_stored_otp_digest(deletion_digest, raw_code)
+
+        all_digests = {
+            *registration_digests,
+            email_change_digest,
+            deletion_digest,
+        }
+        assert len(all_digests) == 4
+        delivered_values = [
+            value.split(':', 1)[1]
+            if value.startswith('deletion:')
+            else value
+            for _, value in email_log
+        ]
+        assert delivered_values
+        assert all(delivered == raw_code for delivered in delivered_values)
+
+        deleted = client.post(
+            '/settings/delete/verify',
+            data={'code': raw_code},
+            follow_redirects=False,
+        )
+        assert deleted.status_code in (302, 303)
+        with app.app_context():
+            assert User.query.filter_by(email='new-alice@example.com').first() is None
 
 
 class TestRemovedAdminSurface:
@@ -1353,6 +1469,16 @@ class TestSettingsAndDeletion:
         assert 'name="delete_confirm"' not in body
         assert 'Delete permanently' not in body
         assert 'Type "delete"' not in body
+        deletion_code = next(
+            value.split(':', 1)[1]
+            for _, value in reversed(email_log)
+            if value.startswith('deletion:')
+        )
+        with app.app_context():
+            stored = User.query.filter_by(
+                email='alice@example.com',
+            ).one().deletion_code
+            _assert_stored_otp_digest(stored, deletion_code)
 
     def test_invalid_deletion_code_does_not_delete_or_logout(self, app, client, email_log):
         _signup_and_verify(app, client, email_log)
@@ -1555,13 +1681,12 @@ class TestSettingsAndDeletion:
                 username='bob',
                 email='bob@example.com',
                 is_verified=True,
-                deletion_code='123456',
-                deletion_code_expires_at=datetime.now(timezone.utc) + timedelta(minutes=10),
                 created_at=datetime.now(timezone.utc),
             )
             bob.set_password('CorrectHorse9')
             db.session.add(bob)
             db.session.commit()
+            bob_code = Services().auth_service.request_account_deletion(bob)
 
         client.post(
             '/login',
@@ -1569,7 +1694,7 @@ class TestSettingsAndDeletion:
         )
         resp = client.post(
             '/settings/delete/verify',
-            data={'code': '123456'},
+            data={'code': bob_code},
             follow_redirects=True,
         )
         assert resp.status_code == 200
@@ -1592,6 +1717,11 @@ class TestSettingsAndDeletion:
             for _, value in email_log
             if value.startswith('deletion:')
         ][-1]
+        with app.app_context():
+            stored_deletion_digest = User.query.filter_by(
+                email='alice@example.com',
+            ).one().deletion_code
+            _assert_stored_otp_digest(stored_deletion_digest, deletion_code)
 
         original_commit = UserRepository.commit
 
@@ -1609,7 +1739,7 @@ class TestSettingsAndDeletion:
         assert resp.status_code == 200
         with app.app_context():
             user = User.query.filter_by(email='alice@example.com').one()
-            assert user.deletion_code == deletion_code
+            assert user.deletion_code == stored_deletion_digest
             expected_identity = user.get_id()
         with client.session_transaction() as sess:
             assert sess.get('_user_id') == expected_identity

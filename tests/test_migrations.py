@@ -6,6 +6,7 @@ from portfolio_app.migrations import TARGET_SCHEMA_VERSION
 from portfolio_app.models.oauth_identity import OAuthIdentity
 from portfolio_app.models.portfolio import Portfolio
 from portfolio_app.models.user import User
+import sqlalchemy as sa
 from sqlalchemy import text
 
 
@@ -96,6 +97,15 @@ def test_fresh_database_startup_creates_schema_and_sets_user_version(tmp_path):
         assert auth_generation[3] == 1
         assert auth_generation[4] == '0'
         assert 'is_admin' not in columns
+        assert columns['verification_code'][2].upper() == 'VARCHAR(64)'
+        assert columns['deletion_code'][2].upper() == 'VARCHAR(64)'
+        pending_columns = {
+            row[1]: row
+            for row in db.session.execute(
+                text('PRAGMA table_info(pending_registration)')
+            ).fetchall()
+        }
+        assert pending_columns['verification_code'][2].upper() == 'VARCHAR(64)'
 
 
 def test_warm_startup_is_idempotent_and_preserves_existing_data(tmp_path):
@@ -273,11 +283,11 @@ def test_migration_repairs_version_29_pending_registration_missing_otp_counter(t
         failed_attempts_col = columns['failed_otp_attempts']
         assert failed_attempts_col[2].upper() == 'INTEGER'
         assert failed_attempts_col[3] == 1
-        assert failed_attempts_col[4] == '0'
+        assert failed_attempts_col[4] is None
+        assert columns['verification_code'][2].upper() == 'VARCHAR(64)'
         assert db.session.execute(text(
-            'SELECT failed_otp_attempts FROM pending_registration '
-            'WHERE email = :email'
-        ), {'email': 'pending@example.com'}).scalar() == 0
+            'SELECT COUNT(*) FROM pending_registration'
+        )).scalar() == 0
         assert db.session.execute(text('PRAGMA user_version')).scalar() == TARGET_SCHEMA_VERSION
 
 
@@ -442,9 +452,9 @@ def test_migration_removes_legacy_admin_column_and_preserves_user_graph(tmp_path
         ''')).fetchall() == [
             (
                 41, 'legacy-true', 'true@example.com', 'hash-true', 1,
-                '2026-01-01 01:02:03', '2026-02-01 02:03:04', '123456',
-                '2026-03-01 03:04:05', 2, 'new-true@example.com', '654321',
-                '2026-04-01 04:05:06', 3, 4, '2026-05-01 05:06:07',
+                '2026-01-01 01:02:03', '2026-02-01 02:03:04', None,
+                None, 0, None, None,
+                None, 0, 4, '2026-05-01 05:06:07',
                 'jti-true', 7,
             ),
             (
@@ -468,7 +478,7 @@ def test_migration_removes_legacy_admin_column_and_preserves_user_graph(tmp_path
             )
         assert db.session.execute(text('PRAGMA foreign_key_check')).fetchall() == []
         assert db.session.execute(text('PRAGMA foreign_keys')).scalar() == 1
-        assert db.session.execute(text('PRAGMA user_version')).scalar() == 32
+        assert db.session.execute(text('PRAGMA user_version')).scalar() == 33
 
     fresh_app = create_app(_config_for(tmp_path / 'fresh-equivalent.sqlite'))
     assert _table_column_contract(upgraded_app, 'user') == _table_column_contract(
@@ -479,3 +489,259 @@ def test_migration_removes_legacy_admin_column_and_preserves_user_graph(tmp_path
         fresh_app,
         'user',
     )
+
+
+def test_migration_hardens_otp_columns_and_invalidates_legacy_state(tmp_path):
+    import sqlite3
+
+    assert TARGET_SCHEMA_VERSION == 33
+    upgraded_path = tmp_path / 'legacy-otp-upgrade.sqlite'
+    con = sqlite3.connect(upgraded_path)
+    try:
+        con.executescript('''
+            PRAGMA foreign_keys = ON;
+            CREATE TABLE "user" (
+                id                                INTEGER NOT NULL PRIMARY KEY,
+                username                          VARCHAR(80) NOT NULL,
+                email                             VARCHAR(120),
+                password_hash                     VARCHAR(255) NOT NULL,
+                is_verified                       BOOLEAN NOT NULL,
+                created_at                        DATETIME,
+                last_login                        DATETIME,
+                verification_code                 VARCHAR(6),
+                verification_code_expires_at      DATETIME,
+                verification_code_failed_attempts INTEGER NOT NULL,
+                pending_email                     VARCHAR(120),
+                deletion_code                     VARCHAR(6),
+                deletion_code_expires_at          DATETIME,
+                deletion_code_failed_attempts     INTEGER NOT NULL,
+                failed_login_attempts              INTEGER NOT NULL,
+                locked_until                       DATETIME,
+                password_reset_jti                 VARCHAR(32),
+                auth_generation                   INTEGER NOT NULL DEFAULT 0
+            );
+            CREATE UNIQUE INDEX ix_user_username ON "user" (username);
+            CREATE UNIQUE INDEX ix_user_email ON "user" (email);
+            CREATE TABLE pending_registration (
+                id                           INTEGER NOT NULL PRIMARY KEY,
+                token                        VARCHAR(64) NOT NULL,
+                username                     VARCHAR(80) NOT NULL,
+                email                        VARCHAR(120) NOT NULL,
+                password_hash                VARCHAR(255) NOT NULL,
+                verification_code            VARCHAR(6) NOT NULL,
+                verification_code_expires_at DATETIME NOT NULL,
+                failed_otp_attempts           INTEGER NOT NULL,
+                created_at                   DATETIME NOT NULL,
+                expires_at                   DATETIME NOT NULL
+            );
+            CREATE UNIQUE INDEX ix_pending_registration_token
+                ON pending_registration (token);
+            CREATE UNIQUE INDEX ix_pending_registration_username
+                ON pending_registration (username);
+            CREATE UNIQUE INDEX ix_pending_registration_email
+                ON pending_registration (email);
+            CREATE TABLE portfolio (
+                id         INTEGER NOT NULL PRIMARY KEY,
+                user_id    INTEGER NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+                name       VARCHAR(50) NOT NULL,
+                created_at DATETIME,
+                updated_at DATETIME
+            );
+            CREATE INDEX ix_portfolio_user_id ON portfolio (user_id);
+            CREATE TABLE oauth_identity (
+                id               INTEGER NOT NULL PRIMARY KEY,
+                user_id          INTEGER NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+                provider         VARCHAR(50) NOT NULL,
+                provider_subject VARCHAR(255) NOT NULL,
+                created_at       DATETIME NOT NULL,
+                updated_at       DATETIME NOT NULL,
+                CONSTRAINT uq_oauth_identity_provider_subject
+                    UNIQUE (provider, provider_subject),
+                CONSTRAINT uq_oauth_identity_user_provider
+                    UNIQUE (user_id, provider)
+            );
+            CREATE INDEX ix_oauth_identity_user_id ON oauth_identity (user_id);
+            INSERT INTO "user" VALUES (
+                41, 'otp-user', 'otp@example.com', 'preserved-hash', 1,
+                '2026-01-01 01:02:03', '2026-02-01 02:03:04', '123456',
+                '2026-03-01 03:04:05', 2, 'new@example.com', '654321',
+                '2026-04-01 04:05:06', 3, 4, '2026-05-01 05:06:07',
+                'preserved-reset-jti', 7
+            );
+            INSERT INTO "user" VALUES (
+                84, 'ordinary-user', 'ordinary@example.com', 'ordinary-hash', 0,
+                '2025-01-01 01:02:03', NULL, NULL, NULL, 0, NULL, NULL,
+                NULL, 0, 0, NULL, NULL, 0
+            );
+            INSERT INTO pending_registration VALUES (
+                91, 'registration-token', 'pending-user', 'pending@example.com',
+                'pending-hash', '112233', '2026-08-01 00:10:00', 2,
+                '2026-08-01 00:00:00', '2026-08-02 00:00:00'
+            );
+            INSERT INTO portfolio VALUES (
+                501, 41, 'Preserved Portfolio',
+                '2026-06-01 06:07:08', '2026-07-01 07:08:09'
+            );
+            INSERT INTO oauth_identity VALUES (
+                601, 84, 'google', 'preserved-subject',
+                '2026-08-01 08:09:10', '2026-08-02 09:10:11'
+            );
+            PRAGMA user_version = 32;
+        ''')
+        con.commit()
+    finally:
+        con.close()
+
+    upgraded_app = create_app(_config_for(upgraded_path))
+
+    with upgraded_app.app_context():
+        assert db.session.execute(text('PRAGMA user_version')).scalar() == 33
+        assert db.session.execute(text(
+            'SELECT COUNT(*) FROM pending_registration'
+        )).scalar() == 0
+        assert db.session.execute(text('''
+            SELECT id, username, email, password_hash, is_verified, created_at,
+                   last_login, verification_code, verification_code_expires_at,
+                   verification_code_failed_attempts, pending_email,
+                   deletion_code, deletion_code_expires_at,
+                   deletion_code_failed_attempts, failed_login_attempts,
+                   locked_until, password_reset_jti, auth_generation
+            FROM "user" ORDER BY id
+        ''')).fetchall() == [
+            (
+                41, 'otp-user', 'otp@example.com', 'preserved-hash', 1,
+                '2026-01-01 01:02:03', '2026-02-01 02:03:04', None,
+                None, 0, None, None, None, 0, 4,
+                '2026-05-01 05:06:07', 'preserved-reset-jti', 7,
+            ),
+            (
+                84, 'ordinary-user', 'ordinary@example.com', 'ordinary-hash', 0,
+                '2025-01-01 01:02:03', None, None, None, 0, None, None,
+                None, 0, 0, None, None, 0,
+            ),
+        ]
+        assert db.session.execute(text(
+            'SELECT id, user_id, name FROM portfolio'
+        )).one() == (501, 41, 'Preserved Portfolio')
+        assert db.session.execute(text('''
+            SELECT id, user_id, provider, provider_subject FROM oauth_identity
+        ''')).one() == (601, 84, 'google', 'preserved-subject')
+        for child_table in ('portfolio', 'oauth_identity'):
+            assert any(
+                row[2] == 'user' and row[3] == 'user_id' and row[4] == 'id'
+                for row in db.session.execute(
+                    text(f'PRAGMA foreign_key_list("{child_table}")')
+                ).fetchall()
+            )
+        assert db.session.execute(text('PRAGMA foreign_key_check')).fetchall() == []
+        assert db.session.execute(text('PRAGMA foreign_keys')).scalar() == 1
+
+    fresh_app = create_app(_config_for(tmp_path / 'otp-fresh-equivalent.sqlite'))
+    for table_name in ('user', 'pending_registration'):
+        assert _table_column_contract(upgraded_app, table_name) == (
+            _table_column_contract(fresh_app, table_name)
+        )
+        assert _table_index_contract(upgraded_app, table_name) == (
+            _table_index_contract(fresh_app, table_name)
+        )
+
+    restarted_app = create_app(_config_for(upgraded_path))
+    with restarted_app.app_context():
+        assert db.session.execute(text('PRAGMA user_version')).scalar() == 33
+        assert db.session.execute(text(
+            'SELECT password_hash FROM "user" WHERE id = 41'
+        )).scalar() == 'preserved-hash'
+
+
+def test_otp_hardening_replay_preserves_current_workflow_state(tmp_path):
+    import portfolio_app.migrations as migrations
+
+    app = create_app(_config_for(tmp_path / 'otp-hardening-replay.sqlite'))
+
+    with app.app_context():
+        db.session.execute(text('''
+            INSERT INTO "user" (
+                id, username, email, password_hash, is_verified, created_at,
+                verification_code, verification_code_expires_at,
+                verification_code_failed_attempts, pending_email,
+                deletion_code, deletion_code_expires_at,
+                deletion_code_failed_attempts, failed_login_attempts,
+                auth_generation
+            ) VALUES (
+                701, 'current-otp-user', 'current@example.com',
+                'preserved-password-hash', 1, '2026-08-13 10:00:00',
+                :verification_digest, '2026-08-13 10:10:00', 2,
+                'pending@example.com', :deletion_digest,
+                '2026-08-13 10:10:00', 3, 0, 4
+            )
+        '''), {
+            'verification_digest': 'a' * 64,
+            'deletion_digest': 'b' * 64,
+        })
+        db.session.execute(text('''
+            INSERT INTO pending_registration (
+                id, token, username, email, password_hash,
+                verification_code, verification_code_expires_at,
+                failed_otp_attempts, created_at, expires_at
+            ) VALUES (
+                702, 'current-registration-token', 'current-pending-user',
+                'registration@example.com', 'preserved-registration-hash',
+                :verification_digest, '2026-08-13 10:10:00', 1,
+                '2026-08-13 10:00:00', '2026-08-14 10:00:00'
+            )
+        '''), {'verification_digest': 'c' * 64})
+        db.session.commit()
+
+        user_state_before = db.session.execute(text('''
+            SELECT pending_email, verification_code,
+                   verification_code_expires_at,
+                   verification_code_failed_attempts, deletion_code,
+                   deletion_code_expires_at, deletion_code_failed_attempts
+            FROM "user" WHERE id = 701
+        ''')).one()
+        pending_state_before = db.session.execute(text('''
+            SELECT token, username, email, password_hash, verification_code,
+                   verification_code_expires_at, failed_otp_attempts,
+                   created_at, expires_at
+            FROM pending_registration WHERE id = 702
+        ''')).one()
+        user_columns_before = _table_column_contract(app, 'user')
+        user_indexes_before = _table_index_contract(app, 'user')
+        pending_columns_before = _table_column_contract(
+            app,
+            'pending_registration',
+        )
+        pending_indexes_before = _table_index_contract(
+            app,
+            'pending_registration',
+        )
+        db.session.remove()
+
+        with db.engine.connect() as conn:
+            migrations._harden_otp_storage(conn, sa)
+
+        assert db.session.execute(text('''
+            SELECT pending_email, verification_code,
+                   verification_code_expires_at,
+                   verification_code_failed_attempts, deletion_code,
+                   deletion_code_expires_at, deletion_code_failed_attempts
+            FROM "user" WHERE id = 701
+        ''')).one() == user_state_before
+        assert db.session.execute(text('''
+            SELECT token, username, email, password_hash, verification_code,
+                   verification_code_expires_at, failed_otp_attempts,
+                   created_at, expires_at
+            FROM pending_registration WHERE id = 702
+        ''')).one() == pending_state_before
+        assert _table_column_contract(app, 'user') == user_columns_before
+        assert _table_index_contract(app, 'user') == user_indexes_before
+        assert _table_column_contract(
+            app,
+            'pending_registration',
+        ) == pending_columns_before
+        assert _table_index_contract(
+            app,
+            'pending_registration',
+        ) == pending_indexes_before
+        assert db.session.execute(text('PRAGMA foreign_key_check')).fetchall() == []
+        assert db.session.execute(text('PRAGMA foreign_keys')).scalar() == 1

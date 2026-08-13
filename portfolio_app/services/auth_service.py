@@ -13,6 +13,7 @@ from portfolio_app.repositories.pending_registration_repository import (
     PendingRegistrationRepository,
 )
 from portfolio_app.utils.messages import MESSAGES
+from portfolio_app.utils.otp import otp_digest, verify_otp
 
 # Verification code expiry in minutes (the 6-digit OTP)
 VERIFICATION_CODE_EXPIRY_MINUTES = 10
@@ -81,8 +82,8 @@ class AuthService:
 
         username = self._generate_username(email_lc)
 
-        code = self._make_verification_code()
         token = secrets.token_urlsafe(32)
+        code = self._make_verification_code()
         now = datetime.now(timezone.utc)
 
         # Hash with bcrypt even at the staging layer so plaintext passwords
@@ -95,7 +96,7 @@ class AuthService:
             username=username,
             email=email_lc,
             password_hash=temp_user.password_hash,
-            verification_code=code,
+            verification_code=self._registration_otp_digest(code, token),
             verification_code_expires_at=now + timedelta(minutes=VERIFICATION_CODE_EXPIRY_MINUTES),
             created_at=now,
             expires_at=now + timedelta(hours=PENDING_REGISTRATION_TTL_HOURS),
@@ -135,7 +136,15 @@ class AuthService:
         # ── Case 1: pending email update for an already-verified account ──
         user_pending_email = self._get_live_pending_email_user(email_lc, now)
         if user_pending_email:
-            if not hmac.compare_digest(user_pending_email.verification_code, code):
+            if not verify_otp(
+                user_pending_email.verification_code,
+                code,
+                purpose='email-change',
+                context=(
+                    str(user_pending_email.id),
+                    user_pending_email.pending_email.lower(),
+                ),
+            ):
                 # Burn an attempt; wipe the code (and the staged email) once
                 # the cap is hit so the user must request a fresh OTP.
                 user_pending_email.verification_code_failed_attempts = (
@@ -157,7 +166,12 @@ class AuthService:
             expires_at = self._as_utc(pending.verification_code_expires_at)
             if now > expires_at:
                 return FAIL
-            if not hmac.compare_digest(pending.verification_code, code):
+            if not verify_otp(
+                pending.verification_code,
+                code,
+                purpose='registration',
+                context=(pending.token,),
+            ):
                 # Same per-OTP lockout as Case 1, but the staged-registration
                 # columns (verification_code / expires_at) are NOT NULL, so
                 # we burn the entire pending row instead of nulling fields.
@@ -216,7 +230,11 @@ class AuthService:
         user = self._get_live_pending_email_user(email_lc, now)
         if user:
             code = self._make_verification_code()
-            user.verification_code = code
+            user.verification_code = self._email_change_otp_digest(
+                code,
+                user,
+                user.pending_email,
+            )
             user.verification_code_expires_at = (
                 now + timedelta(minutes=VERIFICATION_CODE_EXPIRY_MINUTES)
             )
@@ -229,7 +247,10 @@ class AuthService:
         pending = self.pending_repo.get_by_email(email_lc)
         if pending:
             code = self._make_verification_code()
-            pending.verification_code = code
+            pending.verification_code = self._registration_otp_digest(
+                code,
+                pending.token,
+            )
             pending.verification_code_expires_at = (
                 now + timedelta(minutes=VERIFICATION_CODE_EXPIRY_MINUTES)
             )
@@ -307,7 +328,11 @@ class AuthService:
 
         code = self._make_verification_code()
         user.pending_email = email_lc
-        user.verification_code = code
+        user.verification_code = self._email_change_otp_digest(
+            code,
+            user,
+            email_lc,
+        )
         user.verification_code_expires_at = (
             datetime.now(timezone.utc) + timedelta(minutes=VERIFICATION_CODE_EXPIRY_MINUTES)
         )
@@ -397,7 +422,11 @@ class AuthService:
 
     def request_account_deletion(self, user: User) -> str:
         code = self._make_verification_code()
-        user.deletion_code = code
+        user.deletion_code = otp_digest(
+            code,
+            purpose='account-deletion',
+            context=(str(user.id),),
+        )
         user.deletion_code_expires_at = (
             datetime.now(timezone.utc) + timedelta(minutes=VERIFICATION_CODE_EXPIRY_MINUTES)
         )
@@ -411,7 +440,12 @@ class AuthService:
         if not self._deletion_code_is_live(user):
             return False, MESSAGES['DELETION_INVALID_CODE']
 
-        if not hmac.compare_digest(user.deletion_code, code.strip()):
+        if not verify_otp(
+            user.deletion_code,
+            code.strip(),
+            purpose='account-deletion',
+            context=(str(user.id),),
+        ):
             user.deletion_code_failed_attempts = (
                 (user.deletion_code_failed_attempts or 0) + 1
             )
@@ -473,6 +507,22 @@ class AuthService:
     def _purge_expired_pending_registrations(self, now: datetime) -> None:
         if self.pending_repo.purge_expired(now):
             self.pending_repo.commit()
+
+    @staticmethod
+    def _registration_otp_digest(code: str, token: str) -> str:
+        return otp_digest(
+            code,
+            purpose='registration',
+            context=(token,),
+        )
+
+    @staticmethod
+    def _email_change_otp_digest(code: str, user: User, pending_email: str) -> str:
+        return otp_digest(
+            code,
+            purpose='email-change',
+            context=(str(user.id), pending_email.lower()),
+        )
 
     @staticmethod
     def _make_verification_code() -> str:

@@ -61,6 +61,11 @@ When adding a migration:
 
 Never casually modify old completed migration behavior. If historical behavior must be corrected, add a new forward migration that handles databases already past the old step.
 
+Schema version 33 replaces recoverable six-digit registration, email-change,
+and account-deletion OTP storage with keyed digests. Upgrade invalidates staged
+registrations and clears outstanding email-change and deletion verification
+state; affected users must restart those short-lived workflows after deployment.
+
 ## Required Validation
 
 Run:

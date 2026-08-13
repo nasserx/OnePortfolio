@@ -104,6 +104,14 @@ Templates live in `portfolio_app/templates/`. Static files live in `portfolio_ap
 
 `portfolio_app/static/css/tokens.css` is the primary design-token source. `style.css` and page templates consume those tokens. JavaScript is mostly in `portfolio_app/static/js/main.js`; Overview chart rendering uses `portfolio_app/static/js/overview_charts.js`.
 
+Third-party frontend assets use exact versions. Stable CDN scripts and
+stylesheets loaded directly by production HTML carry SHA-384 Subresource
+Integrity metadata and anonymous CORS mode. Bootstrap CSS remains an explicit
+exception because `tokens.css` imports it into the `vendor` cascade layer;
+Google Fonts responses are also not assigned fixed integrity values. The
+enforced CSP still temporarily permits inline scripts pending the request-scoped
+nonce migration, and inline styles remain permitted for current UI behavior.
+
 See [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md) for UI constraints.
 
 ## Important Files

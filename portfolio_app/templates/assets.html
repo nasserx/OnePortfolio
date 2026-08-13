@@ -4,7 +4,9 @@
 {% block title %}Assets — OnePortfolio{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css"
+      integrity="sha384-RkASv+6KfBMW9eknReJIJ6b3UnjKOKC5bOUaNgIY778NFbQ8MtWq9Lr/khUgqtTt"
+      crossorigin="anonymous">
 {% endblock %}
 
 {% block page_title %}Assets{% endblock %}
@@ -323,7 +325,7 @@
                             <div class="mb-3">
                                 <label for="symbol_ticker" class="form-label">Asset Symbol</label>
                                 <input type="text" class="form-control {% if _symbol_errs.get('symbol_ticker') %}is-invalid{% endif %}" id="symbol_ticker" name="symbol_ticker" maxlength="20"
-                                    placeholder="e.g., AAPL" oninput="this.value = this.value.toUpperCase();">
+                                    placeholder="e.g., AAPL" data-uppercase-input>
                                 {% if _symbol_errs.get('symbol_ticker') %}
                                 <div class="invalid-feedback">{{ _symbol_errs.get('symbol_ticker') }}</div>
                                 {% endif %}
@@ -377,7 +379,7 @@
                             <div class="mb-3" id="add_tx_symbol_group">
                                 <label for="symbol" class="form-label">Asset Symbol</label>
                                     <input type="text" class="form-control {% if _tx_add_errs.get('symbol') %}is-invalid{% endif %}" id="symbol" name="symbol" maxlength="20"
-                                       placeholder="e.g., AAPL" oninput="this.value = this.value.toUpperCase();">
+                                       placeholder="e.g., AAPL" data-uppercase-input>
                                 {% if _tx_add_errs.get('symbol') %}
                                 <div class="invalid-feedback">{{ _tx_add_errs.get('symbol') }}</div>
                                 {% endif %}
@@ -813,7 +815,9 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"
+        integrity="sha384-5JqMv4L/Xa0hfvtF06qboNdhvuYXUku9ZrhZh3bSk8VXF0A/RuSLHpLsSV9Zqhl6"
+        crossorigin="anonymous"></script>
 <script>
 function filterBySymbol(query) {
     var q = query.trim().toUpperCase();
@@ -834,6 +838,12 @@ function filterBySymbol(query) {
             filterBySymbol(this.value);
         });
     }
+
+    document.querySelectorAll('[data-uppercase-input]').forEach(function (input) {
+        input.addEventListener('input', function () {
+            this.value = this.value.toUpperCase();
+        });
+    });
 
     document.addEventListener('click', function (event) {
         if (event.target.closest('.js-add-symbol-btn')) openAddSymbolModal();

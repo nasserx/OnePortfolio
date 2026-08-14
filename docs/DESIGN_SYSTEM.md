@@ -497,10 +497,9 @@ reader calls "a strong gradient". Shape decides where it lands and how fast
 it goes; nothing removes it. An edge spends nothing, because it has no
 boundary to hide: it *is* the boundary.
 
-What made the edge affordable is that the backdrop is already leaving. The
-scroll-driven lift takes the whole thing away within the first `68vh`, so the
-cut is only on screen while the reader is at the very top of the page —
-short of a dissolve's job and out of the way before it could become one.
+The backdrop stays bounded to the hero, with clear bottom padding keeping the
+edge below the copy. It leaves the viewport through ordinary document
+scrolling; the edge needs no separate opacity transition to do its job.
 
 Two things go with that decision. Keep them written down, because both were
 found the hard way:
@@ -518,18 +517,15 @@ found the hard way:
   to the padding moves everything below it, which is enough to make an
   improvement look like a regression.
 
-**The backdrop leaves with the page.** `.hero-media--lift` fades the whole
-thing out across the first `--hero-lift-range` of scrolling, driven by
-`animation-timeline: scroll(root)` — no scroll handler, no work on the main
-thread. Contrast holds through every frame: both ends are colours the copy is
-already guaranteed against, and a blend between two luminances stays between
-them. Gated on `@supports` and on `prefers-reduced-motion`, with no JS
-fallback on purpose — a handler writing opacity each frame is a jank
-generator, and the static hero it would replace is already correct.
+**The backdrop scrolls normally with its section.** It has no root
+scroll-timeline animation and no JavaScript scroll effect. A former
+scroll-linked opacity fade caused multi-second rendering/input stalls during
+top and bottom boundary overscroll in desktop Chromium. The static hero is
+already correct, so the durable contract is to leave normal browser scrolling
+in charge rather than replacing that decoration with another scroll effect.
 
-**The auth showcase takes the shade and nothing else** — no dissolve, no
-lift. A bounded panel with its own border has no edge to hide, and a panel
-that never scrolls has nothing to leave.
+**The auth showcase takes the shade and nothing else** — no dissolve and no
+scroll effect. A bounded panel with its own border has no edge to hide.
 
 **Loading.** The marketing hero is eager and high priority. The auth
 showcase is `lazy`/`auto`, because that panel is hidden below 60rem and a

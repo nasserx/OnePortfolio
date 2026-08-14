@@ -1502,26 +1502,6 @@
     background: var(--hero-shade);
   }
 
-  /* Scroll-driven lift: the backdrop belongs to the top of the page and
-     leaves with it. Contrast holds through every frame — both ends are
-     colours the copy is guaranteed against, and a blend between two
-     luminances stays between them. Opted into per page, and only where the
-     browser drives it off the compositor; a JS fallback writing opacity
-     every frame would be a jank generator for no gain. */
-  @supports (animation-timeline: scroll()) {
-    @media (prefers-reduced-motion: no-preference) {
-      .hero-media--lift {
-        animation: op-hero-lift linear both;
-        animation-timeline: scroll(root block);
-        animation-range: 0 var(--hero-lift-range, 70vh);
-      }
-    }
-  }
-
-  @keyframes op-hero-lift {
-    to { opacity: 0; }
-  }
-
   /* ======================================================================
      17. DATE PICKER (flatpickr)
      ====================================================================== */

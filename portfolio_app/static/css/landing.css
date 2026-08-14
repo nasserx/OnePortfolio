@@ -165,10 +165,6 @@
 
     /* Below centre: keeps the ridge line and the meadow, drops empty sky. */
     --hero-focus: 50% 62%;
-
-    /* Long enough to read as the hero letting go, short enough to finish
-       while the hero is still on screen. */
-    --hero-lift-range: 68vh;
   }
 
   .lp-hero__grid {

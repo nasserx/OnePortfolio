@@ -27,10 +27,27 @@ class _VisibleTextParser(HTMLParser):
                 self.parts.append(text)
 
 
+class _ClassTokenParser(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.tokens = set()
+
+    def handle_starttag(self, tag, attrs):
+        for name, value in attrs:
+            if name == 'class' and value:
+                self.tokens.update(value.split())
+
+
 def _visible_text(html):
     parser = _VisibleTextParser()
     parser.feed(html)
     return '\n'.join(parser.parts)
+
+
+def _class_tokens(html):
+    parser = _ClassTokenParser()
+    parser.feed(html)
+    return parser.tokens
 
 
 def _landing_html(app):
@@ -84,6 +101,33 @@ def test_landing_renders_public_product_preview(app):
     for stale in ('Gold', 'Bonds', 'AAPL', 'VOO', 'BTC', 'GLD', 'BND',
                   'Marketing preview', 'Supported record fields'):
         assert stale not in text
+
+
+def test_landing_hero_is_not_bound_to_the_root_scroll_timeline(app):
+    html = _landing_html(app)
+    classes = _class_tokens(html)
+    landing_styles = '\n'.join(
+        Path('portfolio_app/static/css', name).read_text(encoding='utf-8')
+        for name in ('tokens.css', 'base.css', 'components.css', 'landing.css')
+    ).lower()
+
+    # Keep the photograph and its static shade, but never bind that full-size
+    # layer to root scrolling. That contract triggered multi-second boundary-
+    # overscroll stalls in desktop Chromium.
+    assert 'hero-media' in classes
+    assert '/static/img/hero.avif' in html
+    assert '/static/img/hero.webp' in html
+    assert 'hero-media--lift' not in classes
+
+    for removed_contract in (
+        'hero-media--lift',
+        'op-hero-lift',
+        '--hero-lift-range',
+    ):
+        assert removed_contract not in landing_styles
+
+    for forbidden_property in ('animation-timeline', 'scroll-timeline'):
+        assert forbidden_property not in landing_styles
 
 
 def test_landing_sample_data_is_internally_consistent():

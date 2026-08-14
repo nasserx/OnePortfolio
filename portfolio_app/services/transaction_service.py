@@ -254,7 +254,7 @@ class TransactionService:
         return tracked
 
     def delete_symbol(self, portfolio_id: int, symbol: str) -> None:
-        """Stop tracking a symbol and remove all its transactions."""
+        """Remove a tracked symbol and all of its financial records atomically."""
         symbol = PortfolioCalculator.normalize_symbol(symbol)
 
         if not self.portfolio_repo.get_by_id(portfolio_id):
@@ -264,10 +264,30 @@ class TransactionService:
         if not tracked:
             raise ValueError(MESSAGES['SYMBOL_NOT_FOUND'])
 
-        for tx in self.transaction_repo.get_by_symbol(portfolio_id, symbol):
+        transactions = self.transaction_repo.get_by_symbol(portfolio_id, symbol)
+        dividends = self.dividend_repo.get_by_symbol(portfolio_id, symbol)
+
+        # Treat removal as one prospective financial mutation. Reversing
+        # matching Buy/Sell cash effects and removing matching income must
+        # not leave the portfolio with negative available cash.
+        cash_delta = sum((-self._cash_effect(tx) for tx in transactions), ZERO)
+        cash_delta -= sum(
+            (Decimal(str(dividend.amount)) for dividend in dividends), ZERO,
+        )
+        self._assert_cash_after_delta(
+            portfolio_id,
+            cash_delta,
+            error_message=MESSAGES['CASH_ALREADY_SPENT'],
+        )
+
+        for tx in transactions:
             self.transaction_repo.delete(tx)
+        for dividend in dividends:
+            self.dividend_repo.delete(dividend)
 
         self.symbol_repo.delete(tracked)
+        # All matching records share the same SQLAlchemy session; this one
+        # commit is the atomic boundary for the complete asset removal.
         self.symbol_repo.commit()
 
     def _cash_effect(self, transaction):

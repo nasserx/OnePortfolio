@@ -21,6 +21,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 from sqlalchemy.exc import SQLAlchemyError
+from werkzeug.security import generate_password_hash
 
 from config import Config
 from portfolio_app import create_app, db, limiter
@@ -255,6 +256,34 @@ def _login(client, email, password):
         follow_redirects=False,
     )
     assert response.status_code in (302, 303)
+
+
+def _create_persisted_unverified_user(
+    app,
+    *,
+    password='UnverifiedHorse9',
+    password_hash=None,
+    failed_login_attempts=0,
+    locked_until=None,
+    last_login=None,
+):
+    """Create the legacy/import state that current registration avoids."""
+    with app.app_context():
+        user = User(
+            username='persisted_unverified',
+            email='persisted-unverified@example.com',
+            is_verified=False,
+            failed_login_attempts=failed_login_attempts,
+            locked_until=locked_until,
+            last_login=last_login,
+        )
+        if password_hash is None:
+            user.set_password(password)
+        else:
+            user.password_hash = password_hash
+        db.session.add(user)
+        db.session.commit()
+        return user.id
 
 
 def _stage_email_change(client, target_email, password):
@@ -2042,6 +2071,170 @@ class TestLoginEnumerationHardening:
         }
         with client.session_transaction() as session:
             assert session.get('_user_id') is None
+
+
+class TestUnverifiedAuthenticationInvariant:
+
+    PASSWORD = 'UnverifiedHorse9'
+
+    @staticmethod
+    def _assert_generic_html_failure(response):
+        assert response.status_code == 200
+        body = response.get_data(as_text=True)
+        assert MESSAGES['INVALID_CREDENTIALS'] in body
+        assert MESSAGES['ACCOUNT_LOCKED'] not in body
+        assert 'Location' not in response.headers
+
+    @pytest.mark.parametrize(
+        'identifier',
+        ('persisted_unverified', 'persisted-unverified@example.com'),
+    )
+    def test_correct_password_is_generic_and_cannot_access_protected_route(
+        self, app, client, identifier,
+    ):
+        _create_persisted_unverified_user(app, password=self.PASSWORD)
+
+        response = client.post('/login', data={
+            'username': identifier,
+            'password': self.PASSWORD,
+        }, follow_redirects=False)
+
+        self._assert_generic_html_failure(response)
+        with client.session_transaction() as session:
+            assert session.get('_user_id') is None
+
+        protected = client.get('/settings', follow_redirects=False)
+        assert protected.status_code in (302, 303)
+        assert '/login' in protected.headers['Location']
+
+    def test_modal_correct_password_uses_generic_invalid_contract(self, app, client):
+        _create_persisted_unverified_user(app, password=self.PASSWORD)
+
+        response = client.post('/login', data={
+            '_modal': '1',
+            'username': 'persisted-unverified@example.com',
+            'password': self.PASSWORD,
+        })
+
+        assert response.status_code == 422
+        assert response.get_json() == {
+            'ok': False,
+            'errors': {'__all__': MESSAGES['INVALID_CREDENTIALS']},
+        }
+        with client.session_transaction() as session:
+            assert session.get('_user_id') is None
+
+    def test_correct_password_checks_real_hash_without_success_mutation_or_rehash(
+        self, app, client, monkeypatch,
+    ):
+        original_last_login = datetime(2025, 6, 1, 12, 30)
+        legacy_hash = generate_password_hash(
+            self.PASSWORD,
+            method='pbkdf2:sha256:1000',
+        )
+        user_id = _create_persisted_unverified_user(
+            app,
+            password_hash=legacy_hash,
+            failed_login_attempts=3,
+            last_login=original_last_login,
+        )
+
+        original_check_password = User.check_password
+        checked_users = []
+
+        def record_check(user, password):
+            checked_users.append((user.id, password))
+            return original_check_password(user, password)
+
+        monkeypatch.setattr(User, 'check_password', record_check)
+
+        response = client.post('/login', data={
+            'username': 'persisted_unverified',
+            'password': self.PASSWORD,
+        })
+        self._assert_generic_html_failure(response)
+        assert checked_users == [(user_id, self.PASSWORD)]
+
+        with app.app_context():
+            user = db.session.get(User, user_id)
+            assert user.password_hash == legacy_hash
+            assert user.failed_login_attempts == 3
+            assert user.locked_until is None
+            assert user.last_login == original_last_login
+
+    def test_wrong_password_and_locked_state_keep_existing_semantics(self, app, client):
+        user_id = _create_persisted_unverified_user(app, password=self.PASSWORD)
+
+        for attempt in range(1, 6):
+            response = client.post('/login', data={
+                'username': 'persisted_unverified',
+                'password': 'WrongHorse99',
+            })
+            self._assert_generic_html_failure(response)
+            with app.app_context():
+                assert db.session.get(User, user_id).failed_login_attempts == attempt
+
+        with app.app_context():
+            user = db.session.get(User, user_id)
+            locked_state = (
+                user.failed_login_attempts,
+                user.locked_until,
+                user.last_login,
+                user.password_hash,
+            )
+            assert locked_state[1] is not None
+
+        for password in (self.PASSWORD, 'WrongHorse99'):
+            response = client.post('/login', data={
+                'username': 'persisted_unverified',
+                'password': password,
+            })
+            self._assert_generic_html_failure(response)
+
+        with client.session_transaction() as session:
+            assert session.get('_user_id') is None
+        with app.app_context():
+            user = db.session.get(User, user_id)
+            assert (
+                user.failed_login_attempts,
+                user.locked_until,
+                user.last_login,
+                user.password_hash,
+            ) == locked_state
+
+    def test_loader_rejects_existing_session_and_remember_cookie_after_unverify(
+        self, app, client, email_log,
+    ):
+        _signup_and_verify(app, client, email_log)
+        login_response = client.post('/login', data={
+            'username': 'alice@example.com',
+            'password': 'CorrectHorse9',
+            'remember': 'on',
+        }, follow_redirects=False)
+        assert login_response.status_code in (302, 303)
+        assert client.get('/settings').status_code == 200
+
+        remember_cookie = client.get_cookie('remember_token')
+        assert remember_cookie is not None
+        remember_only_client = app.test_client()
+        remember_only_client.set_cookie('remember_token', remember_cookie.value)
+
+        with app.app_context():
+            user = User.query.filter_by(email='alice@example.com').one()
+            user_id = user.id
+            generation_before = user.auth_generation
+            user.is_verified = False
+            db.session.commit()
+
+        for authenticated_client in (client, remember_only_client):
+            response = authenticated_client.get('/settings', follow_redirects=False)
+            assert response.status_code in (302, 303)
+            assert '/login' in response.headers['Location']
+
+        with app.app_context():
+            user = db.session.get(User, user_id)
+            assert user.is_verified is False
+            assert user.auth_generation == generation_before
 
 
 # ---------------------------------------------------------------------------

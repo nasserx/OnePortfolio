@@ -118,6 +118,7 @@
                                 data-portfolio="{{ item.portfolio.name|e }}"
                                 data-symbol="{{ item.symbol|e }}"
                                 data-tx-count="{{ item.summary.transaction_count or 0 }}"
+                                data-income-count="{{ symbol_dividends|length }}"
                                 title="Remove asset" aria-label="Remove {{ item.symbol }}"
                                 data-bs-toggle="tooltip" data-bs-placement="top">
                             <i class="bi bi-trash" aria-hidden="true"></i>
@@ -1271,7 +1272,7 @@ window.deleteTransaction = function(id) {
 // Submit handling for #deleteSymbolForm is wired by ModalAjaxHandler
 // (main.js). This wrapper just primes the hidden inputs + warning copy
 // for the row the user clicked, then opens the modal.
-window.openDeleteSymbolModal = function(portfolioId, portfolioName, symbol, txCount) {
+window.openDeleteSymbolModal = function(portfolioId, portfolioName, symbol, txCount, incomeCount) {
     var portfolioInput = document.getElementById('delete_symbol_portfolio_id');
     var symbolInput = document.getElementById('delete_symbol_ticker');
     if (portfolioInput) portfolioInput.value = portfolioId ? String(portfolioId) : '';
@@ -1283,9 +1284,17 @@ window.openDeleteSymbolModal = function(portfolioId, portfolioName, symbol, txCo
 
     if (symbolName) symbolName.textContent = (symbol || '').toUpperCase();
 
-    if (txCount > 0 && warningDiv && warningText) {
-        warningText.textContent = 'This will also permanently remove ' + txCount +
-            ' asset entr' + (txCount !== 1 ? 'ies' : 'y') + ' for this asset.';
+    var removalCounts = [];
+    if (txCount > 0) {
+        removalCounts.push(txCount + ' asset entr' + (txCount !== 1 ? 'ies' : 'y'));
+    }
+    if (incomeCount > 0) {
+        removalCounts.push(incomeCount + ' income entr' + (incomeCount !== 1 ? 'ies' : 'y'));
+    }
+
+    if (removalCounts.length > 0 && warningDiv && warningText) {
+        warningText.textContent = 'This will also permanently remove ' +
+            removalCounts.join(' and ') + ' for this asset.';
         warningDiv.classList.remove('d-none');
     } else if (warningDiv) {
         warningDiv.classList.add('d-none');
@@ -1457,7 +1466,8 @@ window.openDeleteSymbolModal = function(portfolioId, portfolioName, symbol, txCo
             const portfolioName = delBtn.getAttribute('data-portfolio') || '';
             const symbol = delBtn.getAttribute('data-symbol') || '';
             const txCount = parseInt(delBtn.getAttribute('data-tx-count') || '0', 10) || 0;
-            openDeleteSymbolModal(portfolioId, portfolioName, symbol, txCount);
+            const incomeCount = parseInt(delBtn.getAttribute('data-income-count') || '0', 10) || 0;
+            openDeleteSymbolModal(portfolioId, portfolioName, symbol, txCount, incomeCount);
         }
 
         // Standalone income button — opens the dedicated Add Income modal

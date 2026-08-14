@@ -33,3 +33,11 @@ class DividendRepository(BaseRepository[Dividend]):
         return self._scoped(
             self.model.query.filter(Dividend.portfolio_id == portfolio_id)
         ).order_by(Dividend.date.desc()).all()
+
+    def get_by_symbol(self, portfolio_id: int, symbol: str) -> List[Dividend]:
+        return self._scoped(
+            self.model.query.filter(
+                Dividend.portfolio_id == portfolio_id,
+                Dividend.symbol == symbol.strip().upper(),
+            )
+        ).order_by(Dividend.date.desc()).all()

@@ -168,7 +168,11 @@ def create_app(config_class=Config):
             return None
 
         user = db.session.get(User, user_id)
-        if user is None or user.auth_generation != generation:
+        if (
+            user is None
+            or user.auth_generation != generation
+            or not user.is_verified
+        ):
             return None
         return user
 

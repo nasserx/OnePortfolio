@@ -290,6 +290,15 @@ class AuthService:
         user = self.user_repo.get_by_username_or_email(identifier)
         if user:
             password_matches = user.check_password(password)
+
+            # Persisted unverified rows can exist in legacy/imported data even
+            # though current registrations remain staged until verification.
+            # Verify the submitted password first to preserve the login timing
+            # contract, then reject without exposing verification or lockout
+            # state and before any successful-login mutation or rehash.
+            if password_matches and not user.is_verified:
+                return None
+
             if user.is_locked():
                 # Wrong guesses against locked accounts stay generic and do
                 # not extend the existing lockout. A legitimate user who

@@ -122,7 +122,6 @@ OnePortfolio/
 ├── app.py                    # Local development entry point
 ├── wsgi.py                   # WSGI entry point
 ├── config.py                 # Environment-driven configuration
-├── init_db.py                # Database initialization helper
 ├── requirements.txt          # Python dependencies
 ├── pytest.ini                # pytest configuration
 ├── tests/                    # Test suite

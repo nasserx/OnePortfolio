@@ -24,7 +24,11 @@ python -m pip install -r requirements.txt
 cp .env.example .env
 ```
 
-Fill `.env` with local values. Do not commit `.env`.
+Fill `.env` with local values. Do not commit `.env`. `SECRET_KEY` must be set — a copied `.env.example` leaves it blank and startup fails with `SECRET_KEY environment variable must be set`:
+
+```bash
+python -c "import secrets; print(secrets.token_hex(32))"
+```
 
 ## Running the App
 
@@ -33,6 +37,8 @@ python app.py
 ```
 
 Open `http://127.0.0.1:5000`.
+
+`app.py` is the local entry point and selects the debug development configuration; production serves the base configuration through `wsgi.py`. The database is created and migrated by the application factory at startup, so there is no separate initialization script to run.
 
 For local development only, `DEV_AUTO_LOGIN=1` can auto-login as the first user. Never enable it outside local development.
 

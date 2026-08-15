@@ -71,6 +71,8 @@ python -m venv .venv
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 Copy-Item .env.example .env
+python -c "import secrets; print(secrets.token_hex(32))"
+# Paste the printed value into SECRET_KEY in .env, then:
 python app.py
 ```
 
@@ -84,10 +86,18 @@ source .venv/bin/activate
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 cp .env.example .env
+python -c "import secrets; print(secrets.token_hex(32))"
+# Paste the printed value into SECRET_KEY in .env, then:
 python app.py
 ```
 
-The development server runs at `http://127.0.0.1:5000` by default. Registered users manage only their own accounts and tenant-scoped portfolio data; the public application exposes no privileged cross-user role. Exceptional deployment or database maintenance remains outside the application authorization model.
+`SECRET_KEY` is required. A copied `.env.example` leaves it blank, and `python app.py` then stops at startup with `SECRET_KEY environment variable must be set`.
+
+There is no separate database-initialization step. The application factory creates and migrates the SQLite database on startup, so the first `python app.py` prepares `portfolio.db` by itself.
+
+Sending verification and password-reset email needs real `EMAIL_USER` and `EMAIL_PASSWORD` credentials; local delivery is not stubbed or suppressed.
+
+The development server runs at `http://127.0.0.1:5000` by default. `python app.py` is the local entry point only: it selects the debug development configuration, while production runs the base configuration through `wsgi.py` (see [Deployment Notes](#deployment-notes)). Registered users manage only their own accounts and tenant-scoped portfolio data; the public application exposes no privileged cross-user role. Exceptional deployment or database maintenance remains outside the application authorization model.
 
 ## Configuration
 
@@ -97,7 +107,7 @@ Supported environment variables are defined in [config.py](config.py):
 
 | Variable | Description |
 | --- | --- |
-| `SECRET_KEY` | Flask session and CSRF signing key. Required outside debug/test contexts. |
+| `SECRET_KEY` | Flask session and CSRF signing key. Read when `config.py` is imported, so `python app.py` does not exempt it: set it unless `FLASK_DEBUG` or pytest enables the dev-only insecure fallback. |
 | `DATABASE_URL` | SQLAlchemy database URI. Defaults to local SQLite `portfolio.db`. |
 | `EMAIL_USER` | Gmail sender address for verification and reset emails. |
 | `EMAIL_PASSWORD` | Gmail app password for the sender account. |

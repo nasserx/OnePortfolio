@@ -13,7 +13,11 @@ class Transaction(db.Model):
     __tablename__ = 'transaction'
 
     id = db.Column(db.Integer, primary_key=True)
-    portfolio_id = db.Column(db.Integer, db.ForeignKey('portfolio.id'), nullable=False)
+    portfolio_id = db.Column(
+        db.Integer,
+        db.ForeignKey('portfolio.id', ondelete='CASCADE'),
+        nullable=False,
+    )
     transaction_type = db.Column(db.String(10), nullable=False)  # 'Buy' or 'Sell'
     symbol = db.Column(db.String(20), nullable=True)
     # Higher precision to support crypto-style pricing (e.g. 0.0002344)

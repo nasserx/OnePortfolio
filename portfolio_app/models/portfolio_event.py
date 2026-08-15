@@ -11,7 +11,11 @@ class PortfolioEvent(db.Model):
     __tablename__ = 'portfolio_event'
 
     id = db.Column(db.Integer, primary_key=True)
-    portfolio_id = db.Column(db.Integer, db.ForeignKey('portfolio.id'), nullable=False)
+    portfolio_id = db.Column(
+        db.Integer,
+        db.ForeignKey('portfolio.id', ondelete='CASCADE'),
+        nullable=False,
+    )
 
     # Initial / Deposit / Withdrawal
     event_type = db.Column(db.String(20), nullable=False)

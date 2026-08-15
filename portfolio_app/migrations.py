@@ -4,7 +4,7 @@ from portfolio_app import db
 # Bumped whenever a new migration step is added below. Stored in the SQLite
 # header (PRAGMA user_version) after a successful migration so subsequent
 # boots can short-circuit the whole inspection pass.
-TARGET_SCHEMA_VERSION = 33
+TARGET_SCHEMA_VERSION = 34
 
 
 def run_migrations(app):
@@ -44,7 +44,17 @@ def run_migrations(app):
             raw_conn.execute('PRAGMA foreign_keys=OFF')
             try:
                 _apply_migration_steps(conn, sa)
+                # End any residual migration transaction before changing the
+                # connection-level FK pragma. Individual historical steps may
+                # commit earlier, but inspection-only work can autobegin again.
+                conn.commit()
             finally:
+                # A failed step can leave DDL/DML pending. SQLite ignores the
+                # FK pragma inside that transaction, so rollback must happen
+                # first; the original exception then propagates unchanged.
+                if conn.in_transaction():
+                    conn.rollback()
+
                 # Re-enable FK enforcement on this pooled connection before
                 # it returns to the pool. New connections inherit FK=ON via
                 # the engine-level listener.
@@ -593,6 +603,18 @@ def _apply_migration_steps(conn, sa):
     # PortfolioEvent log, so the column is no longer a source of truth.
     _rebuild_tables(conn, sa, inspector)
 
+    # ── Step 34: fresh/upgraded portfolio-cascade parity ────────────────
+    # Version-33 databases created directly from the models could have the
+    # correct parent target but NO ACTION delete behavior. The historical
+    # Step 24 marker deliberately remains unchanged; this forward pass uses
+    # exact PRAGMA metadata and repairs only FK actions that are not CASCADE.
+    _rebuild_tables(
+        conn,
+        sa,
+        sa.inspect(conn),
+        require_portfolio_cascades=True,
+    )
+
 
 def _rebuild_user_without_admin(conn, sa):
     """Drop the legacy user.is_admin column while preserving user identity."""
@@ -794,7 +816,7 @@ def _rebuild_empty_pending_registration_with_digest_otp(conn, sa):
     conn.commit()
 
 
-def _rebuild_tables(conn, sa, inspector):
+def _rebuild_tables(conn, sa, inspector, *, require_portfolio_cascades=False):
     """Rebuild legacy tables whose CREATE statements need a fresh schema.
 
     Idempotent: each table is inspected; if the existing schema already
@@ -921,6 +943,19 @@ def _rebuild_tables(conn, sa, inspector):
             must_have in existing_sql
             and (must_not_have is None or must_not_have not in existing_sql)
         )
+        if already_correct and require_portfolio_cascades:
+            parent_table = 'user' if table == 'portfolio' else 'portfolio'
+            fk_column = 'user_id' if table == 'portfolio' else 'portfolio_id'
+            fk_rows = conn.execute(
+                sa.text(f'PRAGMA foreign_key_list("{table}")')
+            ).fetchall()
+            already_correct = any(
+                row[2] == parent_table
+                and row[3] == fk_column
+                and row[4] == 'id'
+                and str(row[6]).upper() == 'CASCADE'
+                for row in fk_rows
+            )
         # dividend.symbol must be NOT NULL — substring matching whitespace
         # in the CREATE statement is too brittle, so consult PRAGMA directly.
         # PRAGMA table_info row layout: (cid, name, type, notnull, dflt, pk).

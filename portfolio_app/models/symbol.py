@@ -11,7 +11,11 @@ class Symbol(db.Model):
     __tablename__ = 'symbol'
 
     id = db.Column(db.Integer, primary_key=True)
-    portfolio_id = db.Column(db.Integer, db.ForeignKey('portfolio.id'), nullable=False)
+    portfolio_id = db.Column(
+        db.Integer,
+        db.ForeignKey('portfolio.id', ondelete='CASCADE'),
+        nullable=False,
+    )
     symbol = db.Column(db.String(20), nullable=False)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))

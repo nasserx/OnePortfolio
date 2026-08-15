@@ -66,6 +66,11 @@ and account-deletion OTP storage with keyed digests. Upgrade invalidates staged
 registrations and clears outstanding email-change and deletion verification
 state; affected users must restart those short-lived workflows after deployment.
 
+Schema version 34 aligns fresh and upgraded ownership constraints. Deleting a
+portfolio cascades at the database boundary to its transactions, symbols,
+dividends, and capital-event history; the forward migration rebuilds only child
+tables whose existing foreign key still uses non-cascading delete behavior.
+
 ## Required Validation
 
 Run:

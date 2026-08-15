@@ -1,4 +1,5 @@
 from pathlib import Path
+import sqlite3
 
 from config import Config
 from portfolio_app import create_app, db
@@ -6,8 +7,171 @@ from portfolio_app.migrations import TARGET_SCHEMA_VERSION
 from portfolio_app.models.oauth_identity import OAuthIdentity
 from portfolio_app.models.portfolio import Portfolio
 from portfolio_app.models.user import User
+import pytest
 import sqlalchemy as sa
 from sqlalchemy import text
+
+
+_PORTFOLIO_CHILD_TABLES = (
+    'transaction',
+    'symbol',
+    'dividend',
+    'portfolio_event',
+)
+
+
+def _foreign_key_contract(app, table_name):
+    with app.app_context():
+        return tuple(sorted(
+            (row[3], row[2], row[4], row[5].upper(), row[6].upper())
+            for row in db.session.execute(
+                text(f'PRAGMA foreign_key_list("{table_name}")')
+            ).fetchall()
+        ))
+
+
+def _create_version_33_no_action_database(db_path):
+    """Create the pre-fix current schema with non-cascading child FKs."""
+    con = sqlite3.connect(db_path)
+    try:
+        con.executescript('''
+            PRAGMA foreign_keys = ON;
+            CREATE TABLE "user" (
+                id                                INTEGER NOT NULL PRIMARY KEY,
+                username                          VARCHAR(80) NOT NULL,
+                email                             VARCHAR(120),
+                password_hash                     VARCHAR(255) NOT NULL,
+                is_verified                       BOOLEAN NOT NULL,
+                created_at                        DATETIME,
+                last_login                        DATETIME,
+                verification_code                 VARCHAR(64),
+                verification_code_expires_at      DATETIME,
+                verification_code_failed_attempts INTEGER NOT NULL,
+                pending_email                     VARCHAR(120),
+                deletion_code                     VARCHAR(64),
+                deletion_code_expires_at          DATETIME,
+                deletion_code_failed_attempts     INTEGER NOT NULL,
+                failed_login_attempts              INTEGER NOT NULL,
+                locked_until                       DATETIME,
+                password_reset_jti                 VARCHAR(32),
+                auth_generation                   INTEGER NOT NULL DEFAULT 0
+            );
+            CREATE UNIQUE INDEX ix_user_username ON "user" (username);
+            CREATE UNIQUE INDEX ix_user_email ON "user" (email);
+            CREATE TABLE pending_registration (
+                id                           INTEGER NOT NULL PRIMARY KEY,
+                token                        VARCHAR(64) NOT NULL,
+                username                     VARCHAR(80) NOT NULL,
+                email                        VARCHAR(120) NOT NULL,
+                password_hash                VARCHAR(255) NOT NULL,
+                verification_code            VARCHAR(64) NOT NULL,
+                verification_code_expires_at DATETIME NOT NULL,
+                failed_otp_attempts           INTEGER NOT NULL,
+                created_at                   DATETIME NOT NULL,
+                expires_at                   DATETIME NOT NULL
+            );
+            CREATE UNIQUE INDEX ix_pending_registration_token
+                ON pending_registration (token);
+            CREATE UNIQUE INDEX ix_pending_registration_username
+                ON pending_registration (username);
+            CREATE UNIQUE INDEX ix_pending_registration_email
+                ON pending_registration (email);
+            CREATE TABLE portfolio (
+                id         INTEGER NOT NULL PRIMARY KEY,
+                user_id    INTEGER NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+                name       VARCHAR(50) NOT NULL,
+                created_at DATETIME,
+                updated_at DATETIME
+            );
+            CREATE INDEX ix_portfolio_user_id ON portfolio (user_id);
+            CREATE TABLE "transaction" (
+                id               INTEGER NOT NULL PRIMARY KEY,
+                portfolio_id     INTEGER NOT NULL REFERENCES portfolio(id),
+                transaction_type VARCHAR(10) NOT NULL,
+                symbol           VARCHAR(20),
+                price            NUMERIC(20, 10) NOT NULL,
+                quantity         NUMERIC(20, 10) NOT NULL,
+                fees             NUMERIC(20, 10) NOT NULL DEFAULT 0,
+                net_amount       NUMERIC(20, 10) NOT NULL DEFAULT 0,
+                average_cost     NUMERIC(20, 10) NOT NULL DEFAULT 0,
+                date             DATETIME,
+                notes            TEXT,
+                CONSTRAINT check_price_positive CHECK (price > 0),
+                CONSTRAINT check_quantity_positive CHECK (quantity > 0),
+                CONSTRAINT check_fees_non_negative CHECK (fees >= 0),
+                CONSTRAINT check_net_amount_non_negative CHECK (net_amount >= 0)
+            );
+            CREATE TABLE symbol (
+                id           INTEGER NOT NULL PRIMARY KEY,
+                portfolio_id INTEGER NOT NULL REFERENCES portfolio(id),
+                symbol       VARCHAR(20) NOT NULL,
+                created_at   DATETIME,
+                updated_at   DATETIME,
+                CONSTRAINT uq_symbol_portfolio_ticker UNIQUE (portfolio_id, symbol)
+            );
+            CREATE INDEX ix_symbol_portfolio_ticker ON symbol (portfolio_id, symbol);
+            CREATE TABLE dividend (
+                id           INTEGER NOT NULL PRIMARY KEY,
+                portfolio_id INTEGER NOT NULL REFERENCES portfolio(id),
+                symbol       VARCHAR(20) NOT NULL,
+                amount       NUMERIC(20, 10) NOT NULL,
+                date         DATETIME NOT NULL,
+                notes        TEXT,
+                created_at   DATETIME NOT NULL,
+                CONSTRAINT check_dividend_amount_positive CHECK (amount > 0)
+            );
+            CREATE TABLE portfolio_event (
+                id           INTEGER NOT NULL PRIMARY KEY,
+                portfolio_id INTEGER NOT NULL REFERENCES portfolio(id),
+                event_type   VARCHAR(20) NOT NULL,
+                amount_delta NUMERIC(15, 2) NOT NULL DEFAULT 0,
+                date         DATETIME,
+                notes        TEXT
+            );
+            CREATE INDEX ix_portfolio_event_portfolio_date
+                ON portfolio_event (portfolio_id, date);
+            CREATE TABLE oauth_identity (
+                id               INTEGER NOT NULL PRIMARY KEY,
+                user_id          INTEGER NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+                provider         VARCHAR(50) NOT NULL,
+                provider_subject VARCHAR(255) NOT NULL,
+                created_at       DATETIME NOT NULL,
+                updated_at       DATETIME NOT NULL,
+                CONSTRAINT uq_oauth_identity_provider_subject
+                    UNIQUE (provider, provider_subject),
+                CONSTRAINT uq_oauth_identity_user_provider
+                    UNIQUE (user_id, provider)
+            );
+            CREATE INDEX ix_oauth_identity_user_id ON oauth_identity (user_id);
+            INSERT INTO "user" VALUES (
+                41, 'cascade-owner', 'cascade@example.com', 'preserved-hash', 1,
+                '2026-01-01 00:00:00', NULL, NULL, NULL, 0, NULL, NULL, NULL,
+                0, 0, NULL, NULL, 3
+            );
+            INSERT INTO portfolio VALUES (
+                51, 41, 'Preserved Portfolio',
+                '2026-01-02 00:00:00', '2026-01-03 00:00:00'
+            );
+            INSERT INTO "transaction" VALUES (
+                61, 51, 'Buy', 'AAPL', 100, 2, 1, 201, 100.5,
+                '2026-01-04 00:00:00', 'preserved transaction'
+            );
+            INSERT INTO symbol VALUES (
+                62, 51, 'AAPL', '2026-01-03 00:00:00', '2026-01-04 00:00:00'
+            );
+            INSERT INTO dividend VALUES (
+                63, 51, 'AAPL', 25, '2026-01-05 00:00:00',
+                'preserved income', '2026-01-05 00:00:00'
+            );
+            INSERT INTO portfolio_event VALUES (
+                64, 51, 'Deposit', 1000, '2026-01-02 00:00:00',
+                'preserved capital event'
+            );
+            PRAGMA user_version = 33;
+        ''')
+        con.commit()
+    finally:
+        con.close()
 
 
 def _sqlite_uri(path: Path) -> str:
@@ -70,6 +234,13 @@ def _table_index_contract(app, table_name):
         )
 
 
+def _table_rows(app, table_name):
+    with app.app_context():
+        return tuple(db.session.execute(
+            text(f'SELECT * FROM "{table_name}" ORDER BY id')
+        ).fetchall())
+
+
 def test_fresh_database_startup_creates_schema_and_sets_user_version(tmp_path):
     db_path = tmp_path / 'fresh.sqlite'
     app = create_app(_config_for(db_path))
@@ -108,6 +279,100 @@ def test_fresh_database_startup_creates_schema_and_sets_user_version(tmp_path):
         assert pending_columns['verification_code'][2].upper() == 'VARCHAR(64)'
 
 
+def test_fresh_schema_uses_database_cascades_for_all_ownership_foreign_keys(tmp_path):
+    app = create_app(_config_for(tmp_path / 'fresh-cascades.sqlite'))
+
+    assert TARGET_SCHEMA_VERSION == 34
+    assert _foreign_key_contract(app, 'portfolio') == (
+        ('user_id', 'user', 'id', 'NO ACTION', 'CASCADE'),
+    )
+    assert _foreign_key_contract(app, 'oauth_identity') == (
+        ('user_id', 'user', 'id', 'NO ACTION', 'CASCADE'),
+    )
+    for table_name in _PORTFOLIO_CHILD_TABLES:
+        assert _foreign_key_contract(app, table_name) == (
+            ('portfolio_id', 'portfolio', 'id', 'NO ACTION', 'CASCADE'),
+        )
+
+
+def test_version_33_no_action_schema_upgrades_to_fresh_fk_parity_and_preserves_data(
+    tmp_path,
+):
+    upgraded_path = tmp_path / 'version-33-no-action.sqlite'
+    _create_version_33_no_action_database(upgraded_path)
+
+    upgraded_app = create_app(_config_for(upgraded_path))
+    fresh_app = create_app(_config_for(tmp_path / 'fresh-parity.sqlite'))
+
+    assert _pragma_scalar(upgraded_app, 'user_version') == TARGET_SCHEMA_VERSION
+    for table_name in ('portfolio', *_PORTFOLIO_CHILD_TABLES):
+        assert _foreign_key_contract(upgraded_app, table_name) == (
+            _foreign_key_contract(fresh_app, table_name)
+        )
+        assert _table_index_contract(upgraded_app, table_name) == (
+            _table_index_contract(fresh_app, table_name)
+        )
+
+    assert _table_rows(upgraded_app, 'portfolio')[0][:3] == (
+        51, 41, 'Preserved Portfolio',
+    )
+    assert _table_rows(upgraded_app, 'transaction')[0][:7] == (
+        61, 51, 'Buy', 'AAPL', 100, 2, 1,
+    )
+    assert _table_rows(upgraded_app, 'symbol')[0][:3] == (62, 51, 'AAPL')
+    assert _table_rows(upgraded_app, 'dividend')[0][:5] == (
+        63, 51, 'AAPL', 25, '2026-01-05 00:00:00',
+    )
+    assert _table_rows(upgraded_app, 'portfolio_event')[0][:5] == (
+        64, 51, 'Deposit', 1000, '2026-01-02 00:00:00',
+    )
+    with upgraded_app.app_context():
+        assert db.session.execute(text('PRAGMA foreign_key_check')).fetchall() == []
+
+
+def test_upgraded_schema_cascades_raw_portfolio_delete_to_every_owned_table(tmp_path):
+    upgraded_path = tmp_path / 'version-33-cascade-behavior.sqlite'
+    _create_version_33_no_action_database(upgraded_path)
+    app = create_app(_config_for(upgraded_path))
+
+    with app.app_context():
+        db.session.execute(text('DELETE FROM portfolio WHERE id = 51'))
+        db.session.commit()
+
+        assert db.session.execute(text('SELECT COUNT(*) FROM "user"')).scalar() == 1
+        for table_name in _PORTFOLIO_CHILD_TABLES:
+            assert db.session.execute(
+                text(f'SELECT COUNT(*) FROM "{table_name}"')
+            ).scalar() == 0
+        assert db.session.execute(text('PRAGMA foreign_key_check')).fetchall() == []
+
+
+def test_cascade_repair_replay_is_idempotent_and_preserves_current_data(tmp_path):
+    upgraded_path = tmp_path / 'cascade-replay.sqlite'
+    _create_version_33_no_action_database(upgraded_path)
+    first_app = create_app(_config_for(upgraded_path))
+
+    tables = ('user', 'portfolio', *_PORTFOLIO_CHILD_TABLES)
+    rows_before = {table: _table_rows(first_app, table) for table in tables}
+    with first_app.app_context():
+        db.session.execute(text('PRAGMA user_version = 33'))
+        db.session.commit()
+        db.session.remove()
+
+    replayed_app = create_app(_config_for(upgraded_path))
+
+    assert _pragma_scalar(replayed_app, 'user_version') == TARGET_SCHEMA_VERSION
+    assert {
+        table: _table_rows(replayed_app, table) for table in tables
+    } == rows_before
+    for table_name in _PORTFOLIO_CHILD_TABLES:
+        assert _foreign_key_contract(replayed_app, table_name) == (
+            ('portfolio_id', 'portfolio', 'id', 'NO ACTION', 'CASCADE'),
+        )
+    with replayed_app.app_context():
+        assert db.session.execute(text('PRAGMA foreign_key_check')).fetchall() == []
+
+
 def test_warm_startup_is_idempotent_and_preserves_existing_data(tmp_path):
     db_path = tmp_path / 'warm.sqlite'
     first_app = create_app(_config_for(db_path))
@@ -138,6 +403,75 @@ def test_sqlite_foreign_keys_are_on_after_startup(tmp_path):
     app = create_app(_config_for(tmp_path / 'foreign_keys.sqlite'))
 
     assert _pragma_scalar(app, 'foreign_keys') == 1
+
+
+def test_failed_migration_rolls_back_restores_foreign_keys_and_can_retry(
+    tmp_path,
+    monkeypatch,
+):
+    import portfolio_app.migrations as migrations
+
+    app = create_app(_config_for(tmp_path / 'failed-migration-retry.sqlite'))
+    with app.app_context():
+        user = User(
+            username='migration-original',
+            email='migration-original@example.com',
+            is_verified=True,
+        )
+        user.set_password('test-password')
+        db.session.add(user)
+        db.session.commit()
+        user_id = user.id
+        db.session.execute(text('PRAGMA user_version = 33'))
+        db.session.commit()
+        db.session.remove()
+
+    original_apply_migration_steps = migrations._apply_migration_steps
+
+    def _write_then_fail(conn, sa_module):
+        conn.execute(
+            sa_module.text(
+                'UPDATE "user" SET username = :username WHERE id = :user_id'
+            ),
+            {'username': 'migration-should-rollback', 'user_id': user_id},
+        )
+        raise RuntimeError('injected migration failure')
+
+    monkeypatch.setattr(
+        migrations,
+        '_apply_migration_steps',
+        _write_then_fail,
+    )
+
+    with pytest.raises(RuntimeError, match='injected migration failure'):
+        migrations.run_migrations(app)
+
+    with app.app_context():
+        with db.engine.connect() as conn:
+            assert conn.exec_driver_sql('PRAGMA user_version').scalar() == 33
+            assert conn.exec_driver_sql('PRAGMA foreign_keys').scalar() == 1
+            assert conn.execute(
+                text('SELECT username FROM "user" WHERE id = :user_id'),
+                {'user_id': user_id},
+            ).scalar_one() == 'migration-original'
+
+    monkeypatch.setattr(
+        migrations,
+        '_apply_migration_steps',
+        original_apply_migration_steps,
+    )
+    migrations.run_migrations(app)
+
+    with app.app_context():
+        with db.engine.connect() as conn:
+            assert conn.exec_driver_sql(
+                'PRAGMA user_version'
+            ).scalar() == TARGET_SCHEMA_VERSION
+            assert conn.exec_driver_sql('PRAGMA foreign_keys').scalar() == 1
+            assert conn.execute(
+                text('SELECT username FROM "user" WHERE id = :user_id'),
+                {'user_id': user_id},
+            ).scalar_one() == 'migration-original'
 
 
 def test_application_factory_runs_migrations_before_create_all(tmp_path, monkeypatch):
@@ -478,7 +812,7 @@ def test_migration_removes_legacy_admin_column_and_preserves_user_graph(tmp_path
             )
         assert db.session.execute(text('PRAGMA foreign_key_check')).fetchall() == []
         assert db.session.execute(text('PRAGMA foreign_keys')).scalar() == 1
-        assert db.session.execute(text('PRAGMA user_version')).scalar() == 33
+        assert db.session.execute(text('PRAGMA user_version')).scalar() == TARGET_SCHEMA_VERSION
 
     fresh_app = create_app(_config_for(tmp_path / 'fresh-equivalent.sqlite'))
     assert _table_column_contract(upgraded_app, 'user') == _table_column_contract(
@@ -494,7 +828,7 @@ def test_migration_removes_legacy_admin_column_and_preserves_user_graph(tmp_path
 def test_migration_hardens_otp_columns_and_invalidates_legacy_state(tmp_path):
     import sqlite3
 
-    assert TARGET_SCHEMA_VERSION == 33
+    assert TARGET_SCHEMA_VERSION == 34
     upgraded_path = tmp_path / 'legacy-otp-upgrade.sqlite'
     con = sqlite3.connect(upgraded_path)
     try:
@@ -595,7 +929,7 @@ def test_migration_hardens_otp_columns_and_invalidates_legacy_state(tmp_path):
     upgraded_app = create_app(_config_for(upgraded_path))
 
     with upgraded_app.app_context():
-        assert db.session.execute(text('PRAGMA user_version')).scalar() == 33
+        assert db.session.execute(text('PRAGMA user_version')).scalar() == TARGET_SCHEMA_VERSION
         assert db.session.execute(text(
             'SELECT COUNT(*) FROM pending_registration'
         )).scalar() == 0
@@ -647,7 +981,7 @@ def test_migration_hardens_otp_columns_and_invalidates_legacy_state(tmp_path):
 
     restarted_app = create_app(_config_for(upgraded_path))
     with restarted_app.app_context():
-        assert db.session.execute(text('PRAGMA user_version')).scalar() == 33
+        assert db.session.execute(text('PRAGMA user_version')).scalar() == TARGET_SCHEMA_VERSION
         assert db.session.execute(text(
             'SELECT password_hash FROM "user" WHERE id = 41'
         )).scalar() == 'preserved-hash'

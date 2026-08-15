@@ -793,6 +793,8 @@ def delete_account_request():
 @login_required
 def delete_account_cancel():
     """Cancel the in-progress account deletion flow."""
+    svc = get_services()
+    svc.auth_service.cancel_account_deletion(current_user)
     return redirect(url_for('auth.settings', tab='account'))
 
 

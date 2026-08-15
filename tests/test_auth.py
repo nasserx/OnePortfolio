@@ -2465,6 +2465,113 @@ class TestSettingsAndDeletion:
             ).one().deletion_code
             _assert_stored_otp_digest(stored, deletion_code)
 
+    def test_cancel_deletion_clears_all_state_and_preserves_unrelated_user_state(
+        self, app, client, email_log,
+    ):
+        _signup_and_verify(app, client, email_log)
+        client.post(
+            '/login',
+            data={'username': 'alice@example.com', 'password': 'CorrectHorse9'},
+        )
+        client.post('/settings/delete/request')
+
+        with app.app_context():
+            user = User.query.filter_by(email='alice@example.com').one()
+            user.deletion_code_failed_attempts = 3
+            user.pending_email = 'alice-new@example.com'
+            user.verification_code = 'v' * 64
+            user.verification_code_expires_at = (
+                datetime.now(timezone.utc) + timedelta(minutes=10)
+            )
+            user.verification_code_failed_attempts = 2
+            user.password_reset_jti = 'r' * 32
+            db.session.commit()
+            unrelated_state = (
+                user.username,
+                user.email,
+                user.password_hash,
+                user.is_verified,
+                user.pending_email,
+                user.verification_code,
+                user.verification_code_expires_at,
+                user.verification_code_failed_attempts,
+                user.password_reset_jti,
+                user.auth_generation,
+                user.last_login,
+            )
+
+        response = client.post('/settings/delete/cancel')
+
+        assert response.status_code in (302, 303)
+        assert response.headers['Location'].endswith('/settings?tab=account')
+        with app.app_context():
+            user = User.query.filter_by(email='alice@example.com').one()
+            assert user.deletion_code is None
+            assert user.deletion_code_expires_at is None
+            assert user.deletion_code_failed_attempts == 0
+            assert (
+                user.username,
+                user.email,
+                user.password_hash,
+                user.is_verified,
+                user.pending_email,
+                user.verification_code,
+                user.verification_code_expires_at,
+                user.verification_code_failed_attempts,
+                user.password_reset_jti,
+                user.auth_generation,
+                user.last_login,
+            ) == unrelated_state
+
+    def test_cancelled_deletion_code_cannot_delete_account(
+        self, app, client, email_log,
+    ):
+        _signup_and_verify(app, client, email_log)
+        client.post(
+            '/login',
+            data={'username': 'alice@example.com', 'password': 'CorrectHorse9'},
+        )
+        client.post('/settings/delete/request')
+        deletion_code = next(
+            value.split(':', 1)[1]
+            for _, value in reversed(email_log)
+            if value.startswith('deletion:')
+        )
+
+        client.post('/settings/delete/cancel')
+        response = client.post(
+            '/settings/delete/verify',
+            data={'code': deletion_code},
+            follow_redirects=True,
+        )
+
+        assert response.status_code == 200
+        assert MESSAGES['DELETION_INVALID_CODE'] in response.get_data(as_text=True)
+        with app.app_context():
+            user = User.query.filter_by(email='alice@example.com').one()
+            assert user.deletion_code is None
+            assert user.deletion_code_expires_at is None
+            assert user.deletion_code_failed_attempts == 0
+
+    def test_repeated_deletion_cancel_is_safe(self, app, client, email_log):
+        _signup_and_verify(app, client, email_log)
+        client.post(
+            '/login',
+            data={'username': 'alice@example.com', 'password': 'CorrectHorse9'},
+        )
+        client.post('/settings/delete/request')
+
+        first = client.post('/settings/delete/cancel')
+        second = client.post('/settings/delete/cancel')
+
+        assert first.status_code in (302, 303)
+        assert second.status_code in (302, 303)
+        with app.app_context():
+            user = User.query.filter_by(email='alice@example.com').one()
+            assert user.deletion_code is None
+            assert user.deletion_code_expires_at is None
+            assert user.deletion_code_failed_attempts == 0
+
     def test_invalid_deletion_code_does_not_delete_or_logout(self, app, client, email_log):
         _signup_and_verify(app, client, email_log)
         client.post(

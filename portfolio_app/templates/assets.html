@@ -293,14 +293,14 @@
 </div>
 
 <!-- Add Asset Modal -->
-<div class="modal fade" id="addSymbolModal" tabindex="-1">
+<div class="modal fade" id="addSymbolModal" tabindex="-1" aria-labelledby="addSymbolModalTitle">
     <div class="modal-dialog">
         <div class="modal-content">
             <form method="POST" action="{{ url_for('transactions.symbol_add') }}" autocomplete="off" novalidate>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="modal-header">
-                    <h5 class="modal-title">Add Asset</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <h5 class="modal-title" id="addSymbolModalTitle">Add Asset</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <div class="row g-2">
@@ -347,7 +347,7 @@
 </div>
 
 <!-- Add Asset Entry Modal -->
-<div class="modal fade" id="addTransactionModal" tabindex="-1">
+<div class="modal fade" id="addTransactionModal" tabindex="-1" aria-labelledby="add_tx_modal_title">
     <div class="modal-dialog modal-dialog-scrollable">
         <div class="modal-content">
             <form method="POST" action="{{ url_for('transactions.transaction_add') }}" autocomplete="off" novalidate>
@@ -355,7 +355,7 @@
                 <input type="hidden" name="user_timezone" value="">
                 <div class="modal-header">
                     <h5 class="modal-title" id="add_tx_modal_title">Add Asset Entry</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     {% set _tx_add_errs = (form_errors.get('transaction_add', {}) if form_errors else {}) %}
@@ -478,15 +478,15 @@
 </div>
 
 <!-- Edit Asset Entry Modal -->
-<div class="modal fade" id="editTransactionModal" tabindex="-1">
+<div class="modal fade" id="editTransactionModal" tabindex="-1" aria-labelledby="editTransactionModalTitle">
     <div class="modal-dialog modal-dialog-scrollable">
         <div class="modal-content">
             <form method="POST" id="editTransactionForm" autocomplete="off" novalidate>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="user_timezone" value="">
                 <div class="modal-header">
-                    <h5 class="modal-title">Edit Asset Entry</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <h5 class="modal-title" id="editTransactionModalTitle">Edit Asset Entry</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     {% set _tx_edit_errs = (form_errors.get('transaction_edit', {}) if form_errors else {}) %}
@@ -593,17 +593,17 @@
 </div>
 
 <!-- Remove Asset Entry Modal -->
-<div class="modal fade" id="deleteTransactionModal" tabindex="-1">
+<div class="modal fade" id="deleteTransactionModal" tabindex="-1" aria-labelledby="deleteTransactionModalTitle">
     <div class="modal-dialog">
         <div class="modal-content">
             <form method="POST" id="deleteTransactionForm" novalidate>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="modal-header">
-                    <h5 class="modal-title d-flex align-items-center gap-2">
-                        <i class="bi bi-trash modal-title-icon"></i>
+                    <h5 class="modal-title d-flex align-items-center gap-2" id="deleteTransactionModalTitle">
+                        <i class="bi bi-trash modal-title-icon" aria-hidden="true"></i>
                         Confirm Remove
                     </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <p>{{ MESSAGES['CONFIRM_REMOVE_TRANSACTION'] }}</p>
@@ -624,7 +624,7 @@
 </div>
 
 <!-- Remove Asset Modal -->
-<div class="modal fade" id="deleteSymbolModal" tabindex="-1">
+<div class="modal fade" id="deleteSymbolModal" tabindex="-1" aria-labelledby="deleteSymbolModalTitle">
     <div class="modal-dialog">
         <div class="modal-content">
             <form method="POST" id="deleteSymbolForm" action="{{ url_for('transactions.symbol_delete') }}" novalidate>
@@ -632,11 +632,11 @@
                 <input type="hidden" name="delete_symbol_portfolio_id" id="delete_symbol_portfolio_id">
                 <input type="hidden" name="delete_symbol_ticker" id="delete_symbol_ticker">
                 <div class="modal-header">
-                    <h5 class="modal-title d-flex align-items-center gap-2">
-                        <i class="bi bi-trash modal-title-icon"></i>
+                    <h5 class="modal-title d-flex align-items-center gap-2" id="deleteSymbolModalTitle">
+                        <i class="bi bi-trash modal-title-icon" aria-hidden="true"></i>
                         Confirm Remove
                     </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <p class="mb-2">Remove <span class="text-emphasis" id="delete_symbol_name"></span>?</p>
@@ -657,7 +657,7 @@
 </div>
 
 <!-- Add Income Modal (standalone — opened from the $ button on each asset row) -->
-<div class="modal fade" id="addDividendModal" tabindex="-1">
+<div class="modal fade" id="addDividendModal" tabindex="-1" aria-labelledby="addDividendModalTitle">
     {% set _div_add_errs = (form_errors.get('dividend_add', {}) if form_errors else {}) %}
     <div class="modal-dialog">
         <div class="modal-content">
@@ -667,8 +667,8 @@
                 <input type="hidden" name="portfolio_id" id="add_div_portfolio_id">
                 <input type="hidden" name="div_symbol" id="add_div_symbol">
                 <div class="modal-header">
-                    <h5 class="modal-title">Add Income</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <h5 class="modal-title" id="addDividendModalTitle">Add Income</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     {% if _div_add_errs.get('__all__') %}
@@ -723,15 +723,15 @@
 
 <!-- Edit Income Modal -->
 {% set _div_edit_errs = (form_errors.get('dividend_edit', {}) if form_errors else {}) %}
-<div class="modal fade" id="editDividendModal" tabindex="-1">
+<div class="modal fade" id="editDividendModal" tabindex="-1" aria-labelledby="editDividendModalTitle">
     <div class="modal-dialog modal-dialog-scrollable">
         <div class="modal-content">
             <form method="POST" id="editDividendForm" autocomplete="off" novalidate>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="user_timezone" value="">
                 <div class="modal-header">
-                    <h5 class="modal-title">Edit Income</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <h5 class="modal-title" id="editDividendModalTitle">Edit Income</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     {% if _div_edit_errs.get('__all__') %}
@@ -787,17 +787,17 @@
 </div>
 
 <!-- Remove Income Modal -->
-<div class="modal fade" id="deleteDividendModal" tabindex="-1">
+<div class="modal fade" id="deleteDividendModal" tabindex="-1" aria-labelledby="deleteDividendModalTitle">
     <div class="modal-dialog">
         <div class="modal-content">
             <form method="POST" id="deleteDividendForm" novalidate>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="modal-header">
-                    <h5 class="modal-title d-flex align-items-center gap-2">
-                        <i class="bi bi-trash modal-title-icon"></i>
+                    <h5 class="modal-title d-flex align-items-center gap-2" id="deleteDividendModalTitle">
+                        <i class="bi bi-trash modal-title-icon" aria-hidden="true"></i>
                         Confirm Remove
                     </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <p>{{ MESSAGES['CONFIRM_REMOVE_DIVIDEND'] }}</p>

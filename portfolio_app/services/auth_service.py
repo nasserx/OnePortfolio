@@ -461,6 +461,13 @@ class AuthService:
         self.user_repo.commit()
         return code
 
+    def cancel_account_deletion(self, user: User) -> None:
+        """Revoke every credential associated with account deletion."""
+        user.deletion_code = None
+        user.deletion_code_expires_at = None
+        user.deletion_code_failed_attempts = 0
+        self.user_repo.commit()
+
     def confirm_account_deletion(self, user: User, code: str) -> Tuple[bool, str]:
         # Reject upfront if the code was never set or has expired — the same
         # generic message hides whether the user is in the deletion flow.

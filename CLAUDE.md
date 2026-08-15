@@ -52,7 +52,7 @@ Realized P&L is **computed dynamically** from `Transaction` rows (average-cost m
 
 ### Migrations
 
-`portfolio_app/__init__.py` calls `run_startup_schema()` (in `portfolio_app/migrations.py`) on every app startup. It runs the migration pass and then `db.create_all()`. All 25+ steps are idempotent (check column/table existence via SQLAlchemy inspector before altering). Never delete migration steps — add new ones at the end and bump `TARGET_SCHEMA_VERSION` at the top of the file.
+`portfolio_app/__init__.py` calls `run_startup_schema()` (in `portfolio_app/migrations.py`) on every app startup. It runs the migration pass and then `db.create_all()`. All 25+ steps are idempotent (they check column/table existence before altering, reading it through `_LiveInspector` — a shared SQLAlchemy `Inspector` memoizes reflection for its lifetime and would answer a later step with the pre-rename schema). Never delete migration steps — add new ones at the end and bump `TARGET_SCHEMA_VERSION` at the top of the file.
 
 Both halves run inside one exclusive startup schema lock: a `BEGIN IMMEDIATE` transaction in a sidecar SQLite database (`<db>.schema-lock`) held for the whole critical section, so exactly one process at a time brings a database to target. `db.create_all()` must be inside it — its `checkfirst` reflection and its `CREATE TABLE` statements are not atomic together, so on a fresh database (where every table comes from `create_all`, not from migrations) concurrent workers otherwise collide on `table user already exists`.
 

@@ -1296,8 +1296,8 @@
     padding: var(--space-12);
     border-left: 1px solid var(--line-subtle);
     background-color: var(--bg-surface);
+    background-image: var(--intro-wash);
     overflow: hidden;
-    --hero-focus: 50% 62%;
   }
 
   .auth__quote {
@@ -1310,11 +1310,11 @@
     letter-spacing: -0.02em;
   }
 
-  /* Full strength, not a quieter step: this paragraph sits over the hero
-     photograph, where a tint is not a free way to say "secondary". Every
-     step below `--fg-default` needs roughly 0.79 of veil against this
-     picture where the default needs 0.49, so greying it down would have
-     been paid for by the photograph. Size carries the hierarchy instead. */
+  /* Full strength rather than a quieter step. This sat over a photograph
+     once, where tinting text down was paid for by the picture; the panel is
+     a flat surface under a sub-10% wash now, so the reason is simply that
+     the quote and its follow-on are one thought and size already separates
+     them. */
   .auth__quote-sub {
     position: relative;
     max-width: 26rem;

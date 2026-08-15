@@ -55,15 +55,9 @@
     </main>
 
     <aside class="auth__showcase" aria-hidden="true">
-        {# Lazy on purpose: this panel is hidden below 60rem, and a lazily
-           loaded image inside a hidden container is never fetched — so a
-           phone signing in does not pay for a backdrop it cannot see. #}
-        {% set hero_loading = 'lazy' %}
-        {% set hero_priority = 'auto' %}
-        <div class="hero-media">
-            {% include 'components/hero_image.html' %}
-        </div>
-
+        {# Decorative panel, hidden below 60rem. Its backdrop is `--intro-wash`
+           on the aside itself — the same treatment the landing intro uses, and
+           the reason a phone signing in now downloads nothing for it at all. #}
         <p class="auth__quote">A clear record of every portfolio you manage.</p>
         <p class="auth__quote-sub">
             Capital, asset activity, income, and realized results — from your own

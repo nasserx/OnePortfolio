@@ -3,8 +3,3 @@
 -r requirements.txt
 
 pytest>=7.0
-
-# Reads the hero photograph so `tests/test_hero_legibility.py` can size the
-# backdrop's shade against the picture's real pixels instead of a worst case.
-# Needs WebP support, which the wheels ship with.
-pillow>=10.4

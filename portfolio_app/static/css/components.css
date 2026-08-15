@@ -1421,17 +1421,41 @@
   }
 
   /* The brand lockup is shared by the app shell and the marketing page, so
-     it lives here rather than in either page stylesheet. */
+     it lives here rather than in either page stylesheet.
+
+     All three of its dimensions are owned right here — mark size, wordmark
+     size and weight, and the gap between them. The mark used to be sized by
+     a `logo_size` number written at each call site, which meant the lockup
+     was a template decision in two places and a stylesheet decision in a
+     third, and the marketing header and the app shell could drift apart
+     without anything noticing. `--brand-mark-size` is the one number now;
+     `components/logo_mark.html` defaults its `width`/`height` attributes to
+     the same value so the mark reserves its box before CSS arrives, and
+     `tests/test_brand_lockup.py` fails if the two ever disagree.
+
+     Sized to hold its own beside the primary CTA it sits next to in the
+     marketing header. That control is 38px tall with 13px medium type, so a
+     26px mark with 14px type read as a caption beside it; 32px with 16px
+     does not. Nothing about the header's own height depends on this — the
+     shell reserves 2.5rem for the row and the marketing bar 4rem, both of
+     which clear a 2rem mark with room to spare. */
   .brand {
+    --brand-mark-size: 2rem;
+
     display: flex;
     align-items: center;
     gap: var(--space-2);
     min-width: 0;
     color: var(--fg-default);
-    font-size: var(--text-md);
+    font-size: var(--text-lg);
     font-weight: var(--weight-semibold);
     letter-spacing: -0.02em;
     white-space: nowrap;
+  }
+
+  .brand .op-logo-mark {
+    width: var(--brand-mark-size);
+    height: var(--brand-mark-size);
   }
 
   .brand:hover { color: var(--fg-default); }
@@ -1461,49 +1485,7 @@
   :root[data-theme="light"] .brand-logo--light { display: block; }
 
   /* ======================================================================
-     16. HERO BACKDROP
-     Always decorative (empty `alt`, `aria-hidden` wrapper) and always under
-     a shade, because copy legibility cannot depend on which pixel of a
-     photograph lands under a word.
-
-     A backdrop ends where its box ends. Both heroes stop on that edge
-     rather than dissolving into it — see DESIGN_SYSTEM.md, "Why there is no
-     dissolve", before adding a mask back.
-     ====================================================================== */
-
-  .hero-media {
-    position: absolute;
-    inset: 0;
-    z-index: 0;
-    overflow: hidden;
-    pointer-events: none;
-  }
-
-  .hero-media picture {
-    display: block;
-    width: 100%;
-    height: 100%;
-  }
-
-  .hero-media img {
-    display: block;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    object-position: var(--hero-focus, 50% 50%);
-  }
-
-  /* The shade. One layer, because one thing is being decided here: how much
-     of the page's own colour stands between the photograph and the words. */
-  .hero-media::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: var(--hero-shade);
-  }
-
-  /* ======================================================================
-     17. DATE PICKER (flatpickr)
+     16. DATE PICKER (flatpickr)
      ====================================================================== */
 
   .op-flatpickr.flatpickr-calendar {

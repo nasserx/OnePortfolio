@@ -25,50 +25,35 @@
      Navigation
      ====================================================================== */
 
-  /* Fixed, not sticky: sticky stays in flow and would push the hero down by
-     the header's height, putting a band of flat colour above the picture. */
+  /* Fixed, not sticky: sticky stays in flow and would push the intro down by
+     the header's height, putting a band of flat colour above the section.
+
+     One appearance, always. This used to be two — invisible over the intro,
+     then a panel once `landing.js` saw the page scroll — and the invisible
+     half was the expensive one: it needed a scroll listener to leave, and it
+     left every control in the row carrying a second set of colours that
+     existed for the first eight pixels of scroll and nothing else. The panel
+     is what the row looked like for the rest of the page anyway.
+
+     Still translucent, so the page moves under it and the row does not read
+     as a lid: at 82% of the page colour under a 12px blur it is mostly page.
+     Everything it sits over is now either the canvas or `--intro-wash` at
+     under 10%, so the row simply uses the product's ordinary chrome colours
+     — no step-ups, no per-state overrides.
+
+     No divider, at rest or after scrolling. The panel and the blur already
+     say where the header ends; a hairline under them draws a second edge in
+     the same place, and on a page whose intro is a soft gradient that line
+     is the hardest thing on screen. It went with the two-state header — it
+     was the other half of what `.is-stuck` used to switch on. */
   .lp-nav {
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
     z-index: var(--z-sticky);
-    border-bottom: 1px solid transparent;
-    background-color: transparent;
-    transition:
-      background-color var(--dur-2) var(--ease-out),
-      border-color var(--dur-2) var(--ease-out);
-  }
-
-  /* The panel appears only once the header is genuinely floating over
-     content it needs separating from. */
-  .lp-nav.is-stuck {
-    border-bottom-color: var(--line-subtle);
     background-color: color-mix(in srgb, var(--bg-canvas) 82%, transparent);
     backdrop-filter: blur(12px);
-  }
-
-  /* Over the picture the header has no veil of its own — it stands on the
-     uniform `--hero-shade`. That costs the tint: `--fg-muted` needs about
-     0.79 of shade against this photograph where the hero ships 0.50–0.625,
-     so everything in this row steps up to `--fg-default` while the header
-     is transparent. Anything added here has to do the same. */
-  .lp-nav:not(.is-stuck) .icon-button,
-  .lp-nav:not(.is-stuck) .btn-secondary,
-  .lp-nav:not(.is-stuck) .lp-nav__links a {
-    color: var(--fg-default);
-  }
-
-  .lp-nav:not(.is-stuck) .icon-button,
-  .lp-nav:not(.is-stuck) .btn-secondary {
-    background-color: transparent;
-    border-color: transparent;
-  }
-
-  .lp-nav:not(.is-stuck) .icon-button:hover,
-  .lp-nav:not(.is-stuck) .btn-secondary:hover {
-    background-color: var(--bg-hover);
-    border-color: transparent;
   }
 
   /* Both of these exist for the section links, and both are scoped here
@@ -151,20 +136,21 @@
      Hero
      ====================================================================== */
 
-  /* The shade is uniform (see `--hero-shade`), so all the hero decides is
-     where the backdrop ends — and it ends on a straight edge. Four rounds
-     of masked dissolve came before this one and every one of them was asked
-     to be weaker, because a dissolve has to spend a stretch of photograph
-     hiding its own boundary and that spent stretch is the thing people see.
-     An edge spends none. The bottom padding is therefore one number: clear
-     picture below the last line of copy. */
+  /* The intro's background is one gradient on the section itself — no
+     layer, no element, nothing to download. `--intro-wash` is shared with
+     the auth showcase and owned in `tokens.css`; this rule may point at it
+     but must not restate it, or the two surfaces start drifting apart.
+
+     It ends where this box ends, on a straight edge. Four rounds of masked
+     dissolve came before that decision and every one was asked to be
+     weaker, because a dissolve has to spend a stretch of backdrop hiding
+     its own boundary and that spent stretch is the thing people see. An
+     edge spends none. */
   .lp-hero {
     position: relative;
     padding: calc(4rem + var(--space-16)) 0 calc(var(--space-16) + var(--space-6));
     overflow: hidden;
-
-    /* Below centre: keeps the ridge line and the meadow, drops empty sky. */
-    --hero-focus: 50% 62%;
+    background-image: var(--intro-wash);
   }
 
   .lp-hero__grid {
@@ -193,12 +179,17 @@
     text-wrap: balance;
   }
 
-  /* The one piece of brand colour here that is not a control. It works for
-     two reasons that do not generalise: the title is large text, so its
-     floor is 3:1, and the gradient's ends are ramp steps chosen for it.
-     Not `--brand` — the working steps cannot survive the shade. `color`
-     stays declared so a browser without background-clip keeps a solid
-     heading rather than an invisible one. */
+  /* The page's leading visual element, and the only piece of brand colour
+     here that is not a control. With nothing decorative behind it, the
+     heading is what the intro is; cobalt into violet is the whole of the
+     ornament budget.
+
+     Both ends come from `--hero-title-from`/`--hero-title-to`, which are
+     semantic roles, so one declaration in `tokens.css` serves both themes
+     and there is no dark-mode rule down here to keep in step. Large text,
+     so the floor is 3:1 — the reason a saturated pair can carry a heading
+     at all. `color` stays declared so a browser without `background-clip`
+     keeps a solid heading rather than an invisible one. */
   @supports (background-clip: text) or (-webkit-background-clip: text) {
     .lp-hero .lp-title {
       background-image: linear-gradient(
@@ -252,33 +243,30 @@
 
   .lp-proof .bi { color: var(--fg-subtle); }
 
-  /* Over a photograph, hierarchy comes from size and weight, never tint:
-     the quieter a role is the more veil it needs, so greying the lede down
-     would have cost the whole picture to buy an effect the type scale
-     already delivers. */
-  .lp-hero .lp-lede,
-  .lp-hero .lp-proof li,
-  .lp-hero .lp-proof .bi {
-    color: var(--fg-default);
-  }
-
   /* ======================================================================
      Product shot
      ====================================================================== */
 
-  /* Glass, not a rectangle punched out of the picture. How far it can go is
-     set by the quietest thing printed *inside* it, not by taste — see
-     `--hero-card-fill`. The blur can only help the guarantee: blurring moves
-     pixels toward their local mean, so it cannot produce a value outside the
-     range the fill was measured against. */
+  /* Solid, and on the product's own surfaces. This was glass for a while,
+     tuned by measuring the quietest ink printed on it against a photograph
+     showing through. It reads better opaque: the preview is meant to be the
+     application, and an application does not have a mountain range behind
+     its numbers. There is no picture left to expose either way.
+
+     The dividend is that every colour on this card is now an ordinary
+     surface pairing: `tests/test_design_tokens_contrast.py` already checks
+     every text role against `--bg-surface` and `--bg-inset` in both themes,
+     so the card needs no legibility rule of its own.
+
+     Flat as well as opaque: the border draws the card's edge, and an
+     elevation shadow under it drew a second one, softer and larger, in a
+     section whose whole background is a low-alpha gradient. Depth was worth
+     paying for when the card floated on a photograph and had to separate
+     from it. It sits on the page now, so it is drawn like the page. */
   .lp-shot {
     border: 1px solid var(--line-default);
     border-radius: var(--radius-lg);
-    background-color: color-mix(
-      in srgb, var(--bg-surface) var(--hero-card-fill), transparent
-    );
-    backdrop-filter: blur(10px);
-    box-shadow: var(--shadow-overlay);
+    background-color: var(--bg-surface);
     overflow: hidden;
     animation: op-fade-up var(--dur-4) var(--ease-out) 120ms backwards;
   }
@@ -289,9 +277,7 @@
     gap: 0.375rem;
     padding: var(--space-3) var(--space-4);
     border-bottom: 1px solid var(--line-subtle);
-    background-color: color-mix(
-      in srgb, var(--bg-inset) var(--hero-card-fill), transparent
-    );
+    background-color: var(--bg-inset);
   }
 
   .lp-shot__chrome span {
@@ -310,17 +296,19 @@
     gap: var(--space-1);
   }
 
-  /* One step up from the app's label colour, and that step is what buys the
-     glass. The fill is bounded by the quietest ink on the card, so every
-     percent of picture behind it is paid for in the labels: at `--fg-subtle`
-     the card cannot go below 91.5% without breaking 4.5:1, at `--fg-muted`
-     it could go to 54%. The hierarchy survives the trade because these labels
-     are 11px, medium, and tracked out — the same argument the hero copy
-     already makes, one layer in. */
+  /* The app's own label colour. These used to sit a step up from it, and
+     that step was bought glass: the fill was bounded by the quietest ink on
+     the card, so a quieter label cost picture. With the card opaque there is
+     nothing to buy, and the preview is more convincing printing exactly what
+     the application prints.
+
+     Declared here rather than inherited because this page loads landing.css
+     *instead of* app.css, which is where `.fact__label` gets its colour;
+     `.allocation-legend .pct` needs no rule at all, since components.css
+     already gives it this same role. */
   .lp-shot__label,
-  .lp-shot__facts .fact__label,
-  .lp-shot .allocation-legend .pct {
-    color: var(--fg-muted);
+  .lp-shot__facts .fact__label {
+    color: var(--fg-subtle);
   }
 
   .lp-shot__label {
@@ -336,16 +324,14 @@
     letter-spacing: -0.03em;
   }
 
-  /* The pill keeps its outline and loses its wash. `--pos-soft` is a green
-     film under green type: on an opaque page that costs contrast the surface
-     can afford, but on glass it is a second veil pulling the background
-     toward the ink. Measured, the full pill wants a 98% fill in the light
-     theme to hold 4.5:1 — more opaque than this card has ever been, so it
-     would have been the binding constraint on every percent of glass here.
-     Outline only, and the same ink clears at 83%. */
+  /* The pill gets its wash back. It was dropped because `--pos-soft` is a
+     green film under green type — harmless on an opaque surface, but on
+     glass a second veil pulling the background toward the ink, and it was
+     the binding constraint on every percent of picture behind this card.
+     On `--bg-surface` the full pill measures 4.59:1 light and 7.03:1 dark,
+     so the component's own styling stands. */
   .lp-shot__hero .delta {
     margin-top: var(--space-2);
-    background-color: transparent;
   }
 
   .lp-shot__facts {

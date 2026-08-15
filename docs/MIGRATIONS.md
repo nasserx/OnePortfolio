@@ -10,16 +10,45 @@ Startup migration state is stored in SQLite through:
 
 `PRAGMA user_version`
 
-When `user_version` is already at or above `TARGET_SCHEMA_VERSION`, migration work short-circuits.
+When `user_version` is already at or above `TARGET_SCHEMA_VERSION`, the migration pass short-circuits.
+
+Startup as a whole short-circuits under a stricter condition: the version must be current **and** every model table must already exist. The version is written at the end of the migration pass, before `db.create_all()` runs, so a current version on its own does not mean the schema is complete. See [Startup Coordination](#startup-coordination).
 
 ## Startup Flow
 
-`create_app()` imports and calls `run_migrations(app)` before creating missing tables. The migration runner:
+`create_app()` calls `run_startup_schema(app)`, the single entry point that brings the database to the target schema:
 
 1. Opens the configured SQLAlchemy engine.
-2. Checks `PRAGMA user_version`.
-3. Applies idempotent migration steps when needed.
-4. Writes `TARGET_SCHEMA_VERSION` after successful migration.
+2. Pre-checks whether any work is pending — `PRAGMA user_version` below target, or model tables missing from the database. Returns immediately when neither is true, without taking a lock.
+3. Acquires the startup schema lock (see below).
+4. Runs the migration pass, which re-checks `PRAGMA user_version` under the lock and writes `TARGET_SCHEMA_VERSION` on success.
+5. Runs `db.create_all()` for tables introduced by the models.
+6. Releases the lock.
+
+## Startup Coordination
+
+Exactly one process at a time may bring a given SQLite database to the target schema. The lock spans **both** the migration pass and `db.create_all()`.
+
+Both halves are check-then-act against the same database:
+
+- **Migration steps** are individually idempotent, but the pass is not a single transaction — it commits between steps so each one can re-inspect the schema. Two workers starting together read the same pre-migration state, both act on it, and the loser replays a step that already happened (`duplicate column name`) or exhausts SQLite's busy timeout (`database is locked`), leaving a half-migrated database at the old version.
+- **`db.create_all()`** has the same shape. Its `checkfirst` reflection and its `CREATE TABLE` statements are not atomic together, so two workers reaching an empty database both observe no tables and both create them; the loser dies on `table user already exists`.
+
+The second half matters most on a fresh install, where the migration pass has almost nothing to do and *every* table comes from `create_all`. A lock covering only migrations would leave that entire path unserialized. It also matters when the models are ahead of the schema version: those workers pass a version-only gate instantly and land in `create_all` together, with none of the incidental stagger that lock contention would otherwise introduce. That is why the pre-check tests for missing tables as well as for the version.
+
+`PRAGMA user_version` does not prevent any of this on its own. It is written only after the migration pass succeeds, so concurrent starters both pass the gate, and it says nothing about table presence. It does short-circuit workers that start *after* a complete startup.
+
+The lock is an exclusive `BEGIN IMMEDIATE` transaction held for the whole critical section in a sidecar SQLite database beside the application database:
+
+`portfolio.db` → `portfolio.db.schema-lock`
+
+The lock cannot live in the application database itself: SQLite allows one writer per file, so holding a write transaction there would block the very writes it guards. The sidecar reuses the locking primitive the deployment already relies on, adds no dependency, and works identically on Windows and Linux.
+
+Release is automatic on success, on failure, and on connection teardown — including an interrupted process. The sidecar carries no schema state; `PRAGMA user_version` and the tables themselves remain the source of truth, and deleting the sidecar while no startup is running is harmless.
+
+A process that cannot acquire the lock within `STARTUP_SCHEMA_LOCK_TIMEOUT_SECONDS` (30) re-runs the pre-check. If the schema is complete it proceeds normally; otherwise it raises `StartupSchemaLockTimeout` and fails closed rather than starting up concurrently. The timeout is a single internal constant in `portfolio_app/migrations.py`, deliberately not a deployment setting: it only has to bracket this application's own startup work, and a tunable knob would be one more way to misconfigure a boot.
+
+Non-SQLite and in-memory databases skip locking: an in-memory database is private to the process that opened it, and there is no shared file to coordinate on.
 
 ## Idempotency
 

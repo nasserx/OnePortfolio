@@ -52,9 +52,11 @@ Realized P&L is **computed dynamically** from `Transaction` rows (average-cost m
 
 ### Migrations
 
-`portfolio_app/__init__.py` → `_run_migrations()` runs on every app startup before `db.create_all()`. All 25+ steps are idempotent (check column/table existence via SQLAlchemy inspector before altering). Never delete migration steps — add new ones at the end and bump `TARGET_SCHEMA_VERSION` at the top of the file.
+`portfolio_app/__init__.py` calls `run_startup_schema()` (in `portfolio_app/migrations.py`) on every app startup. It runs the migration pass and then `db.create_all()`. All 25+ steps are idempotent (check column/table existence via SQLAlchemy inspector before altering). Never delete migration steps — add new ones at the end and bump `TARGET_SCHEMA_VERSION` at the top of the file.
 
-Warm boots short-circuit via `PRAGMA user_version`: once a successful migration writes the target version into the SQLite header, subsequent boots exit `_run_migrations` after a single query (no inspector calls). This also collapses the multi-worker race window — the first worker to finish bumps the version and any later arrival takes the fast path.
+Both halves run inside one exclusive startup schema lock: a `BEGIN IMMEDIATE` transaction in a sidecar SQLite database (`<db>.schema-lock`) held for the whole critical section, so exactly one process at a time brings a database to target. `db.create_all()` must be inside it — its `checkfirst` reflection and its `CREATE TABLE` statements are not atomic together, so on a fresh database (where every table comes from `create_all`, not from migrations) concurrent workers otherwise collide on `table user already exists`.
+
+The unlocked pre-check is two queries — schema version, and model tables missing from the database — and takes no lock when both are satisfied, so warm boots are cheaper than the unconditional `create_all` reflection they replace. `PRAGMA user_version` alone is not enough: it is written only at the end of the pass, so concurrent starters all pass a version-only gate, and it says nothing about table presence. A worker that cannot acquire the lock within `STARTUP_SCHEMA_LOCK_TIMEOUT_SECONDS` (30, an internal constant — not deployment-configurable) re-runs the pre-check and either proceeds or fails closed with `StartupSchemaLockTimeout`. See `docs/MIGRATIONS.md`.
 
 SQLite FK enforcement is disabled for the duration of the migration (some legacy tables had stale FK targets from the `capital → fund → portfolio` rename chain) and re-enabled before the connection returns to the pool. An engine-connect listener (`_enable_sqlite_foreign_keys`) keeps `PRAGMA foreign_keys=ON` for all subsequent connections.
 

@@ -56,6 +56,9 @@ Thumbs.db
 *.db-shm
 *.db-wal
 
+# Sidecar file holding the startup schema lock
+*.schema-lock
+
 # Generated local artifacts
 project-structure.txt
 screenshots/

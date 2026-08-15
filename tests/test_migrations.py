@@ -444,7 +444,7 @@ def test_failed_migration_rolls_back_restores_foreign_keys_and_can_retry(
     )
 
     with pytest.raises(RuntimeError, match='injected migration failure'):
-        migrations.run_migrations(app)
+        migrations.run_startup_schema(app)
 
     with app.app_context():
         with db.engine.connect() as conn:
@@ -460,7 +460,7 @@ def test_failed_migration_rolls_back_restores_foreign_keys_and_can_retry(
         '_apply_migration_steps',
         original_apply_migration_steps,
     )
-    migrations.run_migrations(app)
+    migrations.run_startup_schema(app)
 
     with app.app_context():
         with db.engine.connect() as conn:
@@ -475,21 +475,22 @@ def test_failed_migration_rolls_back_restores_foreign_keys_and_can_retry(
 
 
 def test_application_factory_runs_migrations_before_create_all(tmp_path, monkeypatch):
+    """Ordering holds inside the startup schema lock that now spans both."""
     import portfolio_app.migrations as migrations
 
     order = []
-    original_run_migrations = migrations.run_migrations
+    original_migration_pass = migrations._run_migration_pass
     original_create_all = db.create_all
 
-    def _recording_run_migrations(app):
+    def _recording_migration_pass(app):
         order.append('migrations')
-        return original_run_migrations(app)
+        return original_migration_pass(app)
 
     def _recording_create_all(*args, **kwargs):
         order.append('create_all')
         return original_create_all(*args, **kwargs)
 
-    monkeypatch.setattr(migrations, 'run_migrations', _recording_run_migrations)
+    monkeypatch.setattr(migrations, '_run_migration_pass', _recording_migration_pass)
     monkeypatch.setattr(db, 'create_all', _recording_create_all)
 
     db_path = tmp_path / 'ordering.sqlite'

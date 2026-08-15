@@ -1,3 +1,7 @@
+import contextlib
+import os
+import sqlite3
+
 from portfolio_app import db
 
 
@@ -6,8 +10,183 @@ from portfolio_app import db
 # boots can short-circuit the whole inspection pass.
 TARGET_SCHEMA_VERSION = 34
 
+# Sidecar file that carries the startup schema lock, derived from the
+# application database path (``portfolio.db`` → ``portfolio.db.schema-lock``).
+STARTUP_SCHEMA_LOCK_SUFFIX = '.schema-lock'
 
-def run_migrations(app):
+# Bounded wait for that lock. Long enough for a losing worker to sit through a
+# realistic migration (the table rebuilds in Step 24/34 copy every row) instead
+# of failing a deploy that is merely slow, short enough that a wedged lock
+# cannot hang a worker boot indefinitely. Deliberately a single internal
+# constant: the value only has to bracket this application's own startup work,
+# and a deployment-tunable knob would be one more way to misconfigure a boot.
+STARTUP_SCHEMA_LOCK_TIMEOUT_SECONDS = 30.0
+
+
+class StartupSchemaLockTimeout(RuntimeError):
+    """The startup schema lock could not be acquired within the timeout."""
+
+
+def run_startup_schema(app):
+    """Bring the database to the target schema under one exclusive lock.
+
+    Startup schema work is two operations that must not be split: the
+    incremental migration pass, and ``db.create_all()`` for tables introduced
+    by the models. Both are check-then-act against the same database.
+
+    The migration pass is *not* one transaction — it commits between steps so
+    each can re-inspect the schema — so two workers booting together (a
+    deploy, a worker reload) can both read the same pre-migration state and
+    both act on it. The loser replays a step that already happened and dies on
+    ``duplicate column name``, leaving a half-migrated database.
+
+    ``db.create_all()`` has exactly the same shape: its ``checkfirst``
+    reflection and its ``CREATE TABLE`` statements are not atomic together, so
+    two workers reaching an empty database both see no tables and both create
+    them — the loser dies on ``table user already exists``. On a fresh install
+    the migration pass has almost nothing to do and *every* table comes from
+    ``create_all``, so a lock covering only migrations leaves the entire
+    fresh-install path unserialized.
+
+    Hence one lock across both. It cannot live in the application database —
+    holding a write transaction there would block the very writes it guards —
+    so it lives in a sidecar SQLite database next to it. That reuses the
+    locking primitive the deployment already depends on, needs no new
+    dependency, and releases automatically when the holding connection closes
+    or its process dies.
+
+    Ordering is a double-checked gate. The unlocked pre-check is two cheap
+    queries (schema version, table names) and takes no lock when there is
+    nothing to do — cheaper than the unconditional ``create_all`` reflection
+    it replaces. Under the lock, the migration pass re-reads the version and
+    ``create_all`` re-reflects, so a worker that waited out another's startup
+    does no work.
+
+    Requires SQLite 3.25+ for RENAME COLUMN support (released 2018).
+    """
+    with app.app_context():
+        lock_path = _startup_schema_lock_path(db.engine.url)
+
+    # Non-SQLite or in-memory databases have no shared file to coordinate on;
+    # an in-memory database is private to the process that opened it.
+    if lock_path is None:
+        _apply_startup_schema(app)
+        return
+
+    if not _startup_schema_pending(app):
+        return
+
+    timeout_seconds = STARTUP_SCHEMA_LOCK_TIMEOUT_SECONDS
+    try:
+        with _startup_schema_lock(lock_path, timeout_seconds):
+            _apply_startup_schema(app)
+    except StartupSchemaLockTimeout as exc:
+        # The holder may simply have finished the work we were waiting for.
+        if not _startup_schema_pending(app):
+            return
+        raise StartupSchemaLockTimeout(
+            f'Timed out after {timeout_seconds:g}s waiting for the SQLite '
+            f'startup schema lock at {lock_path}. The database is still at '
+            f'schema version {_current_schema_version(app)} (target '
+            f'{TARGET_SCHEMA_VERSION}) or missing tables '
+            f'{sorted(_missing_table_names(app))}, so this process refuses to '
+            f'migrate concurrently. If another process is starting up, retry '
+            f'once it finishes; if none is, a previous startup was '
+            f'interrupted — inspect the database before restarting.'
+        ) from exc
+
+
+def _apply_startup_schema(app):
+    """The guarded critical section: migrate, then create missing tables."""
+    _run_migration_pass(app)
+    with app.app_context():
+        db.create_all()
+
+
+def _startup_schema_lock_path(url):
+    """Return the sidecar lock path for a file-backed SQLite URL, else None."""
+    if url.drivername.split('+')[0] != 'sqlite':
+        return None
+    database = url.database
+    if not database or database == ':memory:':
+        return None
+    return os.path.abspath(database) + STARTUP_SCHEMA_LOCK_SUFFIX
+
+
+def _current_schema_version(app):
+    with app.app_context():
+        with db.engine.connect() as conn:
+            return conn.exec_driver_sql('PRAGMA user_version').scalar()
+
+
+def _missing_table_names(app):
+    """Model tables absent from the database — exactly what create_all builds.
+
+    ``create_all(checkfirst=True)`` skips any table that already exists, so an
+    empty result means it would issue no DDL at all.
+    """
+    with app.app_context():
+        with db.engine.connect() as conn:
+            existing = {
+                row[0] for row in conn.exec_driver_sql(
+                    "SELECT name FROM sqlite_master WHERE type='table'"
+                )
+            }
+        return set(db.metadata.tables) - existing
+
+
+def _startup_schema_pending(app):
+    """True when either the migration pass or create_all still has work."""
+    if _current_schema_version(app) < TARGET_SCHEMA_VERSION:
+        return True
+    return bool(_missing_table_names(app))
+
+
+def _is_lock_contention(exc):
+    message = str(exc).lower()
+    return 'locked' in message or 'busy' in message
+
+
+@contextlib.contextmanager
+def _startup_schema_lock(lock_path, timeout_seconds):
+    """Hold an exclusive transaction in the sidecar database for the caller.
+
+    ``BEGIN IMMEDIATE`` takes SQLite's RESERVED lock straight away rather than
+    on first write, so contention surfaces here instead of midway through the
+    critical section. The lock is on the sidecar file only — the application
+    database stays writable for the work running inside this block.
+    """
+    connection = sqlite3.connect(
+        lock_path,
+        timeout=timeout_seconds,
+        isolation_level=None,  # explicit BEGIN; no implicit transaction
+    )
+    try:
+        connection.execute(f'PRAGMA busy_timeout = {int(timeout_seconds * 1000)}')
+        try:
+            connection.execute('BEGIN IMMEDIATE')
+        except sqlite3.OperationalError as exc:
+            if not _is_lock_contention(exc):
+                raise
+            raise StartupSchemaLockTimeout(
+                f'Could not acquire the SQLite startup schema lock at '
+                f'{lock_path} within {timeout_seconds:g}s.'
+            ) from exc
+
+        try:
+            yield
+        finally:
+            # Release on success and on failure alike. Closing the connection
+            # below releases it too, so a killed process leaves no stale lock.
+            try:
+                connection.execute('ROLLBACK')
+            except sqlite3.Error:
+                pass
+    finally:
+        connection.close()
+
+
+def _run_migration_pass(app):
     """Apply incremental schema changes that SQLAlchemy create_all() cannot handle.
 
     All steps are idempotent — safe to run on both fresh installs and existing
@@ -16,11 +195,10 @@ def run_migrations(app):
 
     Warm starts short-circuit via ``PRAGMA user_version``: once a successful
     migration writes ``TARGET_SCHEMA_VERSION`` into the SQLite header, every
-    subsequent boot exits this function in one query. That also closes the
-    multi-worker race window — the first worker to finish bumps the version,
-    so any other worker arriving moments later takes the fast path.
-
-    Requires SQLite 3.25+ for RENAME COLUMN support (released 2018).
+    subsequent boot exits this function in one query. Under the startup schema
+    lock held by :func:`run_startup_schema`, that same gate is the inner half
+    of the double check — a worker that queued behind another worker's startup
+    finds the target version already written and does no work.
     """
     import sqlalchemy as sa
     with app.app_context():

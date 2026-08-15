@@ -108,7 +108,9 @@ def send_reset_email(recipient_email: str, token: str) -> bool:
         True if sent successfully, False otherwise.
     """
     try:
-        base_url = current_app.config.get('APP_BASE_URL', '')
+        # create_app validates and canonicalizes this deployment-owned value;
+        # never derive password-reset links from request host headers.
+        base_url = current_app.config['APP_BASE_URL']
         reset_url = f"{base_url}/reset-password/{token}"
         msg = Message(
             subject="OnePortfolio - Password Reset",

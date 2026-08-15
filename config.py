@@ -1,9 +1,97 @@
 import os
+import ipaddress
+import re
 import sys
 from datetime import timedelta
 from pathlib import Path
+from urllib.parse import urlsplit, urlunsplit
 
 basedir = Path(__file__).parent
+_LOCAL_APP_BASE_URL = 'http://127.0.0.1:5000'
+_DNS_LABEL_RE = re.compile(r'\A[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\Z')
+
+
+def _is_valid_url_hostname(hostname: str) -> bool:
+    """Accept IP literals and syntactically valid IDNA/DNS hostnames."""
+    try:
+        ipaddress.ip_address(hostname)
+        return True
+    except ValueError:
+        # A dotted numeric value is intended to be an IPv4 address; do not
+        # reinterpret an invalid one as a DNS name.
+        if re.fullmatch(r'[0-9.]+', hostname):
+            return False
+
+    dns_name = hostname[:-1] if hostname.endswith('.') else hostname
+    try:
+        ascii_name = dns_name.encode('idna').decode('ascii').lower()
+    except UnicodeError:
+        return False
+
+    if not ascii_name or len(ascii_name) > 253:
+        return False
+    return all(
+        _DNS_LABEL_RE.fullmatch(label) is not None
+        for label in ascii_name.split('.')
+    )
+
+
+def normalize_app_base_url(value, *, allow_insecure=False) -> str:
+    """Return the canonical public URL used to build emailed links.
+
+    Production requires an explicit HTTPS URL. Tests and debug deployments may
+    omit it for a deterministic local fallback or explicitly use HTTP. Request
+    host data is deliberately not involved in this configuration contract.
+    """
+    if value is None:
+        candidate = ''
+    elif isinstance(value, str):
+        candidate = value.strip()
+    else:
+        raise RuntimeError('APP_BASE_URL must be a text URL.')
+
+    if not candidate:
+        if allow_insecure:
+            return _LOCAL_APP_BASE_URL
+        raise RuntimeError(
+            'APP_BASE_URL must be configured as an absolute HTTPS URL.'
+        )
+
+    if any(character.isspace() for character in candidate):
+        raise RuntimeError(
+            'APP_BASE_URL must be an absolute HTTP(S) URL without whitespace.'
+        )
+
+    try:
+        parsed = urlsplit(candidate)
+        hostname = parsed.hostname
+        parsed.port  # Validate malformed/non-numeric port declarations.
+    except ValueError as exc:
+        raise RuntimeError('APP_BASE_URL is malformed.') from exc
+
+    scheme = parsed.scheme.lower()
+    if scheme not in ('http', 'https') or not parsed.netloc or not hostname:
+        raise RuntimeError('APP_BASE_URL must be an absolute HTTP(S) URL.')
+    if parsed.netloc.endswith(':'):
+        raise RuntimeError('APP_BASE_URL contains an empty port.')
+    if not _is_valid_url_hostname(hostname):
+        raise RuntimeError('APP_BASE_URL contains an invalid hostname.')
+    if parsed.username is not None or parsed.password is not None:
+        raise RuntimeError('APP_BASE_URL must not contain credentials.')
+    if parsed.query or parsed.fragment:
+        raise RuntimeError('APP_BASE_URL must not contain a query or fragment.')
+    if parsed.path not in ('', '/'):
+        raise RuntimeError('APP_BASE_URL must be an origin without a path.')
+    if scheme != 'https' and not allow_insecure:
+        raise RuntimeError('APP_BASE_URL must use HTTPS outside debug/test mode.')
+
+    return urlunsplit((
+        scheme,
+        parsed.netloc,
+        '',
+        '',
+        '',
+    ))
 
 
 def _require_secret_key() -> str:
@@ -110,7 +198,7 @@ class Config:
     MAIL_PASSWORD = os.environ.get('EMAIL_PASSWORD')
     MAIL_DEFAULT_SENDER = ('OnePortfolio', os.environ.get('EMAIL_USER', ''))
 
-    # Public base URL used in email links (no trailing slash)
+    # Raw public URL; create_app validates and normalizes it before use.
     APP_BASE_URL = os.environ.get('APP_BASE_URL', '')
 
     # Google OAuth foundation configuration. Disabled by default; sign-in
@@ -123,3 +211,8 @@ class Config:
     # Token expiry (seconds). Email-verification uses a 6-digit OTP whose
     # 10-minute lifetime is enforced in AuthService — no Config knob needed.
     PASSWORD_RESET_EXPIRY     = 60 * 60         # 1 hour
+
+
+class DevelopmentConfig(Config):
+    """Configuration selected only by the local ``python app.py`` entry point."""
+    DEBUG = True

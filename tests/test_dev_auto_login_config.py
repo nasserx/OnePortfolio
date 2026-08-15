@@ -6,6 +6,7 @@ from portfolio_app import create_app, db
 
 class _StartupConfig(Config):
     SECRET_KEY = 'test-secret-key'
+    APP_BASE_URL = 'https://portfolio.example'
     WTF_CSRF_ENABLED = False
     MAIL_SUPPRESS_SEND = True
     RATELIMIT_ENABLED = False

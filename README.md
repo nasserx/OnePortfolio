@@ -101,7 +101,7 @@ Supported environment variables are defined in [config.py](config.py):
 | `DATABASE_URL` | SQLAlchemy database URI. Defaults to local SQLite `portfolio.db`. |
 | `EMAIL_USER` | Gmail sender address for verification and reset emails. |
 | `EMAIL_PASSWORD` | Gmail app password for the sender account. |
-| `APP_BASE_URL` | Public base URL used in email links, without a trailing slash. |
+| `APP_BASE_URL` | Public origin used in emailed reset links: scheme, hostname, and optional port only. Production requires an absolute HTTPS origin. The `python app.py` development entry point and tests permit HTTP and fall back to `http://127.0.0.1:5000` when blank. |
 | `SESSION_COOKIE_SECURE` | Controls Secure session and remember cookies and HSTS. Unset/blank uses automatic mode: secure outside debug/test contexts. Explicit values are `1`/`true` or `0`/`false`; other values fail startup. |
 | `RATELIMIT_STORAGE_URI` | Flask-Limiter storage URI. Unset/blank uses process-local `memory://`, suitable when one application process is authoritative for counters. Multi-process deployments require a shared Flask-Limiter backend and its deployment-specific client/service; none is bundled by this repository. |
 | `DEV_AUTO_LOGIN` | Development-only first-user auto-login. Never enable in production. |
@@ -160,7 +160,7 @@ Tests live in `tests/`.
 
 ## Deployment Notes
 
-Use `wsgi.py` or your host's WSGI configuration to create the Flask app. Set required environment variables in the host environment rather than source control. Use HTTPS and set `SESSION_COOKIE_SECURE=1` for production deployments.
+Use `wsgi.py` or your host's WSGI configuration to create the Flask app. Set required environment variables in the host environment rather than source control. Use HTTPS, set `APP_BASE_URL` to the externally reachable HTTPS origin, and set `SESSION_COOKIE_SECURE=1` for production deployments.
 
 ## License
 

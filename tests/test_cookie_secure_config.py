@@ -64,6 +64,7 @@ def _run_probe(value=_UNSET, *, flask_debug=None):
     env['SECRET_KEY'] = 'cookie-config-test-secret'
     env['DATABASE_URL'] = 'sqlite:///:memory:'
     env['GOOGLE_OAUTH_ENABLED'] = '0'
+    env['APP_BASE_URL'] = 'https://portfolio.example'
 
     if value is _UNSET:
         env.pop('SESSION_COOKIE_SECURE', None)

@@ -12,7 +12,7 @@ from flask_limiter.util import get_remote_address
 from authlib.integrations.flask_client import OAuth
 from sqlalchemy import event
 from sqlalchemy.engine import Engine
-from config import Config
+from config import Config, normalize_app_base_url
 from portfolio_app.utils import (
     fmt_decimal,
     fmt_display_decimal,
@@ -90,6 +90,14 @@ def _validate_dev_auto_login_config(app) -> None:
         )
 
 
+def _configure_app_base_url(app) -> None:
+    """Validate and canonicalize the public origin used in emailed links."""
+    app.config['APP_BASE_URL'] = normalize_app_base_url(
+        app.config.get('APP_BASE_URL'),
+        allow_insecure=bool(app.testing or app.debug),
+    )
+
+
 @event.listens_for(Engine, "connect")
 def _enable_sqlite_foreign_keys(dbapi_connection, connection_record):
     # SQLite ships with foreign-key enforcement disabled. Without this pragma
@@ -109,6 +117,7 @@ def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
     _validate_dev_auto_login_config(app)
+    _configure_app_base_url(app)
 
     # ------------------------------------------------------------------
     # Development-only: auto-login as first user, bypasses authentication.

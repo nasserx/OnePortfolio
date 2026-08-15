@@ -11,7 +11,11 @@ class Dividend(db.Model):
     __tablename__ = 'dividend'
 
     id           = db.Column(db.Integer, primary_key=True)
-    portfolio_id = db.Column(db.Integer, db.ForeignKey('portfolio.id'), nullable=False)
+    portfolio_id = db.Column(
+        db.Integer,
+        db.ForeignKey('portfolio.id', ondelete='CASCADE'),
+        nullable=False,
+    )
     # Every dividend is attributed to a symbol. The dashboard groups
     # holdings by (portfolio_id, symbol); a null-symbol dividend would be
     # invisible there and was historically dropped from totals by a

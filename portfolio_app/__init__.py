@@ -357,11 +357,13 @@ def create_app(config_class=Config):
     from portfolio_app.routes import register_blueprints
     register_blueprints(app)
 
-    # Apply incremental schema migrations first (renames, column drops/adds),
-    # then create_all() for any new tables/columns introduced in this release.
-    from portfolio_app.migrations import run_migrations
-    run_migrations(app)
-    with app.app_context():
-        db.create_all()
+    # Bring the database to the target schema: incremental migrations first
+    # (renames, column drops/adds), then create_all() for any new tables
+    # introduced in this release. Both run inside one exclusive startup schema
+    # lock — splitting them leaves the fresh-install path unserialized, where
+    # every table comes from create_all and concurrent workers collide on
+    # ``table user already exists``. See portfolio_app/migrations.py.
+    from portfolio_app.migrations import run_startup_schema
+    run_startup_schema(app)
 
     return app

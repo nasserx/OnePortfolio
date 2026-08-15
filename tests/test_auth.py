@@ -2323,6 +2323,85 @@ class TestAuthUiAndGoogle:
         assert email_log == []
 
 
+class TestPasswordResetDeliveryBoundary:
+
+    @pytest.mark.parametrize(
+        'failure_point',
+        ('url_construction', 'message_construction', 'delivery'),
+    )
+    def test_preparation_and_delivery_failures_keep_known_unknown_parity(
+        self,
+        app,
+        client,
+        email_log,
+        monkeypatch,
+        caplog,
+        failure_point,
+    ):
+        known_email = 'reset-boundary@example.com'
+        unknown_email = 'unknown-reset-boundary@example.com'
+        sensitive_token = 'sensitive-reset-token'
+        _signup_and_verify(app, client, email_log, email=known_email)
+        email_log.clear()
+        caplog.clear()
+
+        monkeypatch.setattr(
+            'portfolio_app.routes.auth.generate_reset_token',
+            lambda *args, **kwargs: sensitive_token,
+        )
+        monkeypatch.setattr(
+            'portfolio_app.routes.auth.send_reset_email',
+            email_utils.send_reset_email,
+        )
+
+        if failure_point == 'url_construction':
+            original_config_get = app.config.get
+
+            def _fail_reset_url_config(key, default=None):
+                if key == 'APP_BASE_URL':
+                    raise RuntimeError(sensitive_token)
+                return original_config_get(key, default)
+
+            monkeypatch.setattr(app.config, 'get', _fail_reset_url_config)
+        elif failure_point == 'message_construction':
+            def _fail_message_construction(*args, **kwargs):
+                raise RuntimeError(sensitive_token)
+
+            monkeypatch.setattr(
+                email_utils,
+                'Message',
+                _fail_message_construction,
+            )
+        else:
+            def _fail_delivery(message):
+                raise RuntimeError(sensitive_token)
+
+            monkeypatch.setattr(email_utils.mail, 'send', _fail_delivery)
+
+        def _public_result(email):
+            response = client.post(
+                '/forgot-password',
+                data={'email': email},
+                follow_redirects=False,
+            )
+            return response.status_code, response.headers.get('Location')
+
+        known_result = _public_result(known_email)
+        unknown_result = _public_result(unknown_email)
+
+        assert known_result == unknown_result
+        assert known_result[0] in (302, 303)
+        assert known_result[1].endswith('/reset-sent')
+        confirmation = client.get(known_result[1])
+        assert confirmation.status_code == 200
+        assert "If an account with that email exists" in confirmation.get_data(
+            as_text=True,
+        )
+        assert sensitive_token not in caplog.text
+        assert known_email not in caplog.text
+        assert unknown_email not in caplog.text
+
+
 # ---------------------------------------------------------------------------
 # Settings and account deletion tests
 # ---------------------------------------------------------------------------

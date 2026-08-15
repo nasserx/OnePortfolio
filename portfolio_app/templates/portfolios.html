@@ -186,15 +186,15 @@
 </div>
 
 <!-- ── Deposit Modal ───────────────────────────────────────────────── -->
-<div class="modal fade" id="depositFundsModal" tabindex="-1">
+<div class="modal fade" id="depositFundsModal" tabindex="-1" aria-labelledby="depositFundsModalTitle">
     <div class="modal-dialog">
         <div class="modal-content">
             <form method="POST" id="depositFundsForm" autocomplete="off" novalidate>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="user_timezone" value="">
                 <div class="modal-header">
-                    <h5 class="modal-title">Deposit to <span id="deposit_portfolio_title"></span></h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <h5 class="modal-title" id="depositFundsModalTitle">Deposit to <span id="deposit_portfolio_title"></span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
@@ -245,15 +245,15 @@
 </div>
 
 <!-- ── Withdraw Modal ─────────────────────────────────────────────── -->
-<div class="modal fade" id="withdrawFundsModal" tabindex="-1">
+<div class="modal fade" id="withdrawFundsModal" tabindex="-1" aria-labelledby="withdrawFundsModalTitle">
     <div class="modal-dialog">
         <div class="modal-content">
             <form method="POST" id="withdrawFundsForm" autocomplete="off" novalidate>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="user_timezone" value="">
                 <div class="modal-header">
-                    <h5 class="modal-title">Withdraw from <span id="withdraw_portfolio_title"></span></h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <h5 class="modal-title" id="withdrawFundsModalTitle">Withdraw from <span id="withdraw_portfolio_title"></span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
@@ -310,14 +310,14 @@
 </div>
 
 <!-- ── New Portfolio Modal ────────────────────────────────────────── -->
-<div class="modal fade" id="newPortfolioModal" tabindex="-1">
+<div class="modal fade" id="newPortfolioModal" tabindex="-1" aria-labelledby="newPortfolioModalTitle">
     <div class="modal-dialog">
         <div class="modal-content">
             <form method="POST" action="{{ url_for('portfolios.portfolios_add') }}" autocomplete="off" novalidate>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="modal-header">
-                    <h5 class="modal-title">New Portfolio</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <h5 class="modal-title" id="newPortfolioModalTitle">New Portfolio</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     {% if _add_errs.get('__all__') %}
@@ -348,17 +348,17 @@
 </div>
 
 <!-- ── Remove Portfolio Modal ─────────────────────────────────────── -->
-<div class="modal fade" id="deletePortfolioModal" tabindex="-1">
+<div class="modal fade" id="deletePortfolioModal" tabindex="-1" aria-labelledby="deletePortfolioModalTitle">
     <div class="modal-dialog">
         <div class="modal-content">
             <form method="POST" id="deletePortfolioForm" novalidate>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="modal-header">
-                    <h5 class="modal-title d-flex align-items-center gap-2">
-                        <i class="bi bi-trash modal-title-icon"></i>
+                    <h5 class="modal-title d-flex align-items-center gap-2" id="deletePortfolioModalTitle">
+                        <i class="bi bi-trash modal-title-icon" aria-hidden="true"></i>
                         Confirm Remove
                     </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <p>Remove portfolio <span class="text-emphasis" id="delete_portfolio_name"></span>?</p>
@@ -380,15 +380,15 @@
 
 <!-- ── Edit Portfolio Event Modal ─────────────────────────────────── -->
 {% set _ev_errs = (form_errors.get('portfolio_event_edit', {}) if form_errors else {}) %}
-<div class="modal fade" id="editPortfolioEventModal" tabindex="-1">
+<div class="modal fade" id="editPortfolioEventModal" tabindex="-1" aria-labelledby="editPortfolioEventModalTitle">
     <div class="modal-dialog">
         <div class="modal-content">
             <form method="POST" id="editPortfolioEventForm" autocomplete="off" novalidate>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="user_timezone" value="">
                 <div class="modal-header">
-                    <h5 class="modal-title">Edit Transaction</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <h5 class="modal-title" id="editPortfolioEventModalTitle">Edit Transaction</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     {% if _ev_errs.get('__all__') %}
@@ -448,17 +448,17 @@
 </div>
 
 <!-- ── Remove Portfolio Event Modal ──────────────────────────────── -->
-<div class="modal fade" id="deletePortfolioEventModal" tabindex="-1">
+<div class="modal fade" id="deletePortfolioEventModal" tabindex="-1" aria-labelledby="deletePortfolioEventModalTitle">
     <div class="modal-dialog">
         <div class="modal-content">
             <form method="POST" id="deletePortfolioEventForm" novalidate>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="modal-header">
-                    <h5 class="modal-title d-flex align-items-center gap-2">
-                        <i class="bi bi-trash modal-title-icon"></i>
+                    <h5 class="modal-title d-flex align-items-center gap-2" id="deletePortfolioEventModalTitle">
+                        <i class="bi bi-trash modal-title-icon" aria-hidden="true"></i>
                         Confirm Remove
                     </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <p>Remove this <span class="text-emphasis" id="delete_event_type_name"></span> entry?</p>

@@ -31,7 +31,7 @@ Exactly one process at a time may bring a given SQLite database to the target sc
 
 Both halves are check-then-act against the same database:
 
-- **Migration steps** are individually idempotent, but the pass is not a single transaction — it commits between steps so each one can re-inspect the schema. Two workers starting together read the same pre-migration state, both act on it, and the loser replays a step that already happened (`duplicate column name`) or exhausts SQLite's busy timeout (`database is locked`), leaving a half-migrated database at the old version.
+- **Migration steps** are individually idempotent, but the pass is not a single transaction — it commits between steps, and each step re-inspects the schema live (see [Idempotency](#idempotency)) so it sees the DDL the steps before it committed. Two workers starting together read the same pre-migration state, both act on it, and the loser replays a step that already happened (`duplicate column name`) or exhausts SQLite's busy timeout (`database is locked`), leaving a half-migrated database at the old version.
 - **`db.create_all()`** has the same shape. Its `checkfirst` reflection and its `CREATE TABLE` statements are not atomic together, so two workers reaching an empty database both observe no tables and both create them; the loser dies on `table user already exists`.
 
 The second half matters most on a fresh install, where the migration pass has almost nothing to do and *every* table comes from `create_all`. A lock covering only migrations would leave that entire path unserialized. It also matters when the models are ahead of the schema version: those workers pass a version-only gate instantly and land in `create_all` together, with none of the incidental stagger that lock contention would otherwise introduce. That is why the pre-check tests for missing tables as well as for the version.
@@ -55,6 +55,8 @@ Non-SQLite and in-memory databases skip locking: an in-memory database is privat
 Every migration step must be safe to run against partially upgraded databases. Steps should inspect tables, columns, indexes, and constraints before changing them.
 
 Do not assume a table or column exists just because a previous step created it. Local databases may be old, partially migrated, or manually edited.
+
+Reflection must be read fresh at every check. A SQLAlchemy `Inspector` memoizes each result for its own lifetime, so one instance shared across the pass answers later steps with the schema as it looked before the first `ALTER` — which is how the `capital → fund → portfolio` rename chain silently stopped halfway. The pass therefore inspects through `_LiveInspector`, which reflects the database again on every call. Keep using it, and refresh any local `tables` set you carry across a rename.
 
 ## Foreign Keys
 

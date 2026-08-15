@@ -242,8 +242,45 @@ def _run_migration_pass(app):
             raw_conn.execute(f'PRAGMA user_version = {TARGET_SCHEMA_VERSION}')
 
 
+class _LiveInspector:
+    """Schema reflection that is re-read from the database on every call.
+
+    SQLAlchemy memoizes every reflection result in ``Inspector.info_cache``
+    for the lifetime of the inspector object. A single inspector shared
+    across the pass therefore keeps reporting the schema as it looked
+    before the first ``ALTER``: once Step 4 renames
+    ``transaction.capital_id`` to ``fund_id``, Step 15 asking that same
+    inspector for the table's columns is still answered ``capital_id``, so
+    the ``fund_id → portfolio_id`` rename never fires and the Step 24
+    rebuild dies on ``no such column: portfolio_id``. A ``capital``-era
+    database could not converge to the target version at all, and a
+    ``fund``-era one needed a second boot to finish.
+
+    Each call here builds a new inspector, so a step's precondition always
+    sees the DDL that the steps before it committed. Steps keep asking the
+    same three questions in the same way — only the answers stop being
+    stale.
+    """
+
+    def __init__(self, conn, sa):
+        self._conn = conn
+        self._sa = sa
+
+    def _inspect(self):
+        return self._sa.inspect(self._conn)
+
+    def get_table_names(self):
+        return self._inspect().get_table_names()
+
+    def get_columns(self, table_name):
+        return self._inspect().get_columns(table_name)
+
+    def get_indexes(self, table_name):
+        return self._inspect().get_indexes(table_name)
+
+
 def _apply_migration_steps(conn, sa):
-    inspector = sa.inspect(conn)
+    inspector = _LiveInspector(conn, sa)
     tables = set(inspector.get_table_names())
 
     # ── Step 1: Rename legacy tables ─────────────────────────────────
@@ -255,6 +292,10 @@ def _apply_migration_steps(conn, sa):
     if 'capital_event' in tables and 'fund_event' not in tables:
         conn.execute(sa.text('ALTER TABLE capital_event RENAME TO fund_event'))
         conn.commit()
+        # Steps 2 and 3 below gate on this same local set, so it has to see
+        # the renamed table — without this refresh Step 3 skips the
+        # ``capital_id → fund_id`` rename on a capital-era database.
+        tables = set(inspector.get_table_names())
 
     # ── Step 2: fund table — add missing column, then rename legacy ones ──
     if 'fund' in tables:
@@ -544,8 +585,12 @@ def _apply_migration_steps(conn, sa):
     # Pre-dates SQLite FK enforcement. Rows whose parent transaction or
     # portfolio was deleted under FK-OFF were never cascaded and kept
     # surfacing as ghost realized P&L on the dashboard.
+    # Both parent tables must exist to be orphaned against. On a fresh
+    # install Step 11 has just created an empty ``closed_trade`` while
+    # ``transaction`` and ``portfolio`` are still waiting on create_all,
+    # and there is nothing to purge anyway.
     tables = set(inspector.get_table_names())
-    if 'closed_trade' in tables:
+    if {'closed_trade', 'transaction', 'portfolio'} <= tables:
         conn.execute(sa.text(
             'DELETE FROM closed_trade '
             'WHERE transaction_id NOT IN (SELECT id FROM "transaction") '
@@ -789,7 +834,7 @@ def _apply_migration_steps(conn, sa):
     _rebuild_tables(
         conn,
         sa,
-        sa.inspect(conn),
+        inspector,
         require_portfolio_cascades=True,
     )
 

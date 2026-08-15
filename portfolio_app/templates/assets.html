@@ -1558,90 +1558,22 @@ function openEditDividendModal(id, amount, dateShort, notes) {
     const amountEl = document.getElementById('edit_amount');
     const dateEl   = document.getElementById('edit_dividend_date');
     const notesEl  = document.getElementById('edit_dividend_notes');
-    const errEl    = document.getElementById('edit_dividend_error');
 
     if (amountEl) amountEl.value = trimTrailingZeros(amount);
     if (dateEl)   dateEl.value   = dateShort || '';
     if (notesEl)  notesEl.value  = notes || '';
-    if (errEl)    { errEl.textContent = ''; errEl.classList.add('d-none'); }
 
     new bootstrap.Modal(document.getElementById('editDividendModal')).show();
 }
 
-// Setup Edit Dividend AJAX
-(function setupEditDividend() {
-    var form      = document.getElementById('editDividendForm');
-    var errEl     = document.getElementById('edit_dividend_error');
-    var amountEl  = document.getElementById('edit_amount');
-    var amountErr = document.getElementById('edit_amount_error');
-    var submitBtn = form ? form.querySelector('button[type="submit"]') : null;
-    var modalEl   = document.getElementById('editDividendModal');
-    if (!form) return;
-
-    function validateAmount() {
-        var val = String(amountEl ? amountEl.value || '' : '').trim();
-        var n   = parseFloat(val);
-        if (!val || !isFinite(n) || n <= 0) {
-            if (amountEl)  amountEl.classList.add('is-invalid');
-            if (amountErr) { amountErr.textContent = 'Must be more than 0.'; amountErr.style.display = 'block'; }
-            return false;
-        }
-        if (amountEl)  amountEl.classList.remove('is-invalid');
-        if (amountErr) { amountErr.textContent = ''; amountErr.style.display = 'none'; }
-        return true;
-    }
-
-    if (amountEl) {
-        amountEl.addEventListener('blur',  validateAmount);
-        amountEl.addEventListener('input', function() {
-            if (amountEl.classList.contains('is-invalid')) validateAmount();
-        });
-    }
-
-    // Clear inline errors when modal is hidden
-    if (modalEl) {
-        modalEl.addEventListener('hidden.bs.modal', function() {
-            if (amountEl)  amountEl.classList.remove('is-invalid');
-            if (amountErr) { amountErr.textContent = ''; amountErr.style.display = 'none'; }
-            if (errEl)     { errEl.textContent = ''; errEl.classList.add('d-none'); }
-        });
-    }
-
-    form.addEventListener('submit', function(e) {
-        e.preventDefault();
-        if (!validateAmount()) return;
-        if (submitBtn && submitBtn.disabled) return;
-        if (submitBtn) submitBtn.disabled = true;
-        if (errEl) { errEl.textContent = ''; errEl.classList.add('d-none'); }
-
-        var xhr = new XMLHttpRequest();
-        xhr.open('POST', form.action, true);
-        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-        xhr.onload = function() {
-            if (submitBtn) submitBtn.disabled = false;
-            try {
-                var data = JSON.parse(xhr.responseText);
-                if (data.success) {
-                    sessionStorage.setItem('flashMessage', data.message || 'Income updated');
-                    sessionStorage.setItem('flashType', 'success');
-                    var modal = bootstrap.Modal.getInstance(modalEl);
-                    if (modal) modal.hide();
-                    location.reload();
-                } else {
-                    var msg = Utils.extractAjaxError(data, 'Could not update the income. Please try again.');
-                    if (errEl) { errEl.textContent = msg; errEl.classList.remove('d-none'); }
-                }
-            } catch (ex) {
-                if (errEl) { errEl.textContent = 'Could not update the income. Please try again.'; errEl.classList.remove('d-none'); }
-            }
-        };
-        xhr.onerror = function() {
-            if (submitBtn) submitBtn.disabled = false;
-            if (errEl) { errEl.textContent = 'Network error'; errEl.classList.remove('d-none'); }
-        };
-        xhr.send(new FormData(form));
-    });
-})();
+// editDividendModal submission is wired by the central ModalAjaxHandler
+// (see static/js/main.js), exactly like addDividendModal above. A second
+// per-form XMLHttpRequest handler used to live here; because neither
+// listener stopped propagation, a valid Save fired both and the edit was
+// POSTed twice. Field validation (#edit_amount, #edit_dividend_date) is
+// owned by FormValidator, which runs first and calls
+// stopImmediatePropagation() on invalid input, and inline/banner error
+// state is cleared by ModalAjaxHandler on hidden.bs.modal.
 
 // Submit handling for #deleteDividendForm is wired by ModalAjaxHandler
 // (main.js). This wrapper just sets the form action for the row the

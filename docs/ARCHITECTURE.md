@@ -4,7 +4,7 @@ OnePortfolio is a Flask application built around an application factory and laye
 
 ## Application Factory
 
-`portfolio_app/__init__.py` defines `create_app(config_class=Config)`. The factory loads configuration, initializes extensions, conditionally registers the Google OAuth client foundation, registers blueprints, wires context processors and error handlers, calls the SQLite migration runner in `portfolio_app/migrations.py`, and creates missing tables.
+`portfolio_app/__init__.py` defines `create_app(config_class=Config)`. The factory loads configuration, initializes extensions, conditionally registers the Google OAuth client, registers blueprints, wires context processors and error handlers, and calls `run_startup_schema()` in `portfolio_app/migrations.py`, which runs the migration pass and then creates missing tables inside one exclusive startup schema lock.
 
 The same factory is used by `app.py`, `wsgi.py`, and tests.
 
@@ -24,7 +24,7 @@ Routes should stay thin: they parse HTTP concerns, call forms/services/calculato
 
 The Google OAuth backend uses Authlib and is disabled by default. When enabled with complete configuration, the app registers a Google OpenID Connect client during app creation. Authlib owns state, nonce, signature, issuer, audience, and expiry validation; the callback explicitly constrains the issuer to Google's accepted issuer identifiers and the audience to the configured client ID, and requires an ID token before consuming Authlib-produced userinfo. Transport-isolated real-Authlib contract tests protect that delegated boundary. The auth blueprint exposes backend login and callback routes for existing verified local accounts only. Previously linked Google identities resolve by provider plus Google's stable OpenID Connect `sub` claim. On first successful Google sign-in, a verified Google email may create one Google identity link for a matching verified local account.
 
-`OAuthIdentity` stores the persistent provider-subject link. Automatic registration, manual account-management UI, unlinking, and OAuth token or provider-payload persistence are not implemented.
+`OAuthIdentity` stores the persistent provider-subject link. Account settings exposes a manual disconnect that removes the authenticated user's own link. Automatic registration and OAuth token or provider-payload persistence are not implemented.
 
 Flask-Login authentication uses the signed client-side Flask session and its signed remember cookie; individual sessions are not stored server-side. Each serialized login identity binds the user id to the database-backed `User.auth_generation`. A successful local password change or password reset increments that generation in the same database commit as the new password, so sessions and remember state issued for an earlier generation no longer authenticate on their next request. New local and Google OIDC logins use the current generation, and password changes do not alter stored OAuth identity links. Pre-generation id-only identities are treated explicitly as generation zero for upgrade compatibility and stop authenticating after the user's generation advances.
 
@@ -48,7 +48,7 @@ Application users manage their own accounts and tenant-scoped portfolio data. Th
 
 Models live in `portfolio_app/models/`:
 
-- `User`: accounts, password hash, authentication generation, and lockout state. Its legacy admin flag is runtime-inert pending schema cleanup.
+- `User`: accounts, password hash, authentication generation, and lockout state. The legacy application-admin column has no model field and is dropped from upgraded databases by migration Step 32.
 - `PendingRegistration`: staged signup and verification code state.
 - `OAuthIdentity`: external provider subject linked to a local user; no tokens or secrets.
 - `Portfolio`: user-owned portfolio bucket.
@@ -102,7 +102,7 @@ Overview reads records through scoped services/repositories, then calls calculat
 
 Templates live in `portfolio_app/templates/`. Static files live in `portfolio_app/static/`.
 
-`portfolio_app/static/css/tokens.css` is the primary design-token source. `style.css` and page templates consume those tokens. JavaScript is mostly in `portfolio_app/static/js/main.js`; Overview chart rendering uses `portfolio_app/static/js/overview_charts.js`.
+`portfolio_app/static/css/tokens.css` is the primary design-token source. `base.css`, `components.css`, `app.css`, `landing.css`, and page templates consume those tokens. JavaScript is mostly in `portfolio_app/static/js/main.js`; Overview chart rendering uses `portfolio_app/static/js/overview_charts.js`.
 
 Third-party frontend assets use exact versions. Stable CDN scripts and
 stylesheets loaded directly by production HTML carry SHA-384 Subresource

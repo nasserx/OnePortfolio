@@ -201,8 +201,9 @@ class Config:
     # Raw public URL; create_app validates and normalizes it before use.
     APP_BASE_URL = os.environ.get('APP_BASE_URL', '')
 
-    # Google OAuth foundation configuration. Disabled by default; sign-in
-    # routes and callback handling are not implemented yet.
+    # Google OAuth configuration. Disabled by default; when enabled with
+    # complete values the factory registers the OpenID Connect client and the
+    # auth blueprint serves the sign-in, callback, and disconnect routes.
     GOOGLE_OAUTH_ENABLED = os.getenv("GOOGLE_OAUTH_ENABLED", "0") == "1"
     GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
     GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")

@@ -10,7 +10,7 @@ class Portfolio(db.Model):
     Cash flow (deposits/withdrawals) is stored exclusively in
     ``PortfolioEvent`` rows; the previous ``net_deposits`` column was a
     denormalized cache that could drift from the events log and was
-    removed in migration step 25.
+    removed by the ``portfolio`` table rebuild in migration step 24.
     """
 
     __tablename__ = 'portfolio'

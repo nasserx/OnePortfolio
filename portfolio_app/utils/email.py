@@ -107,18 +107,22 @@ def send_reset_email(recipient_email: str, token: str) -> bool:
     Returns:
         True if sent successfully, False otherwise.
     """
-    base_url = current_app.config.get('APP_BASE_URL', '')
-    reset_url = f"{base_url}/reset-password/{token}"
-
-    msg = Message(
-        subject="OnePortfolio - Password Reset",
-        recipients=[recipient_email],
-        body=_build_reset_body(reset_url),
-    )
     try:
+        base_url = current_app.config.get('APP_BASE_URL', '')
+        reset_url = f"{base_url}/reset-password/{token}"
+        msg = Message(
+            subject="OnePortfolio - Password Reset",
+            recipients=[recipient_email],
+            body=_build_reset_body(reset_url),
+        )
         mail.send(msg)
-        logger.info("Password reset email sent to %s", recipient_email)
+        logger.info("Password reset email sent")
         return True
-    except Exception:
-        logger.exception("Failed to send password reset email to %s", recipient_email)
+    except Exception as exc:
+        # Keep reset tokens, recipient details, and provider exception text
+        # out of logs while retaining an operational failure signal.
+        logger.warning(
+            "Password reset email preparation or delivery failed: %s",
+            type(exc).__name__,
+        )
         return False

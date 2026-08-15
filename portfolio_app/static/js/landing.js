@@ -6,8 +6,10 @@
    ring. The numbers live here rather than in the template so the preview
    stays internally consistent — the totals are derived, never hand-typed.
 
-   Scroll reveal and the theme toggle come from shell.js, which this page
-   also loads.
+   Nothing here listens to scrolling. The header used to swap appearance at
+   8px of scroll and this file drove it; the header now has one appearance,
+   so the listener and the state class went with it. Scroll reveal and the
+   theme toggle come from shell.js, which this page also loads.
    ========================================================================== */
 
 (function () {
@@ -170,27 +172,9 @@
     legend.replaceChildren(fragment);
   }
 
-  /* ---------------------------------------------------------------------
-     Sticky nav border — only appears once the page has actually scrolled,
-     so the header sits flush against the hero at rest.
-     --------------------------------------------------------------------- */
-
-  function watchNav() {
-    var nav = document.getElementById('lpNav');
-    if (!nav) return;
-
-    var update = function () {
-      nav.classList.toggle('is-stuck', window.scrollY > 8);
-    };
-
-    window.addEventListener('scroll', update, { passive: true });
-    update();
-  }
-
   function start() {
     renderMetrics();
     renderChart();
-    watchNav();
 
     // The ring is canvas-drawn, so a theme flip needs a full redraw.
     window.addEventListener('op:themechange', renderChart);

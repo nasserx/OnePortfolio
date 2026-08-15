@@ -1,8 +1,7 @@
 {#
   Marketing page.
 
-  Structure: nav → hero (claim + live-feeling product portrait over a
-  photographic backdrop) → what it is
+  Structure: nav → intro (claim + live-feeling product portrait) → what it is
   → how it works → the honest limits → close. The product portrait reuses the
   real allocation legend and number styles from the app, so the page is
   showing the actual interface rather than an illustration of it.
@@ -63,11 +62,10 @@
 
 <a class="skip-link" href="#main">Skip to content</a>
 
-<header class="lp-nav" id="lpNav">
+<header class="lp-nav">
     <div class="lp-shell lp-nav__inner">
         <a href="{{ url_for('dashboard.index') }}" class="brand" aria-label="OnePortfolio home">
             {% set logo_class = 'op-logo-mark' %}
-            {% set logo_size = 26 %}
             {% include 'components/logo_mark.html' %}
             <span class="brand__word">OnePortfolio</span>
         </a>
@@ -92,14 +90,10 @@
 
     <!-- ══ Hero ══════════════════════════════════════════════════════════ -->
     <section class="lp-hero">
-        {# The hero's backdrop. It replaces the brand aura that used to sit
-           here — one mood-setting layer per section, not two. It stays
-           bounded to the hero and leaves through ordinary document scrolling;
-           it is deliberately not coupled to the root scroll timeline. #}
-        <div class="hero-media" aria-hidden="true">
-            {% include 'components/hero_image.html' %}
-        </div>
-
+        {# No backdrop element. The intro's only background treatment is
+           `--intro-wash` on the section itself, so there is nothing here to
+           bind to scrolling, nothing to download, and nothing between the
+           heading and the page. #}
         <div class="lp-shell lp-hero__grid">
             <div class="lp-hero__copy">
                 <h1 class="lp-title">

@@ -113,10 +113,6 @@ accident:
 ## File layout
 
 ```
-static/img/
-  hero.avif       hero backdrop, primary
-  hero.webp       hero backdrop, fallback for engines without AVIF
-
 static/css/
   tokens.css      layers + design tokens (loaded first, always)
   base.css        reset, element defaults, typography, focus, motion primitives
@@ -378,202 +374,135 @@ buttons, which makes the figures read as labels for the controls.
 Because the summary lives inside a `<button>`, its contents must be phrasing
 content — which is why the `metric` macro emits spans rather than divs.
 
-## Hero backdrops
+## The intro surfaces
 
-The marketing hero and the auth showcase share one photographic backdrop:
-`components/hero_image.html` inside a `.hero-media` wrapper.
+Two surfaces open the product to a stranger: the marketing intro (`.lp-hero`)
+and the auth showcase (`.auth__showcase`). They share one background
+treatment and nothing else.
 
-**Format negotiation.** AVIF is offered through a `<source>`; the `<img>`
-`src` is the WebP. A browser that cannot decode AVIF skips the source and
-uses the img — the one mechanism every engine implements, including ones too
-old to understand `image-set()` type hints. Do not replace this with a CSS
-`background-image` unless the fallback stops mattering.
+**There is no image.** Both surfaces carried a photographic backdrop for a
+long time — `hero.avif`/`hero.webp` inside a `.hero-media` wrapper, under a
+`--hero-shade` scrim whose alpha was measured against the shipped file's own
+pixels. It worked, and it cost more than it returned. The scrim existed only
+because the background under a word was whatever the picture happened to be
+doing there, and everything downstream inherited that problem: a test module
+that opened the WebP and bisected for a required alpha, a Pillow dependency
+to read it, a per-theme card opacity, a second set of colours for the header
+row, a step-up from `--fg-muted` to `--fg-default` on every line of intro
+copy, and a rule that the picture must never be re-encoded without re-running
+the arithmetic. A short vector composition replaced it briefly and had the
+same shape of problem in miniature: a clip to keep it off the copy, an
+opacity ladder per breakpoint, and its own legibility proof.
 
-**The shade is measured, not chosen.** The colour behind a word is whatever
-the photograph happens to be doing there, so legibility over a hero is a
-question about the *file*, not about a pair of tokens. That is exactly how it
-is answered: `tests/test_hero_legibility.py` opens the shipped WebP, samples
-every region a text column can land over, and solves for the lightest veil
-under which `--fg-default` still holds 4.5:1 against the darkest and
-brightest pixels it finds.
+What ships instead is one gradient:
 
-This is the decision the whole hero rests on. A scrim sized for a
-*hypothetical* photograph has to assume pure black under dark-theme text and
-pure white under light-theme text, and no real photograph is ever both —
-sizing it against the actual picture takes roughly 0.3 off the required
-alpha, which is the difference between a backdrop and a wash. The cost is
-that the guarantee now belongs to this picture: swap it and the test
-recomputes, and a darker one will demand more.
+```css
+--intro-wash:
+  radial-gradient(
+    120% 92% at 78% 6%,
+    color-mix(in srgb, var(--brand) 9%, transparent) 0%,
+    color-mix(in srgb, var(--income) 5%, transparent) 44%,
+    transparent 74%
+  );
+```
 
-**One shade, one strength, everywhere.** No falloff in either direction, and
-no band under the header. Uniformity is the second decision the hero rests
-on, and it took three attempts to reach: every version that varied the veil
-to buy clarity where nothing was written read as a *stain*. The eye has no
-trouble seeing that one part of a photograph is hazier than the rest, and it
-looks like a rendering fault rather than a design. A picture 12% less visible
-everywhere reads as a picture.
+Declared once in `tokens.css`, applied by both surfaces as
+`background-image: var(--intro-wash)`, and never overridden per theme. It
+does not need to be: custom properties substitute at use time, so the roles
+inside it resolve against whichever theme is live. Both stops sit under 10%,
+which is what makes everything else simple — copy on these surfaces uses the
+product's ordinary roles with no step-ups anywhere, because there is nothing
+to step up from.
 
-Four rules follow, and the tests enforce all of them:
+`tests/test_landing.py` composites the strongest stop over `--bg-canvas` and
+checks every ink either surface prints, including both ends of the headline
+gradient. It also pins the stops in single digits: past about a tenth this
+stops being a wash and becomes a surface that type has to be checked against
+case by case, which is the whole thing being escaped.
 
-1. **Copy sits on `--hero-shade`** — 0.50 light, 0.625 dark, each just above
-   its measured floor (0.487 and 0.611; the binding case in both is the auth
-   showcase, where the crop exposes nearly the whole frame). What is left is
-   for a re-encode of the picture. Never raise it "for safety": a second test
-   fails if the shade drifts more than 0.10 above what the picture requires,
-   because the image being visible is a requirement too.
+**The headline is the visual.** With nothing decorative behind it, the intro
+*is* its heading, and that heading is the only piece of brand colour on
+either surface that is not a control:
 
-   **And when someone asks for the photograph to read clearer, check whether
-   the veil is what is in the way.** It is worth ~0.02 here and no more. The
-   picture ships at 1600×900 and the hero box is about 1422×643 CSS px, which
-   on a 2× display is 2844 device px across — a 1.8× upscale, and no
-   stylesheet fixes that. Past this point clarity is a *file*, not a token.
-2. **Chrome floating on a hero gets no veil of its own.** The sky at the top
-   of the picture is shaded exactly as much as the mountains under the title,
-   so the marketing header is already standing on the guarantee — which is
-   why it can be genuinely invisible until it sticks. If that ever stops
-   clearing the floor, the fix is a heavier `--hero-shade`, not a band: a
-   band buys one strip of legibility by making the picture visibly patchy.
-3. **Over a photograph, hierarchy is size and weight — never tint.** Greying
-   text down is a trick that only works on flat ground. Every role below
-   `--fg-default` needs about 0.79 against this picture where the default
-   needs 0.49, so a muted lede would have cost the entire photograph to buy
-   an effect the type scale already delivers. The hero lede, the proof list,
-   the nav links at rest and the auth sub-paragraph all speak at full
-   strength.
-4. **Brand colour over a hero is a large-text privilege.** The title's
-   gradient runs between `--brand-900` and `--brand-800` in light,
-   `--brand-50` and `--brand-100` in dark — ramp steps that exist only for
-   this. It works because WCAG's floor for 56px type is 3:1, and that
-   headroom is the whole margin: a violet has to sit *further* from the
-   picture than plain ink does to survive the same shade, so every working
-   step of the ramp, `--brand` included, is already inside it.
+```css
+--hero-title-from: var(--income);   /* cobalt */
+--hero-title-to:   var(--brand);    /* violet */
+```
 
-**A backdrop ends where its box ends.** The hero's `padding-bottom` is clear
-picture below the last line of copy, and then a straight edge. There is no
-dissolve and no `--hero-mask`; see *Why there is no dissolve* below.
+Painted through `background-clip: text` on `.lp-title`, with `color` still
+declared so an engine without `background-clip` renders a solid heading
+rather than an invisible one. Both ends are semantic roles rather than raw
+ramp steps, which is exactly why one declaration serves both themes: light
+resolves to a deep cobalt and a deep violet against cream, dark to a bright
+pair against near-black. Large text, so the floor is 3:1 — the reason a
+saturated pair can carry a heading at all. A theme block that pins either end
+is a regression; it would mean the gradient had stopped being one decision.
 
-**Surfaces that float on a hero may be glass.** `--hero-card-fill` is how much
-of the marketing card's own surface stays opaque — 85% light, 80% dark. The
-constraint is never the card; it is the quietest ink printed on it.
-`backdrop-filter: blur()` is what makes those percent look like anything, and
-it is deliberately left out of the test: blurring moves pixels toward their
-local mean, so it can only produce values inside the range already cleared.
+**The header wears one appearance.** `.lp-nav` is `fixed`, not `sticky`:
+sticky keeps it in flow, which pushes the intro down by the header's height
+and puts a band of flat colour above the section. It carries one thing the
+whole way down the page: its panel, 82% `--bg-canvas` under a 12px blur.
 
-**Transparency is bought from the type, not from the card.** With
-`--fg-subtle` on the labels the light theme broke at **91.5%** — under a point
-of room, and the honest answer to "make it a little more transparent" was *no*.
-One step up to `--fg-muted` moves that floor to **54%**, because a step of
-grey is worth far more against a photograph than against a solid surface. The
-hierarchy survives it: those labels are 11px, medium, and tracked out, which is
-the same argument the hero copy makes one layer up — over a photograph,
-hierarchy comes from size and weight, never tint.
+**No divider under it, in any state.** The panel and the blur already say
+where the header ends; a hairline beneath them draws a second edge in the
+same place, and against an intro whose background is a low-alpha gradient
+that line is the hardest thing on screen. The border went with the two-state
+header — revealing it was the other half of what `.is-stuck` used to switch
+on.
 
-So the floor moves to whatever is *next* quietest, and on this card that turned
-out to be a semantic hue: `--pos` in the delta pill, at **83.0% light** (dark
-binds on `--income` at 55.5%). Which leads to the other half of the rule:
+That is a deliberate retreat from a two-state header. The old rest state was
+invisible over the picture, and `landing.js` added `.is-stuck` past eight
+pixels of scroll to bring the panel in. The invisible half cost a scroll
+listener, an element id, a class, and three rules giving every control in the
+row a second set of colours for reading against bare photograph — all to
+describe a state a visitor saw for the first eight pixels of the page.
+Collapsing to the panel deleted all of it and took the page's only scroll
+listener with it.
 
-**A tinted wash under type of its own hue is a veil running backwards.**
-`--pos-soft` behind `--pos` text moves the background *toward* the ink. On an
-opaque page that is a cost the surface can absorb; on glass it is decisive —
-measured, the full pill wants a **98%** fill to hold 4.5:1, more opaque than
-the card has ever been, so it would have set the ceiling on every percent of
-glass by itself. The marketing card's pill keeps its outline and drops its
-fill.
+**Surfaces that float on the intro are opaque.** The marketing preview card
+is `--bg-surface`, its chrome is `--bg-inset`, and nothing shows through
+either. It was glass once, tuned per theme by measuring every ink printed on
+it against what was behind it. The preview is meant to read as the
+application, and an application does not have a mountain range behind its
+numbers. Going opaque deleted a token, a `backdrop-filter`, two per-theme
+values, a measured floor, a measured ceiling, and the apparatus that modelled
+a photograph reaching type through a translucent surface. What replaced it is
+already there: `test_design_tokens_contrast.py` checks every text role against
+`--bg-surface` and `--bg-inset` in both themes, which is all a solid card
+needs.
 
-The test's job is to name every ink the card actually prints, and to be
-re-read whenever the card changes. A role listed that the card does not show
-caps the glass for nothing; a role shown but not listed goes unmeasured.
+**And flat as well as opaque.** Its border draws the card's edge; the
+elevation shadow it used to carry drew a second, softer one just outside
+that. Depth was worth paying for when the card floated on a photograph and
+had to separate itself from it — it sits on the page now, so it is drawn like
+the page. `--shadow-overlay` still belongs to things that genuinely float:
+modals, drawers, the command palette.
 
-**Why there is no dissolve.** A masked fade at the bottom of the hero went
-through four rounds — linear, then curved, then weighted late, then
-lengthened — each one asked for by the same complaint, that the gradient was
-too strong. The last version was as good as the shape gets: 41px of picture
-the mask never touched, a 19px washed stretch, a peak of 0.0567 alpha/px.
+The rule worth keeping from that episode: **a tinted wash under type of its
+own hue is a veil running backwards.** `--pos-soft` behind `--pos` text moves
+the background *toward* the ink. On an opaque surface that is a cost the
+surface can absorb, which is why the delta pill keeps its fill; on glass it
+was decisive, wanting a 98% fill to hold 4.5:1. If a surface here is ever
+translucent again, that is the constraint that binds first.
 
-It still lost to a straight cut, and the arithmetic says why. Alpha has to
-travel the whole way from 1 to 0, so a dissolve *must* spend a stretch of
-photograph making itself invisible — that spent stretch is precisely what a
-reader calls "a strong gradient". Shape decides where it lands and how fast
-it goes; nothing removes it. An edge spends nothing, because it has no
-boundary to hide: it *is* the boundary.
+**Nothing in the intro is bound to scrolling.** No root scroll-timeline, no
+`animation-timeline`, no JavaScript scroll effect, no per-frame work. A former
+scroll-linked opacity fade on the backdrop caused multi-second rendering and
+input stalls during top and bottom boundary overscroll in desktop Chromium.
+The durable form of that contract is the current one: there is no decorative
+layer left to bind to anything. Keep it that way — if decoration returns,
+normal document scrolling stays in charge of it.
 
-The backdrop stays bounded to the hero, with clear bottom padding keeping the
-edge below the copy. It leaves the viewport through ordinary document
-scrolling; the edge needs no separate opacity transition to do its job.
-
-Two things go with that decision. Keep them written down, because both were
-found the hard way:
-
-- If a dissolve ever comes back, mask, do not wash. Fading the picture out
-  with a wedge of `--bg-canvas` *changes* colours to hide them — a milky
-  band in light mode, a smear of black in dark — where a mask only removes,
-  so the page shows through cleanly and one rule covers both themes. And put
-  it on `.hero-media`, not the `<img>`, or the shade is stranded as a film
-  over bare page colour.
-- Judge any change to the bottom of the hero in the *light* theme, in crops
-  anchored to the bottom of the hero rather than to a viewport coordinate.
-  The light swing between shaded picture and canvas is ~84 levels against
-  ~25 in dark, so that is where an edge or a seam shows first; and a change
-  to the padding moves everything below it, which is enough to make an
-  improvement look like a regression.
-
-**The backdrop scrolls normally with its section.** It has no root
-scroll-timeline animation and no JavaScript scroll effect. A former
-scroll-linked opacity fade caused multi-second rendering/input stalls during
-top and bottom boundary overscroll in desktop Chromium. The static hero is
-already correct, so the durable contract is to leave normal browser scrolling
-in charge rather than replacing that decoration with another scroll effect.
-
-**The auth showcase takes the shade and nothing else** — no dissolve and no
-scroll effect. A bounded panel with its own border has no edge to hide.
-
-**Loading.** The marketing hero is eager and high priority. The auth
-showcase is `lazy`/`auto`, because that panel is hidden below 60rem and a
-lazily loaded image inside a hidden container is never fetched — a phone
-signing in does not pay ~200KB for a backdrop it cannot see.
-
-**The marketing header floats on the picture.** `.lp-nav` is `fixed`, not
-`sticky`: sticky keeps the header in flow, which pushes the hero down by the
-header's own height and puts a band of flat page colour above the
-photograph. At rest the header is nothing but its contents; the frosted
-panel and hairline only appear once `landing.js` adds `.is-stuck`, when the
-header is genuinely floating over content it needs separating from.
-
-Two things follow from that, and both are easy to lose:
-
-- The header is out of flow, so `:root { scroll-padding-top }` (set in
-  `landing.css`, which only that page loads) is what keeps in-page anchors
-  from scrolling their target underneath it.
-- While the header is transparent its links and its two secondary controls
-  are too — only the primary call to action keeps a fill. Nothing pays for
-  that but `--hero-shade` itself, which is the point: no band, no panel, no
-  mark of any kind on the picture. It does force a colour change, since all
-  of them normally sit at `--fg-muted` and that step needs about 0.79 against
-  this photograph. They take `--fg-default` instead, and anything added to
-  this row has to as well —
-  `test_the_floating_header_needs_no_veil_of_its_own` is what keeps the shade
-  and the header honest with each other.
-
-**Below the hero the marketing page is one centred column.** Every section
-announces itself with `.lp-head` on the page's centre line, on the same 44rem
-measure, with the same step of air above and below — so the reader follows a
-single vertical axis from the hero to the footer instead of re-finding where
-each block starts. Two things were giving that up and both are now gone: the
-"what it isn't" section faced its heading across a two-column gutter, and the
-closing panel split the ask left-and-right, which sent the eye off the axis
-at the exact moment it was being asked to act.
-
-Centring is for announcements only. A centred paragraph makes the eye hunt a
-moving left edge on every line, and the cost grows with the measure — which
-is why heads are capped at 44rem inside an 82rem shell, and why everything
-below a head (card copy, step copy, list rows) stays ragged-right. The rule
-is the same one the tables follow: **centre what is being announced, left
-what is being read.**
-
-Section rhythm carries the rest. `--space-16` above and below each section
-means a section boundary is always twice that and always the largest gap on
-screen; nothing inside a section is allowed to open that wide. That single
-constraint is what makes the sequence legible as a sequence.
+**A backdrop ends where its box ends.** The intro's `padding-bottom` is clear
+space below the last line of copy, and then a straight edge. This mattered
+more when there was a picture to end, and the reasoning is kept because it
+generalises: a masked fade went through four rounds — linear, curved,
+weighted late, lengthened — each asked for by the same complaint, that the
+gradient was too strong. Alpha has to travel the whole way from 1 to 0, so a
+dissolve *must* spend a stretch of backdrop making itself invisible, and that
+spent stretch is precisely what a reader calls "a strong gradient". Shape
+decides where it lands and how fast; nothing removes it. An edge spends
+nothing, because it has no boundary to hide: it *is* the boundary.
 
 ## Command palette
 
@@ -581,6 +510,33 @@ constraint is what makes the sequence legible as a sequence.
 `base.html`, plus **any element on the page carrying `data-command="Label"`**
 (optionally `data-command-group` and `data-command-icon`). A page extends the
 palette by adding one attribute — there is no registration step.
+
+## The brand lockup
+
+The mark and the `OnePortfolio` wordmark are one unit, and `.brand` in
+`components.css` owns every dimension of it: `--brand-mark-size` (2rem), the
+wordmark's `--text-lg`/`--weight-semibold`, and the `--space-2` between them.
+Both consumers — the app shell's `.sidenav__brand` and the marketing
+`.lp-nav` — take it unchanged. Neither page stylesheet may restate any of
+those four values; `app.css` and `landing.css` never load together, so a rule
+in one is invisible from the other, which is precisely how a shared component
+acquires two sizes.
+
+It was sized for the company it keeps. In the marketing header the lockup sits
+beside `Get started`, a 38px control with 13px medium type, and at 26px/14px
+it read as a caption next to it. Neither header row was resized to fit the
+larger lockup and neither needed to be: the shell reserves 2.5rem for that
+row, the marketing bar 4rem.
+
+`components/logo_mark.html` still writes `width`/`height` attributes so the
+mark reserves its box before CSS arrives, and its default has to equal what
+`--brand-mark-size` resolves to — `tests/test_brand_lockup.py` fails if they
+drift, because a mismatch is a visible jump on first paint. Passing
+`logo_size` beside a `.brand` is the duplication that contract replaced.
+
+The standalone mark on the auth and error pages is **not** this lockup. It
+appears without the wordmark, centred above a card at 40px, and is separate
+furniture that happens to use the same image.
 
 ## Behaviour that lives in one place
 

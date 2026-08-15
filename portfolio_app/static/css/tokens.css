@@ -43,11 +43,10 @@
        Three bands: 400–300 are *accent* steps (text and hairlines on a
        near-black ground), 600–550 are *solid* steps (deep enough to carry
        a white label at 4.5:1). No step does both jobs — hence `--brand`
-       and `--brand-solid`. The outer pairs exist only for brand-tinted
-       type over the hero, where a violet must sit further from the picture
-       than plain ink does. */
-    --brand-50:  #e2ddff;
-    --brand-100: #d1c8ff;
+       and `--brand-solid`. The deep pair exists only for brand-tinted type
+       over the hero, where a violet must sit further from the picture than
+       plain ink does — light only, since the dark headline now uses the
+       page's own ink; the pale steps that served it are gone. */
     --brand-300: #b3a1ff;
     --brand-400: #9d88ff;
     --brand-500: #7358ff;
@@ -225,43 +224,39 @@
     --brand-solid: var(--brand-600);
     --brand-solid-hover: var(--brand-700);
 
-    /* Hero backdrop: one veil of the canvas colour over the whole
-       photograph, at one strength. Uniformity is the point — every version
-       that varied it to buy clarity where nothing was written read as a
-       stain rather than a design.
+    /* The intro wash — the whole background treatment for the landing
+       intro and the auth showcase, and the only one either of them gets.
+       Both used to carry a photograph under a measured scrim; the product
+       is image-free now, so what is left is a single restrained gradient
+       that costs no download and needs no legibility machinery.
 
-       Derived, not chosen: the lightest veil under which hero copy still
-       clears its floor against the darkest and brightest pixels the shipped
-       picture actually contains, measured from the file by
-       `tests/test_hero_legibility.py` and re-derived on every run. Sizing a
-       scrim for a *hypothetical* photograph means sizing it for pure black
-       and pure white at once — about 0.3 more alpha, which is the
-       difference between a backdrop and a wash.
+       Declared once, here, and never overridden per theme: the colours
+       inside it are roles, and custom properties substitute at use time, so
+       this one value re-themes exactly when `--brand` and `--income` do.
+       Both stops are deliberately below 10% — enough to give the corner
+       some depth, far too little to be a veil anything is read against.
+       `tests/test_landing.py` composites the strongest stop over the canvas
+       and checks every ink the intro prints. */
+    --intro-wash:
+      radial-gradient(
+        120% 92% at 78% 6%,
+        color-mix(in srgb, var(--brand) 9%, transparent) 0%,
+        color-mix(in srgb, var(--income) 5%, transparent) 44%,
+        transparent 74%
+      );
 
-       This sits just above the floor, not comfortably above it: 0.487 is
-       where the auth showcase's copy breaks — that panel crops the widest
-       part of the frame, so it sees the harshest pixels — with the title
-       gradient's lighter stop at 0.481 right behind it. The 0.013 left is
-       for a re-encode of the picture, nothing more. If the photograph
-       should read clearer than this, the veil is no longer what is in the
-       way; the picture is 1600px wide and the hero is drawn at roughly
-       2800 device px on a 2x screen. */
-    --hero-shade: rgb(247 245 240 / 0.50);
+    /* The two ends of the hero title's gradient — cobalt into violet. The
+       headline is the page's leading visual element now that nothing
+       decorative sits behind it, and this is the one piece of brand colour
+       on either surface that is not a control.
 
-    /* The two ends of the hero title's gradient. Large text, so the floor
-       is 3:1 rather than 4.5:1 — that headroom is the only reason a violet
-       can go over a photograph at all. */
-    --hero-title-from: var(--brand-900);
-    --hero-title-to:   var(--brand-800);
-
-    /* How much of a surface floating on the hero stays opaque; the rest is
-       photograph. Bounded by the quietest ink *inside* the card, never by the
-       card: raise a label a step and the glass follows, which is exactly how
-       this got to 15%. Against the shipped picture the binding pair is now
-       `--pos` on the delta, which breaks at 83.0%; `--fg-muted` on the inset
-       chrome, the old ceiling, is far below at 54.0%. Dark starts further
-       clear — its worst pair is `--income` at 55.5%. */
-    --hero-card-fill: 85%;
+       Large text, so the floor is 3:1 rather than 4.5:1. Both ends are
+       semantic roles rather than raw ramp steps, which is what lets a single
+       declaration serve both themes: light resolves to a deep cobalt and a
+       deep violet against cream, dark to a bright pair against near-black,
+       and neither needs a word in the theme blocks below. */
+    --hero-title-from: var(--income);
+    --hero-title-to:   var(--brand);
 
     /* Hover veil for the semantic solid buttons. It moves *away* from the
        label colour in each theme — darker under white labels, lighter under
@@ -338,10 +333,6 @@
       --brand-hover: var(--brand-300);
       --brand-solid: var(--brand-550);
       --brand-solid-hover: var(--brand-500);
-      --hero-shade: rgb(16 16 21 / 0.625);
-      --hero-title-from: var(--brand-50);
-      --hero-title-to:   var(--brand-100);
-      --hero-card-fill: 80%;
       --solid-hover-veil: rgb(255 255 255 / 0.14);
       --brand-soft: rgb(157 136 255 / 0.20);
       --brand-soft-hover: rgb(157 136 255 / 0.30);
@@ -417,10 +408,6 @@
     --brand-hover: var(--brand-300);
     --brand-solid: var(--brand-550);
     --brand-solid-hover: var(--brand-500);
-    --hero-shade: rgb(16 16 21 / 0.625);
-    --hero-title-from: var(--brand-50);
-    --hero-title-to:   var(--brand-100);
-    --hero-card-fill: 80%;
     --solid-hover-veil: rgb(255 255 255 / 0.14);
     --brand-soft: rgb(157 136 255 / 0.20);
     --brand-soft-hover: rgb(157 136 255 / 0.30);

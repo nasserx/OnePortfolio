@@ -91,7 +91,9 @@ def test_portfolios_page_renders_capital_metrics_and_log(app):
     assert '-250.00' in html
     assert '<h5 class="modal-title" id="depositFundsModalTitle">Deposit</h5>' in html
     assert '<h5 class="modal-title" id="withdrawFundsModalTitle">Withdraw</h5>' in html
+    assert '<label for="deposit_portfolio_name" class="form-label">Portfolio</label>' in html
     assert 'id="deposit_portfolio_name" readonly' in html
+    assert '<label for="withdraw_portfolio_name" class="form-label">Portfolio</label>' in html
     assert 'id="withdraw_portfolio_name" readonly' in html
     assert 'deposit_portfolio_title' not in html
     assert 'withdraw_portfolio_title' not in html

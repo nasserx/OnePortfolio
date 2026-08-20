@@ -2,17 +2,16 @@ import sqlite3
 import re
 import secrets
 
-from flask import Flask, current_app, g
+from flask import Flask, g, request, session
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf.csrf import CSRFProtect, CSRFError
 from flask_login import LoginManager
 from flask_mail import Mail
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-from authlib.integrations.flask_client import OAuth
 from sqlalchemy import event
 from sqlalchemy.engine import Engine
-from config import Config, normalize_app_base_url
+from config import Config
 from portfolio_app.utils import (
     fmt_decimal,
     fmt_display_decimal,
@@ -26,12 +25,6 @@ db = SQLAlchemy()
 csrf = CSRFProtect()
 login_manager = LoginManager()
 mail = Mail()
-ONEPORTFOLIO_OAUTH_EXTENSION_KEY = 'oneportfolio_oauth'
-GOOGLE_OIDC_ISSUER = 'https://accounts.google.com'
-GOOGLE_OIDC_ACCEPTED_ISSUERS = (
-    GOOGLE_OIDC_ISSUER,
-    'accounts.google.com',
-)
 _AUTH_IDENTITY_RE = re.compile(r'\Av1:([1-9][0-9]*):(0|[1-9][0-9]*)\Z')
 _LEGACY_AUTH_IDENTITY_RE = re.compile(r'\A[1-9][0-9]*\Z')
 # ``RATELIMIT_STORAGE_URI`` is owned by application configuration and consumed
@@ -40,42 +33,6 @@ limiter = Limiter(
     key_func=get_remote_address,
     default_limits=[],
 )
-
-
-def get_oauth():
-    """Return the app-scoped Authlib OAuth registry."""
-    return current_app.extensions[ONEPORTFOLIO_OAUTH_EXTENSION_KEY]
-
-
-def _register_google_oauth_client(app, oauth_client):
-    """Register Google OpenID Connect only when explicitly enabled."""
-    if not app.config.get('GOOGLE_OAUTH_ENABLED'):
-        return
-
-    missing = [
-        name for name in (
-            'GOOGLE_CLIENT_ID',
-            'GOOGLE_CLIENT_SECRET',
-            'GOOGLE_REDIRECT_URI',
-        )
-        if not app.config.get(name)
-    ]
-    if missing:
-        raise RuntimeError(
-            'Google OAuth is enabled but required configuration is missing: '
-            + ', '.join(missing)
-        )
-
-    oauth_client.register(
-        name='google',
-        client_id=app.config['GOOGLE_CLIENT_ID'],
-        client_secret=app.config['GOOGLE_CLIENT_SECRET'],
-        server_metadata_url=(
-            f'{GOOGLE_OIDC_ISSUER}/.well-known/openid-configuration'
-        ),
-        client_kwargs={'scope': 'openid email profile'},
-        redirect_uri=app.config['GOOGLE_REDIRECT_URI'],
-    )
 
 
 def _dev_auto_login_allowed(app) -> bool:
@@ -88,14 +45,6 @@ def _validate_dev_auto_login_config(app) -> None:
             'DEV_AUTO_LOGIN can only be enabled when TESTING=True, '
             'or DEBUG=True.'
         )
-
-
-def _configure_app_base_url(app) -> None:
-    """Validate and canonicalize the public origin used in emailed links."""
-    app.config['APP_BASE_URL'] = normalize_app_base_url(
-        app.config.get('APP_BASE_URL'),
-        allow_insecure=bool(app.testing or app.debug),
-    )
 
 
 @event.listens_for(Engine, "connect")
@@ -117,7 +66,6 @@ def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
     _validate_dev_auto_login_config(app)
-    _configure_app_base_url(app)
 
     # ------------------------------------------------------------------
     # Development-only: auto-login as first user, bypasses authentication.
@@ -126,26 +74,24 @@ def create_app(config_class=Config):
     # ------------------------------------------------------------------
     if app.config.get('DEV_AUTO_LOGIN'):
         from flask_login import login_user
-        from flask import request as _request
+        from portfolio_app.utils.auth_session import establish_auth_session
 
         @app.before_request
         def _auto_login():
             from flask_login import current_user
-            if not current_user.is_authenticated and not _request.path.startswith('/static'):
+            if not current_user.is_authenticated and not request.path.startswith('/static'):
                 from portfolio_app.models.user import User
                 user = User.query.first()
                 if user:
                     login_user(user, remember=False)
+                    session.permanent = True
+                    establish_auth_session(session)
 
     # Initialize extensions
     db.init_app(app)
     csrf.init_app(app)
     login_manager.init_app(app)
     mail.init_app(app)
-    oauth = OAuth()
-    oauth.init_app(app)
-    app.extensions[ONEPORTFOLIO_OAUTH_EXTENSION_KEY] = oauth
-    _register_google_oauth_client(app, oauth)
     # Rate limiting is on by default; the test config flips
     # ``RATELIMIT_ENABLED`` off so the bulk of the suite can run without
     # bumping into per-IP limits, and re-enables it just for the
@@ -161,9 +107,9 @@ def create_app(config_class=Config):
         from portfolio_app.models.user import User
 
         # Current identities explicitly bind the database id to the user's
-        # authentication generation. Pre-release id-only identities represent
-        # generation zero, preserving a controlled upgrade path; malformed
-        # values fail closed as anonymous without raising on normal requests.
+        # authentication generation. Pre-cutover id-only identities represent
+        # generation zero and fail after migration 35 advances every retained
+        # account; malformed values also fail closed.
         if not isinstance(identity, str):
             return None
         match = _AUTH_IDENTITY_RE.fullmatch(identity)
@@ -184,6 +130,26 @@ def create_app(config_class=Config):
         ):
             return None
         return user
+
+    @app.before_request
+    def _enforce_passwordless_session_policy():
+        """Fail closed on legacy, idle, or absolutely expired auth state."""
+        from flask_login import current_user, logout_user
+        from portfolio_app.utils.auth_session import (
+            auth_session_is_valid,
+            touch_auth_session,
+        )
+
+        if not current_user.is_authenticated:
+            return None
+        if not auth_session_is_valid(session):
+            logout_user()
+            session.clear()
+            session['_remember'] = 'clear'
+            return None
+        session.permanent = True
+        touch_auth_session(session)
+        return None
 
     @app.errorhandler(CSRFError)
     def _handle_csrf_error(e: CSRFError):
@@ -252,8 +218,9 @@ def create_app(config_class=Config):
     @app.errorhandler(429)
     def _ratelimit_handler(error):
         from flask import request, jsonify, render_template, flash, redirect, url_for
+        from flask_login import current_user
         # The error_message set on the @limiter.limit decorator surfaces here.
-        message = getattr(error, 'description', None) or MESSAGES['RATE_LIMIT_SIGNUP']
+        message = getattr(error, 'description', None) or MESSAGES['RATE_LIMIT_AUTH_REQUEST']
         wants_json = (
             request.form.get('_modal') == '1'
             or request.headers.get('X-Requested-With') == 'XMLHttpRequest'
@@ -269,12 +236,18 @@ def create_app(config_class=Config):
         # any other rate-limited endpoint.
         endpoint = request.endpoint or ''
 
-        if endpoint == 'auth.verify_code':
-            email = request.args.get('email', '') or request.form.get('email', '')
+        if endpoint in ('auth.verify_code', 'auth.reauthenticate_verify'):
+            recent = endpoint == 'auth.reauthenticate_verify'
             return render_template(
                 'auth/verify_code.html',
-                email=email,
                 form_errors={'__all__': message},
+                verify_endpoint=endpoint,
+                resend_endpoint=(
+                    'auth.reauthenticate_resend' if recent else 'auth.resend_code'
+                ),
+                heading='Verification code',
+                submit_label='Confirm' if recent else 'Continue',
+                back_url=url_for('auth.login'),
             ), 429
 
         if endpoint == 'auth.login':
@@ -282,23 +255,14 @@ def create_app(config_class=Config):
                 'auth/login.html',
                 form_errors={'__all__': message},
                 form_values=request.form,
-            ), 429
-
-        if endpoint == 'auth.register':
-            return render_template(
-                'auth/register.html',
-                form_errors={'__all__': message},
-                form_values=request.form,
+                safe_next=safe_local_redirect(request.args.get('next')),
             ), 429
 
         if endpoint == 'auth.resend_code':
             # Flash + bounce the user back to the verify-code screen after a
             # rate-limited resend form submission.
             flash(message, 'warning')
-            email = request.args.get('email', '')
-            if email:
-                return redirect(url_for('auth.verify_code', email=email))
-            return redirect(url_for('auth.login'))
+            return redirect(url_for('auth.verify_code'))
 
         if endpoint == 'auth.delete_account_verify':
             flash(message, 'warning')
@@ -332,6 +296,17 @@ def create_app(config_class=Config):
 
     @app.after_request
     def _security_headers(resp):
+        # Passwordless login never issues remember identities. Expire any
+        # pre-cutover cookie as soon as the browser contacts the new runtime.
+        if request.cookies.get(app.config.get('REMEMBER_COOKIE_NAME', 'remember_token')):
+            resp.delete_cookie(
+                app.config.get('REMEMBER_COOKIE_NAME', 'remember_token'),
+                path=app.config.get('REMEMBER_COOKIE_PATH', '/'),
+                domain=app.config.get('REMEMBER_COOKIE_DOMAIN'),
+                secure=app.config.get('REMEMBER_COOKIE_SECURE', False),
+                httponly=True,
+                samesite=app.config.get('REMEMBER_COOKIE_SAMESITE'),
+            )
         resp.headers.setdefault('X-Content-Type-Options', 'nosniff')
         resp.headers.setdefault('X-Frame-Options', 'DENY')
         resp.headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')

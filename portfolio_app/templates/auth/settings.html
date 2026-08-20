@@ -95,73 +95,17 @@
                         <i class="bi bi-shield-lock me-2" aria-hidden="true"></i>Security
                     </h3>
 
-                    <div class="settings-action-desc mb-3">Connected sign-in methods</div>
+                    <div class="settings-action-desc mb-3">Sign-in method</div>
 
-                    <!-- Google sign-in status -->
                     <div class="settings-action-row">
                         <div>
                             <div class="settings-action-title">
-                                <i class="bi bi-google me-2" aria-hidden="true"></i>Google
+                                <i class="bi bi-envelope-check me-2" aria-hidden="true"></i>Email verification code
                             </div>
                             <div class="settings-action-desc">
-                                {% if google_identity_linked %}
-                                    Connected
-                                {% else %}
-                                    Not connected
-                                {% endif %}
+                                Passwordless sign-in to {{ current_user.email }}
                             </div>
                         </div>
-                        {% if google_identity_linked and is_demo_account %}
-                            <button class="btn btn-outline-secondary btn-sm" disabled>Disconnect Google</button>
-                        {% endif %}
-                    </div>
-                    {% if google_identity_linked %}
-                        {% if is_demo_account %}
-                            <div class="settings-action-desc mt-2">Disabled for the demo account.</div>
-                        {% else %}
-                            <form method="post" action="{{ url_for('auth.google_disconnect') }}"
-                                  class="mt-3 pt-3 border-top" novalidate>
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <div class="mb-3">
-                                    <label for="google-disconnect-current-password" class="form-label">Current password</label>
-                                    <input type="password"
-                                           id="google-disconnect-current-password"
-                                           name="current_password"
-                                           class="form-control form-control-sm"
-                                           autocomplete="current-password"
-                                           required>
-                                    <div class="form-text">
-                                        Disconnecting Google sign-in does not delete this account.
-                                    </div>
-                                </div>
-                                <button type="submit" class="btn btn-outline-danger btn-sm">
-                                    Disconnect Google
-                                </button>
-                            </form>
-                        {% endif %}
-                    {% endif %}
-
-                    <hr class="my-3">
-
-                    <!-- Change Password -->
-                    <div class="settings-action-row">
-                        <div>
-                            <div class="settings-action-title">
-                                <i class="bi bi-key me-2" aria-hidden="true"></i>Password
-                            </div>
-                            {% if is_demo_account %}
-                                <div class="settings-action-desc">Disabled for the demo account.</div>
-                            {% else %}
-                                <div class="settings-action-desc">Set / Change</div>
-                            {% endif %}
-                        </div>
-                        {% if is_demo_account %}
-                            <button class="btn btn-outline-secondary btn-sm" disabled>Change</button>
-                        {% else %}
-                            <a href="{{ url_for('auth.change_password') }}" class="btn btn-primary btn-sm">
-                                Change
-                            </a>
-                        {% endif %}
                     </div>
 
                     <hr class="my-3">
@@ -173,20 +117,10 @@
                                 <i class="bi bi-envelope me-2" aria-hidden="true"></i>Email Address
                             </div>
                             <div class="settings-action-desc">
-                                {% if is_demo_account %}
-                                    Disabled for the demo account.
-                                {% else %}
-                                    {{ current_user.email or 'Not set' }} &mdash; requires re-verification.
-                                {% endif %}
+                                {{ current_user.email }} &mdash; requires recent authentication and re-verification.
                             </div>
                         </div>
-                        {% if is_demo_account %}
-                            <button class="btn btn-outline-secondary btn-sm" disabled>Update Email</button>
-                        {% else %}
-                            <a href="{{ url_for('auth.update_email') }}" class="btn btn-primary btn-sm">
-                                Update Email
-                            </a>
-                        {% endif %}
+                        <a href="{{ url_for('auth.update_email') }}" class="btn btn-primary btn-sm">Update Email</a>
                     </div>
                 </div>
             </div>
@@ -210,12 +144,7 @@
                         <p class="settings-danger-desc">Permanently delete your account and all portfolio data.</p>
                         <p class="settings-danger-warning">This action cannot be undone.</p>
 
-                        {% if is_demo_account %}
-                            <div class="alert alert-warning mb-0">
-                                <i class="bi bi-exclamation-circle me-2" aria-hidden="true"></i>
-                                Disabled for the demo account.
-                            </div>
-                        {% elif not current_user.email %}
+                        {% if not current_user.email %}
                             <div class="alert alert-warning mb-0">
                                 <i class="bi bi-exclamation-circle me-2" aria-hidden="true"></i>
                                 Add and verify an email address in the Security tab before deleting your account.

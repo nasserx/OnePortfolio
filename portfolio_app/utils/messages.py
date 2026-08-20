@@ -35,7 +35,6 @@ MESSAGES = {
     'DIVIDEND_DELETE_FAILED':      "We couldn't remove the income. Please try again in a moment.",
     'SYMBOL_ADD_FAILED':           "We couldn't track this asset. Please try again in a moment.",
     'SYMBOL_DELETE_FAILED':        "We couldn't stop tracking this asset. Please try again in a moment.",
-    'PASSWORD_CHANGE_FAILED':      "We couldn't change your password. Please try again in a moment.",
     'EMAIL_UPDATE_FAILED':         "We couldn't update your email. Please try again in a moment.",
     # Not-found errors
     'PORTFOLIO_NOT_FOUND':         "This portfolio no longer exists.",
@@ -131,48 +130,21 @@ MESSAGES = {
     'EMAIL_IN_USE':                "This email address is already linked to another account.",
     'EMAIL_ALREADY_EXISTS':        "An account with this email already exists.",
 
-    # Form validation — passwords
-    'PASSWORD_REQUIRED':           "Password is required.",
-    'PASSWORD_TOO_SHORT':          "Password must be at least 12 characters long.",
-    'PASSWORD_CONFIRM_REQUIRED':   "Please confirm your password.",
-    'PASSWORDS_NO_MATCH':          "Passwords don't match. Please try again.",
-    'CURRENT_PASSWORD_REQUIRED':   "Please enter your current password.",
-    'CURRENT_PASSWORD_INCORRECT':  "Current password is incorrect.",
-    'NEW_PASSWORD_REQUIRED':       "New password is required.",
-    'NEW_PASSWORD_TOO_SHORT':      "New password must be at least 12 characters long.",
-    'NEW_PASSWORD_CONFIRM_REQUIRED': "Please confirm your new password.",
-    'EMAIL_PASSWORD_CONFIRM_REQUIRED': "Please enter your current password to confirm this change.",
-
-    # Auth — login, registration, verification
-    'INVALID_CREDENTIALS':         "Invalid email or password.",
-    'ACCOUNT_LOCKED':              "Too many failed sign-in attempts. Please try again in a few minutes.",
-    'REGISTRATION_FAILED':         "Registration failed. Please try again.",
-    'RATE_LIMIT_SIGNUP':           "Too many sign-up attempts. Please try again later.",
+    # Auth — email-first login, registration, and verification
+    'AUTH_CODE_REQUEST_RESULT':    "Check your email for a verification code.",
+    'AUTH_REQUEST_FAILED':         "We couldn't start verification. Please try again.",
+    'RATE_LIMIT_AUTH_REQUEST':     "Too many verification requests. Please try again later.",
+    'RATE_LIMIT_AUTH_VERIFY':      "Too many verification attempts. Request a new code and try again.",
     'RATE_LIMIT_RESEND':           "Too many resend requests. Please try again later.",
-    'RATE_LIMIT_PASSWORD_RESET':   "Too many password reset requests. Please try again later.",
-    'GOOGLE_SIGNIN_COMING_SOON':   "Google sign-in is coming soon.",
-    'GOOGLE_SIGNIN_NOT_CONFIGURED': "Google sign-in is not configured yet.",
-    'GOOGLE_SIGNIN_FAILED':        "Google sign-in could not be completed. Please try again.",
-    'GOOGLE_SIGNIN_NO_ACCOUNT':    "No existing account matches that Google email. Please sign in with email and password.",
-    'GOOGLE_DISCONNECT_SUCCESS':    "Google sign-in connection removed.",
-    'GOOGLE_DISCONNECT_NOT_CONNECTED': "Google sign-in is not connected.",
-    'GOOGLE_DISCONNECT_FAILED':     "Google connection could not be removed. Please try again.",
 
     'VERIFICATION_CODE_REQUIRED':  "Verification code is required.",
-    'VERIFICATION_CODE_INVALID_FORMAT': "Please enter the 6-digit code sent to your email.",
-    # Generic, non-enumerating message for verify-code failures — used by
-    # auth_service.verify_user so the response cannot distinguish "email
-    # not registered" / "already verified" / "wrong code" / "expired".
+    'VERIFICATION_CODE_INVALID_FORMAT': "Please enter a valid verification code.",
+    # Generic, non-enumerating message for all verification failures.
     'VERIFICATION_CODE_INVALID_OR_EXPIRED': "Invalid or expired verification code.",
-    'VERIFICATION_CODE_RESEND_RESULT': "If an active verification request exists, a new code has been sent.",
+    'VERIFICATION_CODE_RESEND_RESULT': "Check your email for a verification code.",
 
     'EMAIL_UPDATED':               "Email address updated successfully.",
-    'PASSWORD_CHANGED':            "Password changed successfully.",
-    'PASSWORD_RESET_SUCCESS':      "Your password has been reset. You can now sign in.",
-    'PASSWORD_RESET_LINK_INVALID': "This password reset link is invalid or has expired.",
-
     # Account self-service
-    'DEMO_ACTION_DISABLED':        "This feature is disabled in demo mode.",
     'DELETION_CODE_SEND_FAILED':   "Failed to send the confirmation code. Please try again.",
     'DELETION_CONFIRMED':          "Your account has been permanently deleted.",
     'DELETION_INVALID_CODE':       "The code is incorrect or has expired. Please request a new one.",

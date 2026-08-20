@@ -1,0 +1,24 @@
+{% extends 'auth_base.html' %}
+{% block title %}Confirm Your Identity — OnePortfolio{% endblock %}
+{% block auth_content %}
+<div class="text-center mb-4">
+    {% set logo_class = 'op-logo-mark auth-logo mb-3' %}
+    {% set logo_size = 40 %}
+    {% include 'components/logo_mark.html' %}
+    <h1 class="auth-title">Confirm it’s you</h1>
+    <p class="auth-subtitle mb-0">We’ll email you a verification code before this sensitive change.</p>
+</div>
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+        <div class="alert alert-{{ category }} alert-dismissible fade show py-2 mb-3" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    {% endfor %}
+{% endwith %}
+<form method="post" action="{{ url_for('auth.reauthenticate') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button type="submit" class="btn btn-primary btn-auth w-100">Send code</button>
+</form>
+<a href="{{ url_for('auth.settings', tab='security') }}" class="btn btn-outline-secondary btn-sm w-100 mt-3">Cancel</a>
+{% endblock %}

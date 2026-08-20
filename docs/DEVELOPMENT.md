@@ -40,7 +40,15 @@ Open `http://127.0.0.1:5000`.
 
 `app.py` is the local entry point and selects the debug development configuration; production serves the base configuration through `wsgi.py`. The database is created and migrated by the application factory at startup, so there is no separate initialization script to run.
 
-For local development only, `DEV_AUTO_LOGIN=1` can auto-login as the first user. Never enable it outside local development.
+For local development only, `DEV_AUTO_LOGIN=1` can auto-login as the first user.
+The application rejects this setting outside debug/test mode. Production has no
+demo, password, or OAuth authentication bypass.
+
+Normal authentication is email plus a six-digit one-time code delivered through
+the configured mail provider. Login codes expire after 10 minutes, allow five
+failed attempts, and are replaced on resend. Sessions have a rolling seven-day
+idle lifetime and a 30-day absolute lifetime; sensitive account changes require
+authentication within 15 minutes.
 
 ## Validation Commands
 

@@ -4,6 +4,7 @@ from decimal import Decimal
 from portfolio_app import db
 from portfolio_app.calculators import PortfolioCalculator
 from portfolio_app.models.user import User
+from tests._auth import authenticate_client
 from portfolio_app.services.factory import Services
 from portfolio_app.utils.messages import MESSAGES
 
@@ -14,16 +15,14 @@ def _dec(value):
 
 def _seed_user(username='capital_user'):
     user = User(username=username, email=f'{username}@example.com', is_verified=True)
-    user.set_password('test-password')
+    user.password_hash = 'legacy-test-hash'
     db.session.add(user)
     db.session.commit()
     return user.id
 
 
 def _login(client, user_id):
-    with client.session_transaction() as sess:
-        sess['_user_id'] = str(user_id)
-        sess['_fresh'] = True
+    authenticate_client(client, user_id)
 
 
 def test_deposit_and_withdraw_create_capital_entries_and_update_accounting(app):

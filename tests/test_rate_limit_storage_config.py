@@ -34,8 +34,6 @@ def _run_probe(value=_UNSET):
     env['SECRET_KEY'] = 'rate-limit-storage-test-secret'
     env['DATABASE_URL'] = 'sqlite:///:memory:'
     env['DEV_AUTO_LOGIN'] = '0'
-    env['GOOGLE_OAUTH_ENABLED'] = '0'
-    env['APP_BASE_URL'] = 'https://portfolio.example'
 
     if value is _UNSET:
         env.pop('RATELIMIT_STORAGE_URI', None)

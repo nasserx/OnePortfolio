@@ -1,130 +1,67 @@
-"""Email utilities for sending verification codes and password reset emails.
-
-All email content is written in English as required.
-Each email clearly states its purpose, the required action,
-and ends with a disclaimer for unintended recipients.
-"""
+"""Secret-free email delivery helpers for OnePortfolio OTP workflows."""
 
 import logging
-from flask import current_app
+
 from flask_mail import Message
+
 from portfolio_app import mail
+
 
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
-# Email body builders
-# ---------------------------------------------------------------------------
-
-def _build_verification_body(code: str) -> str:
-    """Build the plain-text body for a verification code email."""
-    return (
-        "This email was sent to verify your OnePortfolio account.\n\n"
-        "Your verification code is:\n\n"
+def send_authentication_email(recipient_email: str, code: str) -> bool:
+    body = (
+        "Use this code to continue to OnePortfolio:\n\n"
         f"  {code}\n\n"
-        "This code will expire in 10 minutes.\n\n"
-        "If you did not create an account, please ignore this email."
+        "This code expires in 10 minutes and can be used once. "
+        "If you did not request it, ignore this email."
+    )
+    return _send_code_message(
+        recipient_email,
+        "OnePortfolio - Your verification code",
+        body,
+        'Authentication code delivery failed',
     )
 
-
-def _build_reset_body(reset_url: str) -> str:
-    """Build the plain-text body for a password reset email."""
-    return (
-        "This email was sent because a password reset was requested "
-        "for your OnePortfolio account.\n\n"
-        "Please click the link below to set a new password:\n"
-        f"{reset_url}\n\n"
-        "This link will expire in 1 hour.\n\n"
-        "If you did not request this, please ignore this email."
-    )
-
-
-# ---------------------------------------------------------------------------
-# Public send functions
-# ---------------------------------------------------------------------------
 
 def send_verification_email(recipient_email: str, code: str) -> bool:
-    """Send a 6-digit verification code to the given email address.
-
-    Args:
-        recipient_email: The user's email address.
-        code: The 6-digit OTP code to include in the email.
-
-    Returns:
-        True if sent successfully, False otherwise.
-    """
-    try:
-        msg = Message(
-            subject="OnePortfolio - Email Verification Code",
-            recipients=[recipient_email],
-            body=_build_verification_body(code),
-        )
-        mail.send(msg)
-        logger.info("Verification code sent to %s", recipient_email)
-        return True
-    except Exception:
-        logger.exception("Failed to send verification code to %s", recipient_email)
-        return False
+    body = (
+        "Use this code to verify your new OnePortfolio email address:\n\n"
+        f"  {code}\n\n"
+        "This code expires in 10 minutes. "
+        "If you did not request this change, ignore this email."
+    )
+    return _send_code_message(
+        recipient_email,
+        "OnePortfolio - Verify your email",
+        body,
+        'Email verification delivery failed',
+    )
 
 
 def send_deletion_confirmation_email(recipient_email: str, code: str) -> bool:
-    """Send a 6-digit account deletion confirmation code.
-
-    Args:
-        recipient_email: The user's email address.
-        code: The 6-digit OTP code to include in the email.
-
-    Returns:
-        True if sent successfully, False otherwise.
-    """
     body = (
         "Account deletion was requested for your OnePortfolio account.\n\n"
         f"Confirmation code:  {code}\n\n"
-        "Expires in 10 minutes. If you did not request this, ignore this email."
+        "This code expires in 10 minutes. "
+        "If you did not request this, ignore this email."
     )
-    msg = Message(
-        subject="OnePortfolio - Account Deletion Confirmation",
-        recipients=[recipient_email],
-        body=body,
+    return _send_code_message(
+        recipient_email,
+        "OnePortfolio - Account deletion confirmation",
+        body,
+        'Account deletion code delivery failed',
     )
+
+
+def _send_code_message(recipient: str, subject: str, body: str,
+                       failure_message: str) -> bool:
     try:
-        mail.send(msg)
-        logger.info("Deletion confirmation code sent to %s", recipient_email)
+        mail.send(Message(subject=subject, recipients=[recipient], body=body))
         return True
     except Exception:
-        logger.exception("Failed to send deletion confirmation code to %s", recipient_email)
-        return False
-
-
-def send_reset_email(recipient_email: str, token: str) -> bool:
-    """Send a password reset link to the given email address.
-
-    Args:
-        recipient_email: The user's email address.
-        token: The signed password reset token.
-
-    Returns:
-        True if sent successfully, False otherwise.
-    """
-    try:
-        # create_app validates and canonicalizes this deployment-owned value;
-        # never derive password-reset links from request host headers.
-        base_url = current_app.config['APP_BASE_URL']
-        reset_url = f"{base_url}/reset-password/{token}"
-        msg = Message(
-            subject="OnePortfolio - Password Reset",
-            recipients=[recipient_email],
-            body=_build_reset_body(reset_url),
-        )
-        mail.send(msg)
-        logger.info("Password reset email sent")
-        return True
-    except Exception as exc:
-        # Keep reset tokens, recipient details, and provider exception text
-        # out of logs while retaining an operational failure signal.
-        logger.warning(
-            "Password reset email preparation or delivery failed: %s",
-            type(exc).__name__,
-        )
+        # Recipient, code, provider exception text, and provider details are
+        # intentionally excluded from application logs.
+        logger.warning(failure_message)
         return False

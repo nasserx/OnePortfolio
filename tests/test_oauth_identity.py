@@ -7,12 +7,11 @@ from sqlalchemy import text
 from portfolio_app import db
 from portfolio_app.models.oauth_identity import OAuthIdentity
 from portfolio_app.models.user import User
-from portfolio_app.repositories.oauth_identity_repository import OAuthIdentityRepository
 
 
 def _create_user(username='alice', email='alice@example.com'):
     user = User(username=username, email=email, is_verified=True)
-    user.set_password('CorrectHorse9')
+    user.password_hash = 'preserved-oauth-era-hash'
     db.session.add(user)
     db.session.commit()
     return user
@@ -230,20 +229,6 @@ def test_oauth_identity_has_no_token_or_secret_columns(app):
         assert 'authorization_code' not in columns
         assert 'client_secret' not in columns
         assert 'token_expires_at' not in columns
-
-
-def test_oauth_identity_repository_lookups_and_create_normalize_provider(app):
-    with app.app_context():
-        user = _create_user()
-        repo = OAuthIdentityRepository(OAuthIdentity, db)
-
-        identity = repo.create(user.id, 'Google', 'CaseSensitiveSub')
-        db.session.commit()
-
-        assert identity.provider == 'google'
-        assert identity.provider_subject == 'CaseSensitiveSub'
-        assert repo.get_by_provider_subject('GOOGLE', 'CaseSensitiveSub').id == identity.id
-        assert repo.get_for_user_and_provider(user.id, 'GOOGLE').id == identity.id
 
 
 def test_oauth_identity_repr_does_not_include_provider_subject(app):

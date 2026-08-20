@@ -80,8 +80,7 @@
             <button type="button" class="icon-button" data-theme-toggle aria-label="Switch theme">
                 <i class="bi bi-moon-stars" aria-hidden="true"></i>
             </button>
-            <a class="btn btn-secondary" href="{{ url_for('auth.login') }}">Log in</a>
-            <a class="btn btn-primary" href="{{ url_for('auth.register') }}">Get started</a>
+            <a class="btn btn-primary" href="{{ url_for('auth.login') }}">Get started</a>
         </div>
     </div>
 </header>
@@ -107,11 +106,10 @@
                 </p>
 
                 <div class="lp-cta">
-                    <a class="btn btn-primary btn-lg" href="{{ url_for('auth.register') }}">
+                    <a class="btn btn-primary btn-lg" href="{{ url_for('auth.login') }}">
                         Create your portfolio
                         <i class="bi bi-arrow-right" aria-hidden="true"></i>
                     </a>
-                    <a class="btn btn-secondary btn-lg" href="{{ url_for('auth.login') }}">Log in</a>
                 </div>
 
                 <ul class="lp-proof">
@@ -253,11 +251,10 @@
                 <p>Free to create, and yours to keep.</p>
             </div>
             <div class="lp-cta">
-                <a class="btn btn-primary btn-lg" href="{{ url_for('auth.register') }}">
+                <a class="btn btn-primary btn-lg" href="{{ url_for('auth.login') }}">
                     Create your portfolio
                     <i class="bi bi-arrow-right" aria-hidden="true"></i>
                 </a>
-                <a class="btn btn-secondary btn-lg" href="{{ url_for('auth.login') }}">Log in</a>
             </div>
         </div>
     </section>
@@ -270,8 +267,7 @@
         <nav class="lp-footer__links" aria-label="Footer">
             <a href="#product">Product</a>
             <a href="#how">How it works</a>
-            <a href="{{ url_for('auth.login') }}">Log in</a>
-            <a href="{{ url_for('auth.register') }}">Sign up</a>
+            <a href="{{ url_for('auth.login') }}">Continue</a>
             {# Leaves the site, so it is set apart from the in-page links
                rather than hidden among them. #}
             <a class="lp-footer__source" href="https://github.com/nasserx/OnePortfolio"

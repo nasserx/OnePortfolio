@@ -6,6 +6,7 @@ import re
 
 from portfolio_app import db
 from portfolio_app.models.user import User
+from tests._auth import authenticate_client
 
 
 _TEMPLATE_ROOT = Path(__file__).resolve().parents[1] / 'portfolio_app' / 'templates'
@@ -106,14 +107,13 @@ def _authenticated_client(app):
             email='csp-user@example.com',
             is_verified=True,
         )
-        user.set_password('correct-password')
+        user.password_hash = 'legacy-test-hash'
         db.session.add(user)
         db.session.commit()
-        identity = user.get_id()
+        user_id = user.id
+        auth_generation = user.auth_generation
 
-    with client.session_transaction() as session:
-        session['_user_id'] = identity
-        session['_fresh'] = True
+    authenticate_client(client, user_id, auth_generation)
     return client
 
 
@@ -202,7 +202,7 @@ def test_rendered_executable_scripts_share_their_response_nonce(app):
 
     expected_executable_counts = {
         'landing shell': 1,
-        'authentication shell': 2,
+        'authentication shell': 1,
         'primary application shell': 2,
         'dynamic assets page': 2,
     }
@@ -278,7 +278,7 @@ def test_production_templates_have_no_inline_handlers_or_javascript_urls():
 def test_every_production_inline_script_has_the_correct_nonce_contract():
     parser = _parse_production_templates()
 
-    assert len(parser.executable_inline_scripts) == 11
+    assert len(parser.executable_inline_scripts) == 8
     assert {
         attrs.get('nonce') for attrs in parser.executable_inline_scripts
     } == {'{{ csp_nonce }}'}

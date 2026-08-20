@@ -8,6 +8,7 @@ from pathlib import Path
 
 from portfolio_app import db
 from portfolio_app.models.user import User
+from tests._auth import authenticate_client
 from portfolio_app.services.factory import Services
 
 
@@ -126,7 +127,7 @@ def _seed_user():
         email='action_menu_user@example.com',
         is_verified=True,
     )
-    user.set_password('test-password')
+    user.password_hash = 'legacy-test-hash'
     db.session.add(user)
     db.session.commit()
     return user.id
@@ -168,9 +169,7 @@ def _render_pages(app):
         ids = _seed_activity(user_id)
 
     client = app.test_client()
-    with client.session_transaction() as session:
-        session['_user_id'] = str(user_id)
-        session['_fresh'] = True
+    authenticate_client(client, user_id)
 
     rendered = {}
     for path in ('/portfolios/', '/transactions/'):

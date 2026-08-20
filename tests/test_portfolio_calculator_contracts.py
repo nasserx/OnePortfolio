@@ -28,7 +28,7 @@ def _tx(transaction_type, price, quantity, fees='0', date=None):
 
 def _seed_user(username):
     user = User(username=username, email=f'{username}@example.com', is_verified=True)
-    user.set_password('test-password')
+    user.password_hash = 'legacy-test-hash'
     db.session.add(user)
     db.session.commit()
     return user

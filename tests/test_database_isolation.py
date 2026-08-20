@@ -16,7 +16,7 @@ def test_database_starts_empty_before_creating_user(app):
     with app.app_context():
         assert User.query.count() == 0
         user = User(username='isolation_a', email='isolation_a@example.com', is_verified=True)
-        user.set_password('test-password')
+        user.password_hash = 'legacy-test-hash'
         db.session.add(user)
         db.session.commit()
         assert User.query.count() == 1

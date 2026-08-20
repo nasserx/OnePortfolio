@@ -4,13 +4,6 @@ OnePortfolio is a Flask web app for manual portfolio record keeping. It tracks p
 
 It does not fetch live prices, calculate market value, calculate unrealized P&L, connect to brokers, or provide financial advice.
 
-## Live Demo
-
-- URL: https://oneportfolio.pythonanywhere.com
-- Username: `demo`
-- Password: `demo1234`
-- Demo data may be changed by visitors or reset periodically.
-
 ## What It Tracks
 
 - **Portfolios**: user-defined buckets such as Stocks, ETFs, Gold, or any other name.
@@ -40,7 +33,7 @@ For exact formulas, see [docs/DOMAIN_AND_CALCULATIONS.md](docs/DOMAIN_AND_CALCUL
 - Separate income tracking.
 - Overview totals, portfolio summaries, assets page, and Overview allocation charts based on recorded data.
 - Multi-user accounts with per-user data scoping.
-- Self-service email verification, password reset, and account settings.
+- Passwordless email-code login, registration, and account settings.
 - Responsive dark-only UI using Bootstrap, Bootstrap Icons, and local design tokens.
 
 ## Tech Stack
@@ -53,7 +46,6 @@ For exact formulas, see [docs/DOMAIN_AND_CALCULATIONS.md](docs/DOMAIN_AND_CALCUL
 - Flask-WTF CSRF support plus custom validation
 - Flask-Mail for email delivery
 - Flask-Limiter for auth rate limits
-- Authlib OAuth client foundation and disabled-by-default Google OAuth routes
 - Bootstrap 5, Bootstrap Icons, vanilla JavaScript
 - pytest
 
@@ -95,7 +87,7 @@ python app.py
 
 There is no separate database-initialization step. The application factory creates and migrates the SQLite database on startup, so the first `python app.py` prepares `portfolio.db` by itself.
 
-Sending verification and password-reset email needs real `EMAIL_USER` and `EMAIL_PASSWORD` credentials; local delivery is not stubbed or suppressed.
+Sending authentication and account-verification codes needs real `EMAIL_USER` and `EMAIL_PASSWORD` credentials; local delivery is not stubbed or suppressed.
 
 The development server runs at `http://127.0.0.1:5000` by default. `python app.py` is the local entry point only: it selects the debug development configuration, while production runs the base configuration through `wsgi.py` (see [Deployment Notes](#deployment-notes)). Registered users manage only their own accounts and tenant-scoped portfolio data; the public application exposes no privileged cross-user role. Exceptional deployment or database maintenance remains outside the application authorization model.
 
@@ -109,21 +101,21 @@ Supported environment variables are defined in [config.py](config.py):
 | --- | --- |
 | `SECRET_KEY` | Flask session and CSRF signing key. Read when `config.py` is imported, so `python app.py` does not exempt it: set it unless `FLASK_DEBUG` or pytest enables the dev-only insecure fallback. |
 | `DATABASE_URL` | SQLAlchemy database URI. Defaults to local SQLite `portfolio.db`. |
-| `EMAIL_USER` | Gmail sender address for verification and reset emails. |
+| `EMAIL_USER` | Gmail sender address for authentication and account-verification codes. |
 | `EMAIL_PASSWORD` | Gmail app password for the sender account. |
-| `APP_BASE_URL` | Public origin used in emailed reset links: scheme, hostname, and optional port only. Production requires an absolute HTTPS origin. The `python app.py` development entry point and tests permit HTTP and fall back to `http://127.0.0.1:5000` when blank. |
-| `SESSION_COOKIE_SECURE` | Controls Secure session and remember cookies and HSTS. Unset/blank uses automatic mode: secure outside debug/test contexts. Explicit values are `1`/`true` or `0`/`false`; other values fail startup. |
+| `SESSION_COOKIE_SECURE` | Controls Secure session cookies and HSTS. Unset/blank uses automatic mode: secure outside debug/test contexts. Explicit values are `1`/`true` or `0`/`false`; other values fail startup. |
 | `RATELIMIT_STORAGE_URI` | Flask-Limiter storage URI. Unset/blank uses process-local `memory://`, suitable when one application process is authoritative for counters. Multi-process deployments require a shared Flask-Limiter backend and its deployment-specific client/service; none is bundled by this repository. |
 | `DEV_AUTO_LOGIN` | Development-only first-user auto-login. Never enable in production. |
 | `FLASK_DEBUG` | Enables Flask debug mode when set by your run environment. Also allows the dev-only secret fallback. |
-| `GOOGLE_OAUTH_ENABLED` | Optional backend Google OAuth route flag. Disabled by default; existing-account Google sign-in is available only when explicitly configured. |
-| `GOOGLE_CLIENT_ID` | Optional Google OAuth client ID, required only when `GOOGLE_OAUTH_ENABLED=1`. |
-| `GOOGLE_CLIENT_SECRET` | Optional Google OAuth client secret, required only when `GOOGLE_OAUTH_ENABLED=1`. |
-| `GOOGLE_REDIRECT_URI` | Optional Google OAuth callback URI, required only when `GOOGLE_OAUTH_ENABLED=1`. |
-
 Gmail requires an app password, not the regular account password.
 
-Google OAuth is disabled by default. When enabled, the login page shows a Google sign-in control for existing verified accounts only. Previously linked Google identities sign in by Google's stable OpenID Connect subject claim. On first successful Google sign-in, a verified Google email may create one Google identity link for a matching verified local account. Google sign-in does not create local accounts and does not persist provider tokens or payloads.
+Authentication uses email plus a six-digit one-time code. Codes expire after 10
+minutes, allow at most five failed verification attempts, and are rotated on
+resend. A successful login has a rolling seven-day inactivity lifetime and a
+30-day absolute lifetime. Sensitive account changes require authentication in
+the preceding 15 minutes. Password and Google OAuth runtime paths are not
+available, remember-me is not used, and the application publishes no shared
+demo credentials.
 
 ## Project Structure
 
@@ -146,7 +138,7 @@ OnePortfolio/
     ├── routes/               # Flask blueprints
     ├── templates/            # Jinja templates
     ├── static/               # CSS, JavaScript, icons
-    └── utils/                # Formatting, decimal, messages, email, tokens
+    └── utils/                # Formatting, decimal, messages, email, OTP/session helpers
 ```
 
 ## Documentation
@@ -169,7 +161,7 @@ Tests live in `tests/`.
 
 ## Deployment Notes
 
-Use `wsgi.py` or your host's WSGI configuration to create the Flask app. Set required environment variables in the host environment rather than source control. Use HTTPS, set `APP_BASE_URL` to the externally reachable HTTPS origin, and set `SESSION_COOKIE_SECURE=1` for production deployments.
+Use `wsgi.py` or your host's WSGI configuration to create the Flask app. Set required environment variables in the host environment rather than source control. Use HTTPS and set `SESSION_COOKIE_SECURE=1` for production deployments.
 
 ## License
 

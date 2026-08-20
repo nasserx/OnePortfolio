@@ -100,6 +100,19 @@ def _csrf_token(response):
     return match.group(1)
 
 
+def _freeze_auth_service_time(monkeypatch, moment):
+    class FrozenDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            if tz is None:
+                return moment.replace(tzinfo=None)
+            return moment.astimezone(tz)
+
+    monkeypatch.setattr(
+        'portfolio_app.services.auth_service.datetime', FrozenDateTime,
+    )
+
+
 def test_email_entry_ui_is_single_accessible_passwordless_flow(client):
     html = client.get('/login').get_data(as_text=True)
     assert 'name="email"' in html
@@ -195,6 +208,131 @@ def test_new_email_uses_same_flow_and_creates_passwordless_user(
         assert user.is_verified is True
         assert user.password_hash is None
         assert PendingRegistration.query.count() == 0
+
+
+def test_registration_challenge_expiry_is_capped_by_pending_registration(app):
+    cutoff = (datetime.now(timezone.utc) + timedelta(minutes=2)).replace(
+        microsecond=0,
+    )
+    with app.app_context():
+        pending = PendingRegistration(
+            username='near_cutoff',
+            email='near-cutoff@example.com',
+            created_at=cutoff - timedelta(hours=24),
+            expires_at=cutoff,
+        )
+        db.session.add(pending)
+        db.session.commit()
+
+        issue = Services().auth_service.begin_authentication(pending.email)
+        challenge = AuthChallenge.query.filter_by(token=issue.token).one()
+        assert challenge.expires_at.replace(tzinfo=timezone.utc) == cutoff
+
+
+def test_registration_resend_stays_capped_without_extending_pending_lifetime(app):
+    cutoff = (datetime.now(timezone.utc) + timedelta(minutes=2)).replace(
+        microsecond=0,
+    )
+    with app.app_context():
+        pending = PendingRegistration(
+            username='resend_cutoff',
+            email='resend-cutoff@example.com',
+            created_at=cutoff - timedelta(hours=24),
+            expires_at=cutoff,
+        )
+        db.session.add(pending)
+        db.session.commit()
+
+        service = Services().auth_service
+        issue = service.begin_authentication(pending.email)
+        challenge = AuthChallenge.query.filter_by(token=issue.token).one()
+        challenge.expires_at = cutoff - timedelta(minutes=1)
+        challenge.failed_attempts = 2
+        db.session.commit()
+
+        resent = service.resend_challenge(issue.token, 'authentication')
+        assert resent is not None
+        db.session.refresh(challenge)
+        db.session.refresh(pending)
+        assert challenge.expires_at.replace(tzinfo=timezone.utc) == cutoff
+        assert challenge.failed_attempts == 0
+        assert pending.expires_at.replace(tzinfo=timezone.utc) == cutoff
+
+
+def test_live_otp_cannot_promote_an_expired_pending_registration(
+    app, client, mail_log,
+):
+    code = _begin(client, mail_log, 'expired-pending@example.com')
+    with app.app_context():
+        pending = PendingRegistration.query.one()
+        challenge = AuthChallenge.query.one()
+        pending.expires_at = datetime.now(timezone.utc) - timedelta(seconds=1)
+        challenge.expires_at = datetime.now(timezone.utc) + timedelta(minutes=5)
+        db.session.commit()
+
+    response = _verify(client, code, follow=True)
+    assert MESSAGES['VERIFICATION_CODE_INVALID_OR_EXPIRED'] in response.get_data(as_text=True)
+    with app.app_context():
+        assert User.query.filter_by(email='expired-pending@example.com').count() == 0
+        assert PendingRegistration.query.count() == 1
+        assert AuthChallenge.query.one().consumed_at is None
+
+
+@pytest.mark.parametrize(
+    'verification_offset',
+    (timedelta(microseconds=1), timedelta(0)),
+    ids=('immediately-before-cutoff', 'exact-cutoff'),
+)
+def test_registration_succeeds_through_the_inclusive_hard_cutoff(
+    app, client, mail_log, monkeypatch, verification_offset,
+):
+    code = _begin(client, mail_log, 'boundary@example.com')
+    cutoff = (datetime.now(timezone.utc) + timedelta(minutes=2)).replace(
+        microsecond=0,
+    )
+    with app.app_context():
+        pending = PendingRegistration.query.one()
+        challenge = AuthChallenge.query.one()
+        pending.expires_at = cutoff
+        challenge.expires_at = cutoff
+        db.session.commit()
+
+    _freeze_auth_service_time(monkeypatch, cutoff - verification_offset)
+    assert _verify(client, code).status_code in (302, 303)
+    with app.app_context():
+        assert User.query.filter_by(email='boundary@example.com').count() == 1
+        assert PendingRegistration.query.count() == 0
+
+
+def test_resend_cannot_revive_an_expired_pending_registration(app):
+    with app.app_context():
+        service = Services().auth_service
+        issue = service.begin_authentication('expired-resend@example.com')
+        pending = PendingRegistration.query.one()
+        challenge = AuthChallenge.query.one()
+        pending.expires_at = datetime.now(timezone.utc) - timedelta(seconds=1)
+        challenge.expires_at = datetime.now(timezone.utc) + timedelta(minutes=5)
+        challenge.failed_attempts = 2
+        db.session.commit()
+        db.session.refresh(challenge)
+        db.session.refresh(pending)
+        original_state = (
+            challenge.code_digest,
+            challenge.expires_at,
+            challenge.failed_attempts,
+            pending.expires_at,
+        )
+
+        assert service.resend_challenge(issue.token, 'authentication') is None
+        db.session.refresh(challenge)
+        db.session.refresh(pending)
+        assert (
+            challenge.code_digest,
+            challenge.expires_at,
+            challenge.failed_attempts,
+            pending.expires_at,
+        ) == original_state
+        assert User.query.filter_by(email='expired-resend@example.com').count() == 0
 
 
 def test_new_user_registration_resolves_existing_username_collision(

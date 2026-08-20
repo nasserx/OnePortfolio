@@ -4,7 +4,7 @@ OnePortfolio is a Flask application built around an application factory and laye
 
 ## Application Factory
 
-`portfolio_app/__init__.py` defines `create_app(config_class=Config)`. The factory loads configuration, initializes extensions, conditionally registers the Google OAuth client, registers blueprints, wires context processors and error handlers, and calls `run_startup_schema()` in `portfolio_app/migrations.py`, which runs the migration pass and then creates missing tables inside one exclusive startup schema lock.
+`portfolio_app/__init__.py` defines `create_app(config_class=Config)`. The factory loads configuration, initializes extensions, registers blueprints, wires context processors and error handlers, and calls `run_startup_schema()` in `portfolio_app/migrations.py`, which runs the migration pass and then creates missing tables inside one exclusive startup schema lock.
 
 The same factory is used by `app.py`, `wsgi.py`, and tests.
 
@@ -22,13 +22,31 @@ Supporting layers:
 
 Routes should stay thin: they parse HTTP concerns, call forms/services/calculators, and select templates or JSON responses.
 
-The Google OAuth backend uses Authlib and is disabled by default. When enabled with complete configuration, the app registers a Google OpenID Connect client during app creation. Authlib owns state, nonce, signature, issuer, audience, and expiry validation; the callback explicitly constrains the issuer to Google's accepted issuer identifiers and the audience to the configured client ID, and requires an ID token before consuming Authlib-produced userinfo. Transport-isolated real-Authlib contract tests protect that delegated boundary. The auth blueprint exposes backend login and callback routes for existing verified local accounts only. Previously linked Google identities resolve by provider plus Google's stable OpenID Connect `sub` claim. On first successful Google sign-in, a verified Google email may create one Google identity link for a matching verified local account.
+Authentication is email plus a one-time code. `AuthService` stages new accounts
+through `PendingRegistration` and owns persisted `AuthChallenge` records for
+both existing and new email targets. Challenge digests are HMAC-bound to their
+purpose and target; plaintext codes are never persisted. Login challenges
+expire after 10 minutes, allow five failed attempts, rotate on resend, and are
+claimed atomically for single-use verification. Request and verification routes
+are rate-limited by both client origin and normalized email target and expose
+generic responses for known and unknown addresses.
 
-`OAuthIdentity` stores the persistent provider-subject link. Account settings exposes a manual disconnect that removes the authenticated user's own link. Automatic registration and OAuth token or provider-payload persistence are not implemented.
+Flask-Login continues to use signed client-side Flask sessions; no server-side
+session store or remember identity is used. Each serialized identity binds the
+user id to `User.auth_generation`, which remains the global revocation source
+of truth. The signed session also carries authentication issue, last-seen, and
+recent-auth timestamps. Sessions fail closed without those timestamps, use a
+rolling seven-day inactivity timeout, have a 30-day absolute lifetime, and
+consider authentication recent for 15 minutes. Successful verification clears
+pre-login session state before establishing the authenticated session.
 
-Flask-Login authentication uses the signed client-side Flask session and its signed remember cookie; individual sessions are not stored server-side. Each serialized login identity binds the user id to the database-backed `User.auth_generation`. A successful local password change or password reset increments that generation in the same database commit as the new password, so sessions and remember state issued for an earlier generation no longer authenticate on their next request. New local and Google OIDC logins use the current generation, and password changes do not alter stored OAuth identity links. Pre-generation id-only identities are treated explicitly as generation zero for upgrade compatibility and stop authenticating after the user's generation advances.
-
-Public password-reset initiation is rate-limited both by client origin and by normalized target email before reset state is rotated or mail is sent. Known and unknown addresses retain the same public confirmation response. Flask-Limiter storage is selected through `RATELIMIT_STORAGE_URI`; its default `memory://` storage is authoritative only when one application process owns the counters, while multi-process deployments must provide a supported shared backend.
+Password and Google OAuth runtime routes are absent. Legacy password hashes,
+reset/lockout columns, and `OAuthIdentity` rows remain inert for a short rollback
+window; migration 35 advances every user's `auth_generation` so pre-cutover
+sessions and remember identities cannot survive. Flask-Limiter storage is
+selected through `RATELIMIT_STORAGE_URI`; its default `memory://` storage is
+authoritative only when one application process owns the counters, while
+multi-process deployments must provide a supported shared backend.
 
 ## Services Container
 
@@ -48,9 +66,10 @@ Application users manage their own accounts and tenant-scoped portfolio data. Th
 
 Models live in `portfolio_app/models/`:
 
-- `User`: accounts, password hash, authentication generation, and lockout state. The legacy application-admin column has no model field and is dropped from upgraded databases by migration Step 32.
-- `PendingRegistration`: staged signup and verification code state.
-- `OAuthIdentity`: external provider subject linked to a local user; no tokens or secrets.
+- `User`: accounts, authentication generation, inert rollback password/reset/lockout state, and pending account-security state. The legacy application-admin column has no model field and is dropped from upgraded databases by migration Step 32.
+- `PendingRegistration`: staged passwordless signup state.
+- `AuthChallenge`: purpose-bound authentication-code digest, expiry, attempt, and atomic-consumption state.
+- `OAuthIdentity`: inert rollback data for a former external provider link; no tokens or secrets.
 - `Portfolio`: user-owned portfolio bucket.
 - `PortfolioEvent`: capital entries.
 - `Symbol`: tracked asset symbol per portfolio.

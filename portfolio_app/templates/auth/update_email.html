@@ -24,6 +24,7 @@
 
                 <!-- New email -->
                 <div class="mb-3">
+                    <label for="email" class="form-label">New email address</label>
                     <input type="email" id="email" name="email"
                            class="form-control {% if form_errors.get('email') %}is-invalid{% endif %}"
                            value="{{ form_values.get('email', '') }}"
@@ -33,15 +34,7 @@
                     {% endif %}
                 </div>
 
-                <!-- Password confirmation -->
-                <div class="mb-4">
-                    <input type="password" id="password" name="password"
-                           class="form-control {% if form_errors.get('password') %}is-invalid{% endif %}"
-                           placeholder="Current password">
-                    {% if form_errors.get('password') %}
-                        <div class="invalid-feedback">{{ form_errors['password'] }}</div>
-                    {% endif %}
-                </div>
+                <p class="form-text mb-4">You’ll verify this new address with a separate code.</p>
 
                 <div class="d-flex gap-2">
                     <button type="submit" class="btn btn-primary">

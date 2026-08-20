@@ -506,31 +506,6 @@
   .field-wrap:focus-within .fi { color: var(--brand); }
 
   .field-wrap input { padding-left: 2.375rem; }
-  .field-wrap input.has-toggle { padding-right: 2.625rem; }
-
-  .field-wrap .toggle-pw {
-    position: absolute;
-    top: 50%;
-    right: var(--space-2);
-    translate: 0 -50%;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 1.75rem;
-    height: 1.75rem;
-    border: 0;
-    border-radius: var(--radius-xs);
-    background: none;
-    color: var(--fg-faint);
-    cursor: pointer;
-    transition: color var(--dur-1) var(--ease-out), background-color var(--dur-1) var(--ease-out);
-  }
-
-  .field-wrap .toggle-pw:hover {
-    color: var(--fg-default);
-    background-color: var(--bg-hover);
-  }
-
   /* `--fg-subtle`, not `--fg-faint`: the faint step holds 3:1 and is for
      text nobody has to read. A character counter is the only warning that a
      note is about to be cut off. */
@@ -653,22 +628,6 @@
     letter-spacing: 0.45em;
     text-align: center;
     text-indent: 0.45em;
-  }
-
-  /* ---- password strength ---------------------------------------------- */
-  .strength-bar {
-    height: 3px;
-    margin-top: var(--space-2);
-    border-radius: var(--radius-pill);
-    background-color: var(--bg-sunken);
-    overflow: hidden;
-  }
-
-  .strength-bar .bar-fill {
-    height: 100%;
-    border-radius: inherit;
-    background-color: var(--brand);
-    transition: width var(--dur-3) var(--ease-out), background-color var(--dur-2) var(--ease-out);
   }
 
   /* ======================================================================

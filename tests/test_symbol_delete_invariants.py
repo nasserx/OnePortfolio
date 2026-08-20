@@ -9,6 +9,7 @@ from portfolio_app import db
 from portfolio_app.calculators import PortfolioCalculator
 from portfolio_app.models import Dividend, Symbol, Transaction
 from portfolio_app.models.user import User
+from tests._auth import authenticate_client
 from portfolio_app.services.factory import Services
 from portfolio_app.utils.messages import MESSAGES
 
@@ -23,7 +24,7 @@ def _seed_user(username):
         email=f'{username}@example.com',
         is_verified=True,
     )
-    user.set_password('test-password')
+    user.password_hash = 'legacy-test-hash'
     db.session.add(user)
     db.session.commit()
     return user.id
@@ -170,9 +171,7 @@ def test_assets_page_discloses_transaction_and_income_cascade_counts(app):
         )
 
     client = app.test_client()
-    with client.session_transaction() as session:
-        session['_user_id'] = str(user_id)
-        session['_fresh'] = True
+    authenticate_client(client, user_id)
 
     response = client.get('/transactions/')
     html = response.get_data(as_text=True)

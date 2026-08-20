@@ -1,839 +1,426 @@
-"""Auth blueprint — login, register, logout, change password,
-email verification (6-digit OTP), forgot password, reset password,
-user settings, and account deletion.
-"""
+"""Passwordless authentication, email settings, and account deletion routes."""
 
 import logging
-from collections.abc import Mapping
-from functools import wraps
-from flask import Blueprint, abort, current_app, render_template, request, redirect, url_for, flash, jsonify, session
-from flask_login import login_user, logout_user, login_required, current_user
-from flask_limiter.util import get_remote_address
-from authlib.common.errors import AuthlibBaseError
-from authlib.integrations.base_client import OAuthError
-from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
-try:
-    from joserfc.errors import JoseError as _JoserfcJoseError
-except ModuleNotFoundError as exc:
-    if exc.name != 'joserfc':
-        raise
-    _JoserfcJoseError = None
-
-from portfolio_app import GOOGLE_OIDC_ACCEPTED_ISSUERS, get_oauth, limiter
-from portfolio_app.services import get_services
-from portfolio_app.utils.constants import DEMO_USERNAME
-from portfolio_app.forms.auth_forms import (
-    LoginForm,
-    RegisterForm,
-    ChangePasswordForm,
-    GoogleDisconnectForm,
-    ForgotPasswordForm,
-    ResetPasswordForm,
-    VerifyCodeForm,
-    UpdateEmailForm,
+from flask import (
+    Blueprint,
+    flash,
+    redirect,
+    render_template,
+    request,
+    session,
+    url_for,
 )
-from portfolio_app.utils.tokens import generate_reset_token, verify_reset_token
+from flask_login import current_user, login_required, login_user, logout_user
+from flask_limiter.util import get_remote_address
+from sqlalchemy.exc import SQLAlchemyError
+
+from portfolio_app import limiter
+from portfolio_app.forms.auth_forms import LoginForm, UpdateEmailForm, VerifyCodeForm
+from portfolio_app.services import get_services
+from portfolio_app.services.auth_service import (
+    AUTHENTICATION_PURPOSE,
+    RECENT_AUTH_PURPOSE,
+)
+from portfolio_app.utils.auth_session import (
+    establish_auth_session,
+    mark_recent_auth,
+    recent_auth_is_valid,
+)
 from portfolio_app.utils.email import (
+    send_authentication_email,
     send_deletion_confirmation_email,
     send_verification_email,
-    send_reset_email,
 )
 from portfolio_app.utils.messages import MESSAGES
+from portfolio_app.utils.otp import otp_digest
 from portfolio_app.utils.redirects import safe_local_redirect
 
+
 logger = logging.getLogger(__name__)
-
-_GOOGLE_OAUTH_PROTOCOL_ERRORS = (
-    OAuthError,
-    AuthlibBaseError,
-    TypeError,
-    ValueError,
-)
-if _JoserfcJoseError is not None:
-    _GOOGLE_OAUTH_PROTOCOL_ERRORS += (_JoserfcJoseError,)
-
 auth_bp = Blueprint('auth', __name__)
-_GOOGLE_OAUTH_NEXT_SESSION_KEY = 'google_oauth_next'
-_GOOGLE_OAUTH_PROVIDER = 'google'
-_EMAIL_RATE_LIMIT_KEY_MAX_LENGTH = 120
 
+_AUTH_TOKEN_KEY = 'auth_challenge_token'
+_AUTH_EMAIL_KEY = 'auth_challenge_email'
+_AUTH_NEXT_KEY = 'auth_challenge_next'
+_REAUTH_TOKEN_KEY = 'reauth_challenge_token'
+_REAUTH_NEXT_KEY = 'reauth_next'
 
-def _forgot_password_target_key():
-    """Return a bounded reset-request key matching email form normalization."""
-    email = (request.form.get('email', '') or '').strip().lower()
-    return f"forgot-password:{email[:_EMAIL_RATE_LIMIT_KEY_MAX_LENGTH]}"
-
-
-def _google_oauth_client_or_404():
-    if not current_app.config.get('GOOGLE_OAUTH_ENABLED'):
-        abort(404)
-    google = get_oauth().create_client('google')
-    if google is None:
-        abort(404)
-    return google
-
-
-def _google_oauth_available():
-    if not current_app.config.get('GOOGLE_OAUTH_ENABLED'):
-        return False
-    return get_oauth().create_client('google') is not None
-
-
-def _redirect_to_login_with_google_failure(message_key='GOOGLE_SIGNIN_FAILED'):
-    flash(MESSAGES[message_key], 'warning')
-    return redirect(url_for('auth.login'))
-
-
-def _login_google_linked_user(identity, next_page):
-    user = identity.user
-    if not user or not user.is_verified:
-        return _redirect_to_login_with_google_failure()
-
-    login_user(user, remember=False)
-    return redirect(next_page or url_for('dashboard.index'))
-
-
-def _identity_links_same_user_and_subject(identity, user_id, subject):
-    return (
-        identity is not None
-        and identity.user_id == user_id
-        and identity.provider_subject == subject
+def _email_rate_limit_key(email: str) -> str:
+    """Return a stable normalized-target key without exposing the address."""
+    normalized = (email or '').strip().lower()
+    return 'auth-email:' + otp_digest(
+        '', purpose='auth-rate-limit', context=(normalized,),
     )
 
 
-def _create_google_identity_or_resolve_race(svc, user, subject):
-    identity_repo = svc.oauth_identity_repo
-    identity_repo.create(user.id, _GOOGLE_OAUTH_PROVIDER, subject)
-    try:
-        identity_repo.commit()
-    except IntegrityError:
-        identity_repo.db.session.rollback()
-        by_subject = identity_repo.get_by_provider_subject(
-            _GOOGLE_OAUTH_PROVIDER,
-            subject,
-        )
-        by_user = identity_repo.get_for_user_and_provider(
-            user.id,
-            _GOOGLE_OAUTH_PROVIDER,
-        )
-        if (
-            by_subject is not None
-            and by_user is not None
-            and by_subject.id == by_user.id
-            and _identity_links_same_user_and_subject(by_subject, user.id, subject)
-        ):
-            return by_subject
-        return None
-
-    return identity_repo.get_by_provider_subject(_GOOGLE_OAUTH_PROVIDER, subject)
+def _request_email_key():
+    return _email_rate_limit_key(request.form.get('email', ''))
 
 
-def demo_restricted(f):
-    """Block demo account from mutating credentials; redirect to settings with a warning."""
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        if current_user.is_authenticated and current_user.username == DEMO_USERNAME:
-            flash(MESSAGES['DEMO_ACTION_DISABLED'], 'warning')
-            return redirect(url_for('auth.settings'))
-        return f(*args, **kwargs)
-    return decorated
+def _active_auth_email_key():
+    return _email_rate_limit_key(session.get(_AUTH_EMAIL_KEY, ''))
 
 
-@auth_bp.app_context_processor
-def inject_demo_flag():
-    """Expose ``is_demo_account`` to all templates rendered by this blueprint."""
-    return {
-        'is_demo_account': (
-            current_user.is_authenticated and current_user.username == DEMO_USERNAME
-        )
-    }
+def _current_user_email_key():
+    return _email_rate_limit_key(getattr(current_user, 'email', ''))
 
 
-# ---------------------------------------------------------------------------
-# Login / Logout
-# ---------------------------------------------------------------------------
+def _render_code_page(*, recent=False, form_errors=None, status=200):
+    return render_template(
+        'auth/verify_code.html',
+        form_errors=form_errors or {},
+        verify_endpoint='auth.reauthenticate_verify' if recent else 'auth.verify_code',
+        resend_endpoint='auth.reauthenticate_resend' if recent else 'auth.resend_code',
+        heading='Verification code',
+        submit_label='Confirm' if recent else 'Continue',
+        back_url=(
+            url_for('auth.settings', tab='security')
+            if recent else url_for('auth.login')
+        ),
+    ), status
+
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 @limiter.limit(
-    "10 per 5 minutes",
-    methods=['POST'],
-    key_func=get_remote_address,
-    error_message=MESSAGES['ACCOUNT_LOCKED'],
+    '10 per 15 minutes', methods=['POST'], key_func=get_remote_address,
+    error_message=MESSAGES['RATE_LIMIT_AUTH_REQUEST'],
+)
+@limiter.limit(
+    '5 per hour', methods=['POST'], key_func=_request_email_key,
+    error_message=MESSAGES['RATE_LIMIT_AUTH_REQUEST'],
 )
 def login():
-    """Login page. Blocks unverified accounts.
-
-    The per-IP rate limit raises the cost of brute-force sweeps. The
-    per-account lockout still applies on top, while locked-account state is
-    disclosed only after the submitted password has been verified.
-    """
+    """Begin the sole production authentication and registration flow."""
     if current_user.is_authenticated:
         return redirect(url_for('dashboard.index'))
-
     form_errors = {}
     form_values = {}
-
     if request.method == 'POST':
-        from_modal = bool(request.form.get('_modal'))
         form = LoginForm(request.form)
         if form.validate():
-            data = form.get_cleaned_data()
-            svc = get_services()
-            result = svc.auth_service.authenticate(data['username'], data['password'])
-
-            if result == 'locked':
-                form_errors['__all__'] = MESSAGES['ACCOUNT_LOCKED']
-                form_values = request.form
-            elif result == 'pending':
-                # The identifier matches a staged sign-up that was never
-                # confirmed. The previous behaviour redirected to
-                # /verify-code?email=..., which leaked that the email
-                # exists in pending state — a clean enumeration oracle.
-                # Collapse this into the same generic invalid-credentials
-                # response; the legitimate user already received the OTP
-                # by email when they signed up and can navigate there.
-                form_errors['__all__'] = MESSAGES['INVALID_CREDENTIALS']
-                form_values = request.form
-            elif isinstance(result, str):
-                # Defensive: any other sentinel string is treated as a soft block.
-                form_errors['__all__'] = MESSAGES['INVALID_CREDENTIALS']
-                form_values = request.form
-            elif result:
-                remember = request.form.get('remember') == 'on'
-                login_user(result, remember=remember)
-                # Open-redirect / dangerous-scheme defence. Accept ONLY a
-                # plain relative path: starts with '/', is not protocol-
-                # relative ('//evil.com'), is not backslash-prefixed
-                # ('/\\evil.com' — Windows quirk), and the parsed URL has
-                # no scheme/netloc. The previous netloc-only check let
-                # 'javascript:alert(1)' through (empty netloc) — Safari
-                # historically followed that as a Location header.
-                next_page = safe_local_redirect(request.args.get('next'))
-                redirect_url = next_page or url_for('dashboard.index')
-                if from_modal:
-                    return jsonify({'ok': True, 'redirect': redirect_url})
-                return redirect(redirect_url)
-            else:
-                form_errors['__all__'] = MESSAGES['INVALID_CREDENTIALS']
-                form_values = request.form
+            email = form.get_cleaned_data()['email']
+            try:
+                issue = get_services().auth_service.begin_authentication(email)
+                send_authentication_email(issue.recipient, issue.code)
+                session[_AUTH_TOKEN_KEY] = issue.token
+                session[_AUTH_EMAIL_KEY] = email
+                session[_AUTH_NEXT_KEY] = safe_local_redirect(request.args.get('next'))
+                flash(MESSAGES['AUTH_CODE_REQUEST_RESULT'], 'info')
+                return redirect(url_for('auth.verify_code'))
+            except Exception:
+                logger.warning('Authentication challenge creation failed')
+                form_errors['__all__'] = MESSAGES['AUTH_REQUEST_FAILED']
         else:
             form_errors = form.errors
-            form_values = request.form
-
-        if from_modal:
-            return jsonify({'ok': False, 'errors': form_errors}), 422
-
+        form_values = request.form
     return render_template(
         'auth/login.html',
         form_errors=form_errors,
         form_values=form_values,
-        google_oauth_available=_google_oauth_available(),
         safe_next=safe_local_redirect(request.args.get('next')),
     )
+
+
+@auth_bp.route('/register', methods=['GET', 'POST'])
+def register():
+    """Legacy URL alias; account creation now starts at the email entry flow."""
+    next_page = safe_local_redirect(request.args.get('next'))
+    return redirect(url_for('auth.login', next=next_page) if next_page else url_for('auth.login'))
+
+
+@auth_bp.route('/verify-code', methods=['GET', 'POST'])
+@limiter.limit(
+    '10 per 15 minutes', methods=['POST'], key_func=get_remote_address,
+    error_message=MESSAGES['RATE_LIMIT_AUTH_VERIFY'],
+)
+@limiter.limit(
+    '5 per 15 minutes', methods=['POST'], key_func=_active_auth_email_key,
+    error_message=MESSAGES['RATE_LIMIT_AUTH_VERIFY'],
+)
+def verify_code():
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard.index'))
+    token = session.get(_AUTH_TOKEN_KEY)
+    if not token or not session.get(_AUTH_EMAIL_KEY):
+        return redirect(url_for('auth.login'))
+    errors = {}
+    if request.method == 'POST':
+        form = VerifyCodeForm(request.form)
+        if form.validate():
+            user = get_services().auth_service.verify_challenge(
+                token,
+                form.get_cleaned_data()['code'],
+                AUTHENTICATION_PURPOSE,
+            )
+            if user is not None:
+                next_page = safe_local_redirect(session.get(_AUTH_NEXT_KEY))
+                session.clear()
+                login_user(user, remember=False, fresh=True)
+                session.permanent = True
+                establish_auth_session(session)
+                return redirect(next_page or url_for('dashboard.index'))
+            errors['code'] = MESSAGES['VERIFICATION_CODE_INVALID_OR_EXPIRED']
+        else:
+            errors = form.errors
+    return _render_code_page(form_errors=errors)[0]
+
+
+@auth_bp.route('/resend-code', methods=['POST'])
+@limiter.limit(
+    '10 per hour', methods=['POST'], key_func=get_remote_address,
+    error_message=MESSAGES['RATE_LIMIT_RESEND'],
+)
+@limiter.limit(
+    '3 per hour', methods=['POST'], key_func=_active_auth_email_key,
+    error_message=MESSAGES['RATE_LIMIT_RESEND'],
+)
+def resend_code():
+    token = session.get(_AUTH_TOKEN_KEY)
+    if token:
+        issue = get_services().auth_service.resend_challenge(
+            token, AUTHENTICATION_PURPOSE,
+        )
+        if issue:
+            send_authentication_email(issue.recipient, issue.code)
+    flash(MESSAGES['AUTH_CODE_REQUEST_RESULT'], 'info')
+    return redirect(url_for('auth.verify_code') if token else url_for('auth.login'))
 
 
 @auth_bp.route('/logout', methods=['POST'])
 @login_required
 def logout():
-    """Logout (CSRF-protected POST)."""
     logout_user()
+    session.clear()
+    session['_remember'] = 'clear'
     return redirect(url_for('auth.login'))
 
 
-# ---------------------------------------------------------------------------
-# Register + Email Verification (6-digit OTP)
-# ---------------------------------------------------------------------------
-
-@auth_bp.route('/register', methods=['GET', 'POST'])
-@limiter.limit("5 per hour", methods=['POST'], error_message=MESSAGES['RATE_LIMIT_SIGNUP'])
-def register():
-    """Register new account. Sends a 6-digit verification code on success.
-
-    Rate-limited to 5 sign-up attempts per IP per hour. Sign-ups stage in
-    the ``pending_registration`` table; the user record is only created
-    after the OTP is confirmed.
-    """
-    if current_user.is_authenticated:
-        return redirect(url_for('dashboard.index'))
-
-    form_errors = {}
-    form_values = {}
-
-    if request.method == 'POST':
-        from_modal = bool(request.form.get('_modal'))
-        svc = get_services()
-
-        form = RegisterForm(
-            request.form,
-            check_email_taken=svc.auth_service.email_is_unavailable,
-        )
-
-        if form.validate():
-            data = form.get_cleaned_data()
-            try:
-                pending, code = svc.auth_service.register(
-                    data['email'],
-                    data['password'],
-                )
-
-                email_sent = send_verification_email(pending.email, code)
-                if not email_sent:
-                    logger.error('Verification email failed for %s', pending.email)
-
-                verify_url = url_for('auth.verify_code', email=pending.email)
-                if from_modal:
-                    return jsonify({'ok': True, 'redirect': verify_url})
-                return redirect(verify_url)
-
-            except ValueError as e:
-                form_errors['__all__'] = str(e)
-                form_values = request.form
-            except Exception:
-                logger.exception('Registration failed')
-                form_errors['__all__'] = MESSAGES['REGISTRATION_FAILED']
-                form_values = request.form
-        else:
-            form_errors = form.errors
-            form_values = request.form
-
-        if from_modal:
-            return jsonify({'ok': False, 'errors': form_errors}), 422
-
-    return render_template(
-        'auth/register.html',
-        form_errors=form_errors,
-        form_values=form_values,
-    )
-
-
-@auth_bp.route('/auth/google')
-@limiter.limit("10 per 5 minutes", key_func=get_remote_address, error_message=MESSAGES['ACCOUNT_LOCKED'])
-def google_signin():
-    """Begin Google OAuth sign-in for existing accounts only."""
-    google = _google_oauth_client_or_404()
+@auth_bp.route('/reauthenticate', methods=['GET', 'POST'])
+@login_required
+@limiter.limit(
+    '10 per 15 minutes', methods=['POST'], key_func=get_remote_address,
+    error_message=MESSAGES['RATE_LIMIT_AUTH_REQUEST'],
+)
+@limiter.limit(
+    '5 per hour', methods=['POST'], key_func=_current_user_email_key,
+    error_message=MESSAGES['RATE_LIMIT_AUTH_REQUEST'],
+)
+def reauthenticate():
+    if recent_auth_is_valid(session):
+        return redirect(safe_local_redirect(request.args.get('next')) or url_for('auth.settings'))
     next_page = safe_local_redirect(request.args.get('next'))
     if next_page:
-        session[_GOOGLE_OAUTH_NEXT_SESSION_KEY] = next_page
-    else:
-        session.pop(_GOOGLE_OAUTH_NEXT_SESSION_KEY, None)
-
-    redirect_uri = current_app.config['GOOGLE_REDIRECT_URI']
-    return google.authorize_redirect(redirect_uri)
-
-
-@auth_bp.route('/auth/google/callback')
-def google_callback():
-    """Complete Google OAuth sign-in for an existing verified local account."""
-    google = _google_oauth_client_or_404()
-    next_page = safe_local_redirect(
-        session.pop(_GOOGLE_OAUTH_NEXT_SESSION_KEY, None)
-    )
-
-    try:
-        # Supplying custom claims options disables Authlib's metadata-derived
-        # issuer default, so constrain both claims explicitly. Authlib remains
-        # responsible for decoding and validating the signed ID token.
-        token = google.authorize_access_token(claims_options={
-            'iss': {'values': list(GOOGLE_OIDC_ACCEPTED_ISSUERS)},
-            'aud': {'values': [current_app.config['GOOGLE_CLIENT_ID']]},
-        })
-    except _GOOGLE_OAUTH_PROTOCOL_ERRORS as exc:
-        logger.info(
-            'Google OAuth authorization failed: %s',
-            type(exc).__name__,
-        )
-        return _redirect_to_login_with_google_failure()
-
-    if not isinstance(token, Mapping):
-        return _redirect_to_login_with_google_failure()
-    # ``userinfo`` is trusted only when Authlib processed an OpenID Connect
-    # ID token. Never accept an arbitrary token-response field by itself.
-    if not token.get('id_token'):
-        return _redirect_to_login_with_google_failure()
-    identity = token.get('userinfo')
-
-    if not isinstance(identity, Mapping):
-        return _redirect_to_login_with_google_failure()
-
-    subject = identity.get('sub')
-    if not isinstance(subject, str) or not subject:
-        return _redirect_to_login_with_google_failure()
-
-    email = (identity.get('email') or '').strip().lower()
-    if not email or identity.get('email_verified') is not True:
-        return _redirect_to_login_with_google_failure()
-
-    svc = get_services()
-    identity_link = svc.oauth_identity_repo.get_by_provider_subject(
-        _GOOGLE_OAUTH_PROVIDER,
-        subject,
-    )
-    if identity_link is not None:
-        return _login_google_linked_user(identity_link, next_page)
-
-    user = svc.user_repo.get_by_email(email)
-    if not user or not user.is_verified:
-        return _redirect_to_login_with_google_failure('GOOGLE_SIGNIN_NO_ACCOUNT')
-
-    existing_user_link = svc.oauth_identity_repo.get_for_user_and_provider(
-        user.id,
-        _GOOGLE_OAUTH_PROVIDER,
-    )
-    if existing_user_link is not None:
-        if existing_user_link.provider_subject == subject:
-            return _login_google_linked_user(existing_user_link, next_page)
-        return _redirect_to_login_with_google_failure()
-
-    identity_link = _create_google_identity_or_resolve_race(svc, user, subject)
-    if not _identity_links_same_user_and_subject(identity_link, user.id, subject):
-        return _redirect_to_login_with_google_failure()
-
-    login_user(user, remember=False)
-    return redirect(next_page or url_for('dashboard.index'))
+        session[_REAUTH_NEXT_KEY] = next_page
+    if request.method == 'POST':
+        try:
+            issue = get_services().auth_service.begin_recent_authentication(current_user)
+            send_authentication_email(issue.recipient, issue.code)
+            session[_REAUTH_TOKEN_KEY] = issue.token
+            flash(MESSAGES['AUTH_CODE_REQUEST_RESULT'], 'info')
+            return redirect(url_for('auth.reauthenticate_verify'))
+        except Exception:
+            logger.warning('Recent-auth challenge creation failed')
+            flash(MESSAGES['AUTH_REQUEST_FAILED'], 'warning')
+    return render_template('auth/reauthenticate.html')
 
 
-@auth_bp.route('/verify-code', methods=['GET', 'POST'])
+@auth_bp.route('/reauthenticate/verify', methods=['GET', 'POST'])
+@login_required
 @limiter.limit(
-    "5 per 15 minutes",
-    methods=['POST'],
-    key_func=lambda: (request.args.get('email', '') or request.form.get('email', '') or '').lower(),
-    error_message=MESSAGES['ACCOUNT_LOCKED'],
+    '10 per 15 minutes', methods=['POST'], key_func=get_remote_address,
+    error_message=MESSAGES['RATE_LIMIT_AUTH_VERIFY'],
 )
-def verify_code():
-    """Page where the user enters the 6-digit verification code."""
-    email = request.args.get('email', '')
-
-    if not email:
-        return redirect(url_for('auth.register'))
-
-    form_errors = {}
-
+@limiter.limit(
+    '5 per 15 minutes', methods=['POST'], key_func=_current_user_email_key,
+    error_message=MESSAGES['RATE_LIMIT_AUTH_VERIFY'],
+)
+def reauthenticate_verify():
+    token = session.get(_REAUTH_TOKEN_KEY)
+    if not token:
+        return redirect(url_for('auth.reauthenticate'))
+    errors = {}
     if request.method == 'POST':
         form = VerifyCodeForm(request.form)
         if form.validate():
-            data = form.get_cleaned_data()
-            svc = get_services()
-            success, error_msg = svc.auth_service.verify_user(email, data['code'])
-
-            if success:
-                # If the user is already logged in this was a pending email update —
-                # the email has been applied; send them back to settings.
-                if current_user.is_authenticated:
-                    flash(MESSAGES['EMAIL_UPDATED'], 'success')
-                    return redirect(url_for('auth.settings', tab='security'))
-
-                # Otherwise this was a registration verification — auto-login.
-                verified_user = svc.user_repo.get_by_email(email)
-                if verified_user:
-                    login_user(verified_user)
-                    return redirect(url_for('dashboard.index'))
-            else:
-                form_errors['code'] = error_msg
+            user = get_services().auth_service.verify_challenge(
+                token,
+                form.get_cleaned_data()['code'],
+                RECENT_AUTH_PURPOSE,
+            )
+            if user is not None and user.id == current_user.id:
+                session.pop(_REAUTH_TOKEN_KEY, None)
+                mark_recent_auth(session)
+                return redirect(
+                    safe_local_redirect(session.pop(_REAUTH_NEXT_KEY, None))
+                    or url_for('auth.settings', tab='security')
+                )
+            errors['code'] = MESSAGES['VERIFICATION_CODE_INVALID_OR_EXPIRED']
         else:
-            form_errors = form.errors
-
-    return render_template(
-        'auth/verify_code.html',
-        email=email,
-        form_errors=form_errors,
-    )
+            errors = form.errors
+    return _render_code_page(recent=True, form_errors=errors)[0]
 
 
-@auth_bp.route('/resend-code', methods=['POST'])
+@auth_bp.route('/reauthenticate/resend', methods=['POST'])
+@login_required
 @limiter.limit(
-    "3 per hour",
-    methods=['POST'],
-    key_func=lambda: (request.args.get('email', '') or '').lower(),
+    '10 per hour', methods=['POST'], key_func=get_remote_address,
     error_message=MESSAGES['RATE_LIMIT_RESEND'],
 )
-def resend_code():
-    """Resend a fresh 6-digit verification code to the user's email.
-
-    Rate-limited to 3 requests per email per hour.
-    """
-    email = request.args.get('email', '')
-
-    if not email:
-        return redirect(url_for('auth.register'))
-
-    svc = get_services()
-    new_code = svc.auth_service.resend_verification_code(email)
-
-    if new_code:
-        send_verification_email(email, new_code)
-
-    # Keep workflow existence and synchronous delivery outcomes private.
-    # The service remains responsible for deciding whether live state can be
-    # rotated; this public boundary always reports the same conditional result.
-    flash(MESSAGES['VERIFICATION_CODE_RESEND_RESULT'], 'info')
-
-    return redirect(url_for('auth.verify_code', email=email))
-
-
-# ---------------------------------------------------------------------------
-# Change Password (logged-in users)
-# ---------------------------------------------------------------------------
-
-@auth_bp.route('/change-password', methods=['GET', 'POST'])
-@login_required
-@demo_restricted
-def change_password():
-    """Change password page."""
-    form_errors = {}
-    form_values = {}
-
-    if request.method == 'POST':
-        form = ChangePasswordForm(request.form)
-        if form.validate():
-            data = form.get_cleaned_data()
-            svc = get_services()
-            try:
-                svc.auth_service.change_password(
-                    current_user,
-                    data['current_password'],
-                    data['new_password'],
-                )
-                # Rotate the session: invalidate the current cookie and
-                # require the user to sign in again with the new password.
-                # Without this, a stolen session cookie would survive a
-                # password change — which is exactly the recovery action.
-                logout_user()
-                flash(MESSAGES['PASSWORD_CHANGED'], 'success')
-                return redirect(url_for('auth.login'))
-            except ValueError as e:
-                form_errors['current_password'] = str(e)
-                form_values = request.form
-            except Exception:
-                logger.exception('Password change failed')
-                form_errors['__all__'] = MESSAGES['PASSWORD_CHANGE_FAILED']
-                form_values = request.form
-        else:
-            form_errors = form.errors
-            form_values = request.form
-
-    return render_template(
-        'auth/change_password.html',
-        form_errors=form_errors,
-        form_values=form_values,
-    )
-
-
-# ---------------------------------------------------------------------------
-# Update Email
-# ---------------------------------------------------------------------------
-
-@auth_bp.route('/update-email', methods=['GET', 'POST'])
-@login_required
-@demo_restricted
-def update_email():
-    """Stage a new email address and send an OTP to verify it.
-
-    The current email is not changed until the user confirms the OTP on the
-    verify-code page. The user stays logged in throughout the flow.
-    """
-    form_errors = {}
-    form_values = {}
-
-    if request.method == 'POST':
-        svc = get_services()
-
-        form = UpdateEmailForm(request.form)
-
-        if form.validate():
-            data = form.get_cleaned_data()
-            try:
-                code = svc.auth_service.update_email(
-                    current_user,
-                    data['email'],
-                    data['password'],
-                )
-                send_verification_email(data['email'], code)
-
-                # Stay logged in — email is only applied after OTP confirmation
-                return redirect(url_for('auth.verify_code', email=data['email']))
-
-            except ValueError as e:
-                field = (
-                    'email'
-                    if str(e) == MESSAGES['EMAIL_IN_USE']
-                    else 'password'
-                )
-                form_errors[field] = str(e)
-                form_values = request.form
-            except Exception:
-                logger.exception('Email update failed')
-                form_errors['__all__'] = MESSAGES['EMAIL_UPDATE_FAILED']
-                form_values = request.form
-        else:
-            form_errors = form.errors
-            form_values = request.form
-
-    return render_template(
-        'auth/update_email.html',
-        form_errors=form_errors,
-        form_values=form_values,
-        current_email=current_user.email,
-    )
-
-
-# ---------------------------------------------------------------------------
-# Forgot Password / Reset Password
-# ---------------------------------------------------------------------------
-
-@auth_bp.route('/forgot-password', methods=['GET', 'POST'])
 @limiter.limit(
-    "10 per hour",
-    methods=['POST'],
-    key_func=get_remote_address,
-    error_message=MESSAGES['RATE_LIMIT_PASSWORD_RESET'],
+    '3 per hour', methods=['POST'], key_func=_current_user_email_key,
+    error_message=MESSAGES['RATE_LIMIT_RESEND'],
 )
-@limiter.limit(
-    "3 per hour",
-    methods=['POST'],
-    key_func=_forgot_password_target_key,
-    error_message=MESSAGES['RATE_LIMIT_PASSWORD_RESET'],
-)
-def forgot_password():
-    """Send reset links, bounded per client origin and normalized email."""
-    if current_user.is_authenticated:
-        return redirect(url_for('dashboard.index'))
+def reauthenticate_resend():
+    token = session.get(_REAUTH_TOKEN_KEY)
+    if token:
+        issue = get_services().auth_service.resend_challenge(token, RECENT_AUTH_PURPOSE)
+        if issue:
+            send_authentication_email(issue.recipient, issue.code)
+    flash(MESSAGES['AUTH_CODE_REQUEST_RESULT'], 'info')
+    return redirect(url_for('auth.reauthenticate_verify'))
 
-    form_errors = {}
-    form_values = {}
-
-    if request.method == 'POST':
-        from_modal = bool(request.form.get('_modal'))
-        form = ForgotPasswordForm(request.form)
-        if form.validate():
-            data = form.get_cleaned_data()
-            svc = get_services()
-            user = svc.user_repo.get_by_email(data['email'])
-
-            # Always respond the same way regardless of whether the email is
-            # registered, to avoid leaking account existence. We also burn
-            # equivalent CPU work for unknown emails (token generation runs
-            # either way) so simple wall-clock probes can't tell the
-            # difference. The SMTP send is still skipped for non-users —
-            # use a Redis-backed async queue if perfect timing parity is
-            # needed.
-            generated_token = generate_reset_token(data['email'])
-            if user:
-                # Stamp a single-use jti on the user, embed it in the
-                # signed link, and email it out. Any prior reset link
-                # for this account is invalidated by the overwrite.
-                jti = svc.auth_service.begin_password_reset(user)
-                token = generate_reset_token(user.email, jti)
-                send_reset_email(user.email, token)
-            del generated_token
-
-            if from_modal:
-                return jsonify({'ok': True})
-            return redirect(url_for('auth.reset_sent'))
-        else:
-            form_errors = form.errors
-            form_values = request.form
-
-        if from_modal:
-            return jsonify({'ok': False, 'errors': form_errors}), 422
-
-    return render_template(
-        'auth/forgot_password.html',
-        form_errors=form_errors,
-        form_values=form_values,
-    )
-
-
-@auth_bp.route('/reset-sent')
-def reset_sent():
-    """Confirmation page shown after a password reset email has been sent."""
-    return render_template('auth/reset_sent.html')
-
-
-@auth_bp.route('/reset-password/<token>', methods=['GET', 'POST'])
-def reset_password(token):
-    """Reset password page. Validates the token then allows setting a new password."""
-    if current_user.is_authenticated:
-        return redirect(url_for('dashboard.index'))
-
-    # Validate the token up front so expired/tampered links show an error
-    # immediately. We don't pre-check the jti against the user here: the
-    # service consumes it through the conditional password-reset UPDATE.
-    payload = verify_reset_token(token)
-    if not payload:
-        flash(MESSAGES['PASSWORD_RESET_LINK_INVALID'], 'danger')
-        return redirect(url_for('auth.forgot_password'))
-    email, jti = payload
-
-    form_errors = {}
-    form_values = {}
-
-    if request.method == 'POST':
-        form = ResetPasswordForm(request.form)
-        if form.validate():
-            data = form.get_cleaned_data()
-            svc = get_services()
-            user = svc.auth_service.reset_password_with_token(
-                email, jti, data['password']
-            )
-
-            if not user:
-                # Either the user is gone or the jti has already been
-                # consumed (or never matched). Either way: same generic
-                # invalid-link message — no oracle.
-                flash(MESSAGES['PASSWORD_RESET_LINK_INVALID'], 'danger')
-                return redirect(url_for('auth.forgot_password'))
-
-            flash(MESSAGES['PASSWORD_RESET_SUCCESS'], 'success')
-            return redirect(url_for('auth.login'))
-        else:
-            form_errors = form.errors
-            form_values = request.form
-
-    return render_template(
-        'auth/reset_password.html',
-        token=token,
-        form_errors=form_errors,
-        form_values=form_values,
-    )
-
-
-# ---------------------------------------------------------------------------
-# User Settings
-# ---------------------------------------------------------------------------
 
 @auth_bp.route('/settings')
 @login_required
 def settings():
-    """User settings page with profile, security, and account tabs."""
-    svc = get_services()
-    google_identity_linked = (
-        svc.oauth_identity_repo.get_for_user_and_provider(
-            current_user.id,
-            _GOOGLE_OAUTH_PROVIDER,
-        ) is not None
-    )
-    return render_template(
-        'auth/settings.html',
-        google_identity_linked=google_identity_linked,
-        google_disconnect_form=GoogleDisconnectForm({}),
-    )
+    return render_template('auth/settings.html')
 
 
-@auth_bp.route('/settings/google/disconnect', methods=['POST'])
+@auth_bp.route('/update-email', methods=['GET', 'POST'])
 @login_required
-@demo_restricted
-def google_disconnect():
-    """Disconnect the authenticated user's local Google identity link."""
-    form = GoogleDisconnectForm(request.form)
-    if not form.validate():
-        first_error = next(iter(form.errors.values()), MESSAGES['INVALID_INPUT'])
-        flash(first_error, 'warning')
-        return redirect(url_for('auth.settings', tab='security'))
-
-    data = form.get_cleaned_data()
-    if not current_user.password_hash or not current_user.check_password(data['current_password']):
-        flash(MESSAGES['CURRENT_PASSWORD_INCORRECT'], 'warning')
-        return redirect(url_for('auth.settings', tab='security'))
-
-    svc = get_services()
-    identity = svc.oauth_identity_repo.get_for_user_and_provider(
-        current_user.id,
-        _GOOGLE_OAUTH_PROVIDER,
+def update_email():
+    if not recent_auth_is_valid(session):
+        return redirect(url_for('auth.reauthenticate', next=url_for('auth.update_email')))
+    errors = {}
+    values = {}
+    if request.method == 'POST':
+        form = UpdateEmailForm(request.form)
+        if form.validate():
+            try:
+                new_email = form.get_cleaned_data()['email']
+                code = get_services().auth_service.stage_email_change(current_user, new_email)
+                send_verification_email(new_email, code)
+                return redirect(url_for('auth.verify_email_change'))
+            except ValueError as exc:
+                errors['email'] = str(exc)
+            except Exception:
+                logger.warning('Email update initiation failed')
+                errors['__all__'] = MESSAGES['EMAIL_UPDATE_FAILED']
+        else:
+            errors = form.errors
+        values = request.form
+    return render_template(
+        'auth/update_email.html', form_errors=errors, form_values=values,
+        current_email=current_user.email,
     )
-    if identity is None:
-        flash(MESSAGES['GOOGLE_DISCONNECT_NOT_CONNECTED'], 'info')
+
+
+@auth_bp.route('/settings/email/verify', methods=['GET', 'POST'])
+@login_required
+@limiter.limit(
+    '5 per 15 minutes', methods=['POST'], key_func=_current_user_email_key,
+    error_message=MESSAGES['RATE_LIMIT_AUTH_VERIFY'],
+)
+def verify_email_change():
+    if not recent_auth_is_valid(session):
+        return redirect(url_for(
+            'auth.reauthenticate', next=url_for('auth.verify_email_change'),
+        ))
+    if not current_user.pending_email:
         return redirect(url_for('auth.settings', tab='security'))
+    errors = {}
+    if request.method == 'POST':
+        form = VerifyCodeForm(request.form)
+        if form.validate():
+            success, message = get_services().auth_service.verify_email_change(
+                current_user, form.get_cleaned_data()['code'],
+            )
+            if success:
+                flash(MESSAGES['EMAIL_UPDATED'], 'success')
+                return redirect(url_for('auth.settings', tab='security'))
+            errors['code'] = message
+        else:
+            errors = form.errors
+    return render_template(
+        'auth/verify_code.html',
+        form_errors=errors,
+        verify_endpoint='auth.verify_email_change',
+        resend_endpoint='auth.resend_email_change',
+        heading='Verification code',
+        submit_label='Update email',
+        back_url=url_for('auth.settings', tab='security'),
+    )
 
-    try:
-        svc.oauth_identity_repo.delete(identity)
-        svc.oauth_identity_repo.commit()
-    except SQLAlchemyError as exc:
-        svc.oauth_identity_repo.db.session.rollback()
-        logger.warning(
-            'Google OAuth disconnect failed: %s',
-            type(exc).__name__,
-        )
-        flash(MESSAGES['GOOGLE_DISCONNECT_FAILED'], 'warning')
-        return redirect(url_for('auth.settings', tab='security'))
 
-    flash(MESSAGES['GOOGLE_DISCONNECT_SUCCESS'], 'success')
-    return redirect(url_for('auth.settings', tab='security'))
+@auth_bp.route('/settings/email/resend', methods=['POST'])
+@login_required
+@limiter.limit(
+    '3 per hour', methods=['POST'], key_func=_current_user_email_key,
+    error_message=MESSAGES['RATE_LIMIT_RESEND'],
+)
+def resend_email_change():
+    if not recent_auth_is_valid(session):
+        return redirect(url_for(
+            'auth.reauthenticate', next=url_for('auth.verify_email_change'),
+        ))
+    code = get_services().auth_service.resend_email_change(current_user)
+    if code and current_user.pending_email:
+        send_verification_email(current_user.pending_email, code)
+    flash(MESSAGES['VERIFICATION_CODE_RESEND_RESULT'], 'info')
+    return redirect(url_for('auth.verify_email_change'))
 
-
-# ---------------------------------------------------------------------------
-# Account Deletion (OTP-confirmed)
-# ---------------------------------------------------------------------------
 
 @auth_bp.route('/settings/delete/request', methods=['POST'])
 @login_required
-@demo_restricted
 def delete_account_request():
-    """Send a 6-digit OTP to the user's email to confirm account deletion."""
-    if not current_user.email:
-        return redirect(url_for('auth.settings', tab='account',
-                                deletion_error=MESSAGES['DELETION_NO_EMAIL']))
-
-    svc = get_services()
     try:
-        code = svc.auth_service.request_account_deletion(current_user)
+        code = get_services().auth_service.request_account_deletion(current_user)
         sent = send_deletion_confirmation_email(current_user.email, code)
-
         if sent:
             return redirect(url_for('auth.settings', tab='account', deletion_sent='1'))
-        return redirect(url_for('auth.settings', tab='account',
-                                deletion_error=MESSAGES['DELETION_CODE_SEND_FAILED']))
     except Exception:
-        logger.exception('Failed to request account deletion for user %s', current_user.id)
-        return redirect(url_for('auth.settings', tab='account',
-                                deletion_error=MESSAGES['DELETION_CODE_SEND_FAILED']))
+        logger.warning('Account deletion challenge failed')
+    return redirect(url_for(
+        'auth.settings', tab='account',
+        deletion_error=MESSAGES['DELETION_CODE_SEND_FAILED'],
+    ))
 
 
 @auth_bp.route('/settings/delete/cancel', methods=['POST'])
 @login_required
 def delete_account_cancel():
-    """Cancel the in-progress account deletion flow."""
-    svc = get_services()
-    svc.auth_service.cancel_account_deletion(current_user)
+    get_services().auth_service.cancel_account_deletion(current_user)
     return redirect(url_for('auth.settings', tab='account'))
 
 
 @auth_bp.route('/settings/delete/verify', methods=['POST'])
 @login_required
-@demo_restricted
 @limiter.limit(
-    "5 per 15 minutes",
-    key_func=lambda: f"deletion:{current_user.get_id() or ''}",
-    error_message=MESSAGES['ACCOUNT_LOCKED'],
+    '5 per 15 minutes', key_func=lambda: f'deletion:{current_user.get_id() or ""}',
+    error_message=MESSAGES['RATE_LIMIT_AUTH_VERIFY'],
 )
 def delete_account_verify():
-    """Delete the authenticated account after a valid deletion OTP."""
     form = VerifyCodeForm(request.form)
-
-    def _verify_error(msg: str):
-        return redirect(url_for('auth.settings', tab='account', deletion_sent='1',
-                                deletion_error=msg))
-
+    fallback = url_for('auth.settings', tab='account', deletion_sent='1')
     if not form.validate():
-        first_error = next(iter(form.errors.values()), MESSAGES['DELETION_INVALID_CODE'])
-        return _verify_error(first_error)
-
-    svc = get_services()
-    user = svc.user_repo.get_by_id(current_user.id)
-    if not user:
-        return _verify_error(MESSAGES['DELETION_INVALID_CODE'])
-
-    data = form.get_cleaned_data()
+        return redirect(url_for(
+            'auth.settings', tab='account', deletion_sent='1',
+            deletion_error=MESSAGES['DELETION_INVALID_CODE'],
+        ))
     try:
-        success, error_msg = svc.auth_service.confirm_account_deletion(user, data['code'])
+        success, message = get_services().auth_service.confirm_account_deletion(
+            current_user, form.get_cleaned_data()['code'],
+        )
     except SQLAlchemyError:
-        svc.user_repo.db.session.rollback()
-        logger.exception('Failed to delete account for user %s', current_user.id)
-        return _verify_error(MESSAGES['OPERATION_FAILED'])
-
+        get_services().user_repo.db.session.rollback()
+        logger.warning('Account deletion failed')
+        success, message = False, MESSAGES['OPERATION_FAILED']
     if success:
         logout_user()
+        session.clear()
+        session['_remember'] = 'clear'
         flash(MESSAGES['DELETION_CONFIRMED'], 'success')
         return redirect(url_for('auth.login'))
-
-    return _verify_error(error_msg or MESSAGES['DELETION_INVALID_CODE'])
+    flash(message or MESSAGES['DELETION_INVALID_CODE'], 'warning')
+    return redirect(fallback)

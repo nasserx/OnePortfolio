@@ -8,7 +8,7 @@ from portfolio_app import db
 # Bumped whenever a new migration step is added below. Stored in the SQLite
 # header (PRAGMA user_version) after a successful migration so subsequent
 # boots can short-circuit the whole inspection pass.
-TARGET_SCHEMA_VERSION = 34
+TARGET_SCHEMA_VERSION = 35
 
 # Sidecar file that carries the startup schema lock, derived from the
 # application database path (``portfolio.db`` → ``portfolio.db.schema-lock``).
@@ -282,6 +282,11 @@ class _LiveInspector:
 def _apply_migration_steps(conn, sa):
     inspector = _LiveInspector(conn, sa)
     tables = set(inspector.get_table_names())
+
+    # The historical OTP-hardening step deliberately emptied recoverable
+    # registrations. At the passwordless cutover boundary, reject a live
+    # legacy row before *any* older migration step can discard it.
+    _guard_live_legacy_pending_registrations(conn, sa, tables)
 
     # ── Step 1: Rename legacy tables ─────────────────────────────────
     if 'capital' in tables and 'fund' not in tables:
@@ -838,6 +843,157 @@ def _apply_migration_steps(conn, sa):
         require_portfolio_cascades=True,
     )
 
+    # ── Step 35: passwordless-auth cutover ─────────────────────────────
+    # The user rebuild both makes legacy hashes nullable/inert and acts as
+    # the idempotent marker for the one-time authentication-generation bump.
+    # Pending registrations are safe to reshape only when no live staged
+    # signup would be discarded; expired rows carry no usable credential.
+    _cut_over_passwordless_auth(conn, sa)
+
+
+def _cut_over_passwordless_auth(conn, sa):
+    """Make password state inert and reshape empty staged registrations."""
+    tables = {
+        row[0]
+        for row in conn.execute(sa.text(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        )).fetchall()
+    }
+
+    if 'pending_registration' in tables:
+        pending_columns = {
+            row[1]
+            for row in conn.execute(
+                sa.text('PRAGMA table_info(pending_registration)')
+            ).fetchall()
+        }
+        legacy_pending = 'password_hash' in pending_columns
+        if legacy_pending:
+            _guard_live_legacy_pending_registrations(conn, sa, tables)
+            conn.execute(sa.text('DELETE FROM pending_registration'))
+            conn.execute(sa.text('DROP TABLE IF EXISTS _new_pending_registration'))
+            conn.execute(sa.text('''
+                CREATE TABLE _new_pending_registration (
+                    id         INTEGER NOT NULL PRIMARY KEY,
+                    username   VARCHAR(80) NOT NULL,
+                    email      VARCHAR(120) NOT NULL,
+                    created_at DATETIME NOT NULL,
+                    expires_at DATETIME NOT NULL
+                )
+            '''))
+            for index_name in (
+                'ix_pending_registration_token',
+                'ix_pending_registration_username',
+                'ix_pending_registration_email',
+            ):
+                conn.execute(sa.text(f'DROP INDEX IF EXISTS "{index_name}"'))
+            conn.execute(sa.text('DROP TABLE pending_registration'))
+            conn.execute(sa.text(
+                'ALTER TABLE _new_pending_registration RENAME TO pending_registration'
+            ))
+            conn.execute(sa.text(
+                'CREATE UNIQUE INDEX ix_pending_registration_username '
+                'ON pending_registration (username)'
+            ))
+            conn.execute(sa.text(
+                'CREATE UNIQUE INDEX ix_pending_registration_email '
+                'ON pending_registration (email)'
+            ))
+            conn.commit()
+
+    if 'user' not in tables:
+        return
+    password_column = next(
+        row for row in conn.execute(sa.text('PRAGMA table_info("user")')).fetchall()
+        if row[1] == 'password_hash'
+    )
+    if password_column[3] == 0:
+        return
+
+    conn.execute(sa.text('DROP TABLE IF EXISTS _new_user'))
+    conn.execute(sa.text('''
+        CREATE TABLE _new_user (
+            id                                INTEGER NOT NULL PRIMARY KEY,
+            username                          VARCHAR(80) NOT NULL,
+            email                             VARCHAR(120),
+            password_hash                     VARCHAR(255),
+            is_verified                       BOOLEAN NOT NULL,
+            created_at                        DATETIME,
+            last_login                        DATETIME,
+            verification_code                 VARCHAR(64),
+            verification_code_expires_at      DATETIME,
+            verification_code_failed_attempts INTEGER NOT NULL,
+            pending_email                     VARCHAR(120),
+            deletion_code                     VARCHAR(64),
+            deletion_code_expires_at          DATETIME,
+            deletion_code_failed_attempts     INTEGER NOT NULL,
+            failed_login_attempts              INTEGER NOT NULL,
+            locked_until                       DATETIME,
+            password_reset_jti                 VARCHAR(32),
+            auth_generation                   INTEGER NOT NULL DEFAULT 0
+        )
+    '''))
+    conn.execute(sa.text('''
+        INSERT INTO _new_user (
+            id, username, email, password_hash, is_verified, created_at,
+            last_login, verification_code, verification_code_expires_at,
+            verification_code_failed_attempts, pending_email, deletion_code,
+            deletion_code_expires_at, deletion_code_failed_attempts,
+            failed_login_attempts, locked_until, password_reset_jti,
+            auth_generation
+        )
+        SELECT
+            id, username, email, password_hash, is_verified, created_at,
+            last_login, verification_code, verification_code_expires_at,
+            verification_code_failed_attempts, pending_email, deletion_code,
+            deletion_code_expires_at, deletion_code_failed_attempts,
+            failed_login_attempts, locked_until, password_reset_jti,
+            auth_generation + 1
+        FROM "user"
+    '''))
+    for index_name in ('ix_user_username', 'ix_user_email'):
+        conn.execute(sa.text(f'DROP INDEX IF EXISTS "{index_name}"'))
+    conn.execute(sa.text('DROP TABLE "user"'))
+    conn.execute(sa.text('ALTER TABLE _new_user RENAME TO "user"'))
+    conn.execute(sa.text(
+        'CREATE UNIQUE INDEX ix_user_username ON "user" (username)'
+    ))
+    conn.execute(sa.text(
+        'CREATE UNIQUE INDEX ix_user_email ON "user" (email)'
+    ))
+    conn.commit()
+
+
+def _guard_live_legacy_pending_registrations(conn, sa, tables=None):
+    """Fail before migration can discard an active password-era signup."""
+    if tables is None:
+        tables = {
+            row[0]
+            for row in conn.execute(sa.text(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            )).fetchall()
+        }
+    if 'pending_registration' not in tables:
+        return
+    columns = {
+        row[1]
+        for row in conn.execute(
+            sa.text('PRAGMA table_info(pending_registration)')
+        ).fetchall()
+    }
+    if 'password_hash' not in columns or 'expires_at' not in columns:
+        return
+    live_count = conn.execute(sa.text('''
+        SELECT COUNT(*)
+        FROM pending_registration
+        WHERE datetime(expires_at) >= CURRENT_TIMESTAMP
+    ''')).scalar()
+    if live_count:
+        raise RuntimeError(
+            'Passwordless cutover refused: live legacy pending '
+            'registrations must finish or expire before deployment.'
+        )
+
 
 def _rebuild_user_without_admin(conn, sa):
     """Drop the legacy user.is_admin column while preserving user identity."""
@@ -939,7 +1095,13 @@ def _harden_otp_storage(conn, sa):
                 sa.text('PRAGMA table_info(pending_registration)')
             ).fetchall()
         }
-        if pending_columns['verification_code'][2].upper() != 'VARCHAR(64)':
+        # Schema 35 intentionally removes registration OTP columns. A lowered
+        # user_version or interrupted replay must not make this historical
+        # hardening step assume the legacy columns still exist.
+        if (
+            'verification_code' in pending_columns
+            and pending_columns['verification_code'][2].upper() != 'VARCHAR(64)'
+        ):
             _rebuild_empty_pending_registration_with_digest_otp(conn, sa)
 
 

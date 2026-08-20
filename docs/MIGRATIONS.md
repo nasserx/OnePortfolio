@@ -102,6 +102,17 @@ portfolio cascades at the database boundary to its transactions, symbols,
 dividends, and capital-event history; the forward migration rebuilds only child
 tables whose existing foreign key still uses non-cascading delete behavior.
 
+Schema version 35 performs the reversible passwordless-auth cutover. It makes
+`User.password_hash` nullable without rewriting existing hash values, advances
+every user's `auth_generation` once, and rebuilds `pending_registration`
+without password or embedded OTP state. Startup refuses the cutover when a live
+legacy pending registration exists; operators must resolve that short-lived
+state before redeployment rather than silently losing it. Expired pending rows
+are removed. `db.create_all()` then creates the dedicated `auth_challenge`
+table. Legacy password reset/lockout columns and OAuth identity rows are
+preserved but have no production runtime caller, providing a bounded rollback
+window before a later separately approved destructive cleanup.
+
 ## Required Validation
 
 Run:

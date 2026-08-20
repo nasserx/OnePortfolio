@@ -255,6 +255,7 @@ def test_fresh_database_startup_creates_schema_and_sets_user_version(tmp_path):
         'symbol',
         'dividend',
         'oauth_identity',
+        'auth_challenge',
     }.issubset(_table_names(app))
     assert _pragma_scalar(app, 'user_version') == TARGET_SCHEMA_VERSION
 
@@ -276,13 +277,16 @@ def test_fresh_database_startup_creates_schema_and_sets_user_version(tmp_path):
                 text('PRAGMA table_info(pending_registration)')
             ).fetchall()
         }
-        assert pending_columns['verification_code'][2].upper() == 'VARCHAR(64)'
+        assert set(pending_columns) == {
+            'id', 'username', 'email', 'created_at', 'expires_at',
+        }
+        assert columns['password_hash'][3] == 0
 
 
 def test_fresh_schema_uses_database_cascades_for_all_ownership_foreign_keys(tmp_path):
     app = create_app(_config_for(tmp_path / 'fresh-cascades.sqlite'))
 
-    assert TARGET_SCHEMA_VERSION == 34
+    assert TARGET_SCHEMA_VERSION == 35
     assert _foreign_key_contract(app, 'portfolio') == (
         ('user_id', 'user', 'id', 'NO ACTION', 'CASCADE'),
     )
@@ -379,7 +383,7 @@ def test_warm_startup_is_idempotent_and_preserves_existing_data(tmp_path):
 
     with first_app.app_context():
         user = User(username='warm', email='warm@example.com', is_verified=True)
-        user.set_password('test-password')
+        user.password_hash = 'legacy-test-hash'
         db.session.add(user)
         db.session.commit()
         user_id = user.id
@@ -418,7 +422,7 @@ def test_failed_migration_rolls_back_restores_foreign_keys_and_can_retry(
             email='migration-original@example.com',
             is_verified=True,
         )
-        user.set_password('test-password')
+        user.password_hash = 'legacy-test-hash'
         db.session.add(user)
         db.session.commit()
         user_id = user.id
@@ -539,7 +543,7 @@ def test_oauth_identity_migration_is_idempotent_and_preserves_existing_users(tmp
 
     with first_app.app_context():
         user = User(username='linked', email='linked@example.com', is_verified=True)
-        user.set_password('test-password')
+        user.password_hash = 'legacy-test-hash'
         db.session.add(user)
         db.session.commit()
         user_id = user.id
@@ -615,11 +619,9 @@ def test_migration_repairs_version_29_pending_registration_missing_otp_counter(t
                 text('PRAGMA table_info(pending_registration)')
             ).fetchall()
         }
-        failed_attempts_col = columns['failed_otp_attempts']
-        assert failed_attempts_col[2].upper() == 'INTEGER'
-        assert failed_attempts_col[3] == 1
-        assert failed_attempts_col[4] is None
-        assert columns['verification_code'][2].upper() == 'VARCHAR(64)'
+        assert set(columns) == {
+            'id', 'username', 'email', 'created_at', 'expires_at',
+        }
         assert db.session.execute(text(
             'SELECT COUNT(*) FROM pending_registration'
         )).scalar() == 0
@@ -679,7 +681,7 @@ def test_migration_adds_auth_generation_and_preserves_existing_user(tmp_path):
 
         user = User.query.filter_by(email='existing@example.com').one()
         assert user.password_hash == 'preserved-hash'
-        assert user.auth_generation == 0
+        assert user.auth_generation == 1
         user.auth_generation = 3
         db.session.commit()
 
@@ -790,12 +792,12 @@ def test_migration_removes_legacy_admin_column_and_preserves_user_graph(tmp_path
                 '2026-01-01 01:02:03', '2026-02-01 02:03:04', None,
                 None, 0, None, None,
                 None, 0, 4, '2026-05-01 05:06:07',
-                'jti-true', 7,
+                'jti-true', 8,
             ),
             (
                 84, 'legacy-false', 'false@example.com', 'hash-false', 0,
                 '2025-01-01 01:02:03', None, None, None, 0, None, None,
-                None, 0, 0, None, None, 0,
+                None, 0, 0, None, None, 1,
             ),
         ]
         assert db.session.execute(text(
@@ -829,7 +831,7 @@ def test_migration_removes_legacy_admin_column_and_preserves_user_graph(tmp_path
 def test_migration_hardens_otp_columns_and_invalidates_legacy_state(tmp_path):
     import sqlite3
 
-    assert TARGET_SCHEMA_VERSION == 34
+    assert TARGET_SCHEMA_VERSION == 35
     upgraded_path = tmp_path / 'legacy-otp-upgrade.sqlite'
     con = sqlite3.connect(upgraded_path)
     try:
@@ -947,12 +949,12 @@ def test_migration_hardens_otp_columns_and_invalidates_legacy_state(tmp_path):
                 41, 'otp-user', 'otp@example.com', 'preserved-hash', 1,
                 '2026-01-01 01:02:03', '2026-02-01 02:03:04', None,
                 None, 0, None, None, None, 0, 4,
-                '2026-05-01 05:06:07', 'preserved-reset-jti', 7,
+                '2026-05-01 05:06:07', 'preserved-reset-jti', 8,
             ),
             (
                 84, 'ordinary-user', 'ordinary@example.com', 'ordinary-hash', 0,
                 '2025-01-01 01:02:03', None, None, None, 0, None, None,
-                None, 0, 0, None, None, 0,
+                None, 0, 0, None, None, 1,
             ),
         ]
         assert db.session.execute(text(
@@ -1015,16 +1017,13 @@ def test_otp_hardening_replay_preserves_current_workflow_state(tmp_path):
         })
         db.session.execute(text('''
             INSERT INTO pending_registration (
-                id, token, username, email, password_hash,
-                verification_code, verification_code_expires_at,
-                failed_otp_attempts, created_at, expires_at
+                id, username, email, created_at, expires_at
             ) VALUES (
-                702, 'current-registration-token', 'current-pending-user',
-                'registration@example.com', 'preserved-registration-hash',
-                :verification_digest, '2026-08-13 10:10:00', 1,
+                702, 'current-pending-user',
+                'registration@example.com',
                 '2026-08-13 10:00:00', '2026-08-14 10:00:00'
             )
-        '''), {'verification_digest': 'c' * 64})
+        '''))
         db.session.commit()
 
         user_state_before = db.session.execute(text('''
@@ -1035,9 +1034,7 @@ def test_otp_hardening_replay_preserves_current_workflow_state(tmp_path):
             FROM "user" WHERE id = 701
         ''')).one()
         pending_state_before = db.session.execute(text('''
-            SELECT token, username, email, password_hash, verification_code,
-                   verification_code_expires_at, failed_otp_attempts,
-                   created_at, expires_at
+            SELECT username, email, created_at, expires_at
             FROM pending_registration WHERE id = 702
         ''')).one()
         user_columns_before = _table_column_contract(app, 'user')
@@ -1063,9 +1060,7 @@ def test_otp_hardening_replay_preserves_current_workflow_state(tmp_path):
             FROM "user" WHERE id = 701
         ''')).one() == user_state_before
         assert db.session.execute(text('''
-            SELECT token, username, email, password_hash, verification_code,
-                   verification_code_expires_at, failed_otp_attempts,
-                   created_at, expires_at
+            SELECT username, email, created_at, expires_at
             FROM pending_registration WHERE id = 702
         ''')).one() == pending_state_before
         assert _table_column_contract(app, 'user') == user_columns_before

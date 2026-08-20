@@ -1,88 +1,50 @@
 {% extends 'auth_base.html' %}
-
-{% block title %}Verify Your Email — OnePortfolio{% endblock %}
-
+{% block title %}Verification Code — OnePortfolio{% endblock %}
 {% block auth_content %}
-
-    <div class="text-center mb-4">
-        {% set logo_class = 'op-logo-mark auth-logo mb-3' %}
-        {% set logo_size = 40 %}
-        {% include 'components/logo_mark.html' %}
-        <h1 class="h4 fw-500 mb-1">Check your inbox</h1>
-        <p class="auth-subtitle mb-0">
-            We sent a 6-digit code to<br>
-            <span class="text-emphasis">{{ email }}</span>
-        </p>
-    </div>
-
-    <!-- Flash messages -->
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% for category, message in messages %}
-            <div class="alert alert-{{ category }} py-2 mb-3" role="alert">{{ message }}</div>
-        {% endfor %}
-    {% endwith %}
-
-    <!-- General error (e.g. rate-limit hit) -->
-    {% if form_errors.get('__all__') %}
-        <div class="alert alert-danger mb-3">
-            <i class="bi bi-exclamation-circle me-2"></i>{{ form_errors['__all__'] }}
+<div class="text-center mb-4">
+    {% set logo_class = 'op-logo-mark auth-logo mb-3' %}
+    {% set logo_size = 40 %}
+    {% include 'components/logo_mark.html' %}
+    <h1 class="h4 fw-500 mb-1">{{ heading }}</h1>
+</div>
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+        <div class="alert alert-{{ category }} alert-dismissible fade show py-2 mb-3" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
-    {% endif %}
-
-    <form method="POST" action="{{ url_for('auth.verify_code', email=email) }}" novalidate>
+    {% endfor %}
+{% endwith %}
+{% if form_errors.get('__all__') %}
+    <div class="alert alert-danger mb-3" role="alert"><i class="bi bi-exclamation-circle me-2" aria-hidden="true"></i>{{ form_errors['__all__'] }}</div>
+{% endif %}
+<form method="post" action="{{ url_for(verify_endpoint) }}" novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="mb-4">
+        <label class="visually-hidden" for="code">Verification code</label>
+        <input type="text" name="code" id="code"
+               class="form-control otp-input {% if form_errors.get('code') %}is-invalid{% endif %}"
+               placeholder="000000" maxlength="6" inputmode="numeric" autocomplete="one-time-code" autofocus required>
+        {% if form_errors.get('code') %}<div class="invalid-feedback text-center">{{ form_errors['code'] }}</div>{% endif %}
+    </div>
+    <button type="submit" class="btn btn-primary w-100 mb-3">{{ submit_label }}</button>
+</form>
+<div class="text-center auth-subtitle mb-0">
+    Didn’t receive the code?
+    <form method="post" action="{{ url_for(resend_endpoint) }}" class="d-inline">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-
-        <div class="mb-4">
-            <input
-                type="text"
-                name="code"
-                id="code"
-                class="form-control otp-input {% if form_errors.get('code') %}is-invalid{% endif %}"
-                placeholder="000000"
-                maxlength="6"
-                inputmode="numeric"
-                autocomplete="one-time-code"
-                autofocus
-            >
-            {% if form_errors.get('code') %}
-                <div class="invalid-feedback text-center">{{ form_errors['code'] }}</div>
-            {% endif %}
-        </div>
-
-        <button type="submit" class="btn btn-primary w-100 mb-3">
-            Verify Account
-        </button>
+        <button type="submit" class="btn btn-link">Send a new code</button>
     </form>
-
-    <div class="text-center auth-subtitle mb-0">
-        Didn't receive the code? Check your spam folder, or
-        <form method="POST" action="{{ url_for('auth.resend_code', email=email) }}" class="d-inline">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button type="submit" class="btn btn-link">send a new code</button>
-        </form>.
-    </div>
-
-    <hr class="my-4">
-
-    <div class="d-grid gap-2">
-        <a href="{{ url_for('auth.login') }}" class="btn btn-outline-secondary btn-sm">
-            <i class="bi bi-box-arrow-in-right me-1" aria-hidden="true"></i>Sign in instead
-        </a>
-        <a href="{{ url_for('auth.register') }}" class="btn btn-outline-secondary btn-sm">
-            <i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i>Register again
-        </a>
-    </div>
-
+</div>
+<hr class="my-4">
+<a href="{{ back_url }}" class="btn btn-outline-secondary btn-sm w-100"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Back</a>
 {% endblock %}
-
 {% block extra_js %}
 <script nonce="{{ csp_nonce }}">
-    // Auto-submit when 6 digits are entered
-    document.getElementById('code').addEventListener('input', function () {
-        if (this.value.replace(/\D/g, '').length === 6) {
-            this.value = this.value.replace(/\D/g, '');
-            this.closest('form').submit();
-        }
-    });
+document.getElementById('code').addEventListener('input', function () {
+    const digits = this.value.replace(/\D/g, '');
+    this.value = digits;
+    if (digits.length === 6) this.closest('form').requestSubmit();
+});
 </script>
 {% endblock %}

@@ -20,21 +20,8 @@ class PendingRegistration(db.Model):
     __tablename__ = 'pending_registration'
 
     id = db.Column(db.Integer, primary_key=True)
-    # Long random token primarily used for invalidation lookups and as stable
-    # context for the stored digest of the 6-digit OTP sent to the user.
-    token = db.Column(db.String(64), unique=True, nullable=False, index=True)
     username = db.Column(db.String(80), unique=True, nullable=False, index=True)
     email = db.Column(db.String(120), unique=True, nullable=False, index=True)
-    password_hash = db.Column(db.String(255), nullable=False)
-
-    # Keyed HMAC-SHA-256 digest of the delivered six-digit registration OTP.
-    verification_code = db.Column(db.String(64), nullable=False)
-    verification_code_expires_at = db.Column(db.DateTime, nullable=False)
-    # Consecutive bad-OTP attempts on this pending registration. After
-    # MAX_OTP_ATTEMPTS failures the code is wiped and the user has to
-    # request a new one via /resend-code.
-    failed_otp_attempts = db.Column(db.Integer, default=0, nullable=False)
-
     created_at = db.Column(
         db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False,
     )
@@ -43,5 +30,12 @@ class PendingRegistration(db.Model):
     # don't want a pending row to live forever.
     expires_at = db.Column(db.DateTime, nullable=False)
 
+    auth_challenges = db.relationship(
+        'AuthChallenge',
+        back_populates='pending_registration',
+        cascade='all, delete-orphan',
+        passive_deletes=True,
+    )
+
     def __repr__(self) -> str:
-        return f'<PendingRegistration {self.email}>'
+        return f'<PendingRegistration id={self.id}>'

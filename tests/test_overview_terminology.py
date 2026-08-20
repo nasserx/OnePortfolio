@@ -9,6 +9,7 @@ from portfolio_app import db
 from portfolio_app.calculators import PortfolioCalculator
 from portfolio_app.calculators.allocation_charts import ALLOCATION_TOP_N
 from portfolio_app.models.user import User
+from tests._auth import authenticate_client
 from portfolio_app.services.factory import Services
 
 
@@ -39,16 +40,14 @@ def _dec(value):
 
 def _seed_user(username='overview_user'):
     user = User(username=username, email=f'{username}@example.com', is_verified=True)
-    user.set_password('test-password')
+    user.password_hash = 'legacy-test-hash'
     db.session.add(user)
     db.session.commit()
     return user.id
 
 
 def _login(client, user_id):
-    with client.session_transaction() as sess:
-        sess['_user_id'] = str(user_id)
-        sess['_fresh'] = True
+    authenticate_client(client, user_id)
 
 
 def _visible_text(html):

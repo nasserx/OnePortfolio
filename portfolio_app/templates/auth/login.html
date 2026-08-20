@@ -1,120 +1,37 @@
 {% extends 'auth_base.html' %}
-
-{% block title %}Log In — OnePortfolio{% endblock %}
-
+{% block title %}Continue — OnePortfolio{% endblock %}
 {% block auth_content %}
-
-    <!-- Header -->
-    <div class="text-center mb-3">
-        {% set logo_class = 'op-logo-mark auth-logo mb-3' %}
-        {% set logo_size = 40 %}
-        {% include 'components/logo_mark.html' %}
-        <h1 class="auth-title">Welcome back</h1>
-        <p class="auth-subtitle mb-0">Sign in to your portfolio</p>
+<div class="text-center mb-4">
+    {% set logo_class = 'op-logo-mark auth-logo mb-3' %}
+    {% set logo_size = 40 %}
+    {% include 'components/logo_mark.html' %}
+    <h1 class="auth-title">Continue to OnePortfolio</h1>
+    <p class="auth-subtitle mb-0">Sign in or create an account with your email.</p>
+</div>
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+        <div class="alert alert-{{ category }} alert-dismissible fade show py-2 mb-3" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    {% endfor %}
+{% endwith %}
+{% if form_errors.get('__all__') %}
+    <div class="alert alert-danger mb-3" role="alert"><i class="bi bi-exclamation-circle me-2" aria-hidden="true"></i>{{ form_errors['__all__'] }}</div>
+{% endif %}
+<form method="post" action="{{ url_for('auth.login') }}{% if safe_next %}?next={{ safe_next|urlencode }}{% endif %}" novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="mb-4">
+        <label class="visually-hidden" for="email">Email address</label>
+        <div class="field-wrap">
+            <i class="bi bi-envelope fi" aria-hidden="true"></i>
+            <input type="email" id="email" name="email" autocomplete="email"
+                   class="form-control form-control-auth {% if form_errors.get('email') %}is-invalid{% endif %}"
+                   value="{{ form_values.get('email', '') }}" placeholder="Email address" autofocus required>
+        </div>
+        {% if form_errors.get('email') %}<div class="invalid-feedback d-block mt-1">{{ form_errors['email'] }}</div>{% endif %}
     </div>
-
-    <!-- Flash messages -->
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            {% for category, message in messages %}
-                <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show mb-3" role="alert">
-                    {{ message }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
-            {% endfor %}
-        {% endif %}
-    {% endwith %}
-
-    <!-- General error -->
-    {% if form_errors.get('__all__') %}
-        <div class="alert alert-danger mb-3">
-            <i class="bi bi-exclamation-circle me-2"></i>{{ form_errors['__all__'] }}
-        </div>
-    {% endif %}
-
-    <!-- Login form -->
-    <form method="post" action="{{ url_for('auth.login') }}{% if safe_next %}?next={{ safe_next|urlencode }}{% endif %}" novalidate>
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-
-        <!-- Email -->
-        <div class="mb-2">
-            <div class="field-wrap">
-                <i class="bi bi-envelope fi" aria-hidden="true"></i>
-                <input type="text" id="username" name="username" autocomplete="email"
-                       class="form-control form-control-auth {% if form_errors.get('username') %}is-invalid{% endif %}"
-                       value="{{ form_values.get('username', '') }}"
-                       placeholder="Email address" autofocus required>
-            </div>
-            {% if form_errors.get('username') %}
-                <div class="invalid-feedback d-block mt-1">{{ form_errors['username'] }}</div>
-            {% endif %}
-        </div>
-
-        <!-- Password -->
-        <div class="mb-2">
-            <div class="field-wrap">
-                <i class="bi bi-lock fi" aria-hidden="true"></i>
-                <input type="password" id="password" name="password" autocomplete="current-password"
-                       class="form-control form-control-auth has-toggle {% if form_errors.get('password') %}is-invalid{% endif %}"
-                       placeholder="Password" required>
-                <button class="toggle-pw" type="button" id="togglePassword" title="Show/hide password"
-                        aria-label="Show or hide password">
-                    <i class="bi bi-eye" id="toggleIcon" aria-hidden="true"></i>
-                </button>
-            </div>
-            {% if form_errors.get('password') %}
-                <div class="invalid-feedback d-block mt-1">{{ form_errors['password'] }}</div>
-            {% endif %}
-        </div>
-
-        <!-- Remember me + Reset password -->
-        <div class="mb-4 d-flex align-items-center justify-content-between">
-            <div class="form-check">
-                <input class="form-check-input" type="checkbox" id="remember" name="remember">
-                <label class="form-check-label auth-subtitle" for="remember">
-                    Keep me signed in
-                </label>
-            </div>
-            <a href="{{ url_for('auth.forgot_password') }}" class="auth-subtitle">
-                Reset password
-            </a>
-        </div>
-
-        <button type="submit" class="btn btn-primary btn-auth w-100">
-            Sign in
-        </button>
-    </form>
-
-    {% if google_oauth_available %}
-        <div class="auth-divider my-3"><span>or</span></div>
-
-        <a href="{{ url_for('auth.google_signin') }}{% if safe_next %}?next={{ safe_next|urlencode }}{% endif %}"
-           class="btn btn-outline-secondary btn-auth btn-google w-100"
-           aria-label="Continue with Google">
-            <i class="bi bi-google me-2" aria-hidden="true"></i>
-            Continue with Google
-        </a>
-    {% endif %}
-
-    <!-- Register link -->
-    <div class="text-center mt-4">
-        <span class="auth-subtitle">New here? </span>
-        <a href="{{ url_for('auth.register') }}" class="fw-500">Create account</a>
-    </div>
-
-{% endblock %}
-
-{% block extra_js %}
-<script nonce="{{ csp_nonce }}">
-    const toggleBtn = document.getElementById('togglePassword');
-    const passInput = document.getElementById('password');
-    const toggleIcon = document.getElementById('toggleIcon');
-    if (toggleBtn) {
-        toggleBtn.addEventListener('click', function () {
-            const isText = passInput.type === 'text';
-            passInput.type = isText ? 'password' : 'text';
-            toggleIcon.className = isText ? 'bi bi-eye' : 'bi bi-eye-slash';
-        });
-    }
-</script>
+    <button type="submit" class="btn btn-primary btn-auth w-100">Continue</button>
+</form>
+<p class="auth-subtitle text-center mt-4 mb-0">We’ll email you a verification code.</p>
 {% endblock %}

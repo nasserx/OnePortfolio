@@ -18,6 +18,7 @@ from portfolio_app.calculators import PortfolioCalculator
 from portfolio_app.routes.transactions import _apply_summary_roi
 from portfolio_app.services.factory import Services
 from portfolio_app.utils.messages import MESSAGES
+from tests._auth import authenticate_client
 from datetime import datetime
 from decimal import Decimal
 from config import Config
@@ -35,7 +36,7 @@ def _seed_user(username: str = 'tester') -> int:
     owner before it can create a portfolio.
     """
     user = User(username=username, email=f'{username}@example.com', is_verified=True)
-    user.set_password('test-password')
+    user.password_hash = 'legacy-test-hash'
     db.session.add(user)
     db.session.commit()
     return user.id
@@ -434,12 +435,14 @@ def test_routes(app):
         db.create_all()
         from portfolio_app.models.user import User
         user = User(username='testuser', is_verified=True)
-        user.set_password('testpassword123')
+        user.password_hash = 'legacy-test-hash'
         db.session.add(user)
         db.session.commit()
+        user_id = user.id
+        auth_generation = user.auth_generation
 
     client = app.test_client()
-    client.post('/login', data={'username': 'testuser', 'password': 'testpassword123'})
+    authenticate_client(client, user_id, auth_generation)
 
     print("\n" + "=" * 60)
     print("TEST 5 – APPLICATION ROUTES")
@@ -479,8 +482,8 @@ def test_dividends(app):
         from portfolio_app.services.factory import Services
 
         # Create two users with separate funds
-        u1 = User(username='alice', is_verified=True); u1.set_password('pw')
-        u2 = User(username='bob',   is_verified=True); u2.set_password('pw')
+        u1 = User(username='alice', is_verified=True, password_hash='legacy-test-hash')
+        u2 = User(username='bob', is_verified=True, password_hash='legacy-test-hash')
         db.session.add_all([u1, u2]); db.session.commit()
 
         svc1 = Services(user_id=u1.id)

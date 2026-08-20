@@ -21,6 +21,7 @@ import pytest
 from portfolio_app import db
 from portfolio_app.models import Transaction
 from portfolio_app.models.user import User
+from tests._auth import authenticate_client
 from portfolio_app.calculators import PortfolioCalculator
 from portfolio_app.services import ValidationError
 from portfolio_app.services.factory import Services
@@ -33,7 +34,7 @@ def _dec(v):
 
 def _seed_user(username='walker'):
     user = User(username=username, email=f'{username}@example.com', is_verified=True)
-    user.set_password('test-password')
+    user.password_hash = 'legacy-test-hash'
     db.session.add(user)
     db.session.commit()
     return user.id
@@ -266,9 +267,7 @@ def test_withdraw_route_returns_available_cash_error_for_ajax(app):
         portfolio_id = p.id
 
     client = app.test_client()
-    with client.session_transaction() as sess:
-        sess['_user_id'] = str(uid)
-        sess['_fresh'] = True
+    authenticate_client(client, uid)
 
     resp = client.post(
         f'/portfolios/withdraw/{portfolio_id}',
@@ -293,9 +292,7 @@ def test_withdraw_route_accepts_grouped_amount_for_ajax(app):
         portfolio_id = p.id
 
     client = app.test_client()
-    with client.session_transaction() as sess:
-        sess['_user_id'] = str(uid)
-        sess['_fresh'] = True
+    authenticate_client(client, uid)
 
     resp = client.post(
         f'/portfolios/withdraw/{portfolio_id}',
@@ -331,9 +328,7 @@ def test_delete_event_route_returns_json_for_ajax_clawback(app):
         deposit_id = next(e.id for e in events if e.event_type == 'Deposit')
 
     client = app.test_client()
-    with client.session_transaction() as sess:
-        sess['_user_id'] = str(uid)
-        sess['_fresh'] = True
+    authenticate_client(client, uid)
 
     resp = client.post(
         f'/portfolios/events/delete/{deposit_id}',
@@ -363,9 +358,7 @@ def test_delete_event_route_keeps_redirect_for_non_ajax(app):
         deposit_id = next(e.id for e in events if e.event_type == 'Deposit')
 
     client = app.test_client()
-    with client.session_transaction() as sess:
-        sess['_user_id'] = str(uid)
-        sess['_fresh'] = True
+    authenticate_client(client, uid)
 
     resp = client.post(f'/portfolios/events/delete/{deposit_id}')
     # Plain POST → redirect, message in flash queue (handled by

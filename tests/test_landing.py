@@ -6,6 +6,7 @@ import pytest
 
 from portfolio_app import db
 from portfolio_app.models.user import User
+from tests._auth import authenticate_client
 from tests._colour import (
     NON_TEXT_MIN,
     TEXT_MIN,
@@ -507,7 +508,11 @@ def test_landing_links_anchors_and_removed_terms(app):
     lower_text = text.lower()
 
     assert 'href="/login"' in html
-    assert 'href="/register"' in html
+    assert 'href="/register"' not in html
+    header = re.search(r'<header class="lp-nav">(.*?)</header>', html, re.DOTALL)
+    assert header
+    assert '>Get started</a>' in header.group(1)
+    assert '>Continue</a>' not in header.group(1)
 
     # Every in-page anchor must resolve to a section that actually exists.
     anchors = set(re.findall(r'href="#([\w-]+)"', html))
@@ -534,15 +539,13 @@ def test_landing_links_anchors_and_removed_terms(app):
 def test_authenticated_root_still_renders_internal_overview(app):
     with app.app_context():
         user = User(username='landing_user', email='landing@example.com', is_verified=True)
-        user.set_password('test-password')
+        user.password_hash = 'legacy-test-hash'
         db.session.add(user)
         db.session.commit()
         user_id = user.id
 
     client = app.test_client()
-    with client.session_transaction() as sess:
-        sess['_user_id'] = str(user_id)
-        sess['_fresh'] = True
+    authenticate_client(client, user_id)
 
     response = client.get('/')
     assert response.status_code == 200

@@ -8,6 +8,7 @@ from portfolio_app.models.dividend import Dividend
 from portfolio_app.models.user import User
 from portfolio_app.models.pending_registration import PendingRegistration
 from portfolio_app.models.oauth_identity import OAuthIdentity
+from portfolio_app.models.auth_challenge import AuthChallenge
 
 __all__ = [
     'Portfolio',
@@ -18,4 +19,5 @@ __all__ = [
     'User',
     'PendingRegistration',
     'OAuthIdentity',
+    'AuthChallenge',
 ]

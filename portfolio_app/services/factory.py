@@ -3,16 +3,22 @@
 from typing import Optional
 from flask import g
 from portfolio_app import db
-from portfolio_app.models import Portfolio, PortfolioEvent, Transaction, Symbol, Dividend
+from portfolio_app.models import (
+    AuthChallenge,
+    Portfolio,
+    PortfolioEvent,
+    Transaction,
+    Symbol,
+    Dividend,
+)
 from portfolio_app.models.user import User
-from portfolio_app.models.oauth_identity import OAuthIdentity
 from portfolio_app.repositories import (
     PortfolioRepository,
     PortfolioEventRepository,
     TransactionRepository,
     SymbolRepository,
     DividendRepository,
-    OAuthIdentityRepository,
+    AuthChallengeRepository,
 )
 from portfolio_app.repositories.user_repository import UserRepository
 from portfolio_app.repositories.pending_registration_repository import (
@@ -31,7 +37,7 @@ class Services:
     __slots__ = (
         'portfolio_repo', 'portfolio_event_repo', 'transaction_repo', 'symbol_repo',
         'dividend_repo', 'user_repo', 'pending_registration_repo',
-        'oauth_identity_repo',
+        'auth_challenge_repo',
         'portfolio_service', 'transaction_service', 'overview_service',
         'auth_service',
     )
@@ -44,7 +50,7 @@ class Services:
         self.dividend_repo = DividendRepository(Dividend, db, user_id=user_id)
         self.user_repo = UserRepository(User, db)
         self.pending_registration_repo = PendingRegistrationRepository(PendingRegistration, db)
-        self.oauth_identity_repo = OAuthIdentityRepository(OAuthIdentity, db)
+        self.auth_challenge_repo = AuthChallengeRepository(AuthChallenge, db)
 
         self.portfolio_service = PortfolioService(self.portfolio_repo, self.portfolio_event_repo)
         self.transaction_service = TransactionService(
@@ -52,7 +58,11 @@ class Services:
             dividend_repo=self.dividend_repo,
         )
         self.overview_service = OverviewService(self.portfolio_repo, user_id=user_id)
-        self.auth_service = AuthService(self.user_repo, self.pending_registration_repo)
+        self.auth_service = AuthService(
+            self.user_repo,
+            self.pending_registration_repo,
+            self.auth_challenge_repo,
+        )
 
 
 def get_services() -> Services:

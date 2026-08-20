@@ -16,6 +16,7 @@ from html.parser import HTMLParser
 
 from portfolio_app import db
 from portfolio_app.models.user import User
+from tests._auth import authenticate_client
 from portfolio_app.services.factory import Services
 
 
@@ -120,7 +121,7 @@ class _ModalParser(HTMLParser):
 
 def _seed_user(username='modal_a11y_user'):
     user = User(username=username, email=f'{username}@example.com', is_verified=True)
-    user.set_password('test-password')
+    user.password_hash = 'legacy-test-hash'
     db.session.add(user)
     db.session.commit()
     return user.id
@@ -155,9 +156,7 @@ def _logged_in_client(app):
         _seed_activity(uid)
 
     client = app.test_client()
-    with client.session_transaction() as sess:
-        sess['_user_id'] = str(uid)
-        sess['_fresh'] = True
+    authenticate_client(client, uid)
     return client
 
 
@@ -227,14 +226,14 @@ def test_modal_title_ids_are_unique_within_the_document(app):
 
 
 def test_flash_alert_dismiss_controls_have_an_accessible_name(app):
-    """The auth pages dismiss flashes with the same unnamed .btn-close.
+    """The passwordless entry page gives flashed-alert dismiss controls a name.
 
     These alerts only exist when a message is flashed, so the regression has to
     plant one; an unflashed page renders no dismiss control at all and would
     pass vacuously.
     """
     unnamed = []
-    for path in ('/login', '/register'):
+    for path in ('/login',):
         client = app.test_client()
         with client.session_transaction() as sess:
             sess['_flashes'] = [('error', 'Planted flash for the dismiss control.')]

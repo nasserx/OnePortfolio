@@ -13,7 +13,7 @@ def _dec(value):
 
 def _seed_user(username='income_realized_user'):
     user = User(username=username, email=f'{username}@example.com', is_verified=True)
-    user.set_password('test-password')
+    user.password_hash = 'legacy-test-hash'
     db.session.add(user)
     db.session.commit()
     return user.id

@@ -2,11 +2,6 @@
 
 import re
 
-# The username reserved for the public demo account.
-# Actions that mutate account credentials are disabled for this user.
-DEMO_USERNAME = 'demo'
-
-
 class EventType:
     """Portfolio event types.
 

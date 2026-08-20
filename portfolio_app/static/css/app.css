@@ -844,6 +844,11 @@
     gap: var(--space-2);
   }
 
+  /* Action menus use viewport-fixed Popper placement to escape each card's
+     clipping boundary. A transformed disclosure would become their temporary
+     containing block, so this entrance keeps the shared fade without motion. */
+  .disclosure.enter { animation-name: op-fade-in; }
+
   .disclosure__item {
     border: 1px solid var(--line-subtle);
     border-radius: var(--radius-md);
@@ -911,13 +916,13 @@
     font-weight: var(--weight-semibold);
   }
 
-  /* The strip stops short of the action cluster; run full width and the
-     last figure sits under the edit/delete buttons, reading as if it
-     belongs to them. A margin rather than a narrower track list, so every
+  /* The strip stops short of the action menu; run full width and the last
+     figure sits under its trigger, reading as if it belongs to the control.
+     A margin rather than a narrower track list, so every
      card still resolves identical columns.
 
      `--row-actions-w` is that whole right-hand zone — gutter, gap and
-     buttons — and it is shared with the record table in the panel below.
+     trigger — and it is shared with the record table in the panel below.
      Two tables in one card cannot share columns; what they can share is
      where their data stops and their controls start. */
   .disclosure__metrics {
@@ -964,12 +969,11 @@
   }
 
   /* The right-hand zone of a card, declared once and consumed by both rows
-     in it. `cluster` is three icon buttons at `--control-h-sm` plus their
-     two gaps — declared rather than content-sized, so the width does not
-     drift with however many buttons a given page renders. */
+     in it. The action menu uses one `--control-h-sm` trigger; keeping the
+     width declared here aligns it with the table action column below. */
   .disclosure {
     --row-actions-gutter: var(--space-10);
-    --row-actions-cluster: calc(3 * var(--control-h-sm) + 2 * var(--space-1));
+    --row-actions-cluster: var(--control-h-sm);
     --row-actions-w: calc(
       var(--row-actions-gutter) + var(--space-3) + var(--row-actions-cluster)
     );
@@ -991,12 +995,7 @@
     padding-inline: calc(var(--space-4) - var(--cell-pad-x));
     border-top: 1px solid var(--line-subtle);
     background-color: var(--bg-inset);
-    animation: op-reveal var(--dur-3) var(--ease-out);
-  }
-
-  @keyframes op-reveal {
-    from { opacity: 0; transform: translate3d(0, -4px, 0); }
-    to   { opacity: 1; transform: none; }
+    animation: op-fade-in var(--dur-3) var(--ease-out);
   }
 
   .disclosure__panel .table thead th { background-color: var(--bg-inset); }

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from 'macros/ui.html' import money, metric, marker, empty_state %}
+{% from 'macros/ui.html' import money, metric, marker, empty_state, action_menu %}
 
 {% set _add_errs = (form_errors.get('portfolios_add', {}) if form_errors else {}) %}
 {% set _add_vals = (form_values.get('portfolios_add', {}) if form_values else {}) %}
@@ -64,32 +64,35 @@
                 </button>
 
                 <div class="disclosure__actions row-actions">
-                    <button type="button"
-                            class="btn btn-icon btn-icon--pos js-deposit-funds-btn"
-                            data-portfolio-id="{{ item.portfolio.id }}"
-                            data-name="{{ item.portfolio.name|e }}"
-                            title="Deposit" aria-label="Deposit into {{ item.portfolio.name }}"
-                            data-bs-toggle="tooltip" data-bs-placement="top">
-                        <i class="bi bi-arrow-down-circle" aria-hidden="true"></i>
-                    </button>
-                    <button type="button"
-                            class="btn btn-icon btn-icon--neg js-withdraw-funds-btn"
-                            data-portfolio-id="{{ item.portfolio.id }}"
-                            data-name="{{ item.portfolio.name|e }}"
-                            data-withdrawable-cash="{{ item.withdrawable_cash|fmt_money }}"
-                            data-withdrawable-cash-input="{{ item.withdrawable_cash|fmt_money }}"
-                            title="Withdraw" aria-label="Withdraw from {{ item.portfolio.name }}"
-                            data-bs-toggle="tooltip" data-bs-placement="top">
-                        <i class="bi bi-arrow-up-circle" aria-hidden="true"></i>
-                    </button>
-                    <button type="button"
-                            class="btn btn-outline-danger btn-icon js-delete-portfolio-btn"
-                            data-portfolio-id="{{ item.portfolio.id }}"
-                            data-name="{{ item.portfolio.name|e }}"
-                            title="Remove portfolio" aria-label="Remove {{ item.portfolio.name }}"
-                            data-bs-toggle="tooltip" data-bs-placement="top">
-                        <i class="bi bi-trash" aria-hidden="true"></i>
-                    </button>
+                    {% call action_menu('Actions for portfolio ' ~ item.portfolio.name) %}
+                    <li>
+                        <button type="button" class="dropdown-item js-deposit-funds-btn"
+                                data-portfolio-id="{{ item.portfolio.id }}"
+                                data-name="{{ item.portfolio.name|e }}">
+                            <i class="bi bi-arrow-down-circle" aria-hidden="true"></i>
+                            <span>Deposit</span>
+                        </button>
+                    </li>
+                    <li>
+                        <button type="button" class="dropdown-item js-withdraw-funds-btn"
+                                data-portfolio-id="{{ item.portfolio.id }}"
+                                data-name="{{ item.portfolio.name|e }}"
+                                data-withdrawable-cash="{{ item.withdrawable_cash|fmt_money }}"
+                                data-withdrawable-cash-input="{{ item.withdrawable_cash|fmt_money }}">
+                            <i class="bi bi-arrow-up-circle" aria-hidden="true"></i>
+                            <span>Withdraw</span>
+                        </button>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                        <button type="button" class="dropdown-item dropdown-item--danger js-delete-portfolio-btn"
+                                data-portfolio-id="{{ item.portfolio.id }}"
+                                data-name="{{ item.portfolio.name|e }}">
+                            <i class="bi bi-trash" aria-hidden="true"></i>
+                            <span>Remove</span>
+                        </button>
+                    </li>
+                    {% endcall %}
                 </div>
             </div>
 
@@ -133,28 +136,32 @@
                                         <small>{{ event_notes if event_notes else '—' }}</small>
                                     </td>
                                     <td class="records-cell records-cell--actions actions-cell">
-                                        <div class="row-actions" role="group">
-                                            <button type="button"
-                                                    class="btn btn-icon btn-sm js-edit-portfolio-event-btn"
+                                        <div class="row-actions">
+                                            {% set event_label = 'Deposit' if event.event_type in ('Initial', 'Deposit') else 'Withdraw' %}
+                                            {% call action_menu('Actions for ' ~ event_label ~ ' entry on ' ~ event.date_short, small=true) %}
+                                            <li>
+                                                <button type="button" class="dropdown-item js-edit-portfolio-event-btn"
                                                     data-event='{{ {
                                                         "id": event.id,
                                                         "type": event.event_type,
                                                         "amount": ("%.2f"|format(event.amount_delta|abs)),
                                                         "notes": (event.notes or ""),
                                                         "date": event.date_short
-                                                    }|tojson|e }}'
-                                                    title="Edit"
-                                                    data-bs-toggle="tooltip" data-bs-placement="top">
-                                                <i class="bi bi-pencil"></i>
-                                            </button>
-                                            <button type="button"
-                                                    class="btn btn-outline-danger btn-icon btn-sm js-delete-portfolio-event-btn"
+                                                    }|tojson|e }}'>
+                                                    <i class="bi bi-pencil" aria-hidden="true"></i>
+                                                    <span>Edit</span>
+                                                </button>
+                                            </li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li>
+                                                <button type="button" class="dropdown-item dropdown-item--danger js-delete-portfolio-event-btn"
                                                     data-event-id="{{ event.id }}"
-                                                    data-event-type="{{ event.event_type }}"
-                                                    title="Remove"
-                                                    data-bs-toggle="tooltip" data-bs-placement="top">
-                                                <i class="bi bi-trash"></i>
-                                            </button>
+                                                    data-event-type="{{ event.event_type }}">
+                                                    <i class="bi bi-trash" aria-hidden="true"></i>
+                                                    <span>Remove</span>
+                                                </button>
+                                            </li>
+                                            {% endcall %}
                                         </div>
                                     </td>
                                 </tr>

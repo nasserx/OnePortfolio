@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from 'macros/ui.html' import money, percent, quantity, metric, empty_state %}
+{% from 'macros/ui.html' import money, percent, quantity, metric, empty_state, action_menu %}
 
 {% block title %}Assets — OnePortfolio{% endblock %}
 
@@ -95,34 +95,37 @@
                     </button>
 
                     <div class="disclosure__actions row-actions">
-                        <button type="button"
-                                class="btn btn-icon js-add-transaction-btn"
+                        {% call action_menu('Actions for ' ~ item.symbol ~ ' in ' ~ item.portfolio.name) %}
+                        <li>
+                            <button type="button" class="dropdown-item js-add-transaction-btn"
                                 data-portfolio-id="{{ item.portfolio.id }}"
                                 data-portfolio="{{ item.portfolio.name|e }}"
-                                data-symbol="{{ item.symbol|e }}"
-                                title="Add entry" aria-label="Add entry for {{ item.symbol }}"
-                                data-bs-toggle="tooltip" data-bs-placement="top">
-                            <i class="bi bi-plus-lg" aria-hidden="true"></i>
-                        </button>
-                        <button type="button"
-                                class="btn btn-icon btn-icon--income js-add-dividend-btn"
+                                data-symbol="{{ item.symbol|e }}">
+                                <i class="bi bi-plus-lg" aria-hidden="true"></i>
+                                <span>Buy / Sell</span>
+                            </button>
+                        </li>
+                        <li>
+                            <button type="button" class="dropdown-item js-add-dividend-btn"
                                 data-portfolio-id="{{ item.portfolio.id }}"
-                                data-symbol="{{ item.symbol|e }}"
-                                title="Add income" aria-label="Add income for {{ item.symbol }}"
-                                data-bs-toggle="tooltip" data-bs-placement="top">
-                            <i class="bi bi-cash-stack" aria-hidden="true"></i>
-                        </button>
-                        <button type="button"
-                                class="btn btn-outline-danger btn-icon js-delete-symbol-btn"
+                                data-symbol="{{ item.symbol|e }}">
+                                <i class="bi bi-cash-stack" aria-hidden="true"></i>
+                                <span>Add income</span>
+                            </button>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <button type="button" class="dropdown-item dropdown-item--danger js-delete-symbol-btn"
                                 data-portfolio-id="{{ item.portfolio.id }}"
                                 data-portfolio="{{ item.portfolio.name|e }}"
                                 data-symbol="{{ item.symbol|e }}"
                                 data-tx-count="{{ item.summary.transaction_count or 0 }}"
-                                data-income-count="{{ symbol_dividends|length }}"
-                                title="Remove asset" aria-label="Remove {{ item.symbol }}"
-                                data-bs-toggle="tooltip" data-bs-placement="top">
-                            <i class="bi bi-trash" aria-hidden="true"></i>
-                        </button>
+                                data-income-count="{{ symbol_dividends|length }}">
+                                <i class="bi bi-trash" aria-hidden="true"></i>
+                                <span>Remove</span>
+                            </button>
+                        </li>
+                        {% endcall %}
                     </div>
                 </div>
 
@@ -187,8 +190,10 @@
                                         <small>{{ tx_notes if tx_notes else '—' }}</small>
                                     </td>
                                     <td class="records-cell records-cell--actions actions-cell">
-                                        <div class="row-actions" role="group">
-                                            <button type="button" class="btn btn-icon btn-sm js-edit-transaction-btn"
+                                        <div class="row-actions">
+                                            {% call action_menu('Actions for ' ~ transaction.transaction_type ~ ' entry for ' ~ item.symbol ~ ' on ' ~ transaction.date_short, small=true) %}
+                                            <li>
+                                                <button type="button" class="dropdown-item js-edit-transaction-btn"
                                                     data-tx='{{ {
                                                         "id": transaction.id,
                                                         "portfolioId": transaction.portfolio_id,
@@ -199,21 +204,20 @@
                                                         "fees": ("%.10f"|format(transaction.fees)),
                                                         "notes": (transaction.notes or ""),
                                                         "dateShort": transaction.date_short
-                                                    }|tojson|e }}'
-                                                    title="Edit"
-                                                    aria-label="Edit"
-                                                    data-bs-toggle="tooltip"
-                                                    data-bs-placement="top">
-                                                <i class="bi bi-pencil"></i>
-                                            </button>
-                                            <button type="button" class="btn btn-outline-danger btn-icon btn-sm js-delete-transaction-btn"
-                                                    data-tx-id="{{ transaction.id }}"
-                                                    title="Remove"
-                                                    aria-label="Remove"
-                                                    data-bs-toggle="tooltip"
-                                                    data-bs-placement="top">
-                                                <i class="bi bi-trash"></i>
-                                            </button>
+                                                    }|tojson|e }}'>
+                                                    <i class="bi bi-pencil" aria-hidden="true"></i>
+                                                    <span>Edit</span>
+                                                </button>
+                                            </li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li>
+                                                <button type="button" class="dropdown-item dropdown-item--danger js-delete-transaction-btn"
+                                                        data-tx-id="{{ transaction.id }}">
+                                                    <i class="bi bi-trash" aria-hidden="true"></i>
+                                                    <span>Remove</span>
+                                                </button>
+                                            </li>
+                                            {% endcall %}
                                         </div>
                                     </td>
                                 </tr>
@@ -236,21 +240,24 @@
                                         <small>{{ div_notes if div_notes else '—' }}</small>
                                     </td>
                                     <td class="records-cell records-cell--actions actions-cell">
-                                        <div class="row-actions" role="group">
-                                            <button type="button"
-                                                    class="btn btn-icon btn-sm js-edit-dividend-btn"
-                                                    data-div='{{ {"id": div.id, "portfolioId": div.portfolio_id, "amount": ("%.10f"|format(div.amount)), "dateShort": div.date_short, "notes": (div.notes or "")}|tojson|e }}'
-                                                    title="Edit" aria-label="Edit"
-                                                    data-bs-toggle="tooltip" data-bs-placement="top">
-                                                <i class="bi bi-pencil"></i>
-                                            </button>
-                                            <button type="button"
-                                                    class="btn btn-outline-danger btn-icon btn-sm js-delete-dividend-btn"
-                                                    data-div-id="{{ div.id }}"
-                                                    title="Remove" aria-label="Remove"
-                                                    data-bs-toggle="tooltip" data-bs-placement="top">
-                                                <i class="bi bi-trash"></i>
-                                            </button>
+                                        <div class="row-actions">
+                                            {% call action_menu('Actions for income entry for ' ~ item.symbol ~ ' on ' ~ div.date_short, small=true) %}
+                                            <li>
+                                                <button type="button" class="dropdown-item js-edit-dividend-btn"
+                                                        data-div='{{ {"id": div.id, "portfolioId": div.portfolio_id, "amount": ("%.10f"|format(div.amount)), "dateShort": div.date_short, "notes": (div.notes or "")}|tojson|e }}'>
+                                                    <i class="bi bi-pencil" aria-hidden="true"></i>
+                                                    <span>Edit</span>
+                                                </button>
+                                            </li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li>
+                                                <button type="button" class="dropdown-item dropdown-item--danger js-delete-dividend-btn"
+                                                        data-div-id="{{ div.id }}">
+                                                    <i class="bi bi-trash" aria-hidden="true"></i>
+                                                    <span>Remove</span>
+                                                </button>
+                                            </li>
+                                            {% endcall %}
                                         </div>
                                     </td>
                                 </tr>

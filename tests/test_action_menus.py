@@ -193,7 +193,7 @@ def test_action_menus_render_the_expected_entity_actions(app):
     asset_menus = _by_label(rendered['/transactions/'][1])
 
     assert [item.text for item in portfolio_menus['Actions for portfolio Growth'].items] == [
-        'Deposit', 'Withdraw', 'Remove',
+        'Rename', 'Deposit', 'Withdraw', 'Remove',
     ]
     assert [item.text for item in portfolio_menus['Actions for Deposit entry on 2024-01-01'].items] == [
         'Edit', 'Remove',
@@ -258,6 +258,9 @@ def test_action_items_preserve_dispatch_classes_and_payloads(app):
     asset_menus = _by_label(rendered['/transactions/'][1])
 
     portfolio = portfolio_menus['Actions for portfolio Growth']
+    assert portfolio.item('Rename').attrs['class'].endswith('js-rename-portfolio-btn')
+    assert portfolio.item('Rename').attrs['data-portfolio-id'] == str(ids['portfolio_id'])
+    assert portfolio.item('Rename').attrs['data-name'] == 'Growth'
     assert portfolio.item('Deposit').attrs['class'].endswith('js-deposit-funds-btn')
     assert portfolio.item('Deposit').attrs['data-portfolio-id'] == str(ids['portfolio_id'])
     assert portfolio.item('Deposit').attrs['data-name'] == 'Growth'
@@ -295,7 +298,7 @@ def test_action_items_preserve_dispatch_classes_and_payloads(app):
 def test_existing_delegated_dispatch_still_owns_every_menu_action():
     sources = {
         'portfolios.html': {
-            'js-deposit-funds-btn', 'js-withdraw-funds-btn',
+            'js-rename-portfolio-btn', 'js-deposit-funds-btn', 'js-withdraw-funds-btn',
             'js-delete-portfolio-btn', 'js-edit-portfolio-event-btn',
             'js-delete-portfolio-event-btn',
         },

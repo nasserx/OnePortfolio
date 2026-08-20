@@ -7,6 +7,7 @@ from portfolio_app.forms.validators import (
 )
 from portfolio_app.forms.portfolio_forms import (
     PortfolioAddForm,
+    PortfolioRenameForm,
     PortfolioDepositForm,
     PortfolioWithdrawForm,
     PortfolioEventEditForm,
@@ -26,6 +27,7 @@ __all__ = [
     'parse_decimal_field',
     'validate_positive_decimal',
     'PortfolioAddForm',
+    'PortfolioRenameForm',
     'PortfolioDepositForm',
     'PortfolioWithdrawForm',
     'PortfolioEventEditForm',

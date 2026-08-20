@@ -5,8 +5,8 @@ from portfolio_app.forms.base_form import BaseForm, NOTES_MAX_LENGTH
 from portfolio_app.utils.messages import MESSAGES
 
 
-class PortfolioAddForm(BaseForm):
-    """Form for creating a new portfolio."""
+class _PortfolioNameForm(BaseForm):
+    """Shared portfolio-name validation for create and rename forms."""
 
     def __init__(self, data: dict, existing_names: List[str]):
         super().__init__(data)
@@ -23,6 +23,14 @@ class PortfolioAddForm(BaseForm):
                 self.cleaned_data['name'] = name
 
         return not self.has_errors()
+
+
+class PortfolioAddForm(_PortfolioNameForm):
+    """Form for creating a new portfolio."""
+
+
+class PortfolioRenameForm(_PortfolioNameForm):
+    """Form for renaming an existing portfolio."""
 
 
 class PortfolioDepositForm(BaseForm):

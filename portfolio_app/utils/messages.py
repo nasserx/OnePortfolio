@@ -21,6 +21,7 @@ MESSAGES = {
     # branch of each CRUD route so the user sees what they were trying to
     # do, not a generic banner.
     'PORTFOLIO_ADD_FAILED':        "We couldn't create the portfolio. Please try again in a moment.",
+    'PORTFOLIO_RENAME_FAILED':     "We couldn't rename the portfolio. Please try again in a moment.",
     'PORTFOLIO_DELETE_FAILED':     "We couldn't remove the portfolio. Please try again in a moment.",
     'DEPOSIT_FAILED':              "We couldn't record your deposit. Please try again in a moment.",
     'WITHDRAWAL_FAILED':           "We couldn't process your withdrawal. Please try again in a moment.",
@@ -85,6 +86,7 @@ MESSAGES = {
     # Portfolios and cash events
     # Edits/removals of deposits or withdrawals reuse TRANSACTION_UPDATED / TRANSACTION_REMOVED.
     'PORTFOLIO_CREATED':           "Portfolio created.",
+    'PORTFOLIO_RENAMED':           "Portfolio renamed.",
     'PORTFOLIO_REMOVED':           "Portfolio removed.",
     'DEPOSIT_SUCCESSFUL':          "Deposit successful.",
     'WITHDRAWAL_SUCCESSFUL':       "Withdrawal successful.",

@@ -32,7 +32,8 @@ ASSETS_MODALS = {
 }
 PORTFOLIO_MODALS = {
     'depositFundsModal', 'withdrawFundsModal', 'newPortfolioModal',
-    'deletePortfolioModal', 'editPortfolioEventModal', 'deletePortfolioEventModal',
+    'renamePortfolioModal', 'deletePortfolioModal', 'editPortfolioEventModal',
+    'deletePortfolioEventModal',
 }
 
 

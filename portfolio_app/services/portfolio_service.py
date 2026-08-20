@@ -33,6 +33,25 @@ class PortfolioService:
         self.portfolio_repo.commit()
         return portfolio
 
+    def rename_portfolio(self, portfolio_id: int, name: str) -> Portfolio:
+        """Rename a tenant-owned portfolio without changing its identity."""
+        portfolio = self._require_portfolio(portfolio_id)
+        normalized_name = name.strip()
+        normalized_lower = normalized_name.lower()
+
+        if normalized_lower == portfolio.name.lower():
+            return portfolio
+
+        if any(
+            existing.id != portfolio.id and existing.name.lower() == normalized_lower
+            for existing in self.portfolio_repo.get_all()
+        ):
+            raise ValueError(MESSAGES['PORTFOLIO_NAME_TAKEN'])
+
+        portfolio.name = normalized_name
+        self.portfolio_repo.commit()
+        return portfolio
+
     def delete_portfolio(self, portfolio_id: int) -> str:
         """Delete portfolio and cascade-delete its events and transactions."""
         portfolio = self._require_portfolio(portfolio_id)

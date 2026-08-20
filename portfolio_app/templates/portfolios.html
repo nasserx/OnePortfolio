@@ -3,6 +3,8 @@
 
 {% set _add_errs = (form_errors.get('portfolios_add', {}) if form_errors else {}) %}
 {% set _add_vals = (form_values.get('portfolios_add', {}) if form_values else {}) %}
+{% set _rename_errs = (form_errors.get('portfolio_rename', {}) if form_errors else {}) %}
+{% set _rename_vals = (form_values.get('portfolio_rename', {}) if form_values else {}) %}
 {% set _dep_errs = (form_errors.get('portfolios_deposit', {}) if form_errors else {}) %}
 {% set _dep_vals = (form_values.get('portfolios_deposit', {}) if form_values else {}) %}
 {% set _with_errs = (form_errors.get('portfolios_withdraw', {}) if form_errors else {}) %}
@@ -65,6 +67,14 @@
 
                 <div class="disclosure__actions row-actions">
                     {% call action_menu('Actions for portfolio ' ~ item.portfolio.name) %}
+                    <li>
+                        <button type="button" class="dropdown-item js-rename-portfolio-btn"
+                                data-portfolio-id="{{ item.portfolio.id }}"
+                                data-name="{{ item.portfolio.name|e }}">
+                            <i class="bi bi-pencil" aria-hidden="true"></i>
+                            <span>Rename</span>
+                        </button>
+                    </li>
                     <li>
                         <button type="button" class="dropdown-item js-deposit-funds-btn"
                                 data-portfolio-id="{{ item.portfolio.id }}"
@@ -348,6 +358,42 @@
                 </div>
                 <div class="modal-footer">
                     <button type="submit" class="btn btn-primary">Create</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ── Rename Portfolio Modal ─────────────────────────────────────── -->
+<div class="modal fade" id="renamePortfolioModal" tabindex="-1" aria-labelledby="renamePortfolioModalTitle">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" id="renamePortfolioForm" autocomplete="off" novalidate>
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="renamePortfolioModalTitle">Rename Portfolio</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    {% if _rename_errs.get('__all__') %}
+                    <div class="alert alert-danger d-flex align-items-center mb-3">
+                        <i class="bi bi-exclamation-circle me-2"></i>{{ _rename_errs.get('__all__') }}
+                    </div>
+                    {% endif %}
+                    <div class="mb-3">
+                        <label for="rename_portfolio_name" class="form-label">Portfolio Name</label>
+                        <input type="text"
+                               class="form-control {% if _rename_errs.get('name') %}is-invalid{% endif %}"
+                               id="rename_portfolio_name" name="name"
+                               maxlength="20"
+                               value="{{ _rename_vals.get('name', '') }}">
+                        {% if _rename_errs.get('name') %}
+                        <div class="invalid-feedback">{{ _rename_errs.get('name') }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Save</button>
                 </div>
             </form>
         </div>
@@ -684,7 +730,15 @@
     });
 }());
 
-// ── Deposit / Withdraw / Delete Portfolio ─────────────────────────
+// ── Rename / Deposit / Withdraw / Delete Portfolio ────────────────
+function renamePortfolio(id, name, opts) {
+    opts = opts || {};
+    document.getElementById('renamePortfolioForm').action = `/portfolios/rename/${id}`;
+    document.getElementById('rename_portfolio_name').value =
+        (opts.name != null ? String(opts.name) : (name || ''));
+    new bootstrap.Modal(document.getElementById('renamePortfolioModal')).show();
+}
+
 function depositFunds(id, name, opts) {
     opts = opts || {};
     document.getElementById('depositFundsForm').action = `/portfolios/deposit/${id}`;
@@ -779,6 +833,11 @@ function deletePortfolioEvent(id, type) {
             if (which === 'newPortfolioModal') {
                 new bootstrap.Modal(document.getElementById('newPortfolioModal')).show();
             }
+            if (which === 'renamePortfolioModal' && payload && payload.portfolio_id) {
+                renamePortfolio(payload.portfolio_id, payload.name || '', {
+                    name: {{ (_rename_vals.get('name', '') if form_values and form_values.get('portfolio_rename') else '') | tojson }}
+                });
+            }
             if (which === 'editPortfolioEventModal') {
                 // Form action gets set when the user clicks "Edit"; on a
                 // server-side re-render the modal_data carries the event id
@@ -796,6 +855,16 @@ function deletePortfolioEvent(id, type) {
 // ── Event delegation for all action buttons ──────────────────────
 (function wireActionButtons() {
     document.addEventListener('click', function(ev) {
+
+        // Rename portfolio
+        const renameBtn = ev.target && ev.target.closest ? ev.target.closest('.js-rename-portfolio-btn') : null;
+        if (renameBtn) {
+            ev.preventDefault(); ev.stopPropagation(); ev.stopImmediatePropagation();
+            const id = parseInt(renameBtn.getAttribute('data-portfolio-id') || '0', 10);
+            const name = renameBtn.getAttribute('data-name') || '';
+            if (id) renamePortfolio(id, name);
+            return;
+        }
 
         // Deposit
         const depBtn = ev.target && ev.target.closest ? ev.target.closest('.js-deposit-funds-btn') : null;

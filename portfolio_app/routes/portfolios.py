@@ -7,6 +7,7 @@ from portfolio_app import db
 from portfolio_app.services import get_services
 from portfolio_app.forms import (
     PortfolioAddForm,
+    PortfolioRenameForm,
     PortfolioDepositForm,
     PortfolioWithdrawForm,
     PortfolioEventEditForm,
@@ -166,6 +167,66 @@ def portfolios_add():
             active_modal='newPortfolioModal',
         ), 400
 
+
+@portfolios_bp.route('/rename/<int:portfolio_id>', methods=['POST'])
+@login_required
+def portfolios_rename(portfolio_id):
+    """Rename a portfolio owned by the current user."""
+    try:
+        svc = get_services()
+        portfolio = svc.portfolio_repo.get_by_id(portfolio_id)
+        if not portfolio:
+            raise ValueError(MESSAGES['PORTFOLIO_NOT_FOUND'])
+
+        existing_names = [
+            existing.name
+            for existing in svc.portfolio_repo.get_all()
+            if existing.id != portfolio.id
+        ]
+        form = PortfolioRenameForm(request.form, existing_names)
+        if not form.validate():
+            if is_ajax_request():
+                return json_response(False, errors=form.errors)
+
+            ctx = _get_portfolios_page_context()
+            return render_template(
+                'portfolios.html',
+                **ctx,
+                form_errors={'portfolio_rename': form.errors},
+                form_values={'portfolio_rename': request.form},
+                active_modal='renamePortfolioModal',
+                modal_data={'portfolio_id': portfolio.id, 'name': portfolio.name},
+            ), 400
+
+        svc.portfolio_service.rename_portfolio(
+            portfolio_id=portfolio.id,
+            name=form.get_cleaned_data()['name'],
+        )
+
+        if is_ajax_request():
+            return json_response(True, message=MESSAGES['PORTFOLIO_RENAMED'])
+
+        flash(MESSAGES['PORTFOLIO_RENAMED'], 'success')
+        return redirect(url_for('portfolios.portfolios_list'))
+
+    except ValueError as e:
+        message = get_error_message(e)
+        if is_ajax_request():
+            field = 'name' if message == MESSAGES['PORTFOLIO_NAME_TAKEN'] else '__all__'
+            return json_response(False, errors={field: message})
+
+        flash(message, 'error')
+        return redirect(url_for('portfolios.portfolios_list'))
+
+    except Exception:
+        logger.exception('Failed to rename portfolio %s', portfolio_id)
+        db.session.rollback()
+
+        if is_ajax_request():
+            return json_response(False, errors={'__all__': MESSAGES['PORTFOLIO_RENAME_FAILED']})
+
+        flash(MESSAGES['PORTFOLIO_RENAME_FAILED'], 'error')
+        return redirect(url_for('portfolios.portfolios_list'))
 
 @portfolios_bp.route('/delete/<int:portfolio_id>', methods=['POST'])
 @login_required

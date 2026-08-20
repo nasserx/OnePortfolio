@@ -1073,6 +1073,7 @@ class ModalAjaxHandler {
             { modalId: 'addDividendModal',          formSelector: 'form[action$="/dividends/add"]' },
             { modalId: 'editDividendModal',         formSelector: '#editDividendForm' },
             { modalId: 'newPortfolioModal',         formSelector: 'form[action$="/portfolios/add"]' },
+            { modalId: 'renamePortfolioModal',      formSelector: '#renamePortfolioForm' },
             { modalId: 'depositFundsModal',         formSelector: '#depositFundsForm' },
             { modalId: 'withdrawFundsModal',        formSelector: '#withdrawFundsForm' },
             { modalId: 'editPortfolioEventModal',   formSelector: '#editPortfolioEventForm' },

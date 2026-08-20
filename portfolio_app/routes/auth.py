@@ -66,7 +66,7 @@ def _current_user_email_key():
     return _email_rate_limit_key(getattr(current_user, 'email', ''))
 
 
-def _render_code_page(*, recent=False, form_errors=None, status=200):
+def _render_code_page(*, recent=False, form_errors=None):
     return render_template(
         'auth/verify_code.html',
         form_errors=form_errors or {},
@@ -78,7 +78,7 @@ def _render_code_page(*, recent=False, form_errors=None, status=200):
             url_for('auth.settings', tab='security')
             if recent else url_for('auth.login')
         ),
-    ), status
+    )
 
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
@@ -163,7 +163,7 @@ def verify_code():
             errors['code'] = MESSAGES['VERIFICATION_CODE_INVALID_OR_EXPIRED']
         else:
             errors = form.errors
-    return _render_code_page(form_errors=errors)[0]
+    return _render_code_page(form_errors=errors)
 
 
 @auth_bp.route('/resend-code', methods=['POST'])
@@ -258,7 +258,7 @@ def reauthenticate_verify():
             errors['code'] = MESSAGES['VERIFICATION_CODE_INVALID_OR_EXPIRED']
         else:
             errors = form.errors
-    return _render_code_page(recent=True, form_errors=errors)[0]
+    return _render_code_page(recent=True, form_errors=errors)
 
 
 @auth_bp.route('/reauthenticate/resend', methods=['POST'])

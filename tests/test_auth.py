@@ -640,6 +640,47 @@ def test_origin_and_normalized_target_rate_limits(tmp_path, monkeypatch):
     assert origin.post('/login', data={'email': 'origin-10@example.com'}).status_code == 429
 
 
+def test_recent_auth_verification_rate_limit_returns_to_settings(
+    tmp_path, monkeypatch,
+):
+    class LimitedConfig(_Config):
+        RATELIMIT_ENABLED = True
+        SQLALCHEMY_DATABASE_URI = (
+            f"sqlite:///{(tmp_path / 'recent-limited.sqlite').as_posix()}"
+        )
+
+    delivered = []
+    monkeypatch.setattr(
+        'portfolio_app.routes.auth.send_authentication_email',
+        lambda recipient, code: delivered.append((recipient, code)),
+    )
+    application = create_app(LimitedConfig)
+    limiter.reset()
+    _create_user(application)
+    browser = application.test_client()
+    browser.post('/login', data={'email': 'alice@example.com'})
+    browser.post('/verify-code', data={'code': delivered[-1][1]})
+    with browser.session_transaction() as state:
+        state[RECENT_AUTH_AT_KEY] = (
+            datetime.now(timezone.utc) - timedelta(minutes=16)
+        ).timestamp()
+    assert browser.post('/reauthenticate').status_code in (302, 303)
+
+    wrong_code = '000000' if delivered[-1][1] != '000000' else '111111'
+    for _ in range(5):
+        response = browser.post(
+            '/reauthenticate/verify', data={'code': wrong_code},
+        )
+        assert response.status_code == 200
+    blocked = browser.post(
+        '/reauthenticate/verify', data={'code': wrong_code},
+    )
+    assert blocked.status_code == 429
+    html = blocked.get_data(as_text=True)
+    assert 'href="/settings?tab=security"' in html
+    assert 'href="/login"' not in html
+
+
 def test_idle_and_absolute_expiry_fail_closed(app, mail_log):
     _create_user(app)
     for key, age in (

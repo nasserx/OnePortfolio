@@ -247,7 +247,10 @@ def create_app(config_class=Config):
                 ),
                 heading='Verification code',
                 submit_label='Confirm' if recent else 'Continue',
-                back_url=url_for('auth.login'),
+                back_url=(
+                    url_for('auth.settings', tab='security')
+                    if recent else url_for('auth.login')
+                ),
             ), 429
 
         if endpoint == 'auth.login':

@@ -105,7 +105,9 @@ class AuthService:
         challenge.code_digest = self._challenge_digest(
             code, challenge.token, challenge.purpose, recipient,
         )
-        challenge.expires_at = now + timedelta(minutes=VERIFICATION_CODE_EXPIRY_MINUTES)
+        challenge.expires_at = self._challenge_expires_at(
+            now, challenge.pending_registration,
+        )
         challenge.failed_attempts = 0
         self.challenge_repo.commit()
         return ChallengeIssue(challenge.token, recipient, code)
@@ -119,6 +121,9 @@ class AuthService:
         now = datetime.now(timezone.utc)
         if (now > self._as_utc(challenge.expires_at)
                 or challenge.failed_attempts >= MAX_OTP_ATTEMPTS):
+            return None
+        pending = challenge.pending_registration
+        if pending is not None and now > self._as_utc(pending.expires_at):
             return None
         recipient = self._challenge_recipient(challenge)
         supplied = code.strip()
@@ -140,7 +145,6 @@ class AuthService:
             self.challenge_repo.db.session.rollback()
             return None
         user = challenge.user
-        pending = challenge.pending_registration
         if user is None and pending is not None:
             user = self.user_repo.get_by_email(pending.email)
             if user is None:
@@ -282,11 +286,20 @@ class AuthService:
             user_id=user.id if user else None,
             pending_registration_id=pending.id if pending else None,
             code_digest=self._challenge_digest(code, token, purpose, recipient),
-            expires_at=now + timedelta(minutes=VERIFICATION_CODE_EXPIRY_MINUTES),
+            expires_at=self._challenge_expires_at(now, pending),
             failed_attempts=0,
             created_at=now,
         ))
         return ChallengeIssue(token, recipient, code)
+
+    @classmethod
+    def _challenge_expires_at(cls, now: datetime,
+                              pending: Optional[PendingRegistration]) -> datetime:
+        """Cap registration OTPs at their owning registration's hard expiry."""
+        otp_expiry = now + timedelta(minutes=VERIFICATION_CODE_EXPIRY_MINUTES)
+        if pending is None:
+            return otp_expiry
+        return min(otp_expiry, cls._as_utc(pending.expires_at))
 
     @staticmethod
     def _challenge_target_is_valid(challenge, expected_purpose: str) -> bool:

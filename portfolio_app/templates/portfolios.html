@@ -210,7 +210,7 @@
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="user_timezone" value="">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="depositFundsModalTitle">Deposit to <span id="deposit_portfolio_title"></span></h5>
+                    <h5 class="modal-title" id="depositFundsModalTitle">Deposit</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
@@ -269,7 +269,7 @@
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="user_timezone" value="">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="withdrawFundsModalTitle">Withdraw from <span id="withdraw_portfolio_title"></span></h5>
+                    <h5 class="modal-title" id="withdrawFundsModalTitle">Withdraw</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
@@ -743,7 +743,6 @@ function depositFunds(id, name, opts) {
     opts = opts || {};
     document.getElementById('depositFundsForm').action = `/portfolios/deposit/${id}`;
     document.getElementById('deposit_portfolio_name').value = name || '';
-    document.getElementById('deposit_portfolio_title').textContent = name || '';
     document.getElementById('add_funds_amount').value = (opts.amount != null ? String(opts.amount) : '');
     document.getElementById('deposit_date').value = (opts.date || todayStr());
     document.getElementById('add_funds_notes').value = (opts.notes || '');
@@ -754,7 +753,6 @@ function withdrawFunds(id, name, opts) {
     opts = opts || {};
     document.getElementById('withdrawFundsForm').action = `/portfolios/withdraw/${id}`;
     document.getElementById('withdraw_portfolio_name').value = name || '';
-    document.getElementById('withdraw_portfolio_title').textContent = name || '';
     document.getElementById('withdraw_available_cash').textContent = opts.withdrawableCash || '0.00';
     document.getElementById('withdraw_max_btn').dataset.maxAmount = opts.withdrawableCashInput || '';
     document.getElementById('withdraw_funds_amount').value = (opts.amount != null ? String(opts.amount) : '');

@@ -34,7 +34,7 @@ For exact formulas, see [docs/DOMAIN_AND_CALCULATIONS.md](docs/DOMAIN_AND_CALCUL
 - Overview totals, portfolio summaries, assets page, and Overview allocation charts based on recorded data.
 - Multi-user accounts with per-user data scoping.
 - Passwordless email-code login, registration, and account settings.
-- Responsive dark-only UI using Bootstrap, Bootstrap Icons, and local design tokens.
+- Responsive UI with light and dark themes using Bootstrap, Bootstrap Icons, and local design tokens.
 
 ## Tech Stack
 

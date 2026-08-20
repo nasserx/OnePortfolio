@@ -113,6 +113,28 @@
 
 
 {#
+  Entity action menu. The caller owns the menu items so action-specific
+  classes and data attributes stay with the page that dispatches them.
+#}
+{%- macro action_menu(label, small=false) -%}
+  <div class="dropdown action-menu">
+    <button type="button"
+            class="btn btn-icon dropdown-toggle action-menu__trigger{% if small %} btn-sm{% endif %}"
+            data-bs-toggle="dropdown"
+            data-bs-boundary="viewport"
+            aria-expanded="false"
+            aria-haspopup="true"
+            aria-label="{{ label }}">
+      <i class="bi bi-three-dots-vertical" aria-hidden="true"></i>
+    </button>
+    <ul class="dropdown-menu dropdown-menu-end action-menu__menu">
+      {{ caller() }}
+    </ul>
+  </div>
+{%- endmacro -%}
+
+
+{#
   The coloured initial that ties a portfolio row to its slice of the
   allocation chart. `index` is the zero-based row position; the palette
   wraps at seven, matching the chart's own colour map.

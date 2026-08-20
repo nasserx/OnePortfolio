@@ -32,14 +32,9 @@ Three rules decide most design questions. When in doubt, apply them in order.
    figures, and `--brand` clears 4.5:1 on every surface, so it can carry
    that with no fill and no border behind it.
 
-   **Hover is the one place a control may borrow a value's colour, because
-   there it means something different.** A resting colour claims "this
-   control is of that kind"; a hover colour says "this is what will happen
-   if you press it" — and only the second is true of a deposit. So
-   `.btn-icon--pos`, `--neg` and `--income` tint on hover only, in the exact
-   roles the resulting figures will be printed in: a deposit adds, a
-   withdrawal subtracts, income is income. Destruction keeps its warning on
-   `.btn-outline-danger`, since it is previewing loss rather than an entry.
+   Entity actions stay neutral inside their three-dot menu. Destruction is the
+   exception: `.dropdown-item--danger` carries the warning colour because it
+   previews permanent loss rather than a financial direction.
 2. **One hero number per screen.** A screen with five equally-weighted figures
    has no reading order. Promote one; demote the rest to supporting facts.
 3. **Density is a preference, not a constant.** Never hard-code a compact size —
@@ -53,14 +48,15 @@ accident:
   into a field of badges and out-shouts the figures. A chip is still right for a
   *category* tag that appears once per group (the portfolio name beside an asset
   symbol).
-- **Row actions appear on engagement.** Edit/delete controls are `opacity: 0`
-  until their own row is hovered or focused. They keep their layout space, stay
-  in the tab order, and are permanently visible under `@media (hover: none)`.
-  In a row of them, **only the destructive one carries a colour** — the rest
-  are neutral and say what they do with their icon and their tooltip. Note
-  that `.btn-icon` sets its own colour at rest *and* on hover, so an outline
-  variant on one shows through only where `components.css` restores it
-  explicitly; there is one such rule, and it is for `.btn-outline-danger`.
+- **Row actions appear on engagement.** The three-dot menu trigger is
+  `opacity: 0` until its own row is hovered or focused. It keeps its layout
+  space, stays in the tab order, and is permanently visible under
+  `@media (hover: none)`. Menu items use the `--text-xs` detail step with the
+  standard menu padding, and neutral text except for the destructive action,
+  which carries the warning colour. Action menus use the shared
+  viewport-aware, fixed Popper contract so card and table-scroll overflow do
+  not clip them. Dropdown motion must not animate `transform`, because Popper
+  owns that property for its computed coordinates.
 - **A number must never sit next to a control.** Where a table ends in an
   action column, that column is a fixed track wider than its content, so the
   surplus becomes a gutter between the data and the things that act on it.
@@ -69,7 +65,7 @@ accident:
 - **Two tables stacked in one card share their edges, not their columns.**
   A disclosure's summary row and the record table inside it hold different
   things and can never align column-for-column. What they can align is where
-  their data stops and where their controls start: `--row-actions-w` is that
+  their data stops and where their action menus start: `--row-actions-w` is that
   right-hand zone, declared once on `.disclosure` and consumed by both. The
   panel is also inset by `--space-4 − --cell-pad-x`, because a row pads
   itself at the edges while a table pads inside each cell — miss that and
@@ -367,9 +363,9 @@ proportion when the ring grows.
 Two spacing rules for the disclosure summary row, both about ownership of a
 number: the identity column is fixed (so every card's metric strip starts at
 the same x) but sized to the names rather than to the longest name
-imaginable, and the strip stops short of the action cluster. Run it to the
-full width and the last figure's right edge sits under the edit/delete
-buttons, which makes the figures read as labels for the controls.
+imaginable, and the strip stops short of the action menu. Run it to the full
+width and the last figure's right edge sits under the trigger, which makes the
+figure read as its label.
 
 Because the summary lives inside a `<button>`, its contents must be phrasing
 content — which is why the `metric` macro emits spans rather than divs.

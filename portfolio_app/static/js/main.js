@@ -190,6 +190,22 @@ function applyBrowserTimeZone(root) {
     });
 }
 
+class ActionMenuManager {
+    constructor(root) {
+        if (!window.bootstrap || !window.bootstrap.Dropdown) return;
+
+        const scope = root || document;
+        scope.querySelectorAll('.action-menu__trigger').forEach(function(trigger) {
+            window.bootstrap.Dropdown.getOrCreateInstance(trigger, {
+                boundary: 'viewport',
+                popperConfig: function(defaultConfig) {
+                    return Object.assign({}, defaultConfig, { strategy: 'fixed' });
+                }
+            });
+        });
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     applyBrowserTimeZone(document);
 });
@@ -1232,6 +1248,7 @@ class InvestmentPortfolioApp {
     initialize() {
         new NativeValidationDisabler();
         new DecimalInputHandler();
+        new ActionMenuManager(document);
         initDateFields(document);
         new AlertManager();
         new TooltipManager();

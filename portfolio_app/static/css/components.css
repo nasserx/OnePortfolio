@@ -210,23 +210,8 @@
     font-size: var(--text-xs);
   }
 
-  /* Hover previews the consequence: the actions that move the ledger take
-     the colour of the direction they will move it, borrowing the same roles
-     the resulting figures are printed in. A resting colour would claim
-     "this control is of that kind"; only the hover claim is true.
-
-     `.btn-icon` sets its colour at rest *and* on hover, so these have to
-     out-specify it — hence the doubled class. */
-  .btn-icon.btn-icon--pos:hover    { color: var(--pos);    background-color: var(--pos-soft); }
-  .btn-icon.btn-icon--neg:hover    { color: var(--neg);    background-color: var(--neg-soft); }
-  .btn-icon.btn-icon--income:hover { color: var(--income); background-color: var(--income-soft); }
-
-  /* Destruction is the exception that keeps its warning on a separate
-     class, because it is not previewing an entry — it is previewing loss. */
-  .btn-icon.btn-outline-danger:hover { color: var(--neg); background-color: var(--neg-soft); }
-
-  /* Hidden with opacity, not `visibility` or `display`, so the buttons stay
-     in the tab order — tabbing to one trips `:focus-within` on its row.
+  /* Hidden with opacity, not `visibility` or `display`, so the menu trigger
+     stays in the tab order — tabbing to it trips `:focus-within` on its row.
      `pointer-events: none` stops a click landing on an invisible control
      without affecting keyboard focus. Width is reserved either way, so
      revealing them never reflows the table. */
@@ -930,10 +915,10 @@
     box-shadow: var(--shadow-overlay);
   }
 
-  .dropdown-menu.show {
-    animation: op-scale-in var(--dur-2) var(--ease-out);
-    transform-origin: top center;
-  }
+  /* Popper owns `transform` while a menu is open. Animating that property
+     temporarily replaces its coordinates and makes the menu jump when the
+     animation ends. Keep dropdown placement visually stable. */
+  .dropdown-menu.show { animation: op-fade-in var(--dur-1) var(--ease-out); }
 
   .dropdown-item {
     display: flex;
@@ -945,7 +930,8 @@
     border-radius: var(--radius-sm);
     background: none;
     color: var(--fg-muted);
-    font-size: var(--text-sm);
+    font-size: var(--text-xs);
+    line-height: var(--leading-normal);
     text-align: left;
     cursor: pointer;
     transition: background-color var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out);
@@ -967,6 +953,17 @@
     margin: var(--space-1) 0;
     border-top: 1px solid var(--line-subtle);
     opacity: 1;
+  }
+
+  .action-menu__trigger::after { display: none; }
+
+  .dropdown-item--danger { color: var(--neg); }
+
+  .dropdown-item--danger:hover,
+  .dropdown-item--danger:focus,
+  .dropdown-item--danger:active {
+    background-color: var(--neg-soft);
+    color: var(--neg);
   }
 
   .btn-logout:hover {

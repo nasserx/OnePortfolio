@@ -44,7 +44,7 @@
     width: var(--sidebar-w);
     height: 100dvh;
     padding: var(--space-3);
-    border-right: 1px solid var(--line-subtle);
+    border-right: 1px solid var(--line-default);
     background-color: var(--bg-surface);
     transition: width var(--dur-3) var(--ease-out);
   }
@@ -79,9 +79,9 @@
     height: var(--control-h);
     margin-bottom: var(--space-4);
     padding: 0 var(--space-2) 0 var(--space-3);
-    border: 1px solid var(--line-subtle);
+    border: 1px solid var(--field-border);
     border-radius: var(--radius-sm);
-    background-color: var(--bg-inset);
+    background-color: var(--field-bg);
     color: var(--fg-faint);
     font-size: var(--text-sm);
     text-align: left;
@@ -149,27 +149,27 @@
     width: 1rem;
     font-size: 0.9375rem;
     text-align: center;
-    transition: transform var(--dur-2) var(--ease-spring);
+    transition: color var(--dur-1) var(--ease-out);
   }
 
-  .navlink:hover .bi { transform: scale(1.1); }
+  .navlink:hover .bi { color: var(--fg-default); }
 
   .navlink.active {
-    background-color: var(--brand-soft);
-    color: var(--brand);
+    background-color: var(--nav-active-bg);
+    color: var(--nav-active-fg);
   }
 
-  /* The active marker is the only brand-coloured shape in the chrome. */
+  /* The marker reinforces selection without competing with primary actions. */
   .navlink.active::before {
     content: "";
     position: absolute;
     left: calc(-1 * var(--space-3) - 1px);
     top: 50%;
-    width: 3px;
-    height: 1.125rem;
+    width: 2px;
+    height: 1rem;
     translate: 0 -50%;
     border-radius: 0 var(--radius-pill) var(--radius-pill) 0;
-    background-color: var(--brand);
+    background-color: var(--nav-active-line);
     animation: op-fade-in var(--dur-2) var(--ease-out);
   }
 
@@ -227,7 +227,7 @@
   }
 
   .userchip:hover,
-  .userchip[aria-expanded="true"] { background-color: var(--bg-hover); }
+  .userchip[aria-expanded="true"] { background-color: var(--nav-active-bg); }
 
   .userchip__name {
     flex: 1;
@@ -326,6 +326,16 @@
       transition: transform var(--dur-3) var(--ease-out);
     }
 
+    .sidenav :is(.nav-search, .navlink, .userchip) {
+      height: 2.75rem;
+    }
+
+    .sidenav .icon-button,
+    .page__menu {
+      width: 2.75rem;
+      height: 2.75rem;
+    }
+
     .shell[data-nav-open="true"] .sidenav { transform: none; }
 
     .shell[data-nav-open="true"] .shell__backdrop {
@@ -366,7 +376,6 @@
     place-items: start center;
     padding: max(8vh, var(--space-8)) var(--space-4) var(--space-4);
     background-color: var(--bg-backdrop);
-    backdrop-filter: blur(3px);
     animation: op-fade-in var(--dur-2) var(--ease-out);
   }
 
@@ -428,11 +437,11 @@
   }
 
   .palette__item[aria-selected="true"] {
-    background-color: var(--brand-soft);
-    color: var(--brand);
+    background-color: var(--nav-active-bg);
+    color: var(--nav-active-fg);
   }
 
-  .palette__item[aria-selected="true"] .bi { color: var(--brand); }
+  .palette__item[aria-selected="true"] .bi { color: var(--nav-active-fg); }
 
   .palette__hint {
     margin-left: auto;
@@ -477,7 +486,7 @@
   }
 
   .page__title {
-    font-size: var(--text-xl);
+    font-size: var(--text-2xl);
     font-weight: var(--weight-semibold);
     letter-spacing: -0.02em;
   }
@@ -1115,8 +1124,8 @@
   }
 
   .settings-sidebar-link.active {
-    background-color: var(--brand-soft);
-    color: var(--brand);
+    background-color: var(--nav-active-bg);
+    color: var(--nav-active-fg);
   }
 
   .settings-sidebar-link .bi { width: 1rem; text-align: center; }
@@ -1131,9 +1140,9 @@
     gap: var(--space-2);
     min-height: var(--control-h);
     padding: 0 var(--control-pad-x);
-    border: 1px solid var(--line-subtle);
+    border: 1px solid var(--field-border);
     border-radius: var(--radius-sm);
-    background-color: var(--bg-inset);
+    background-color: var(--field-bg-disabled);
     color: var(--fg-default);
     font-size: var(--text-sm);
   }

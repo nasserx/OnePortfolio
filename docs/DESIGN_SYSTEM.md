@@ -1,17 +1,19 @@
 # Design System
 
 OnePortfolio's interface is a **quiet ledger**: a dense record-keeping tool where
-the numbers are the interface and everything else recedes. It supports light and
-dark themes, and a compact density mode.
+the numbers are the interface and everything else recedes. Its foundation uses
+cool neutral surfaces, restrained borders and elevation, moderate radii, and
+compact controls inspired by the `b1YmpWHpo` visual direction. It supports light
+and dark themes, and a compact density mode.
 
 ## Governing rules
 
 Three rules decide most design questions. When in doubt, apply them in order.
 
 1. **Colour means something.** Green, red, and blue are reserved for signed
-   financial values (`positive` / `negative` / `income`). The brand violet
-   appears in exactly two roles: the primary button, and the active navigation
-   marker. Everything else is neutral.
+   financial values (`positive` / `negative` / `income`). Brand violet identifies
+   primary and inline actions; navigation selection stays neutral so application
+   chrome does not compete with financial meaning.
    Those two roles need *different* violets in dark mode — see
    [`--brand` vs `--brand-solid`](#brand-vs-brand-solid).
 
@@ -26,8 +28,8 @@ Three rules decide most design questions. When in doubt, apply them in order.
    to the figure they produce, not to the control that produced it.
 
    Violet is therefore what an action looks like, filled or not: the primary
-   button, the active nav marker, and `.btn-icon` — the row actions, which
-   take the brand colour on no surface at all. The tint is what makes a line
+   button and `.btn-icon` — the row actions, which take the brand colour on no
+   surface at all. The tint is what makes a line
    of small glyphs read as controls rather than as decoration beside the
    figures, and `--brand` clears 4.5:1 on every surface, so it can carry
    that with no fill and no border behind it.
@@ -175,7 +177,7 @@ Three layers, and components may only consume the middle one:
 
 | Layer | Example | Use |
 |---|---|---|
-| Primitives | `--n-900`, `--brand-500`, `--green-dark` | never referenced by components |
+| Primitives | `--n-50`, `--brand-500`, `--green-dark` | never referenced by components |
 | Roles | `--bg-surface`, `--fg-muted`, `--pos`, `--line-subtle` | **the only thing components use** |
 | Bridge | `--bs-primary-rgb`, `--bs-card-bg` | maps roles onto Bootstrap |
 
@@ -188,7 +190,7 @@ The brand has two roles because one violet cannot do both jobs in dark mode:
 
 | Role | Used for | Constraint |
 |---|---|---|
-| `--brand` | brand-coloured **text**, icons, hairlines, the nav marker | ≥ 4.5:1 *as* text on a dark surface → must be light |
+| `--brand` | brand-coloured **text**, icons, and action hairlines | ≥ 4.5:1 *as* text on a dark surface → must be light |
 | `--brand-solid` | any **filled** block with a label on it: primary button, checked box, selected calendar day | must carry white text at ≥ 4.5:1 → must be dark |
 
 In the light theme they coincide. In dark they are three ramp steps apart, and
@@ -197,24 +199,21 @@ palette is a relative luminance of roughly 0.14–0.18, and `--brand` sits well
 above it. Reaching for `--brand` as a fill is the mistake this split exists to
 prevent — `tests/test_design_tokens_contrast.py` fails the build if it happens.
 
-**Hover must move away from the label, not toward it.** The semantic solid
-buttons (success / danger / warning) hover by painting `--solid-hover-veil`
-over their fill: black in light, where labels are white; white in dark, where
-labels are near-black. A single white wash for both themes looked fine and
-quietly dropped light-mode Success to 4.31:1 *on hover only* — the state where
-the user is committing to the click. `.btn-primary` is excluded from that rule
-because it has a real hover step of its own; stacking the two dropped it to
-3.77:1. The test composites the veil, so it checks the shipped colour rather
-than the resting one.
+**Hover must move away from the label, not toward it.** Only the destructive
+solid `.btn-danger` uses the semantic red treatment and paints
+`--solid-hover-veil` over its fill: black in light, where its label is white;
+white in dark, where its label is near-black. Normal actions remain
+`.btn-primary` and swap to `--brand-solid-hover` instead. There is deliberately
+no `.btn-success` or `.btn-warning`. The contrast test composites the danger
+veil, so it checks the shipped hover colour rather than only the resting one.
 
 ### Themes
 
-The light theme is built on a **warm cream** ramp, not neutral white. That is a
-functional choice, not a stylistic one: against a warm ground the semantic green
-and red hold their saturation, where on clinical white they wash out and start
-reading as grey. The light-theme semantic hues are darkened to clear 4.5:1
-against those cream surfaces; the dark-theme brand steps are pushed up in chroma
-because a desaturated violet reads as grey on near-black.
+The light theme is built on a **cool zinc-neutral** ramp with an off-white canvas
+and nearly white panels. Dark mode mirrors that hierarchy from near-black canvas
+to progressively lighter surfaces. The semantic green, red, blue, and amber
+remain separately tuned for each theme and clear their contrast floors on every
+surface; neutralizing the chrome must never neutralize financial meaning.
 
 Light is the base definition on `:root`. Dark is redefined twice: under
 `@media (prefers-color-scheme: dark)` guarded by `:root:not([data-theme="light"])`,
@@ -429,7 +428,7 @@ Painted through `background-clip: text` on `.lp-title`, with `color` still
 declared so an engine without `background-clip` renders a solid heading
 rather than an invisible one. Both ends are semantic roles rather than raw
 ramp steps, which is exactly why one declaration serves both themes: light
-resolves to a deep cobalt and a deep violet against cream, dark to a bright
+resolves to a deep cobalt and a deep violet against the neutral canvas, dark to a bright
 pair against near-black. Large text, so the floor is 3:1 — the reason a
 saturated pair can carry a heading at all. A theme block that pins either end
 is a regression; it would mean the gradient had stopped being one decision.

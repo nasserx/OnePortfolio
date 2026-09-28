@@ -52,23 +52,20 @@
       background-color var(--dur-1) var(--ease-out),
       border-color var(--dur-1) var(--ease-out),
       color var(--dur-1) var(--ease-out),
-      box-shadow var(--dur-2) var(--ease-out),
-      transform var(--dur-2) var(--ease-spring);
+      box-shadow var(--dur-1) var(--ease-out);
   }
 
   .btn:hover {
     background-color: var(--btn-bg-hover);
     border-color: var(--btn-line-hover);
     color: var(--btn-fg);
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-lift);
+    box-shadow: none;
   }
 
   /* Press reads as the button settling back down, not shrinking away. */
   .btn:active {
-    transform: translateY(0) scale(0.985);
+    filter: brightness(0.97);
     box-shadow: none;
-    transition-duration: var(--dur-1);
   }
 
   /* One focus indicator, not two. The crisp outline was already doing the
@@ -82,7 +79,7 @@
   .btn.disabled {
     opacity: 0.45;
     cursor: not-allowed;
-    transform: none;
+    filter: none;
     box-shadow: none;
     pointer-events: none;
   }
@@ -167,7 +164,6 @@
 
   .btn-link:hover {
     color: var(--brand-hover);
-    transform: none;
     box-shadow: none;
     text-decoration: underline;
     text-underline-offset: 3px;
@@ -192,17 +188,16 @@
     border-radius: var(--radius-sm);
   }
 
-  /* Row actions sit inside dense tables — a lift would jitter the row, so
-     icon buttons scale in place instead. */
+  /* Row actions sit inside dense tables, so their hover state stays tonal
+     and does not move the control or jitter the row. */
   .btn-icon:hover {
-    transform: scale(1.08);
     box-shadow: none;
     background-color: var(--bg-hover);
     border-color: transparent;
     color: var(--fg-default);
   }
 
-  .btn-icon:active { transform: scale(0.94); }
+  .btn-icon:active { filter: brightness(0.96); }
 
   .btn-icon.btn-sm {
     width: 1.625rem;
@@ -341,9 +336,9 @@
     width: 100%;
     min-height: var(--control-h);
     padding: 0 var(--control-pad-x);
-    border: 1px solid var(--line-default);
+    border: 1px solid var(--field-border);
     border-radius: var(--radius-sm);
-    background-color: var(--bg-inset);
+    background-color: var(--field-bg);
     color: var(--fg-default);
     font-size: var(--text-md);
     line-height: var(--leading-snug);
@@ -372,7 +367,7 @@
   .form-control:focus,
   .form-select:focus {
     border-color: var(--focus-ring);
-    background-color: var(--bg-surface);
+    background-color: var(--field-bg-focus);
     box-shadow: inset 0 0 0 1px var(--focus-ring);
     outline: none;
     color: var(--fg-default);
@@ -381,7 +376,7 @@
   .form-control[readonly],
   .form-select[readonly],
   .form-control:disabled {
-    background-color: var(--bg-sunken);
+    background-color: var(--field-bg-disabled);
     color: var(--fg-muted);
     cursor: default;
   }
@@ -637,7 +632,7 @@
   .card,
   .panel {
     position: relative;
-    border: 1px solid var(--line-subtle);
+    border: 1px solid var(--line-default);
     border-radius: var(--radius-md);
     background-color: var(--bg-surface);
     background-clip: border-box;
@@ -696,7 +691,7 @@
     padding-top: var(--space-2);
     padding-bottom: var(--space-2);
     border-bottom: 1px solid var(--line-default);
-    background-color: var(--bg-surface);
+    background-color: var(--table-head-bg);
     color: var(--fg-subtle);
     font-size: var(--text-2xs);
     font-weight: var(--weight-medium);
@@ -707,7 +702,7 @@
 
   .table-light,
   .table thead.table-light th {
-    background-color: var(--bg-inset);
+    background-color: var(--table-head-bg);
   }
 
   .table tbody tr {
@@ -720,7 +715,7 @@
 
   .table-hover > tbody > tr:hover > *,
   .table tbody tr:hover > td {
-    background-color: var(--bg-hover);
+    background-color: var(--table-row-hover);
     color: var(--fg-default);
   }
 
@@ -794,7 +789,7 @@
     gap: var(--space-1);
     padding: 0.1875rem var(--space-2);
     border: 1px solid var(--line-subtle);
-    border-radius: var(--radius-pill);
+    border-radius: var(--radius-sm);
     background-color: var(--bg-sunken);
     color: var(--fg-muted);
     font-size: var(--text-2xs);
@@ -904,8 +899,8 @@
 
   .dropdown-item.active,
   .dropdown-item:active {
-    background-color: var(--brand-soft);
-    color: var(--brand);
+    background-color: var(--nav-active-bg);
+    color: var(--nav-active-fg);
   }
 
   .dropdown-divider {
@@ -955,7 +950,6 @@
 
   .modal-backdrop {
     background-color: var(--bg-backdrop);
-    backdrop-filter: blur(3px);
   }
 
   .modal-backdrop.show { opacity: 1; }
@@ -971,7 +965,7 @@
   /* Bootstrap's default slide-down is replaced with a settle-in-place that
      matches the rest of the product's motion vocabulary. */
   .modal.fade .modal-dialog {
-    transform: translateY(10px) scale(0.985);
+    transform: translateY(8px) scale(0.99);
     transition: transform var(--dur-3) var(--ease-out), opacity var(--dur-3) var(--ease-out);
     opacity: 0;
   }
@@ -1013,7 +1007,7 @@
     gap: var(--space-2);
     padding: var(--space-3) var(--space-5);
     border-top: 1px solid var(--line-subtle);
-    background-color: var(--bg-inset);
+    background-color: var(--table-head-bg);
   }
 
   .modal-footer > * { margin: 0; }
@@ -1072,7 +1066,7 @@
     gap: var(--space-3);
     padding: var(--space-3) var(--space-4);
     border: 1px solid var(--line-default);
-    border-left: 3px solid var(--fg-subtle);
+    border-left: 2px solid var(--fg-subtle);
     border-radius: var(--radius-md);
     background-color: var(--bg-raised);
     box-shadow: var(--shadow-overlay);
@@ -1147,11 +1141,11 @@
   .tooltip .tooltip-inner {
     max-width: 17rem;
     padding: var(--space-2) var(--space-3);
-    border: 1px solid var(--line-default);
+    border: 1px solid transparent;
     border-radius: var(--radius-sm);
-    background-color: var(--bg-raised);
+    background-color: var(--tooltip-bg);
     box-shadow: var(--shadow-overlay);
-    color: var(--fg-default);
+    color: var(--tooltip-fg);
     font-size: var(--text-xs);
     line-height: var(--leading-snug);
     text-align: left;
@@ -1206,8 +1200,8 @@
   }
 
   .tx-pg-num.active {
-    background-color: var(--brand-soft);
-    color: var(--brand);
+    background-color: var(--nav-active-bg);
+    color: var(--nav-active-fg);
     font-weight: var(--weight-medium);
   }
 
@@ -1338,6 +1332,18 @@
   .allocation-legend .swatch-7, .allocation-marker-7 { background-color: var(--cat-7); }
   .allocation-legend .swatch-other { background-color: var(--cat-other); }
 
+  .allocation-marker-1 { --marker-fg: var(--cat-1-fg); }
+  .allocation-marker-2 { --marker-fg: var(--cat-2-fg); }
+  .allocation-marker-3 { --marker-fg: var(--cat-3-fg); }
+  .allocation-marker-4 { --marker-fg: var(--cat-4-fg); }
+  .allocation-marker-5 { --marker-fg: var(--cat-5-fg); }
+  .allocation-marker-6 { --marker-fg: var(--cat-6-fg); }
+  .allocation-marker-7 { --marker-fg: var(--cat-7-fg); }
+  .allocation-marker-other {
+    --marker-fg: var(--cat-other-fg);
+    background-color: var(--cat-other);
+  }
+
   /* Portfolio initial chip — the colour ties a row to its chart slice. */
   .marker {
     display: inline-flex;
@@ -1347,10 +1353,9 @@
     width: 1.5rem;
     height: 1.5rem;
     border-radius: var(--radius-xs);
-    color: #fff;
+    color: var(--marker-fg);
     font-size: var(--text-2xs);
     font-weight: var(--weight-semibold);
-    text-shadow: 0 1px 1px rgb(0 0 0 / 0.25);
   }
 
   /* ======================================================================

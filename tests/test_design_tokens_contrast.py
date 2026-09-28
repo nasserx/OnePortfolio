@@ -61,6 +61,10 @@ SOLID_BUTTONS = (
     ('neg', 'fg-on-solid', 'neg', True),
 )
 
+CATEGORICAL_MARKERS = tuple(
+    (f'cat-{index}', f'cat-{index}-fg') for index in range(1, 8)
+) + (('cat-other', 'cat-other-fg'),)
+
 
 @pytest.fixture(scope='module')
 def css():
@@ -157,3 +161,23 @@ def test_brand_fill_is_distinguishable_from_the_page(css):
                 f'{theme}: --brand-solid ({fill}) on --{surface} ({bg}) '
                 f'is {ratio:.2f}:1'
             )
+
+
+@pytest.mark.parametrize('theme', ['light', 'dark'])
+@pytest.mark.parametrize(
+    ('background_role', 'foreground_role'), CATEGORICAL_MARKERS,
+)
+def test_categorical_marker_text_meets_wcag_aa(
+    css, theme, background_role, foreground_role,
+):
+    """Every small portfolio marker must clear WCAG AA on its chart hue."""
+    declared = theme_tokens(css, theme)
+    background = resolve(background_role, declared)
+    foreground = resolve(foreground_role, declared)
+    ratio = contrast(foreground, background)
+
+    assert ratio >= TEXT_MIN, (
+        f'{theme}: --{foreground_role} ({foreground}) on '
+        f'--{background_role} ({background}) is {ratio:.2f}:1, '
+        f'needs {TEXT_MIN}:1'
+    )

@@ -2,31 +2,11 @@ import re
 from html.parser import HTMLParser
 from pathlib import Path
 
-import pytest
-
 from portfolio_app import db
 from portfolio_app.models.user import User
 from tests._auth import authenticate_client
-from tests._colour import (
-    NON_TEXT_MIN,
-    TEXT_MIN,
-    composite,
-    contrast,
-    resolve,
-    theme_tokens,
-    to_rgb,
-)
 
 _TOKENS = Path('portfolio_app/static/css/tokens.css')
-
-# What the hero actually prints, and the floor each needs. The title uses the
-# canonical foreground directly; the proof icons are the only non-text mark.
-HERO_INKS = {
-    'foreground': TEXT_MIN,
-    'fg-default': TEXT_MIN,
-    'fg-muted': TEXT_MIN,
-    'fg-subtle': NON_TEXT_MIN,
-}
 
 
 # `svg` joins script and style because the only inline vector left on this
@@ -115,8 +95,8 @@ def test_landing_renders_public_product_preview(app):
                  'totalIncome', 'realizedPnl', 'returnPercent'):
         assert f'data-landing-metric="{hook}"' in html
 
-    for label in ('Book value', 'Total capital', 'Total cash',
-                  'Income', 'Realized P&L'):
+    for label in ('Book Value', 'Total Capital', 'Total Cash',
+                  'Total Income', 'Realized P&L'):
         assert label in text
 
     # Preview figures are rendered by landing.js, so none may be baked in.
@@ -178,14 +158,14 @@ def _rule(css, selector):
 
 
 def _canvas_mix(value):
-    """`color-mix(in srgb, var(--bg-canvas) 82%, transparent)` -> 0.82."""
+    """Extract the canonical-background share from the translucent header."""
     match = re.fullmatch(
-        r'color-mix\(\s*in srgb,\s*var\(\s*--bg-canvas\s*\)\s*'
+        r'color-mix\(\s*in oklch,\s*var\(\s*--background\s*\)\s*'
         r'([\d.]+)%\s*,\s*transparent\s*\)',
         value.strip(),
     )
     assert match is not None, (
-        f'expected a --bg-canvas/transparent color-mix, got {value!r}. The '
+        f'expected a --background/transparent color-mix, got {value!r}. The '
         f'header surface has to be made of the page colour: that is what '
         f'keeps it reading as page rather than as a bar.'
     )
@@ -255,89 +235,24 @@ def test_landing_header_has_exactly_one_appearance():
     )
 
 
-def test_landing_product_card_is_a_solid_surface():
-    """The preview is the application, not a window onto anything.
-
-    This card was glass, back when there was a photograph behind it, and the
-    transparency made the preview read as a hero treatment rather than as the
-    product. There is nothing behind it now, so translucency would only mean
-    the intro's gradient bleeding through its figures.
-
-    Pinned as *no translucency mechanism* rather than as a colour, so the
-    surfaces can be retinted freely. What may not come back is a fill that
-    lets the photograph into the card's type — which is also what let this
-    file stop modelling the picture reaching the card at all.
-    """
+def test_landing_product_preview_composes_the_shared_card_surface():
+    """The preview uses the application's card contract without repainting it."""
     css = _landing_css()
     card = _rule(css, '.lp-shot')
-    chrome = _rule(css, '.lp-shot__chrome')
+    template = Path('portfolio_app/templates/landing.html').read_text(encoding='utf-8')
 
-    for name, rule in (('.lp-shot', card), ('.lp-shot__chrome', chrome)):
-        background = rule['background-color']
-        assert background.startswith('var(--bg-'), (
-            f'{name} is painted with {background!r}; a solid card takes a '
-            f'surface role directly'
-        )
-        assert 'backdrop-filter' not in rule, (
-            f'{name} blurs what is behind it, which only means anything if '
-            f'something behind it shows through'
-        )
-        # Flat as well as opaque. The border draws the card's edge; an
-        # elevation shadow drew a second, softer one just outside it. Depth
-        # was worth paying for when the card floated on a photograph — it
-        # sits on the page now, so it is drawn like the page.
-        for lifted in ('box-shadow', 'filter'):
-            assert lifted not in rule, (
-                f'{name} declares {lifted}; the preview card is flat'
-            )
-
-    # The token that tuned the glass is gone from the stylesheets entirely,
-    # so it cannot come back for this card alone without being noticed.
-    assert 'hero-card-fill' not in css, (
-        'landing.css references --hero-card-fill again; that token was '
-        'deleted with the glass'
-    )
-
-    # Nor by a pseudo-element painting a shadow the rule itself does not.
-    for pseudo in re.findall(r'\.lp-shot[\w-]*::(?:before|after)[^{]*\{([^}]*)\}', css):
-        assert 'box-shadow' not in pseudo, (
-            'a .lp-shot pseudo-element paints a shadow; flat means flat'
-        )
-
-
-# ---------------------------------------------------------------------------
-# The intro: a gradient and a headline, and nothing else
-# ---------------------------------------------------------------------------
-
-
-def _wash_stops():
-    """The colour/percentage pairs inside `--intro-wash`, from tokens.css."""
-    css = _TOKENS.read_text(encoding='utf-8')
-    block = re.search(r'--intro-wash:(.*?);', css, re.S)
-    assert block is not None, '--intro-wash is no longer declared in tokens.css'
-    stops = re.findall(
-        r'color-mix\(\s*in srgb,\s*var\(\s*(--[\w-]+)\s*\)\s*([\d.]+)%',
-        block.group(1),
-    )
-    return stops
+    assert 'class="lp-shot surface-card"' in template
+    assert 'lp-shot__chrome' not in template + css
+    for visual_edge in ('border', 'border-radius', 'background-color', 'box-shadow'):
+        assert visual_edge not in card
 
 
 def test_landing_intro_carries_no_decorative_media(app):
-    """The intro is type on a gradient. There is nothing else in it.
-
-    Every previous version of this section had a layer: a photograph under a
-    measured scrim, then a vector composition under a clip. Both are gone,
-    and what this pins is that neither can come back quietly — no image, no
-    inline art, no element whose only job is decoration. The headline is the
-    visual, and the gradient is the whole of the ornament budget.
-    """
+    """The preview is the hero's only graphic; no decorative media is loaded."""
     html = _landing_html(app)
 
     for banned in ('/static/img/hero', 'hero-media', 'lp-heroart', '<picture'):
-        assert banned not in html, (
-            f'the landing intro references {banned!r}; its only background '
-            f'treatment is --intro-wash on the section itself'
-        )
+        assert banned not in html
 
     # The one canvas on this page is the product preview's allocation ring,
     # which is data rather than decoration.
@@ -352,75 +267,14 @@ def test_landing_intro_carries_no_decorative_media(app):
     for element in ('<img', '<picture'):
         assert element not in intro, (
             f'{element}> inside the intro; apart from the preview card the '
-            f'section carries type on a gradient and nothing else'
+            f'section carries type and nothing else'
         )
     assert '<path' not in intro
     assert '#op-icon-' in intro
 
     landing_css = _landing_css()
-    assert 'background-image: var(--intro-wash);' in landing_css
-    assert '--intro-wash:' not in landing_css, (
-        'landing.css restates the wash instead of pointing at the token; the '
-        'auth showcase shares it, so there is one owner in tokens.css'
-    )
-
-
-def test_intro_wash_has_one_token_owner_and_is_landing_only():
-    """The marketing wash remains isolated from the restrained auth shell."""
-    tokens = _TOKENS.read_text(encoding='utf-8')
-    app_css = Path('portfolio_app/static/css/app.css').read_text(encoding='utf-8')
-
-    assert tokens.count('--intro-wash:') == 1, (
-        'the wash is declared more than once; it is theme-agnostic by '
-        'construction and must not be overridden per theme'
-    )
-    assert 'var(--intro-wash)' not in app_css
-
-
-@pytest.mark.parametrize('theme', ['light', 'dark'])
-def test_intro_wash_keeps_every_ink_printed_on_it_legible(theme):
-    """The wash sits under type, so it is checked against every ink.
-
-    A photograph needed sampling because the background under a word was
-    whatever the picture happened to be doing there. This is known stops at
-    known alpha over a known canvas, so the check is exact — and it runs
-    against the *strongest* stop regardless of where that stop falls, so
-    re-centring the gradient later cannot slide a heavier colour under the
-    heading without failing here.
-    """
-    declared = theme_tokens(_TOKENS.read_text(encoding='utf-8'), theme)
-    canvas = to_rgb(resolve('bg-canvas', declared))
-
-    failures = []
-    for role, floor in HERO_INKS.items():
-        ink = resolve(role, declared)
-        for token, percent in _wash_stops():
-            veil = (to_rgb(resolve(token.lstrip('-'), declared)),
-                    float(percent) / 100)
-            ratio = contrast(ink, composite(canvas, veil))
-            if ratio < floor:
-                failures.append(
-                    f'{theme}: --{role} over {token} at {percent}% falls to '
-                    f'{ratio:.2f}:1, needs {floor}:1'
-                )
-
-    assert not failures, 'intro wash legibility:\n  ' + '\n  '.join(failures)
-
-
-def test_intro_wash_stays_a_wash():
-    """Restrained is part of the contract, not a matter of taste.
-
-    Everything on these surfaces is read against the canvas plus one of these
-    stops. Keeping them in single digits is what lets the copy use ordinary
-    roles with no step-ups anywhere, which is the simplification the
-    photograph never allowed.
-    """
-    for token, percent in _wash_stops():
-        assert float(percent) <= 12, (
-            f'--intro-wash mixes {token} at {percent}%; past about a tenth '
-            f'this stops being a wash and starts being a surface that type '
-            f'has to be checked against case by case'
-        )
+    assert 'background-image' not in _rule(landing_css, '.lp-hero')
+    assert '--intro-wash' not in landing_css + _TOKENS.read_text(encoding='utf-8')
 
 
 def test_the_hero_title_uses_the_neutral_preset_foreground_in_both_themes():
@@ -476,7 +330,7 @@ def test_landing_links_anchors_and_removed_terms(app):
     assert 'href="/register"' not in html
     header = re.search(r'<header class="lp-nav">(.*?)</header>', html, re.DOTALL)
     assert header
-    assert '>Get started</a>' in header.group(1)
+    assert '>Get Started</a>' in header.group(1)
     assert '>Continue</a>' not in header.group(1)
 
     # Every in-page anchor must resolve to a section that actually exists.
@@ -485,8 +339,8 @@ def test_landing_links_anchors_and_removed_terms(app):
     for anchor in anchors:
         assert f'id="{anchor}"' in html
 
-    assert 'Manual by design' in text
-    assert 'No market feeds' in text
+    assert 'Manual by Design' in text
+    assert 'No Market Feeds' in text
     assert 'no live prices' in lower_text
     assert 'broker connections' in lower_text
     assert 'broker sync' in lower_text

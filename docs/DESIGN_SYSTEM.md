@@ -264,7 +264,7 @@ only. The contracts are:
   hairline ring. Bootstrap modals and the command palette consume it.
 
 Overview hero, allocation card, ledger, disclosure cards, authentication
-preview, and empty states compose these contracts. Their page selectors must
+forms, the Landing product preview, and empty states compose these contracts. Their page selectors must
 not restate outer borders, radii, backgrounds, or elevation. A responsive table
 may replace its frame with per-row cards when the semantic table is deliberately
 restacked; that is a structural exception, not a second desktop surface recipe.
@@ -369,6 +369,10 @@ percentage precision used by live transaction summaries and both charts. It
 mirrors only the necessary display behavior; Python/Jinja filters remain
 authoritative for server-rendered financial values. Landing must never query
 authenticated data.
+
+Landing-specific CSS owns composition and responsive layout only. It consumes
+canonical preset roles directly and does not maintain a decorative colour
+system or page-only component palette.
 
 ### Third-party widget adaptation
 

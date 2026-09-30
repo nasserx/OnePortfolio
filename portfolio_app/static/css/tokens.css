@@ -310,10 +310,6 @@
     --brand: var(--primary);
     --brand-hover: color-mix(in oklch, var(--primary) 80%, transparent);
     --brand-solid: var(--primary);
-    --brand-soft: var(--accent);
-    --brand-soft-hover: var(--secondary);
-    --brand-line: var(--border);
-    --intro-wash: none;
   }
 
   @media (max-width: 62rem) {

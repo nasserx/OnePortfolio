@@ -72,8 +72,8 @@
 
         <nav class="lp-nav__links" aria-label="Sections">
             <a href="#product">Product</a>
-            <a href="#how">How it works</a>
-            <a href="#limits">What it isn't</a>
+            <a href="#how">How It Works</a>
+            <a href="#limits">What It Isn’t</a>
         </nav>
 
         <div class="lp-nav__actions">
@@ -81,7 +81,7 @@
                 {{ icon('moon', class='theme-icon theme-icon--moon') }}
                 {{ icon('sun', class='theme-icon theme-icon--sun') }}
             </button>
-            <a class="btn btn-primary" href="{{ url_for('auth.login') }}">Get started</a>
+            <a class="btn btn-primary" href="{{ url_for('auth.login') }}">Get Started</a>
         </div>
     </div>
 </header>
@@ -90,10 +90,8 @@
 
     <!-- ══ Hero ══════════════════════════════════════════════════════════ -->
     <section class="lp-hero">
-        {# No backdrop element. The intro's only background treatment is
-           `--intro-wash` on the section itself, so there is nothing here to
-           bind to scrolling, nothing to download, and nothing between the
-           heading and the page. #}
+        {# No decorative backdrop: the preview and typography carry the
+           hierarchy without adding another visual palette. #}
         <div class="lp-shell lp-hero__grid">
             <div class="lp-hero__copy">
                 <h1 class="lp-title">
@@ -108,28 +106,25 @@
 
                 <div class="lp-cta">
                     <a class="btn btn-primary btn-lg" href="{{ url_for('auth.login') }}">
-                        Create your portfolio
+                        Create Portfolio
                         {{ icon('arrow-right') }}
                     </a>
                 </div>
 
                 <ul class="lp-proof">
-                    <li>{{ icon('shield-lock') }} Your entries, your data</li>
-                    <li>{{ icon('wallet') }} Cash stays visible</li>
-                    <li>{{ icon('broadcast') }} No market feeds</li>
+                    <li>{{ icon('shield-lock') }} Your Entries, Your Data</li>
+                    <li>{{ icon('wallet') }} Cash Stays Visible</li>
+                    <li>{{ icon('broadcast') }} No Market Feeds</li>
                 </ul>
             </div>
 
             {# A framed slice of the real overview screen. Same components,
                same tokens — so it can never drift from the product. #}
-            <div class="lp-shot" aria-label="Product preview" role="img">
-                <div class="lp-shot__chrome" aria-hidden="true">
-                    <span></span><span></span><span></span>
-                </div>
-
+            <section class="lp-shot surface-card" aria-labelledby="landing-preview-title">
+                <h2 class="visually-hidden" id="landing-preview-title">Overview Preview</h2>
                 <div class="lp-shot__body">
                     <div class="lp-shot__hero">
-                        <span class="lp-shot__label">Book value</span>
+                        <span class="lp-shot__label">Book Value</span>
                         <span class="lp-shot__value num" data-landing-metric="bookValue"></span>
                         <span class="delta delta--pos">
                             {{ icon('arrow-up-right') }}
@@ -139,15 +134,15 @@
 
                     <div class="lp-shot__facts">
                         <div class="fact supporting-item">
-                            <span class="fact__label supporting-item__label">Total capital</span>
+                            <span class="fact__label supporting-item__label">Total Capital</span>
                             <span class="fact__value supporting-item__value num" data-landing-metric="totalCapital"></span>
                         </div>
                         <div class="fact supporting-item">
-                            <span class="fact__label supporting-item__label">Total cash</span>
+                            <span class="fact__label supporting-item__label">Total Cash</span>
                             <span class="fact__value supporting-item__value num" data-landing-metric="totalCash"></span>
                         </div>
                         <div class="fact supporting-item">
-                            <span class="fact__label supporting-item__label">Income</span>
+                            <span class="fact__label supporting-item__label">Total Income</span>
                             <span class="fact__value supporting-item__value num num--income" data-landing-metric="totalIncome"></span>
                         </div>
                         <div class="fact supporting-item">
@@ -158,12 +153,13 @@
 
                     <div class="lp-shot__split">
                         <div class="lp-shot__chart">
-                            <canvas id="landingChart" role="img" aria-label="Sample portfolio split by book value" aria-describedby="landingLegend">Sample portfolio split by book value. Details follow in the legend.</canvas>
+                            <canvas id="landingChart" role="img" aria-label="Sample portfolio split by book value" aria-describedby="landingLegend landingChartStatus">Sample portfolio split by book value. Details follow in the legend.</canvas>
                         </div>
                         <ul class="allocation-legend" id="landingLegend" aria-label="Sample portfolio split by book value legend"></ul>
+                        <p class="visually-hidden" id="landingChartStatus" aria-live="polite"></p>
                     </div>
                 </div>
-            </div>
+            </section>
         </div>
     </section>
 
@@ -171,23 +167,23 @@
     <section class="lp-section" id="product">
         <div class="lp-shell">
             <header class="lp-head" data-reveal>
-                <h2>Built around what you actually recorded</h2>
+                <h2>Built Around What You Actually Recorded</h2>
                 <p>Four ideas hold the whole product together.</p>
             </header>
 
             <div class="lp-grid lp-grid--4">
                 {% set features = [
-                    ('notebook', 'Manual by design',
+                    ('notebook', 'Manual by Design',
                      'You decide what is recorded and when. Nothing is imported behind your back, and nothing appears that you did not enter.'),
-                    ('wallet', 'Cash stays visible',
+                    ('wallet', 'Cash Stays Visible',
                      'Deposits, withdrawals, buys, sells, and income all move the same cash balance — so the number always reconciles.'),
-                    ('calculator', 'Average cost, done properly',
+                    ('calculator', 'Average Cost, Done Properly',
                      'Realized P&L is computed from your transactions with the average-cost method, including fees on both sides.'),
-                    ('chart-pie', 'Book value, not guesswork',
+                    ('chart-pie', 'Book Value, Not Guesswork',
                      'Cost basis and cash, with no market-value assumptions layered on top. What you see is what you put in.')
                 ] %}
                 {% for icon_name, title, body in features %}
-                <article class="lp-card" data-reveal style="--reveal-index:{{ loop.index0 }}">
+                <article class="lp-card surface-card" data-reveal style="--reveal-index:{{ loop.index0 }}">
                     <span class="lp-card__icon" aria-hidden="true">{{ icon(icon_name) }}</span>
                     <h3>{{ title }}</h3>
                     <p>{{ body }}</p>
@@ -197,19 +193,19 @@
         </div>
     </section>
 
-    <!-- ══ How it works ══════════════════════════════════════════════════ -->
+    <!-- ══ How It Works ══════════════════════════════════════════════════ -->
     <section class="lp-section lp-section--alt" id="how">
         <div class="lp-shell">
             <header class="lp-head" data-reveal>
-                <h2>Three steps, then it's just upkeep</h2>
-                <p>Most people are set up in under five minutes.</p>
+                <h2>Three Steps, Then It’s Just Upkeep</h2>
+                <p>Create portfolios, record activity, and review the results in one flow.</p>
             </header>
 
             <ol class="lp-steps">
                 {% set steps = [
-                    ('Create your portfolios', 'Group your holdings however you actually think about them — by asset class, by broker, or by strategy.'),
-                    ('Record as you go', 'Deposits and withdrawals, buys and sells, dividends and other income. Each entry takes a few seconds.'),
-                    ('Read the results', 'Cash, book value, realized P&L, income, and return — per asset, per portfolio, and across everything.')
+                    ('Create Your Portfolios', 'Group your holdings however you actually think about them — by asset class, by broker, or by strategy.'),
+                    ('Record as You Go', 'Deposits and withdrawals, buys and sells, dividends and other income. Each entry stays explicit and editable.'),
+                    ('Read the Results', 'Cash, book value, realized P&L, income, and return — per asset, per portfolio, and across everything.')
                 ] %}
                 {% for title, body in steps %}
                 <li class="lp-step" data-reveal style="--reveal-index:{{ loop.index0 }}">
@@ -228,7 +224,7 @@
     <section class="lp-section" id="limits">
         <div class="lp-shell">
             <header class="lp-head" data-reveal>
-                <h2>What OnePortfolio isn't</h2>
+                <h2>What OnePortfolio Isn’t</h2>
                 <p>
                     It is a ledger, not a terminal. If you want streaming quotes and
                     broker sync, this is the wrong tool — and that is deliberate.
@@ -236,24 +232,24 @@
             </header>
 
             <ul class="lp-limits__list" data-reveal style="--reveal-index:1">
-                <li>{{ icon('x') }} No live prices and no position valuations</li>
-                <li>{{ icon('x') }} No broker or exchange connections</li>
-                <li>{{ icon('x') }} No background imports or auto-sync</li>
-                <li>{{ icon('check', class='lp-yes') }} Just the record you keep, computed carefully</li>
+                <li>{{ icon('x') }} No Live Prices or Position Valuations</li>
+                <li>{{ icon('x') }} No Broker or Exchange Connections</li>
+                <li>{{ icon('x') }} No Background Imports or Auto-Sync</li>
+                <li>{{ icon('check', class='lp-yes') }} Just the Record You Keep, Computed Carefully</li>
             </ul>
         </div>
     </section>
 
     <!-- ══ Close ═════════════════════════════════════════════════════════ -->
     <section class="lp-close">
-        <div class="lp-shell lp-close__panel" data-reveal>
+        <div class="lp-shell lp-close__panel surface-card" data-reveal>
             <div>
-                <h2>Start with your own numbers.</h2>
-                <p>Free to create, and yours to keep.</p>
+                <h2>Start With Your Own Numbers</h2>
+                <p>Start with your own entries and keep the record under your control.</p>
             </div>
             <div class="lp-cta">
                 <a class="btn btn-primary btn-lg" href="{{ url_for('auth.login') }}">
-                    Create your portfolio
+                    Create Portfolio
                     {{ icon('arrow-right') }}
                 </a>
             </div>
@@ -267,7 +263,7 @@
         <span>&copy; 2026 OnePortfolio</span>
         <nav class="lp-footer__links" aria-label="Footer">
             <a href="#product">Product</a>
-            <a href="#how">How it works</a>
+            <a href="#how">How It Works</a>
             <a href="{{ url_for('auth.login') }}">Continue</a>
             {# Leaves the site, so it is set apart from the in-page links
                rather than hidden among them. #}

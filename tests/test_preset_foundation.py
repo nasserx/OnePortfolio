@@ -236,8 +236,7 @@ def test_every_migration_alias_has_a_current_stylesheet_consumer(tokens_css):
         'line-subtle', 'line-default', 'line-strong',
         'field-bg',
         'tooltip-bg', 'tooltip-fg',
-        'brand', 'brand-hover', 'brand-solid', 'brand-soft',
-        'brand-soft-hover', 'brand-line', 'intro-wash',
+        'brand', 'brand-hover', 'brand-solid',
     }
     assert aliases == expected
 

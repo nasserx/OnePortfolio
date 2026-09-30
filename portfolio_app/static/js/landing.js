@@ -78,7 +78,8 @@
   function renderChart() {
     var canvas = document.getElementById('landingChart');
     var legend = document.getElementById('landingLegend');
-    if (!canvas || !legend || !window.Chart) return;
+    var status = document.getElementById('landingChartStatus');
+    if (!canvas || !legend || !status || !window.Chart) return;
 
     if (chart) {
       chart.destroy();
@@ -160,6 +161,10 @@
     });
 
     legend.replaceChildren(fragment);
+    status.textContent = 'Sample allocation: ' + SAMPLE.portfolios.map(function (item, index) {
+      return item.name + ', ' + display.money(item.bookValue, false) + ', '
+        + display.percentage(shares[index], 1, false);
+    }).join('; ') + '.';
   }
 
   function start() {

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from 'macros/ui.html' import money, percent, quantity, metric, empty_state, action_menu %}
+{% from 'macros/ui.html' import money, percent, quantity, metric, empty_state, action_menu, record_type %}
 {% from 'macros/icons.html' import icon %}
 
 {% block title %}Assets — OnePortfolio{% endblock %}
@@ -19,13 +19,13 @@
         <button class="btn btn-outline-secondary filter-dropdown-btn" type="button"
                 data-bs-toggle="dropdown" aria-expanded="false">
             {{ icon('filter') }}
-            <span>{{ selected_portfolio or 'All portfolios' }}</span>
+            <span>{{ selected_portfolio or 'All Portfolios' }}</span>
             {{ icon('chevron-down', class='filter-dropdown-btn__chevron') }}
         </button>
         <ul class="dropdown-menu">
             <li>
                 <a class="dropdown-item {% if not selected_portfolio %}active{% endif %}"
-                   href="{{ url_for('transactions.transaction_list') }}">All portfolios</a>
+                   href="{{ url_for('transactions.transaction_list') }}">All Portfolios</a>
             </li>
             {% if portfolios %}
             <li><hr class="dropdown-divider"></li>
@@ -42,19 +42,19 @@
     <!-- Asset search -->
     <div class="search-field">
         {{ icon('search') }}
-        <label class="visually-hidden" for="symbolSearch">Search asset</label>
+        <label class="visually-hidden" for="symbolSearch">Search Asset</label>
         <input type="text" class="form-control" id="symbolSearch"
-               placeholder="Search asset…" autocomplete="off">
+               placeholder="Search Asset…" autocomplete="off">
     </div>
 
     {% if portfolios|length > 0 %}
         <button type="button" class="btn btn-primary js-add-symbol-btn"
-                data-command="Add asset" data-command-group="Create" data-command-icon="plus">
+                data-command="Add Asset" data-command-group="Create" data-command-icon="plus">
             {{ icon('plus') }}
-            <span>Add asset</span>
+            <span>Add Asset</span>
         </button>
     {% else %}
-        <a class="btn btn-primary" href="{{ url_for('portfolios.portfolios_list') }}">Create a portfolio first</a>
+        <a class="btn btn-primary" href="{{ url_for('portfolios.portfolios_list') }}">Create A Portfolio First</a>
     {% endif %}
 {% endblock %}
 
@@ -87,11 +87,11 @@
 
                         <span class="disclosure__metrics" style="--metric-columns:7">
                             {% call metric('Entries') %}{{ item.summary.transaction_count + symbol_dividends|length }}{% endcall %}
-                            {% call metric('Total buy cost') %}{{ money(item.summary.total_buy_cost) }}{% endcall %}
+                            {% call metric('Total Spent') %}{{ money(item.summary.total_buy_cost) }}{% endcall %}
                             {% call metric('Quantity') %}{{ quantity(item.summary.total_quantity_held) }}{% endcall %}
-                            {% call metric('Average cost') %}{{ money(item.summary.average_cost, decimals=item.avg_cost_decimal_places) }}{% endcall %}
+                            {% call metric('Average Cost') %}{{ money(item.summary.average_cost, decimals=item.avg_cost_decimal_places) }}{% endcall %}
                             {% call metric('Realized P&L') %}{{ money(item.summary.realized_pnl, tone='sign', signed=true) }}{% endcall %}
-                            {% call metric('Realized return') %}{{ percent(item.summary.return_percent, item.summary.return_display) }}{% endcall %}
+                            {% call metric('Realized Return') %}{{ percent(item.summary.return_percent, item.summary.return_display) }}{% endcall %}
                             {% call metric('Income') %}{{ money(symbol_dividend_total, tone='income', signed=true) }}{% endcall %}
                         </span>
                     </button>
@@ -112,7 +112,7 @@
                                 data-portfolio-id="{{ item.portfolio.id }}"
                                 data-symbol="{{ item.symbol|e }}">
                                 {{ icon('cash-banknote') }}
-                                <span>Add income</span>
+                                <span>Add Income</span>
                             </button>
                         </li>
                         <li><hr class="dropdown-divider"></li>
@@ -154,7 +154,7 @@
                                     <th class="small records-cell records-cell--number">Price</th>
                                     <th class="small records-cell records-cell--number">Quantity</th>
                                     <th class="small records-cell records-cell--number">Fee</th>
-                                    <th class="small records-cell records-cell--number">Total</th>
+                                    <th class="small records-cell records-cell--number">Total Amount</th>
                                     <th class="small records-cell records-cell--number">Realized P&amp;L</th>
                                     <th class="small records-cell records-cell--number">Return</th>
                                     <th class="small records-cell">Notes</th>
@@ -166,11 +166,7 @@
                                 <tr>
                                     <td class="records-cell"><small>{{ transaction.date_short }}</small></td>
                                     <td class="records-cell">
-                                        {% if transaction.transaction_type == 'Buy' %}
-                                            <span class="tx-type-label tx-type-buy type-buy">Buy</span>
-                                        {% else %}
-                                            <span class="tx-type-label tx-type-sell type-sell">Sell</span>
-                                        {% endif %}
+                                        {{ record_type(transaction.transaction_type) }}
                                     </td>
                                     <td class="records-cell records-cell--number">{{ money(transaction.price, decimals=item.price_decimal_places) }}</td>
                                     <td class="records-cell records-cell--number">{{ quantity(transaction.quantity) }}</td>
@@ -229,7 +225,7 @@
                                 <tr>
                                     <td class="records-cell"><small>{{ div.date_short }}</small></td>
                                     <td class="records-cell">
-                                        <span class="badge badge-dividend type-income">Income</span>
+                                        {{ record_type('Income') }}
                                     </td>
                                     <td class="records-cell records-cell--number"><span class="num num--flat">—</span></td>
                                     <td class="records-cell records-cell--number"><span class="num num--flat">—</span></td>
@@ -275,7 +271,7 @@
                                 data-portfolio-id="{{ item.portfolio.id }}"
                                 data-portfolio="{{ item.portfolio.name|e }}"
                                 data-symbol="{{ item.symbol|e }}">
-                            {{ icon('plus') }} Add entry
+                            {{ icon('plus') }} Add Entry
                         </button>
                     </p>
                     {% endif %}
@@ -286,15 +282,15 @@
         <div id="outer-pg-bar" class="tx-pagination-bar"></div>
 
         {% else %}
-        {% call empty_state('square-plus', 'No assets yet',
+        {% call empty_state('square-plus', 'No Assets Yet',
             'Add an asset, then record manual buy, sell, and income activity.') %}
             {% if portfolios|length > 0 %}
             <button type="button" class="btn btn-primary js-add-symbol-btn">
                 {{ icon('plus') }}
-                <span>Add asset</span>
+                <span>Add Asset</span>
             </button>
             {% else %}
-            <a class="btn btn-primary" href="{{ url_for('portfolios.portfolios_list') }}">Create a portfolio first</a>
+            <a class="btn btn-primary" href="{{ url_for('portfolios.portfolios_list') }}">Create A Portfolio First</a>
             {% endif %}
         {% endcall %}
         {% endif %}

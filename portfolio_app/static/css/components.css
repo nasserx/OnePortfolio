@@ -485,7 +485,6 @@
      messages are deliberately not in this group: they are the one piece of
      small text a user is required to read. */
   .form-text,
-  .withdraw-available-hint,
   .notes-counter {
     font-size: var(--text-3xs);
   }
@@ -699,16 +698,6 @@
     color: var(--foreground);
     font-weight: var(--weight-medium);
     font-variant-numeric: tabular-nums;
-  }
-
-  /* This once carried Bootstrap's `.text-muted` too, which — being an
-     `!important` utility, above every layer we write — quietly won and made
-     it a step darker than every sibling hint. Never staple a utility onto
-     an element a component already styles. */
-  .withdraw-available-hint {
-    display: block;
-    margin-top: var(--space-1);
-    color: var(--fg-subtle);
   }
 
   /* Set by the assets page's symbol filter; has to beat whatever display
@@ -929,8 +918,7 @@
     color: var(--fg-subtle);
   }
 
-  .records-table .tx-type-label,
-  .records-table .badge-dividend { font-size: inherit; }
+  .records-table .record-type { font-size: inherit; }
 
   /* ======================================================================
      7. BADGES, PILLS & TYPE LABELS
@@ -1024,12 +1012,10 @@
   .delta--flat { color: var(--financial-flat); }
   .delta .icon { width: 0.75rem; height: 0.75rem; }
 
-  /* Entry types — Buy / Sell / Income / Deposit / Withdraw.
-     Colour alone carries the meaning. A chip around every row's type column
-     turns a quiet ledger into a field of pills; the word in the right colour
-     says the same thing and lets the figures stay the loudest element. */
-  .tx-type-label,
-  .badge-dividend {
+  /* Entry types — Buy / Sell / Income / Deposit / Withdrawal / Initial.
+     The literal word remains the non-colour cue. These are foreground-only
+     roles, so the ledger stays free of semantic fills, borders, and pills. */
+  .record-type {
     display: inline-flex;
     align-items: center;
     padding: 0;
@@ -1042,14 +1028,10 @@
     white-space: nowrap;
   }
 
-  .type-buy,
-  .type-deposit,
-  .tx-type-buy,
-  .type-sell,
-  .type-withdrawal,
-  .tx-type-sell,
-  .type-income,
-  .badge-dividend { color: var(--muted-foreground); }
+  .record-type--positive { color: var(--financial-positive); }
+  .record-type--negative { color: var(--financial-negative); }
+  .record-type--income { color: var(--financial-income); }
+  .record-type--neutral { color: var(--financial-flat); }
 
   /* ======================================================================
      8. DROPDOWNS

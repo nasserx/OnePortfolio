@@ -23,7 +23,7 @@ def _rule(source, selector):
 
 def test_calculated_transaction_summary_has_one_neutral_shared_contract():
     assert ASSETS.count('class="tx-preview" aria-live="polite"') == 2
-    assert "const label = isSell ? 'Total Received:' : 'Total:';" in MAIN
+    assert "const label = isSell ? 'Total Received:' : 'Total Spent:';" in MAIN
     assert 'class="tx-preview__label"' in MAIN
     assert 'class="tx-preview__value"' in MAIN
 

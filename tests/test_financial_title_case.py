@@ -1,0 +1,94 @@
+"""Scoped Title Case contracts for authenticated financial UI copy."""
+
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parents[1]
+TEMPLATES = {
+    name: (ROOT / 'portfolio_app' / 'templates' / f'{name}.html').read_text(
+        encoding='utf-8'
+    )
+    for name in ('index', 'portfolios', 'assets')
+}
+
+
+def test_overview_short_financial_labels_use_title_case_source_copy():
+    source = TEMPLATES['index']
+    for label in (
+        'Book Value',
+        'Total Capital',
+        'Total Cash',
+        'Total Income',
+        'Realized P&L',
+        'Portfolio Split',
+        'By Book Value',
+        'By Capital',
+        'View Assets',
+        'No Portfolios Yet',
+        'Create Portfolio',
+    ):
+        assert label in source
+
+
+def test_portfolio_short_financial_labels_use_title_case_source_copy():
+    source = TEMPLATES['portfolios']
+    for label in (
+        'New Portfolio',
+        'Total Capital',
+        'Total Cash',
+        'Book Value',
+        'No Portfolios Yet',
+        'Create Portfolio',
+    ):
+        assert label in source
+    assert 'Available To Withdraw' not in source
+
+
+def test_asset_short_financial_labels_use_title_case_source_copy():
+    source = TEMPLATES['assets']
+    for label in (
+        'All Portfolios',
+        'Search Asset',
+        'Add Asset',
+        'Total Spent',
+        'Average Cost',
+        'Realized Return',
+        'Add Income',
+        'Add Entry',
+        'Total Amount',
+        'No Assets Yet',
+    ):
+        assert label in source
+
+
+def test_scoped_templates_do_not_retain_known_legacy_lowercase_ui_forms():
+    source = '\n'.join(TEMPLATES.values())
+    legacy_ui_fragments = (
+        "call fact('Total capital')",
+        "call fact('Total cash')",
+        "call fact('Total income')",
+        "call metric('Total capital')",
+        "call metric('Total cash')",
+        "call metric('Book value')",
+        "call metric('Total buy cost')",
+        "call metric('Average cost')",
+        "call metric('Realized return')",
+        '>By book value</button>',
+        '>By capital</button>',
+        '>View assets</span>',
+        '>Create portfolio</span>',
+        '>New portfolio</span>',
+        '>Add asset</span>',
+        '>Add income</span>',
+        ' No portfolios yet',
+        ' No assets yet',
+        '>All portfolios</a>',
+        'placeholder="Search asset…"',
+    )
+    for fragment in legacy_ui_fragments:
+        assert fragment not in source
+
+
+def test_title_case_is_source_copy_not_css_transformation():
+    source = '\n'.join(TEMPLATES.values())
+    assert 'text-transform: capitalize' not in source

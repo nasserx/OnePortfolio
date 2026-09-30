@@ -546,7 +546,7 @@ class TransactionFormHandler {
         }
 
         const formatted = Utils.formatMoney(total);
-        const label = isSell ? 'Total Received:' : 'Total:';
+        const label = isSell ? 'Total Received:' : 'Total Spent:';
         this.preview.innerHTML = `<span class="tx-preview__label">${label}</span>`
             + `<span class="tx-preview__value">${formatted}</span>`;
     }

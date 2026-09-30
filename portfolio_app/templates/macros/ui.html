@@ -21,6 +21,19 @@
 {% from 'macros/icons.html' import icon %}
 
 
+{# Financial record type text: semantic foreground only, never a badge fill. #}
+{%- macro record_type(value) -%}
+  {%- set role = {
+    'Buy': 'positive',
+    'Deposit': 'positive',
+    'Sell': 'negative',
+    'Withdrawal': 'negative',
+    'Income': 'income'
+  }.get(value, 'neutral') -%}
+  <span class="record-type record-type--{{ role }}">{{ value }}</span>
+{%- endmacro -%}
+
+
 {# Resolve a value's tone class. Internal helper for the macros below. #}
 {%- macro _tone_class(value, tone) -%}
   {%- if tone == 'sign' -%}

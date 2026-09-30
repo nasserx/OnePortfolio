@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from 'macros/ui.html' import money, metric, marker, empty_state, action_menu %}
+{% from 'macros/ui.html' import money, metric, marker, empty_state, action_menu, record_type %}
 {% from 'macros/icons.html' import icon %}
 
 {% set _add_errs = (form_errors.get('portfolios_add', {}) if form_errors else {}) %}
@@ -24,9 +24,9 @@
 
 {% block page_actions %}
 <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newPortfolioModal"
-        data-command="New portfolio" data-command-group="Create" data-command-icon="plus">
+        data-command="New Portfolio" data-command-group="Create" data-command-icon="plus">
     {{ icon('plus') }}
-    <span>New portfolio</span>
+    <span>New Portfolio</span>
 </button>
 {% endblock %}
 
@@ -60,10 +60,10 @@
 
                     <span class="disclosure__metrics">
                         {% call metric('Entries') %}{{ item.events|length }}{% endcall %}
-                        {% call metric('Total capital') %}{{ money(item.total_capital) }}{% endcall %}
-                        {% call metric('Total cash') %}{{ money(item.withdrawable_cash) }}{% endcall %}
+                        {% call metric('Total Capital') %}{{ money(item.total_capital) }}{% endcall %}
+                        {% call metric('Total Cash') %}{{ money(item.withdrawable_cash) }}{% endcall %}
                         {% call metric('Positions') %}{{ money(item.positions) }}{% endcall %}
-                        {% call metric('Book value') %}{{ money(item.book_value) }}{% endcall %}
+                        {% call metric('Book Value') %}{{ money(item.book_value) }}{% endcall %}
                     </span>
                 </button>
 
@@ -89,7 +89,6 @@
                         <button type="button" class="dropdown-item js-withdraw-funds-btn"
                                 data-portfolio-id="{{ item.portfolio.id }}"
                                 data-name="{{ item.portfolio.name|e }}"
-                                data-withdrawable-cash="{{ item.withdrawable_cash|fmt_money }}"
                                 data-withdrawable-cash-input="{{ item.withdrawable_cash|fmt_money }}">
                             {{ icon('arrow-up-circle') }}
                             <span>Withdraw</span>
@@ -134,11 +133,7 @@
                                 <tr>
                                     <td class="records-cell"><small>{{ event.date_short }}</small></td>
                                     <td class="records-cell">
-                                        {% if event.event_type in ('Deposit', 'Initial') %}
-                                            <span class="tx-type-label tx-type-buy type-deposit">Deposit</span>
-                                        {% else %}
-                                            <span class="tx-type-label tx-type-sell type-withdrawal">Withdraw</span>
-                                        {% endif %}
+                                        {{ record_type(event.event_type) }}
                                     </td>
                                     <td class="records-cell records-cell--number">
                                         {{ money(event.amount_delta, tone='sign', signed=true) }}
@@ -149,7 +144,7 @@
                                     </td>
                                     <td class="records-cell records-cell--actions actions-cell">
                                         <div class="row-actions">
-                                            {% set event_label = 'Deposit' if event.event_type in ('Initial', 'Deposit') else 'Withdraw' %}
+                                            {% set event_label = event.event_type %}
                                             {% call action_menu('Actions for ' ~ event_label ~ ' entry on ' ~ event.date_short, small=true) %}
                                             <li>
                                                 <button type="button" class="dropdown-item js-edit-portfolio-event-btn"
@@ -193,11 +188,11 @@
     <div id="outer-pg-bar-portfolios" class="tx-pagination-bar"></div>
 
     {% else %}
-    {% call empty_state('folder-plus', 'No portfolios yet',
+    {% call empty_state('folder-plus', 'No Portfolios Yet',
         'Create your first portfolio to start recording capital entries and asset activity.') %}
         <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newPortfolioModal">
             {{ icon('plus') }}
-            <span>Create portfolio</span>
+            <span>Create Portfolio</span>
         </button>
     {% endcall %}
     {% endif %}
@@ -296,7 +291,6 @@
                                 {% if _with_errs.get('amount_delta') %}
                                 <div class="invalid-feedback">{{ _with_errs.get('amount_delta') }}</div>
                                 {% endif %}
-                                <small class="withdraw-available-hint">Available to withdraw: <span id="withdraw_available_cash">0.00</span></small>
                             </div>
                         </div>
                         <div class="col-6">
@@ -755,7 +749,6 @@ function withdrawFunds(id, name, opts) {
     opts = opts || {};
     document.getElementById('withdrawFundsForm').action = `/portfolios/withdraw/${id}`;
     document.getElementById('withdraw_portfolio_name').value = name || '';
-    document.getElementById('withdraw_available_cash').textContent = opts.withdrawableCash || '0.00';
     document.getElementById('withdraw_max_btn').dataset.maxAmount = opts.withdrawableCashInput || '';
     document.getElementById('withdraw_funds_amount').value = (opts.amount != null ? String(opts.amount) : '');
     document.getElementById('withdraw_date').value = (opts.date || todayStr());
@@ -826,7 +819,6 @@ function deletePortfolioEvent(id, type) {
                     amount: {{ (_with_vals.get('amount_delta', '') if form_values and form_values.get('portfolios_withdraw') else '') | tojson }},
                     date:   {{ (_with_vals.get('withdraw_date', '') if form_values and form_values.get('portfolios_withdraw') else '') | tojson }},
                     notes:  {{ (_with_vals.get('notes', '') if form_values and form_values.get('portfolios_withdraw') else '') | tojson }},
-                    withdrawableCash: payload.withdrawable_cash || '0.00',
                     withdrawableCashInput: payload.withdrawable_cash_input || '',
                 });
             }
@@ -882,10 +874,8 @@ function deletePortfolioEvent(id, type) {
             ev.preventDefault(); ev.stopPropagation(); ev.stopImmediatePropagation();
             const id = parseInt(withBtn.getAttribute('data-portfolio-id') || '0', 10);
             const name = withBtn.getAttribute('data-name') || '';
-            const withdrawableCash = withBtn.getAttribute('data-withdrawable-cash') || '0.00';
             const withdrawableCashInput = withBtn.getAttribute('data-withdrawable-cash-input') || '';
             if (id) withdrawFunds(id, name, {
-                withdrawableCash: withdrawableCash,
                 withdrawableCashInput: withdrawableCashInput,
             });
             return;

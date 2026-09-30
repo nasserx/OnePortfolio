@@ -160,38 +160,36 @@ def test_overview_uses_current_health_metrics_and_terminology(app):
     row_text = _portfolio_rows_text(html)
     chart_data = _chart_data(html)
 
-    # Metric vocabulary. Labels are sentence case since the redesign, so the
-    # assertion is on the words, not on their casing.
     for label in (
-        'Total capital',
-        'Total cash',
-        'Book value',
-        'Total income',
+        'Total Capital',
+        'Total Cash',
+        'Book Value',
+        'Total Income',
         'Realized P&L',
     ):
         assert label in text
 
     for label in (
         'Portfolio',
-        'Book value',
+        'Book Value',
         'Realized P&L',
         'Return',
         'Income',
-        'assets',
+        'Assets',
     ):
         assert label in row_text
 
     column_positions = [
         row_text.index(label)
-        for label in ('Portfolio', 'Book value', 'Income', 'Realized P&L', 'Return', 'assets')
+        for label in ('Portfolio', 'Book Value', 'Income', 'Realized P&L', 'Return', 'Assets')
     ]
     assert column_positions == sorted(column_positions)
     assert 'class="marker"' in html
     assert '>ا</span>' in html
 
     # One canvas, with a segmented control swapping the basis in place.
-    assert 'By book value' in text
-    assert 'By capital' in text
+    assert 'By Book Value' in text
+    assert 'By Capital' in text
     assert html.count('<canvas') == 1
     assert '<canvas id="allocationChart"' in html
     assert 'data-alloc-view="book_value_chart"' in html
@@ -217,14 +215,14 @@ def test_overview_uses_current_health_metrics_and_terminology(app):
     # The summary table carries per-portfolio figures only; account-level
     # totals belong to the hero and must not be duplicated in the rows.
     for removed_card_label in (
-        'Total capital',
-        'Total cash',
+        'Total Capital',
+        'Total Cash',
         'Positions',
-        'Total income',
+        'Total Income',
     ):
         assert removed_card_label not in row_text
 
-    assert 'View assets' in text
+    assert 'View Assets' in text
 
     for old_label in (
         'TOTAL CONTRIBUTED',
@@ -283,7 +281,7 @@ def test_overview_empty_portfolios_render_empty_chart_context(app):
     text = _visible_text(html)
     chart_data = _chart_data(html)
 
-    assert 'No portfolios yet' in text
+    assert 'No Portfolios Yet' in text
     # Both bases share one canvas, so there is a single empty message and the
     # server still ships both (empty) datasets for the switcher.
     assert 'No portfolio data available.' in text
@@ -377,9 +375,9 @@ def test_overview_supporting_metrics_use_one_shared_item_grid_contract():
 
     labels = re.findall(r"call fact\('([^']+)'", template)
     assert labels == [
-        'Total capital',
-        'Total cash',
-        'Total income',
+        'Total Capital',
+        'Total Cash',
+        'Total Income',
         'Realized P&L',
     ]
     assert "money(totals.total_capital)" in template

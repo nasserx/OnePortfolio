@@ -108,7 +108,10 @@ The only application colour extensions are:
 
 They are permitted only when colour communicates real financial meaning:
 signed returns, realized profit/loss, signed income, financial delta
-indicators, and the currently selected Buy/Sell transaction direction.
+indicators, financial record-type text, and the currently selected Buy/Sell
+transaction direction. Record types use the shared `record_type` Jinja macro:
+Buy and Deposit are positive, Sell and Withdrawal are negative, Income uses
+the income role, and Initial or unknown types remain neutral.
 Explicit signs, values, and selector labels remain the primary cue; colour is
 never the only cue.
 

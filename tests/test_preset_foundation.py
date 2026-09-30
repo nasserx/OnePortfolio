@@ -289,7 +289,9 @@ def test_icon_sprite_has_unique_consumed_symbols_and_live_aliases():
 def test_financial_roles_are_isolated_to_financial_value_components():
     allowed_selectors = ('.num--pos', '.num--neg', '.num--income', '.num--flat',
                          '.delta--pos', '.delta--neg', '.delta--flat',
-                         '.tx-tab-buy.active', '.tx-tab-sell.active')
+                         '.tx-tab-buy.active', '.tx-tab-sell.active',
+                         '.record-type--positive', '.record-type--negative',
+                         '.record-type--income', '.record-type--neutral')
     for path in CSS_PATHS:
         if path == TOKENS_PATH:
             continue

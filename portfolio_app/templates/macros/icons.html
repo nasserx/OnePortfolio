@@ -1,5 +1,5 @@
 {#
-  Tabler-style product icon primitive.
+  Official Tabler Icons product primitive.
 
   Decorative by default:
       {{ icon('search') }}
@@ -12,7 +12,9 @@
 #}
 {%- macro icon(name, class='', label=none) -%}
 <svg class="icon{% if class %} {{ class }}{% endif %}"
-     viewBox="0 0 24 24" focusable="false"
+     viewBox="0 0 24 24" fill="none" stroke="currentColor"
+     stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+     focusable="false"
      {% if label %}role="img" aria-label="{{ label }}"{% else %}aria-hidden="true"{% endif %}>
   <use href="#op-icon-{{ name }}"></use>
 </svg>

@@ -85,6 +85,8 @@
       chart = null;
     }
 
+    window.Chart.defaults.font.family = cssVar('--font-sans');
+
     var grandTotal = total('bookValue');
     var colors = ['--portfolio-chart-1', '--portfolio-chart-2', '--portfolio-chart-3'].map(function (name) {
       return cssVar(name);

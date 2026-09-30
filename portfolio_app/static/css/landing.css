@@ -190,8 +190,8 @@
     margin-top: var(--space-6);
   }
 
-  .lp-cta .bi { transition: transform var(--dur-2) var(--ease-out); }
-  .lp-cta .btn:hover .bi { transform: translateX(3px); }
+  .lp-cta .icon { transition: transform var(--dur-2) var(--ease-out); }
+  .lp-cta .btn:hover .icon { transform: translateX(3px); }
 
   .lp-proof {
     display: flex;
@@ -213,7 +213,7 @@
     font-size: var(--text-xs);
   }
 
-  .lp-proof .bi { color: var(--fg-subtle); }
+  .lp-proof .icon { color: var(--fg-subtle); }
 
   /* ======================================================================
      Product shot
@@ -518,7 +518,7 @@
     font-size: var(--text-sm);
   }
 
-  .lp-limits__list .bi {
+  .lp-limits__list .icon {
     flex: none;
     color: var(--fg-faint);
     font-size: 0.75rem;
@@ -613,13 +613,13 @@
     border-left: 1px solid var(--line-subtle);
   }
 
-  .lp-footer__source .bi {
+  .lp-footer__source .icon {
     font-size: 1rem;
     line-height: 1;
     transition: transform var(--dur-2) var(--ease-out);
   }
 
-  .lp-footer__source:hover .bi { transform: scale(1.12); }
+  .lp-footer__source:hover .icon { transform: scale(1.12); }
 
   @media (max-width: 36rem) {
     .lp-footer__source {

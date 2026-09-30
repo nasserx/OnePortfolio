@@ -258,10 +258,15 @@ def test_icon_sprite_has_unique_consumed_symbols_and_live_aliases():
     assert len(symbols) == len(set(symbols))
     assert set(symbols) == {
         'dashboard', 'wallet', 'package', 'search', 'chevron-left',
-        'chevron-up', 'settings', 'logout', 'moon', 'sun', 'menu', 'x',
+        'chevron-up', 'chevron-right', 'chevron-down', 'settings', 'logout',
+        'moon', 'sun', 'menu', 'x',
         'circle-check', 'alert-circle', 'alert-triangle', 'info-circle',
         'arrow-up-right', 'arrow-down-right', 'arrow-right', 'plus',
-        'folder-plus', 'square-plus',
+        'arrow-left', 'folder-plus', 'square-plus', 'dots-vertical', 'edit',
+        'arrow-down-circle', 'arrow-up-circle', 'trash', 'filter',
+        'cash-banknote', 'shield-lock', 'broadcast', 'notebook', 'calculator',
+        'chart-pie', 'check', 'brand-github', 'mail', 'user', 'user-cog',
+        'user-circle', 'calendar', 'mail-check', 'refresh',
     }
 
     consumers = '\n'.join(
@@ -274,10 +279,11 @@ def test_icon_sprite_has_unique_consumed_symbols_and_live_aliases():
         assert symbol in consumers, f'op-icon-{symbol} has no consumer'
 
     shell = Path('portfolio_app/static/js/shell.js').read_text(encoding='utf-8')
-    for obsolete in ("gear: 'settings'", "'grid-1x2': 'dashboard'"):
+    for obsolete in ("gear: 'settings'", "'grid-1x2': 'dashboard'",
+                     'ICON_ALIASES', 'arrow-return-right', 'plus-lg',
+                     'box-seam', 'wallet2'):
         assert obsolete not in shell
-    assert 'data-command-icon="plus-lg"' in consumers
-    assert "'plus-lg': 'plus'" in shell
+    assert 'data-command-icon="plus"' in consumers
 
 
 def test_financial_roles_are_isolated_to_financial_value_components():

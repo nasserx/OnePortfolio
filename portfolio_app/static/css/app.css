@@ -1016,7 +1016,7 @@
     min-width: 9rem;
   }
 
-  .search-field .bi {
+  .search-field .icon {
     position: absolute;
     top: 50%;
     left: var(--space-3);
@@ -1084,10 +1084,16 @@
     color: var(--nav-active-fg);
   }
 
-  .settings-sidebar-link .bi { width: 1rem; text-align: center; }
+  .settings-sidebar-link .icon { width: 1rem; text-align: center; }
 
   .settings-tab-content .tab-pane.fade {
     transition: opacity var(--dur-3) var(--ease-out);
+  }
+
+  .settings-section-heading {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
   }
 
   .settings-readonly-field {

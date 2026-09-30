@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% from 'macros/icons.html' import icon %}
 
 {% block title %}Settings — OnePortfolio{% endblock %}
 
@@ -15,7 +16,7 @@
                                 id="tab-profile" data-bs-toggle="tab" data-bs-target="#panel-profile"
                                 type="button" role="tab" aria-controls="panel-profile"
                                 aria-selected="{{ 'true' if request.args.get('tab', 'profile') == 'profile' else 'false' }}">
-                            <i class="bi bi-person" aria-hidden="true"></i>Profile
+                            {{ icon('user') }}Profile
                         </button>
                     </li>
                     <li class="nav-item w-100" role="presentation">
@@ -23,7 +24,7 @@
                                 id="tab-security" data-bs-toggle="tab" data-bs-target="#panel-security"
                                 type="button" role="tab" aria-controls="panel-security"
                                 aria-selected="{{ 'true' if request.args.get('tab') == 'security' else 'false' }}">
-                            <i class="bi bi-shield-lock" aria-hidden="true"></i>Security
+                            {{ icon('shield-lock') }}Security
                         </button>
                     </li>
                     <li class="nav-item w-100" role="presentation">
@@ -31,7 +32,7 @@
                                 id="tab-account" data-bs-toggle="tab" data-bs-target="#panel-account"
                                 type="button" role="tab" aria-controls="panel-account"
                                 aria-selected="{{ 'true' if request.args.get('tab') == 'account' else 'false' }}">
-                            <i class="bi bi-person-gear" aria-hidden="true"></i>Account
+                            {{ icon('user-cog') }}Account
                         </button>
                     </li>
                 </ul>
@@ -47,15 +48,15 @@
             <div class="tab-pane fade {% if request.args.get('tab', 'profile') == 'profile' %}show active{% endif %}"
                  id="panel-profile" role="tabpanel" aria-labelledby="tab-profile">
                 <div class="card p-4">
-                    <h3 class="mb-4">
-                        <i class="bi bi-person-circle me-2" aria-hidden="true"></i>Profile
+                    <h3 class="settings-section-heading mb-4">
+                        {{ icon('user-circle') }}<span>Profile</span>
                     </h3>
 
                     <!-- Name (read-only) -->
                     <div class="mb-4">
                         <label class="form-label">Name</label>
                         <div class="settings-readonly-field">
-                            <i class="bi bi-person text-muted" aria-hidden="true"></i>
+                            {{ icon('user', class='text-muted') }}
                             <span>{{ current_user.username }}</span>
                         </div>
                     </div>
@@ -64,11 +65,11 @@
                     <div class="mb-4">
                         <label class="form-label">Email Address</label>
                         <div class="settings-readonly-field">
-                            <i class="bi bi-envelope text-muted" aria-hidden="true"></i>
+                            {{ icon('mail', class='text-muted') }}
                             <span>{{ current_user.email or '—' }}</span>
                             {% if current_user.is_verified %}
                                 <span class="settings-verified-badge ms-auto">
-                                    <i class="bi bi-check-circle-fill" aria-hidden="true"></i> Verified
+                                    {{ icon('circle-check') }} Verified
                                 </span>
                             {% endif %}
                         </div>
@@ -78,7 +79,7 @@
                     <div class="mb-2">
                         <label class="form-label">Member Since</label>
                         <div class="settings-readonly-field">
-                            <i class="bi bi-calendar3 text-muted" aria-hidden="true"></i>
+                            {{ icon('calendar', class='text-muted') }}
                             <span>{{ current_user.created_at.strftime('%B %d, %Y') if current_user.created_at else '—' }}</span>
                         </div>
                     </div>
@@ -91,8 +92,8 @@
             <div class="tab-pane fade {% if request.args.get('tab') == 'security' %}show active{% endif %}"
                  id="panel-security" role="tabpanel" aria-labelledby="tab-security">
                 <div class="card p-4">
-                    <h3 class="mb-4">
-                        <i class="bi bi-shield-lock me-2" aria-hidden="true"></i>Security
+                    <h3 class="settings-section-heading mb-4">
+                        {{ icon('shield-lock') }}<span>Security</span>
                     </h3>
 
                     <div class="settings-action-desc mb-3">Sign-in method</div>
@@ -100,7 +101,7 @@
                     <div class="settings-action-row">
                         <div>
                             <div class="settings-action-title">
-                                <i class="bi bi-envelope-check me-2" aria-hidden="true"></i>Email verification code
+                                {{ icon('mail-check', class='me-2') }}Email verification code
                             </div>
                             <div class="settings-action-desc">
                                 Passwordless sign-in to {{ current_user.email }}
@@ -114,7 +115,7 @@
                     <div class="settings-action-row">
                         <div>
                             <div class="settings-action-title">
-                                <i class="bi bi-envelope me-2" aria-hidden="true"></i>Email Address
+                                {{ icon('mail', class='me-2') }}Email Address
                             </div>
                             <div class="settings-action-desc">
                                 {{ current_user.email }} &mdash; requires recent authentication and re-verification.
@@ -131,14 +132,14 @@
             <div class="tab-pane fade {% if request.args.get('tab') == 'account' %}show active{% endif %}"
                  id="panel-account" role="tabpanel" aria-labelledby="tab-account">
                 <div class="card p-4">
-                    <h3 class="mb-4">
-                        <i class="bi bi-person-gear me-2" aria-hidden="true"></i>Account
+                    <h3 class="settings-section-heading mb-4">
+                        {{ icon('user-cog') }}<span>Account</span>
                     </h3>
 
                     <!-- Delete account section -->
                     <div class="settings-danger-zone">
                         <div class="settings-danger-header">
-                            <i class="bi bi-exclamation-triangle me-2" aria-hidden="true"></i>
+                            {{ icon('alert-triangle', class='me-2') }}
                             Delete account
                         </div>
                         <p class="settings-danger-desc">Permanently delete your account and all portfolio data.</p>
@@ -146,7 +147,7 @@
 
                         {% if not current_user.email %}
                             <div class="alert alert-warning mb-0">
-                                <i class="bi bi-exclamation-circle me-2" aria-hidden="true"></i>
+                                {{ icon('alert-circle', class='me-2') }}
                                 Add and verify an email address in the Security tab before deleting your account.
                             </div>
                         {% else %}
@@ -154,7 +155,7 @@
                             <form id="form-delete-request" class="mb-0">
                                 <button type="button" class="btn btn-outline-danger btn-sm"
                                         id="btn-show-delete-confirm">
-                                    <i class="bi bi-trash me-2" aria-hidden="true"></i>Delete account
+                                    {{ icon('trash', class='me-2') }}Delete account
                                 </button>
                             </form>
 
@@ -166,7 +167,7 @@
                                  class="{% if not deletion_error or deletion_sent %}d-none{% endif %}">
                                 {% if deletion_error and not deletion_sent %}
                                     <div class="alert alert-danger py-2 mb-3">
-                                        <i class="bi bi-exclamation-circle me-1" aria-hidden="true"></i>{{ deletion_error }}
+                                        {{ icon('alert-circle', class='me-1') }}{{ deletion_error }}
                                     </div>
                                 {% endif %}
 
@@ -174,7 +175,7 @@
                                       class="mb-0">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <button type="submit" class="btn btn-primary btn-sm">
-                                        <i class="bi bi-envelope me-1" aria-hidden="true"></i>Send confirmation code
+                                        {{ icon('mail', class='me-1') }}Send confirmation code
                                     </button>
                                     <button type="submit" form="form-delete-cancel"
                                             class="btn btn-outline-secondary btn-sm ms-1">Cancel</button>
@@ -190,12 +191,12 @@
                             <div id="delete-confirm-section">
                                 {% if deletion_error %}
                                     <div class="alert alert-danger py-2 mb-3">
-                                        <i class="bi bi-exclamation-circle me-1" aria-hidden="true"></i>{{ deletion_error }}
+                                        {{ icon('alert-circle', class='me-1') }}{{ deletion_error }}
                                     </div>
                                 {% endif %}
                                 {% if not deletion_error %}
                                     <div class="form-text form-text--ok mb-3">
-                                        <i class="bi bi-check-circle me-1" aria-hidden="true"></i>Code sent to {{ current_user.email }}.
+                                        {{ icon('circle-check', class='me-1') }}Code sent to {{ current_user.email }}.
                                     </div>
                                 {% endif %}
 
@@ -203,7 +204,7 @@
                                       class="mb-3">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <button type="submit" class="btn btn-outline-secondary btn-sm">
-                                        <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>Resend confirmation code
+                                        {{ icon('refresh', class='me-1') }}Resend confirmation code
                                     </button>
                                     <button type="submit" form="form-delete-cancel"
                                             class="btn btn-outline-secondary btn-sm ms-1">Cancel</button>
@@ -221,7 +222,7 @@
                                                placeholder="000000" autofocus required>
                                     </div>
                                     <button type="submit" class="btn btn-danger btn-sm">
-                                        <i class="bi bi-trash me-2" aria-hidden="true"></i>Delete account
+                                        {{ icon('trash', class='me-2') }}Delete account
                                     </button>
                                 </form>
                             </div>

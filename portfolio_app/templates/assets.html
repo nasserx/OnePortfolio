@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from 'macros/ui.html' import money, percent, quantity, metric, empty_state, action_menu %}
+{% from 'macros/icons.html' import icon %}
 
 {% block title %}Assets — OnePortfolio{% endblock %}
 
@@ -17,9 +18,9 @@
     <div class="dropdown">
         <button class="btn btn-outline-secondary filter-dropdown-btn" type="button"
                 data-bs-toggle="dropdown" aria-expanded="false">
-            <i class="bi bi-funnel" aria-hidden="true"></i>
+            {{ icon('filter') }}
             <span>{{ selected_portfolio or 'All portfolios' }}</span>
-            <i class="bi bi-chevron-down" aria-hidden="true"></i>
+            {{ icon('chevron-down', class='filter-dropdown-btn__chevron') }}
         </button>
         <ul class="dropdown-menu">
             <li>
@@ -40,7 +41,7 @@
 
     <!-- Asset search -->
     <div class="search-field">
-        <i class="bi bi-search" aria-hidden="true"></i>
+        {{ icon('search') }}
         <label class="visually-hidden" for="symbolSearch">Search asset</label>
         <input type="text" class="form-control" id="symbolSearch"
                placeholder="Search asset…" autocomplete="off">
@@ -48,8 +49,8 @@
 
     {% if portfolios|length > 0 %}
         <button type="button" class="btn btn-primary js-add-symbol-btn"
-                data-command="Add asset" data-command-group="Create" data-command-icon="plus-lg">
-            <i class="bi bi-plus-lg" aria-hidden="true"></i>
+                data-command="Add asset" data-command-group="Create" data-command-icon="plus">
+            {{ icon('plus') }}
             <span>Add asset</span>
         </button>
     {% else %}
@@ -76,8 +77,8 @@
                             data-disclosure="{{ item.html_group_id }}"
                             data-command="{{ item.symbol }} · {{ item.portfolio.name }}"
                             data-command-group="Assets"
-                            data-command-icon="box-seam">
-                        <i class="bi bi-chevron-right disclosure__chevron" aria-hidden="true"></i>
+                            data-command-icon="package">
+                        {{ icon('chevron-right', class='disclosure__chevron') }}
 
                         <span class="disclosure__identity">
                             <span class="disclosure__name" title="{{ item.symbol }}">{{ item.symbol }}</span>
@@ -102,7 +103,7 @@
                                 data-portfolio-id="{{ item.portfolio.id }}"
                                 data-portfolio="{{ item.portfolio.name|e }}"
                                 data-symbol="{{ item.symbol|e }}">
-                                <i class="bi bi-plus-lg" aria-hidden="true"></i>
+                                {{ icon('plus') }}
                                 <span>Buy / Sell</span>
                             </button>
                         </li>
@@ -110,7 +111,7 @@
                             <button type="button" class="dropdown-item js-add-dividend-btn"
                                 data-portfolio-id="{{ item.portfolio.id }}"
                                 data-symbol="{{ item.symbol|e }}">
-                                <i class="bi bi-cash-stack" aria-hidden="true"></i>
+                                {{ icon('cash-banknote') }}
                                 <span>Add income</span>
                             </button>
                         </li>
@@ -122,7 +123,7 @@
                                 data-symbol="{{ item.symbol|e }}"
                                 data-tx-count="{{ item.summary.transaction_count or 0 }}"
                                 data-income-count="{{ symbol_dividends|length }}">
-                                <i class="bi bi-trash" aria-hidden="true"></i>
+                                {{ icon('trash') }}
                                 <span>Remove</span>
                             </button>
                         </li>
@@ -206,7 +207,7 @@
                                                         "notes": (transaction.notes or ""),
                                                         "dateShort": transaction.date_short
                                                     }|tojson|e }}'>
-                                                    <i class="bi bi-pencil" aria-hidden="true"></i>
+                                                    {{ icon('edit') }}
                                                     <span>Edit</span>
                                                 </button>
                                             </li>
@@ -214,7 +215,7 @@
                                             <li>
                                                 <button type="button" class="dropdown-item dropdown-item--danger js-delete-transaction-btn"
                                                         data-tx-id="{{ transaction.id }}">
-                                                    <i class="bi bi-trash" aria-hidden="true"></i>
+                                                    {{ icon('trash') }}
                                                     <span>Remove</span>
                                                 </button>
                                             </li>
@@ -246,7 +247,7 @@
                                             <li>
                                                 <button type="button" class="dropdown-item js-edit-dividend-btn"
                                                         data-div='{{ {"id": div.id, "portfolioId": div.portfolio_id, "amount": ("%.10f"|format(div.amount)), "dateShort": div.date_short, "notes": (div.notes or "")}|tojson|e }}'>
-                                                    <i class="bi bi-pencil" aria-hidden="true"></i>
+                                                    {{ icon('edit') }}
                                                     <span>Edit</span>
                                                 </button>
                                             </li>
@@ -254,7 +255,7 @@
                                             <li>
                                                 <button type="button" class="dropdown-item dropdown-item--danger js-delete-dividend-btn"
                                                         data-div-id="{{ div.id }}">
-                                                    <i class="bi bi-trash" aria-hidden="true"></i>
+                                                    {{ icon('trash') }}
                                                     <span>Remove</span>
                                                 </button>
                                             </li>
@@ -274,7 +275,7 @@
                                 data-portfolio-id="{{ item.portfolio.id }}"
                                 data-portfolio="{{ item.portfolio.name|e }}"
                                 data-symbol="{{ item.symbol|e }}">
-                            <i class="bi bi-plus-lg" aria-hidden="true"></i> Add entry
+                            {{ icon('plus') }} Add entry
                         </button>
                     </p>
                     {% endif %}
@@ -289,7 +290,7 @@
             'Add an asset, then record manual buy, sell, and income activity.') %}
             {% if portfolios|length > 0 %}
             <button type="button" class="btn btn-primary js-add-symbol-btn">
-                <i class="bi bi-plus-lg" aria-hidden="true"></i>
+                {{ icon('plus') }}
                 <span>Add asset</span>
             </button>
             {% else %}
@@ -342,7 +343,7 @@
                         </div>
                     </div>
                     <div class="alert alert-info mb-0">
-                        <i class="bi bi-info-circle"></i>
+                        {{ icon('info-circle') }}
                         Then use Add Entry to add buys and sells.
                     </div>
                 </div>
@@ -500,7 +501,7 @@
                     {% set _tx_edit_errs = (form_errors.get('transaction_edit', {}) if form_errors else {}) %}
                     {% if _tx_edit_errs.get('__all__') %}
                     <div class="alert alert-danger d-flex align-items-center mb-3">
-                        <i class="bi bi-exclamation-circle me-2"></i>{{ _tx_edit_errs.get('__all__') }}
+                        {{ icon('alert-circle', class='me-2') }}{{ _tx_edit_errs.get('__all__') }}
                     </div>
                     {% endif %}
                     <div class="row g-2">
@@ -608,7 +609,7 @@
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="modal-header">
                     <h5 class="modal-title d-flex align-items-center gap-2" id="deleteTransactionModalTitle">
-                        <i class="bi bi-trash modal-title-icon" aria-hidden="true"></i>
+                        {{ icon('trash', class='modal-title-icon') }}
                         Confirm Remove
                     </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -616,14 +617,14 @@
                 <div class="modal-body">
                     <p>{{ MESSAGES['CONFIRM_REMOVE_TRANSACTION'] }}</p>
                     <div class="alert alert-warning">
-                        <i class="bi bi-exclamation-triangle"></i>
+                        {{ icon('alert-triangle') }}
                         This will recalculate average costs for this asset.
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-danger">
-                        <i class="bi bi-trash me-1"></i>Remove
+                        {{ icon('trash', class='me-1') }}Remove
                     </button>
                 </div>
             </form>
@@ -641,7 +642,7 @@
                 <input type="hidden" name="delete_symbol_ticker" id="delete_symbol_ticker">
                 <div class="modal-header">
                     <h5 class="modal-title d-flex align-items-center gap-2" id="deleteSymbolModalTitle">
-                        <i class="bi bi-trash modal-title-icon" aria-hidden="true"></i>
+                        {{ icon('trash', class='modal-title-icon') }}
                         Confirm Remove
                     </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -649,14 +650,14 @@
                 <div class="modal-body">
                     <p class="mb-2">Remove <span class="text-emphasis" id="delete_symbol_name"></span>?</p>
                     <div id="delete_symbol_warning" class="alert alert-warning mb-2 d-none">
-                        <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                        {{ icon('alert-triangle', class='me-1') }}
                         <span id="delete_symbol_warning_text"></span>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-danger">
-                        <i class="bi bi-trash me-1"></i>Remove
+                        {{ icon('trash', class='me-1') }}Remove
                     </button>
                 </div>
             </form>
@@ -681,7 +682,7 @@
                 <div class="modal-body">
                     {% if _div_add_errs.get('__all__') %}
                     <div class="alert alert-danger d-flex align-items-center mb-3">
-                        <i class="bi bi-exclamation-circle me-2"></i>{{ _div_add_errs.get('__all__') }}
+                        {{ icon('alert-circle', class='me-2') }}{{ _div_add_errs.get('__all__') }}
                     </div>
                     {% endif %}
                     <div class="row g-2">
@@ -744,7 +745,7 @@
                 <div class="modal-body">
                     {% if _div_edit_errs.get('__all__') %}
                     <div class="alert alert-danger d-flex align-items-center mb-3">
-                        <i class="bi bi-exclamation-circle me-2"></i>{{ _div_edit_errs.get('__all__') }}
+                        {{ icon('alert-circle', class='me-2') }}{{ _div_edit_errs.get('__all__') }}
                     </div>
                     {% endif %}
                     <div class="row g-2">
@@ -802,7 +803,7 @@
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="modal-header">
                     <h5 class="modal-title d-flex align-items-center gap-2" id="deleteDividendModalTitle">
-                        <i class="bi bi-trash modal-title-icon" aria-hidden="true"></i>
+                        {{ icon('trash', class='modal-title-icon') }}
                         Confirm Remove
                     </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -813,7 +814,7 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-danger">
-                        <i class="bi bi-trash me-1"></i>Remove
+                        {{ icon('trash', class='me-1') }}Remove
                     </button>
                 </div>
             </form>

@@ -161,10 +161,13 @@ bridge, and keep Bootstrap's runtime attributes and lifecycle intact.
 ### Typography
 
 The canonical API is `--font-sans`, `--font-heading`, and `--font-mono`.
-Components never name Inter directly. Inter remains the loaded face until the
-separate Geist migration; that task may change token values without rewriting
-components. Body text is compact and readable, headings use the heading token,
-and financial columns use tabular numbers.
+The sans token names Geist followed by the system sans stack, and the heading
+token inherits that same contract. The authenticated, authentication, and
+public shells load only the 400, 500, and 600 weights from the existing Google
+Fonts origins. Components and Chart.js consume the tokens rather than naming a
+face independently. Body text is compact and readable, headings use the heading
+token, and financial columns preserve tabular numbers through the shared root
+feature settings.
 
 Numeric typography is separate from display precision. Changing a font size or
 weight must never alter financial rendering rules.
@@ -376,12 +379,18 @@ progressive enhancement that preserves the native control as authoritative.
 
 ### Iconography
 
-The target system is reusable, `currentColor`, Tabler-style 24×24 stroke SVG
-through `templates/macros/icons.html` and
-`templates/components/icon_sprite.html`. Decorative icons are hidden from the
-accessibility tree; meaningful icons require a label. Bootstrap Icons remain
-loaded during migration, but new authenticated-shell or Overview work must not
-add `bi-*` classes.
+The application uses official MIT-licensed Tabler Icons outline geometry from
+`@tabler/icons` 3.48.0
+(`github.com/tabler/tabler-icons/tree/v3.48.0/icons/outline`): a 24×24
+viewport, two-pixel `currentColor`
+stroke, and round caps and joins. Geometry lives once in
+`templates/components/icon_sprite.html`; `templates/macros/icons.html` is the
+only template rendering primitive, and `shell.js` exposes the same sprite-name
+contract for dynamic UI. Decorative icons use `aria-hidden="true"` and
+`focusable="false"`; a meaningful standalone icon must pass a label, which
+adds `role="img"` and `aria-label`. Icons within already named controls
+remain decorative. Bootstrap Icons and its font stylesheet are no longer part
+of the application.
 
 The visible OnePortfolio mark is neutral, with near-black and near-white SVG
 variants selected by theme. The fallback favicon and installed raster icons use

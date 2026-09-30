@@ -1,4 +1,5 @@
 {% extends 'auth_base.html' %}
+{% from 'macros/icons.html' import icon %}
 {% block title %}Continue — OnePortfolio{% endblock %}
 {% block auth_content %}
 <div class="text-center mb-4">
@@ -17,14 +18,14 @@
     {% endfor %}
 {% endwith %}
 {% if form_errors.get('__all__') %}
-    <div class="alert alert-danger mb-3" role="alert"><i class="bi bi-exclamation-circle me-2" aria-hidden="true"></i>{{ form_errors['__all__'] }}</div>
+    <div class="alert alert-danger mb-3" role="alert">{{ icon('alert-circle', class='me-2') }}{{ form_errors['__all__'] }}</div>
 {% endif %}
 <form method="post" action="{{ url_for('auth.login') }}{% if safe_next %}?next={{ safe_next|urlencode }}{% endif %}" novalidate>
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="mb-4">
         <label class="visually-hidden" for="email">Email address</label>
         <div class="field-wrap">
-            <i class="bi bi-envelope fi" aria-hidden="true"></i>
+            {{ icon('mail', class='field-wrap__icon') }}
             <input type="email" id="email" name="email" autocomplete="email"
                    class="form-control form-control-auth {% if form_errors.get('email') %}is-invalid{% endif %}"
                    value="{{ form_values.get('email', '') }}" placeholder="Email address" autofocus required>

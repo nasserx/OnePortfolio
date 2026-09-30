@@ -89,11 +89,12 @@ class _ActionMenuParser(HTMLParser):
             self._item = _ActionItem(attrs)
             self._item_depth = self._depth
             self._current.items.append(self._item)
-        elif tag == 'i':
+        elif tag == 'use':
+            icon_ref = attrs.get('href')
             if self._item is not None:
-                self._item.icons.append(classes)
+                self._item.icons.append(icon_ref)
             elif self._trigger_depth is not None:
-                self._current.trigger_icons.append(classes)
+                self._current.trigger_icons.append(icon_ref)
 
     def handle_starttag(self, tag, attrs):
         self._open(tag, attrs)
@@ -229,7 +230,7 @@ def test_action_menu_triggers_keep_bootstrap_and_accessibility_contracts(app):
         assert {'dropdown-menu', 'dropdown-menu-end', 'action-menu__menu'} <= set(
             menu.menu['class'].split()
         )
-        assert menu.trigger_icons == [{'bi', 'bi-three-dots-vertical'}]
+        assert menu.trigger_icons == ['#op-icon-dots-vertical']
 
 
 def test_action_menus_share_viewport_safe_popper_positioning():
@@ -324,7 +325,7 @@ def test_remove_items_keep_destructive_presentation(app):
             classes = set(item.attrs['class'].split())
             if item.text == 'Remove':
                 assert 'dropdown-item--danger' in classes
-                assert {'bi', 'bi-trash'} in item.icons
+                assert '#op-icon-trash' in item.icons
             else:
                 assert 'dropdown-item--danger' not in classes
 

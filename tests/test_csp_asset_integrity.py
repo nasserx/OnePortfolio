@@ -22,9 +22,6 @@ _ELIGIBLE_ASSETS = {
     'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js': (
         'sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz'
     ),
-    'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css': (
-        'sha384-QuGBSgV5Im3DzL2z+8Ko9/hqNy/N0O7zwvXAtfd1MvPKWa/UbeLV65cfm4BV5Wgq'
-    ),
     'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js': (
         'sha384-e6nUZLBkQ86NJ6TVVKAeSaK8jWa3NhkYWZFomE39AvDbQWeie9PlQqM3pmYW5d1g'
     ),
@@ -38,7 +35,6 @@ _ELIGIBLE_ASSETS = {
 
 _EXPECTED_ASSET_OCCURRENCES = {
     'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js': 2,
-    'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css': 3,
     'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js': 2,
     'https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js': 2,
     'https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css': 2,

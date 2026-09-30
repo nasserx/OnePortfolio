@@ -349,11 +349,13 @@ def test_landing_intro_carries_no_decorative_media(app):
     # the ban is on decoration, not on the product.
     start = html.index('<section class="lp-hero">')
     intro = html[start:html.index('</section>', start)]
-    for element in ('<img', '<svg', '<picture'):
+    for element in ('<img', '<picture'):
         assert element not in intro, (
             f'{element}> inside the intro; apart from the preview card the '
             f'section carries type on a gradient and nothing else'
         )
+    assert '<path' not in intro
+    assert '#op-icon-' in intro
 
     landing_css = _landing_css()
     assert 'background-image: var(--intro-wash);' in landing_css

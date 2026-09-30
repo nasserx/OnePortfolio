@@ -22,7 +22,7 @@
 
 @layer components {
 
-  /* Shared Tabler-style 24x24 stroke icon. Geometry is supplied by the
+  /* Shared official Tabler 24x24 outline icon. Geometry is supplied by the
      document sprite; size and colour always inherit from the consumer. */
   .icon-sprite {
     position: absolute;
@@ -105,7 +105,7 @@
     pointer-events: none;
   }
 
-  .btn :is(.icon, .bi) { font-size: 1em; }
+  .btn .icon { font-size: 1em; }
   .btn .icon { width: 1em; height: 1em; }
 
   .btn-sm {
@@ -277,7 +277,7 @@
 
   .icon-button:active { transform: scale(0.92); }
 
-  .icon-button :is(.icon, .bi) {
+  .icon-button .icon {
     font-size: 1rem;
     transition: transform var(--dur-3) var(--ease-spring);
   }
@@ -503,7 +503,7 @@
     display: block;
   }
 
-  .field-wrap .fi {
+  .field-wrap .field-wrap__icon {
     position: absolute;
     top: 50%;
     left: var(--space-3);
@@ -514,7 +514,7 @@
     transition: color var(--dur-1) var(--ease-out);
   }
 
-  .field-wrap:focus-within .fi { color: var(--foreground); }
+  .field-wrap:focus-within .field-wrap__icon { color: var(--foreground); }
 
   .field-wrap input { padding-left: 2.375rem; }
   /* `--fg-subtle`, not `--fg-faint`: the faint step holds 3:1 and is for
@@ -1126,13 +1126,13 @@
 
   .filter-dropdown-btn::after { display: none; }
 
-  .filter-dropdown-btn .bi-chevron-down {
+  .filter-dropdown-btn .filter-dropdown-btn__chevron {
     font-size: 0.7rem;
     color: var(--fg-faint);
     transition: transform var(--dur-2) var(--ease-out);
   }
 
-  .filter-dropdown-btn[aria-expanded="true"] .bi-chevron-down {
+  .filter-dropdown-btn[aria-expanded="true"] .filter-dropdown-btn__chevron {
     transform: rotate(180deg);
   }
 

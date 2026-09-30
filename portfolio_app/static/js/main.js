@@ -1204,9 +1204,7 @@ class ModalAjaxHandler {
         const banner = document.createElement('div');
         banner.className = 'alert alert-danger js-modal-banner d-flex align-items-center mb-3';
         banner.setAttribute('role', 'alert');
-        const icon = document.createElement('i');
-        icon.className = 'bi bi-exclamation-circle me-2';
-        icon.setAttribute('aria-hidden', 'true');
+        const icon = window.OnePortfolioIcons.create('alert-circle', 'me-2');
         const text = document.createElement('span');
         text.textContent = message;
         banner.appendChild(icon);

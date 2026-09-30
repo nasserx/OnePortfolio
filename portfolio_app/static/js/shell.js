@@ -19,15 +19,8 @@
   };
 
   var SVG_NS = 'http://www.w3.org/2000/svg';
-  var ICON_ALIASES = {
-    'arrow-return-right': 'arrow-right',
-    'box-seam': 'package',
-    'plus-lg': 'plus',
-    wallet2: 'wallet'
-  };
 
   function createIcon(name, className) {
-    var resolved = ICON_ALIASES[name] || name;
     var svg = document.createElementNS(SVG_NS, 'svg');
     var use = document.createElementNS(SVG_NS, 'use');
 
@@ -35,10 +28,13 @@
     svg.setAttribute('viewBox', '0 0 24 24');
     svg.setAttribute('focusable', 'false');
     svg.setAttribute('aria-hidden', 'true');
-    use.setAttribute('href', '#op-icon-' + resolved);
+    use.setAttribute('href', '#op-icon-' + name);
     svg.appendChild(use);
     return svg;
   }
+
+  /* The templates and dynamic UI share one canonical sprite-name contract. */
+  window.OnePortfolioIcons = Object.freeze({ create: createIcon });
 
   var prefersReducedMotion = function () {
     return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -322,7 +318,7 @@
       items.push({
         label: element.getAttribute('data-command'),
         group: element.getAttribute('data-command-group') || 'On this page',
-        icon: element.getAttribute('data-command-icon') || 'arrow-return-right',
+        icon: element.getAttribute('data-command-icon') || 'arrow-right',
         href: element.getAttribute('href') || null,
         element: element
       });

@@ -1,4 +1,5 @@
 {% extends 'auth_base.html' %}
+{% from 'macros/icons.html' import icon %}
 
 {% block title %}Rate limit reached — OnePortfolio{% endblock %}
 
@@ -13,7 +14,7 @@
     </div>
 
     <a href="{{ url_for('dashboard.index') }}" class="btn btn-outline-secondary btn-sm w-100">
-        <i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Back home
+        {{ icon('arrow-left', class='me-1') }}Back home
     </a>
 
 {% endblock %}

@@ -177,7 +177,8 @@
                             </tbody>
                         </table>
                     </div>
-                    <div class="tx-pagination-bar" id="pgbar-ev-{{ item.portfolio.id }}"></div>
+                    <div class="pagination-bar" id="pgbar-ev-{{ item.portfolio.id }}"
+                         data-pagination-label="Capital Entries for {{ item.portfolio.name }}" hidden></div>
                     {% else %}
                     <p class="inline-empty">No entries yet. Use Deposit to add funds.</p>
                     {% endif %}
@@ -186,7 +187,8 @@
         </article>
         {% endfor %}
     </section>
-    <div id="outer-pg-bar-portfolios" class="tx-pagination-bar"></div>
+    <div id="outer-pg-bar-portfolios" class="pagination-bar"
+         data-pagination-label="Portfolio Pages" hidden></div>
 
     {% else %}
     {% call empty_state('folder-plus', 'No Portfolios Yet',
@@ -554,7 +556,12 @@
 
         if (rows.length <= PAGE_SIZE) {
             rows.forEach(function(r) { r.style.display = ''; });
-            if (bar) bar.style.display = 'none';
+            if (bar) window.OnePortfolioPagination.render(bar, {
+                currentPage: 1,
+                totalPages: 1,
+                label: bar.dataset.paginationLabel,
+                onPageChange: function() {}
+            });
             return;
         }
 
@@ -571,46 +578,16 @@
 
         if (!bar) return;
 
-        var winStart = Math.max(1, page - 1);
-        var winEnd   = Math.min(totalPages, winStart + 2);
-        if (winEnd - winStart < 2) winStart = Math.max(1, winEnd - 2);
-
-        var nums = '';
-        for (var p = winStart; p <= winEnd; p++) {
-            nums += '<span class="tx-pg-num' + (p === page ? ' active' : '') + '" data-ev-gid="' + portfolioId + '" data-page="' + p + '">' + p + '</span>';
-        }
-
-        bar.style.display = 'flex';
-        bar.innerHTML =
-            '<div class="tx-pg-indicator">' +
-                '<button class="btn btn-sm px-1 py-0 ev-pg-prev"' + (page <= 1 ? ' disabled' : '') + ' data-ev-gid="' + portfolioId + '">&#8249;</button>' +
-                nums +
-                '<button class="btn btn-sm px-1 py-0 ev-pg-next"' + (page >= totalPages ? ' disabled' : '') + ' data-ev-gid="' + portfolioId + '">&#8250;</button>' +
-            '</div>';
+        window.OnePortfolioPagination.render(bar, {
+            currentPage: page,
+            totalPages: totalPages,
+            label: bar.dataset.paginationLabel,
+            onPageChange: function(nextPage) {
+                state[portfolioId].page = nextPage;
+                renderBar(portfolioId);
+            }
+        });
     }
-
-    document.addEventListener('click', function(e) {
-        var prev = e.target.closest ? e.target.closest('.ev-pg-prev') : null;
-        if (prev) {
-            var gid = prev.getAttribute('data-ev-gid');
-            if (state[gid] && state[gid].page > 1) { state[gid].page--; renderBar(gid); }
-            return;
-        }
-        var next = e.target.closest ? e.target.closest('.ev-pg-next') : null;
-        if (next) {
-            var gid = next.getAttribute('data-ev-gid');
-            if (!state[gid]) state[gid] = { page: 1 };
-            state[gid].page++;
-            renderBar(gid);
-            return;
-        }
-        var num = e.target.closest ? e.target.closest('[data-ev-gid]') : null;
-        if (num && num.classList.contains('tx-pg-num')) {
-            var gid = num.getAttribute('data-ev-gid');
-            var pg  = parseInt(num.getAttribute('data-page'), 10);
-            if (gid && pg) { if (!state[gid]) state[gid] = { page: 1 }; state[gid].page = pg; renderBar(gid); }
-        }
-    });
 
     window.initPortfolioPagination = function(portfolioId) {
         if (!state[portfolioId]) state[portfolioId] = { page: 1 };
@@ -643,34 +620,25 @@
         if (!bar) return;
 
         if (cards.length <= PAGE_SIZE) {
-            bar.style.display = 'none';
+            window.OnePortfolioPagination.render(bar, {
+                currentPage: 1,
+                totalPages: 1,
+                label: bar.dataset.paginationLabel,
+                onPageChange: function() {}
+            });
             return;
         }
 
-        var winStart = Math.max(1, currentPage - 1);
-        var winEnd   = Math.min(totalPages, winStart + 2);
-        if (winEnd - winStart < 2) winStart = Math.max(1, winEnd - 2);
-
-        var nums = '';
-        for (var p = winStart; p <= winEnd; p++) {
-            nums += '<span class="tx-pg-num' + (p === currentPage ? ' active' : '') + '" data-outer-pf-page="' + p + '">' + p + '</span>';
-        }
-
-        bar.style.display = 'flex';
-        bar.innerHTML =
-            '<div class="tx-pg-indicator">' +
-                '<button class="btn btn-sm px-1 py-0 outer-pf-prev"' + (currentPage <= 1 ? ' disabled' : '') + '>&#8249;</button>' +
-                nums +
-                '<button class="btn btn-sm px-1 py-0 outer-pf-next"' + (currentPage >= totalPages ? ' disabled' : '') + '>&#8250;</button>' +
-            '</div>';
+        window.OnePortfolioPagination.render(bar, {
+            currentPage: currentPage,
+            totalPages: totalPages,
+            label: bar.dataset.paginationLabel,
+            onPageChange: function(nextPage) {
+                currentPage = nextPage;
+                render();
+            }
+        });
     }
-
-    document.addEventListener('click', function(e) {
-        if (e.target.closest('.outer-pf-prev')) { if (currentPage > 1) { currentPage--; render(); } return; }
-        if (e.target.closest('.outer-pf-next')) { currentPage++; render(); return; }
-        var num = e.target.closest('[data-outer-pf-page]');
-        if (num) { currentPage = parseInt(num.getAttribute('data-outer-pf-page'), 10); render(); }
-    });
 
     render();
 }());

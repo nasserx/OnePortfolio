@@ -234,6 +234,9 @@ changing the ordinary Nova appearance.
 - Menus/popovers/dialogs: popover roles, recipe-specific radii, restrained
   foreground hairline ring, and overlay elevation.
 - Tabs/segmented controls: muted track, neutral selected surface.
+- Pagination: client-side lists retain page state and filtering locally while
+  the shared `OnePortfolioPagination` renderer owns native button semantics,
+  `aria-current`, disabled previous/next states, and Tabler chevrons.
 - Alerts/toasts: neutral by default; destructive only for destructive/error
   meaning, never financial positive/income decoration.
 - Empty states: card/muted roles and existing calls to action only.

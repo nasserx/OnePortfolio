@@ -893,6 +893,10 @@
     margin-right: var(--row-actions-gutter);
   }
 
+  /* Seven existing asset figures share the disclosure layout but collapse
+     through the same responsive column contract as Portfolio summaries. */
+  .disclosure__metrics--assets { --metric-columns: 7; }
+
   /* Each cell is a label above its value, and that pair is the unit being
      read here — centring binds the two lines together. The trade is that
      the figures no longer stack decimal-for-decimal; the Overview ledger is
@@ -1013,7 +1017,7 @@
     top: 50%;
     left: var(--space-3);
     translate: 0 -50%;
-    color: var(--fg-faint);
+    color: var(--muted-foreground);
     font-size: 0.85rem;
     pointer-events: none;
   }

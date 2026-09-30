@@ -158,6 +158,82 @@ const Utils = {
     }
 };
 
+
+/* Shared client-side pagination presentation. Pages retain ownership of
+   their item lists, page size, filtering, and state; this component owns the
+   semantic controls and accessible Nova/Tabler presentation only. */
+const Pagination = {
+    render(container, options) {
+        if (!container) return;
+
+        const currentPage = options.currentPage;
+        const totalPages = options.totalPages;
+        const onPageChange = options.onPageChange;
+
+        container.replaceChildren();
+        container.hidden = totalPages <= 1;
+        if (totalPages <= 1) return;
+
+        const navigation = document.createElement('nav');
+        navigation.className = 'pagination';
+        navigation.setAttribute('aria-label', options.label || 'Pagination');
+
+        const appendControl = ({ label, page, icon, current = false, disabled = false }) => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'pagination__control' + (icon ? ' pagination__control--icon' : '');
+            button.setAttribute('aria-label', label);
+            button.disabled = disabled;
+
+            if (current) {
+                button.classList.add('is-current');
+                button.setAttribute('aria-current', 'page');
+            }
+
+            if (icon) {
+                button.appendChild(window.OnePortfolioIcons.create(icon));
+            } else {
+                button.textContent = String(page);
+            }
+
+            button.addEventListener('click', () => {
+                if (!button.disabled && page !== currentPage) onPageChange(page);
+            });
+            navigation.appendChild(button);
+        };
+
+        appendControl({
+            label: 'Previous Page',
+            page: currentPage - 1,
+            icon: 'chevron-left',
+            disabled: currentPage <= 1,
+        });
+
+        let windowStart = Math.max(1, currentPage - 1);
+        const windowEnd = Math.min(totalPages, windowStart + 2);
+        if (windowEnd - windowStart < 2) windowStart = Math.max(1, windowEnd - 2);
+
+        for (let page = windowStart; page <= windowEnd; page += 1) {
+            appendControl({
+                label: `Page ${page}`,
+                page,
+                current: page === currentPage,
+            });
+        }
+
+        appendControl({
+            label: 'Next Page',
+            page: currentPage + 1,
+            icon: 'chevron-right',
+            disabled: currentPage >= totalPages,
+        });
+
+        container.appendChild(navigation);
+    },
+};
+
+window.OnePortfolioPagination = Object.freeze(Pagination);
+
 function todayStr() {
     const d = new Date();
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');

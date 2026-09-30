@@ -1116,13 +1116,21 @@
     --btn-bg: var(--background);
     --btn-fg: var(--foreground);
     gap: var(--space-2);
+    max-width: min(18rem, 100%);
   }
 
   .filter-dropdown-btn::after { display: none; }
 
+  .filter-dropdown-btn__label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   .filter-dropdown-btn .filter-dropdown-btn__chevron {
     font-size: 0.7rem;
-    color: var(--fg-faint);
+    color: var(--muted-foreground);
     transition: transform var(--dur-2) var(--ease-out);
   }
 
@@ -1357,55 +1365,58 @@
      12. PAGINATION
      ====================================================================== */
 
-  .tx-pagination-bar {
+  .pagination-bar {
     display: flex;
     justify-content: flex-end;
     padding: var(--space-2) var(--space-3);
   }
 
-  .tx-pg-indicator {
+  .pagination-bar[hidden] { display: none; }
+
+  .pagination {
     display: inline-flex;
     align-items: center;
     gap: var(--space-1);
   }
 
-  .tx-pg-num {
+  .pagination__control {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 1.5rem;
-    height: 1.5rem;
-    padding: 0 var(--space-1);
-    border-radius: var(--radius-xs);
-    color: var(--fg-subtle);
+    min-width: var(--control-h);
+    height: var(--control-h);
+    padding: 0 var(--space-2);
+    border: 0;
+    border-radius: var(--radius-lg);
+    background-color: transparent;
+    color: var(--muted-foreground);
     font-size: var(--text-xs);
     cursor: pointer;
     transition: background-color var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out);
   }
 
-  .tx-pg-num:hover:not(.active) {
-    background-color: var(--bg-hover);
-    color: var(--fg-default);
+  .pagination__control:hover:not(:disabled, [aria-current="page"]) {
+    background-color: var(--accent);
+    color: var(--accent-foreground);
   }
 
-  .tx-pg-num.active {
-    background-color: var(--nav-active-bg);
-    color: var(--nav-active-fg);
+  .pagination__control[aria-current="page"] {
+    background-color: var(--accent);
+    color: var(--accent-foreground);
     font-weight: var(--weight-medium);
+    cursor: default;
   }
 
-  .tx-pagination-bar .btn {
-    min-height: 1.5rem;
-    padding: 0 var(--space-2);
-    border-color: transparent;
-    color: var(--fg-subtle);
+  .pagination__control:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 
-  .tx-pagination-bar .btn:hover {
-    transform: none;
-    box-shadow: none;
-    background-color: var(--bg-hover);
-    color: var(--fg-default);
+  .pagination__control--icon { padding: 0; }
+
+  .pagination__control--icon .icon {
+    width: 1rem;
+    height: 1rem;
   }
 
   /* ======================================================================

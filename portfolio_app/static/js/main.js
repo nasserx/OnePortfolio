@@ -1322,13 +1322,6 @@ class InvestmentPortfolioApp {
         new ModalAjaxHandler();
         new NotesCounterHandler();
 
-        const navbar = document.querySelector('.app-navbar');
-        if (navbar) {
-            const onScroll = () => navbar.classList.toggle('scrolled', window.scrollY > 8);
-            window.addEventListener('scroll', onScroll, { passive: true });
-            onScroll();
-        }
-
         document.querySelectorAll('.modal').forEach(modal => {
             modal.addEventListener('shown.bs.modal', () => initDateFields(modal));
             modal.addEventListener('hidden.bs.modal', () => closeDatePickers(modal));

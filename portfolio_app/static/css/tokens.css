@@ -3,8 +3,8 @@
 
    The canonical colour roles are a direct CSS translation of the official
    shadcn preset b1YmpWHpo (Nova / neutral / blue charts). OnePortfolio adds
-   only four financial roles. Names below the migration-alias heading exist
-   solely while untouched templates move to the canonical API.
+   only four financial roles. Shared and page CSS consume the canonical roles
+   directly; Bootstrap variables below form the sole compatibility bridge.
    ========================================================================== */
 
 @layer vendor, tokens, base, components, pages, utilities;
@@ -13,7 +13,7 @@
 
 @layer tokens {
   :root {
-    /* Typography: TASK-UI-003C will change the loaded face to Geist. */
+    /* Typography: Geist is the single application face. */
     --font-sans: "Geist", ui-sans-serif, system-ui, -apple-system,
                  "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     --font-heading: var(--font-sans);
@@ -60,7 +60,6 @@
     --radius-2xl: calc(var(--radius) * 1.8);
     --radius-3xl: calc(var(--radius) * 2.2);
     --radius-4xl: calc(var(--radius) * 2.6);
-    --radius-xs: calc(var(--radius) * 0.4); /* migration helper */
     --radius-pill: 9999px;
 
     --control-h: 2rem;
@@ -84,8 +83,6 @@
     --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
     --z-sticky: 20;
     --z-sidebar: 60;
-    --z-backdrop: 1040;
-    --z-modal: 1055;
     --z-toast: 1090;
     --z-datepicker: 1100;
     --z-palette: 1200;
@@ -171,8 +168,6 @@
     --shadow-raised: 0 0 0 1px color-mix(in oklch, var(--foreground) 10%, transparent);
     --shadow-menu: 0 4px 6px -1px oklch(0 0 0 / 10%), 0 2px 4px -2px oklch(0 0 0 / 10%);
     --shadow-dialog: 0 10px 15px -3px oklch(0 0 0 / 12%), 0 4px 6px -4px oklch(0 0 0 / 12%);
-    --shadow-overlay: var(--shadow-dialog);
-    --shadow-lift: none;
     --select-caret: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23737373' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.6' d='m3.5 6 4.5 4.5L12.5 6'/%3e%3c/svg%3e");
   }
 
@@ -228,7 +223,6 @@
       --control-background-hover: color-mix(in oklch, var(--input) 50%, transparent);
       --control-background-disabled: color-mix(in oklch, var(--input) 80%, transparent);
       --bg-backdrop: oklch(0 0 0 / 10%);
-      --shadow-overlay: var(--shadow-dialog);
       --select-caret: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23a1a1aa' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.6' d='m3.5 6 4.5 4.5L12.5 6'/%3e%3c/svg%3e");
     }
   }
@@ -282,34 +276,7 @@
     --control-background-hover: color-mix(in oklch, var(--input) 50%, transparent);
     --control-background-disabled: color-mix(in oklch, var(--input) 80%, transparent);
     --bg-backdrop: oklch(0 0 0 / 10%);
-    --shadow-overlay: var(--shadow-dialog);
     --select-caret: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23a1a1aa' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.6' d='m3.5 6 4.5 4.5L12.5 6'/%3e%3c/svg%3e");
-  }
-
-  /* ----------------------------------------------------------------------
-     Temporary migration aliases. New component work must use the canonical
-     preset or explicit financial names above, never these deprecated names.
-     ---------------------------------------------------------------------- */
-  :root {
-    --bg-canvas: var(--background);
-    --bg-surface: var(--card);
-    --bg-raised: var(--popover);
-    --bg-inset: var(--muted);
-    --bg-hover: var(--accent);
-    --fg-default: var(--foreground);
-    --fg-muted: var(--muted-foreground);
-    --fg-subtle: var(--muted-foreground);
-    --fg-faint: var(--muted-foreground);
-    --fg-on-brand: var(--primary-foreground);
-    --line-subtle: var(--border);
-    --line-default: var(--border);
-    --line-strong: var(--ring);
-    --field-bg: transparent;
-    --tooltip-bg: var(--foreground);
-    --tooltip-fg: var(--background);
-    --brand: var(--primary);
-    --brand-hover: color-mix(in oklch, var(--primary) 80%, transparent);
-    --brand-solid: var(--primary);
   }
 
   @media (max-width: 62rem) {

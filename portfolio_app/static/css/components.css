@@ -205,9 +205,9 @@
      and does not move the control or jitter the row. */
   .btn-icon:hover {
     box-shadow: none;
-    background-color: var(--bg-hover);
+    background-color: var(--accent);
     border-color: transparent;
-    color: var(--fg-default);
+    color: var(--foreground);
   }
 
   .btn-icon:active { filter: brightness(0.96); }
@@ -262,7 +262,7 @@
     border: 1px solid transparent;
     border-radius: var(--radius-lg);
     background-color: transparent;
-    color: var(--fg-muted);
+    color: var(--muted-foreground);
     cursor: pointer;
     transition:
       background-color var(--dur-1) var(--ease-out),
@@ -271,8 +271,8 @@
   }
 
   .icon-button:hover {
-    background-color: var(--bg-hover);
-    color: var(--fg-default);
+    background-color: var(--accent);
+    color: var(--foreground);
   }
 
   .icon-button:active { transform: scale(0.92); }
@@ -356,7 +356,7 @@
   label.form-label {
     display: block;
     margin-bottom: var(--space-2);
-    color: var(--fg-muted);
+    color: var(--muted-foreground);
     font-size: var(--text-xs);
     font-weight: var(--weight-medium);
     letter-spacing: 0;
@@ -409,7 +409,7 @@
   .form-control:disabled,
   .form-select:disabled {
     background-color: var(--control-background-disabled);
-    color: var(--fg-muted);
+    color: var(--muted-foreground);
     opacity: 0.5;
     cursor: default;
   }
@@ -491,7 +491,7 @@
 
   .form-text {
     margin-top: var(--space-1);
-    color: var(--fg-subtle);
+    color: var(--muted-foreground);
   }
 
   .form-text--ok { color: var(--muted-foreground); }
@@ -507,7 +507,7 @@
     top: 50%;
     left: var(--space-3);
     translate: 0 -50%;
-    color: var(--fg-faint);
+    color: var(--muted-foreground);
     font-size: 0.9rem;
     pointer-events: none;
     transition: color var(--dur-1) var(--ease-out);
@@ -516,13 +516,12 @@
   .field-wrap:focus-within .field-wrap__icon { color: var(--foreground); }
 
   .field-wrap input { padding-left: 2.375rem; }
-  /* `--fg-subtle`, not `--fg-faint`: the faint step holds 3:1 and is for
-     text nobody has to read. A character counter is the only warning that a
-     note is about to be cut off. */
+  /* The counter uses the canonical muted foreground: it is supporting text,
+     but still needs to remain readable as the note approaches its limit. */
   .notes-counter {
     display: block;
     margin-top: var(--space-1);
-    color: var(--fg-subtle);
+    color: var(--muted-foreground);
     text-align: right;
     transition: color var(--dur-1) var(--ease-out);
   }
@@ -540,7 +539,7 @@
   .sell-max-btn {
     padding: 0 var(--space-2);
     min-height: 1.5rem;
-    border-radius: var(--radius-xs);
+    border-radius: var(--radius-sm);
     background-color: var(--secondary);
     color: var(--secondary-foreground);
     font-size: var(--text-2xs);
@@ -750,7 +749,6 @@
     box-shadow: none;
   }
 
-  .surface-popover,
   .dropdown-menu {
     border: 0;
     border-radius: var(--radius-lg);
@@ -1012,7 +1010,7 @@
     align-items: center;
     gap: 0.25rem;
     padding: 0.125rem var(--space-2);
-    border: 1px solid var(--line-subtle);
+    border: 1px solid var(--border);
     border-radius: var(--radius-pill);
     font-size: var(--text-xs);
     font-weight: var(--weight-medium);
@@ -1256,12 +1254,12 @@
     align-items: flex-start;
     gap: var(--space-3);
     padding: var(--space-3) var(--space-4);
-    border: 1px solid var(--line-default);
-    border-left: 2px solid var(--fg-subtle);
+    border: 1px solid var(--border);
+    border-left: 2px solid var(--muted-foreground);
     border-radius: var(--radius-md);
-    background-color: var(--bg-raised);
-    box-shadow: var(--shadow-overlay);
-    color: var(--fg-default);
+    background-color: var(--popover);
+    box-shadow: var(--shadow-dialog);
+    color: var(--foreground);
     font-size: var(--text-sm);
     pointer-events: auto;
     animation: op-toast-in var(--dur-3) var(--ease-spring) backwards;
@@ -1287,16 +1285,16 @@
     height: 1.25rem;
     margin: -0.125rem -0.25rem 0 0;
     border: 0;
-    border-radius: var(--radius-xs);
+    border-radius: var(--radius-sm);
     background: none;
-    color: var(--fg-faint);
+    color: var(--muted-foreground);
     cursor: pointer;
     transition: color var(--dur-1) var(--ease-out), background-color var(--dur-1) var(--ease-out);
   }
 
   .flash-alert__close:hover {
-    background-color: var(--bg-hover);
-    color: var(--fg-default);
+    background-color: var(--accent);
+    color: var(--foreground);
   }
 
   .flash-alert--success,
@@ -1314,10 +1312,10 @@
     align-items: flex-start;
     gap: var(--space-2);
     padding: var(--space-3) var(--space-4);
-    border: 1px solid var(--line-default);
+    border: 1px solid var(--border);
     border-radius: var(--radius-md);
-    background-color: var(--bg-inset);
-    color: var(--fg-default);
+    background-color: var(--muted);
+    color: var(--foreground);
     font-size: var(--text-sm);
   }
 
@@ -1338,9 +1336,9 @@
     padding: var(--space-2) var(--space-3);
     border: 1px solid transparent;
     border-radius: var(--radius-md);
-    background-color: var(--tooltip-bg);
-    box-shadow: var(--shadow-overlay);
-    color: var(--tooltip-fg);
+    background-color: var(--foreground);
+    box-shadow: var(--shadow-menu);
+    color: var(--background);
     font-size: var(--text-xs);
     line-height: var(--leading-snug);
     text-align: left;
@@ -1350,14 +1348,14 @@
 
   .info-dot {
     display: inline-flex;
-    color: var(--fg-faint);
+    color: var(--muted-foreground);
     font-size: 0.75rem;
     cursor: help;
     transition: color var(--dur-1) var(--ease-out);
   }
 
   .info-dot:hover,
-  .info-dot:focus-visible { color: var(--fg-default); }
+  .info-dot:focus-visible { color: var(--foreground); }
 
   .info-dot .icon { width: 0.75rem; height: 0.75rem; }
 
@@ -1454,13 +1452,13 @@
   .empty-state-text {
     max-width: 30rem;
     margin: 0;
-    color: var(--fg-subtle);
+    color: var(--muted-foreground);
     font-size: var(--text-sm);
   }
 
   .inline-empty {
     padding: var(--space-5) var(--space-4);
-    color: var(--fg-subtle);
+    color: var(--muted-foreground);
     font-size: var(--text-sm);
     text-align: center;
   }
@@ -1610,7 +1608,7 @@
     align-items: center;
     gap: var(--space-2);
     min-width: 0;
-    color: var(--fg-default);
+    color: var(--foreground);
     font-size: var(--text-lg);
     font-weight: var(--weight-semibold);
     letter-spacing: -0.02em;
@@ -1622,7 +1620,7 @@
     height: var(--brand-mark-size);
   }
 
-  .brand:hover { color: var(--fg-default); }
+  .brand:hover { color: var(--foreground); }
 
   .brand__word {
     overflow: hidden;

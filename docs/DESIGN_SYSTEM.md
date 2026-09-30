@@ -121,19 +121,17 @@ surfaces. The selected transaction-direction control is the sole workflow
 exception. `--destructive` remains distinct from `--financial-negative`, even
 where their appearance is close.
 
-## C. Temporary migration aliases
+## C. Compatibility boundary
 
-Names such as `--bg-canvas`, `--fg-default`, `--line-default`,
-and `--brand-solid` are compatibility aliases for untouched pages. They resolve
-to canonical preset roles and do not form a second palette. New or reworked
-shared components must use canonical names. Aliases remain only while a current
-production stylesheet consumes them; repository-wide consumer checks are the
-removal gate.
+The completed modernization has no OnePortfolio migration aliases: shared and
+page styles consume the canonical preset roles directly. Deprecated names such
+as `--bg-canvas`, `--fg-default`, `--line-default`, and `--brand-solid` must not
+be reintroduced.
 
-The `--bs-*` declarations at the bottom of `tokens.css` are a controlled
-Bootstrap bridge, not component API. Bootstrap remains in the `vendor` layer
-for modal, dropdown, Popper, validation, and utility behavior; our semantic
-CSS owns the final appearance.
+The `--bs-*` declarations at the bottom of `tokens.css` are the only controlled
+compatibility bridge. They are vendor inputs, not OnePortfolio component API.
+Bootstrap remains in the `vendor` layer for modal, dropdown, Popper, validation,
+and utility behavior; semantic CSS owns the final appearance.
 
 ## D. Structural application rules
 
@@ -141,7 +139,7 @@ CSS owns the final appearance.
 
 ```text
 static/css/
-  tokens.css      layers, canonical tokens, migration aliases, Bootstrap bridge
+  tokens.css      layers, canonical tokens, extensions, Bootstrap bridge
   base.css        reset, elements, typography, focus and motion primitives
   components.css  reusable controls, cards, tables, menus, dialogs and states
   flatpickr-nova.css  unlayered adapter loaded after Flatpickr's vendor CSS
@@ -258,8 +256,9 @@ only. The contracts are:
 - `.surface-table`: the same quiet outer frame for a table-like composition;
   table headers and rows own only their internal canonical `--border`
   separators.
-- `.surface-popover`: popover roles, `--radius-lg`, menu shadow, and one
-  hairline ring. Bootstrap dropdown menus consume the same contract.
+- `.dropdown-menu`: popover roles, `--radius-lg`, menu shadow, and one hairline
+  ring. Bootstrap supplies its runtime behavior; this shared recipe owns its
+  presentation.
 - `.surface-dialog`: popover roles, `--radius-xl`, dialog shadow, and one
   hairline ring. Bootstrap modals and the command palette consume it.
 
@@ -312,7 +311,7 @@ and only the nested formatted number may add a genuine financial semantic role.
 `.tx-preview` is the calculated form-output contract derived from Nova
 FieldDescription rather than validation/help styling. It uses text-sm type and
 shared field spacing; its label is muted while `.tx-preview__value` uses normal
-foreground, medium weight, and tabular numerals. Buy Total and Sell Total
+foreground, medium weight, and tabular numerals. Buy Total Spent and Sell Total
 Received share this presentation. The arithmetic result is neutral, never a
 positive/negative financial state.
 
@@ -324,6 +323,14 @@ Public and authenticated shells use the same `.icon-button.theme-toggle`
 contract, shared Tabler moon/sun symbols, CSS theme-state visibility, and
 `shell.js` persistence/accessible-label behavior. Landing does not maintain a
 separate decorative theme icon or button variant.
+
+### UI copy
+
+Short interface headings, labels, buttons, menu items, table headers, and
+statuses use Title Case in their source strings. CSS capitalization is not part
+of the contract. Sentences, explanatory copy, validation text, natural ARIA
+descriptions, and user-entered content remain sentence case. Acronyms and
+notation such as P&L, ETF, OTP, and ROI retain their established spelling.
 
 ### Accessibility and motion
 
@@ -408,6 +415,14 @@ a mid-neutral mark that retains at least 4.5:1 contrast against black and white;
 installed-platform icons do not claim dynamic theme switching. Theme-colour
 metadata follows the canonical page backgrounds.
 
+Brand consumers are centralized for the next brand refresh:
+`templates/components/logo_mark.html` owns the visible shell mark,
+`templates/components/favicon_links.html` owns document icon links, and
+`static/icons/favicon.svg` is the master asset consumed by
+`scripts/generate_app_icons.py`. A replacement master must preserve the script's
+geometry/mask and contrast validation contract or update that validator in the
+same dedicated brand change.
+
 ### Modal and behavior ownership
 
 Bootstrap continues to own modal focus lifecycle, backdrop behavior, reopening,
@@ -422,7 +437,7 @@ their existing JavaScript owners; pages must not mount duplicates.
 - financial colours used as generic UI status or decoration;
 - gradients, glows, and ornamental elevation;
 - page-specific radii where a canonical radius role exists;
-- new consumers of migration aliases;
+- migration aliases or component code that bypasses canonical roles;
 - `!important` in application layers unless an existing vendor/runtime
   constraint is documented;
 - inline styles except data-driven custom-property values;

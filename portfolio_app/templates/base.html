@@ -56,7 +56,7 @@
 
 {% include 'components/icon_sprite.html' %}
 
-<a class="skip-link" href="#main">Skip to content</a>
+<a class="skip-link" href="#main">Skip to Content</a>
 
 <div class="shell" data-nav-open="false">
 
@@ -119,7 +119,7 @@
                         <form method="post" action="{{ url_for('auth.logout') }}" class="m-0">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button type="submit" class="dropdown-item btn-logout">
-                                {{ icon('logout') }} Sign out
+                                {{ icon('logout') }} Sign Out
                             </button>
                         </form>
                     </li>

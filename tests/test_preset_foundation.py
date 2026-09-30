@@ -224,29 +224,24 @@ def test_entity_markers_are_neutral_and_index_independent():
         assert not re.search(r'marker\([^)]*,', source)
 
 
-def test_every_migration_alias_has_a_current_stylesheet_consumer(tokens_css):
-    match = re.search(
-        r'Temporary migration aliases.*?:root\s*\{([^}]*)\}', tokens_css, re.S
-    )
-    assert match
-    aliases = set(declarations(match.group(1)))
-    expected = {
+def test_completed_foundation_has_no_migration_aliases_or_consumers(tokens_css):
+    obsolete = {
         'bg-canvas', 'bg-surface', 'bg-raised', 'bg-inset', 'bg-hover',
         'fg-default', 'fg-muted', 'fg-subtle', 'fg-faint', 'fg-on-brand',
-        'line-subtle', 'line-default', 'line-strong',
-        'field-bg',
-        'tooltip-bg', 'tooltip-fg',
-        'brand', 'brand-hover', 'brand-solid',
+        'line-subtle', 'line-default', 'line-strong', 'field-bg',
+        'tooltip-bg', 'tooltip-fg', 'brand', 'brand-hover', 'brand-solid',
+        'radius-xs', 'shadow-overlay', 'shadow-lift',
     }
-    assert aliases == expected
-
-    consumers = '\n'.join(
+    runtime_css = '\n'.join(
         path.read_text(encoding='utf-8')
         for path in Path('portfolio_app/static/css').glob('*.css')
-        if path != TOKENS_PATH
     )
-    for alias in aliases:
-        assert f'var(--{alias})' in consumers, f'--{alias} has no CSS consumer'
+    for alias in obsolete:
+        assert f'--{alias}:' not in tokens_css
+        assert f'var(--{alias})' not in runtime_css
+
+    assert 'Temporary migration aliases' not in tokens_css
+    assert '--bs-body-bg: var(--background)' in tokens_css
 
 
 def test_icon_sprite_has_unique_consumed_symbols_and_live_aliases():

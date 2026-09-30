@@ -318,7 +318,7 @@
                                 {% set _symbol_errs = (form_errors.get('symbol_add', {}) if form_errors else {}) %}
                                 {% set _symbol_vals = (form_values.get('symbol_add', {}) if form_values else {}) %}
                                 <select class="form-select {% if _symbol_errs.get('symbol_portfolio_id') %}is-invalid{% endif %}" id="symbol_portfolio_id" name="symbol_portfolio_id">
-                                    <option value="">Select portfolio...</option>
+                                    <option value="">Select Portfolio…</option>
                                     {% for portfolio in portfolios %}
                                     <option value="{{ portfolio.id }}" {% if (_symbol_vals.get('symbol_portfolio_id') and _symbol_vals.get('symbol_portfolio_id')|int == portfolio.id) or (not _symbol_vals.get('symbol_portfolio_id') and selected_portfolio == portfolio.name) %}selected{% endif %}>
                                         {{ portfolio.name }}
@@ -373,7 +373,7 @@
                                 <label for="portfolio_id" class="form-label">Portfolio</label>
                                 {% set _tx_add_vals = (form_values.get('transaction_add', {}) if form_values else {}) %}
                                 <select class="form-select {% if _tx_add_errs.get('portfolio_id') %}is-invalid{% endif %}" id="portfolio_id" name="portfolio_id">
-                                    <option value="">Select portfolio...</option>
+                                    <option value="">Select Portfolio…</option>
                                     {% for portfolio in portfolios %}
                                     <option value="{{ portfolio.id }}">{{ portfolio.name }}</option>
                                     {% endfor %}
@@ -508,7 +508,7 @@
                             <div class="mb-3">
                                 <label for="edit_portfolio_id_display" class="form-label">Portfolio</label>
                                 <select class="form-select" id="edit_portfolio_id_display" disabled>
-                                    <option value="">Select portfolio...</option>
+                                    <option value="">Select Portfolio…</option>
                                     {% for portfolio in portfolios %}
                                     <option value="{{ portfolio.id }}">{{ portfolio.name }}</option>
                                     {% endfor %}
@@ -528,7 +528,7 @@
                     <div class="mb-3">
                         <label for="edit_transaction_type_display" class="form-label">Entry Type</label>
                         <select class="form-select" id="edit_transaction_type_display" disabled>
-                            <option value="">Select type...</option>
+                            <option value="">Select Type…</option>
                             <option value="Buy">Buy</option>
                             <option value="Sell">Sell</option>
                         </select>

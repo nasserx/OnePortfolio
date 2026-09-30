@@ -4,6 +4,12 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
+BASE = (ROOT / 'portfolio_app' / 'templates' / 'base.html').read_text(
+    encoding='utf-8'
+)
+LANDING = (ROOT / 'portfolio_app' / 'templates' / 'landing.html').read_text(
+    encoding='utf-8'
+)
 TEMPLATES = {
     name: (ROOT / 'portfolio_app' / 'templates' / f'{name}.html').read_text(
         encoding='utf-8'
@@ -92,3 +98,16 @@ def test_scoped_templates_do_not_retain_known_legacy_lowercase_ui_forms():
 def test_title_case_is_source_copy_not_css_transformation():
     source = '\n'.join(TEMPLATES.values())
     assert 'text-transform: capitalize' not in source
+
+
+def test_cross_page_short_controls_use_title_case_source_copy():
+    assert '>Skip to Content</a>' in BASE
+    assert '>Skip to Content</a>' in LANDING
+    assert 'Sign Out' in BASE
+
+    assets = TEMPLATES['assets']
+    assert assets.count('>Select Portfolio…</option>') == 3
+    assert '>Select Type…</option>' in assets
+    for legacy in ('Sign out', 'Skip to content', 'Select portfolio...',
+                   'Select type...'):
+        assert legacy not in '\n'.join((BASE, LANDING, assets))

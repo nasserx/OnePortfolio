@@ -69,7 +69,7 @@ def test_settings_content_heading_icons_inherit_the_shared_fixed_icon_size():
     assert 'height: 1rem' in shared_icon
     assert 'flex: none' in shared_icon
     assert 'width: 100%' not in shared_icon
-    assert '.settings-sidebar-link .icon' in app
+    assert '.settings-sidebar-link .icon' not in app
 
 
 def test_settings_forms_keep_routes_names_csrf_and_destructive_description():

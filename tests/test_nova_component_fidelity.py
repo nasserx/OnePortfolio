@@ -76,7 +76,7 @@ def test_card_dialog_tabs_and_menu_use_recipe_radius_tiers():
     trigger = _rule(css, '.segmented__option')
     assert 'border-radius: var(--radius-md)' in trigger
 
-    menu = _rule(css, '.surface-popover,\n  .dropdown-menu')
+    menu = _rule(css, '.dropdown-menu')
     assert 'border-radius: var(--radius-lg)' in menu
     item = _rule(css, '.dropdown-item')
     assert 'border-radius: var(--radius-md)' in item

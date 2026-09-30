@@ -16,6 +16,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css"
       integrity="sha384-RkASv+6KfBMW9eknReJIJ6b3UnjKOKC5bOUaNgIY778NFbQ8MtWq9Lr/khUgqtTt"
       crossorigin="anonymous">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/flatpickr-nova.css', v=ASSET_VERSION) }}">
 {% endblock %}
 
 {% block page_title %}Portfolios{% endblock %}
@@ -35,7 +36,7 @@
     <div class="disclosure enter">
         {% for item in portfolio_details %}
         {% set panel_id = 'events-' ~ item.portfolio.id %}
-        <article class="disclosure__item portfolio-card">
+        <article class="disclosure__item portfolio-card surface-card surface-interactive">
 
             <div class="disclosure__head">
                 {#
@@ -43,7 +44,7 @@
                   keyboard and announces its own state. Row actions sit
                   outside it — nesting them would make them unclickable.
                 #}
-                <button type="button" class="disclosure__toggle"
+                <button type="button" class="disclosure__toggle surface-interactive__control"
                         aria-expanded="false" aria-controls="{{ panel_id }}"
                         data-disclosure="{{ item.portfolio.id }}"
                         data-command="Portfolio: {{ item.portfolio.name }}"
@@ -52,7 +53,7 @@
                     <i class="bi bi-chevron-right disclosure__chevron" aria-hidden="true"></i>
 
                     <span class="disclosure__identity">
-                        {{ marker(item.portfolio.name, loop.index0) }}
+                        {{ marker(item.portfolio.name) }}
                         <span class="disclosure__name" title="{{ item.portfolio.name }}">{{ item.portfolio.name }}</span>
                     </span>
 
@@ -110,7 +111,7 @@
             <div class="disclosure__panel portfolio-cash-events" id="{{ panel_id }}" hidden>
                     {% if item.events %}
                     <div class="table-responsive">
-                        <table class="table table-sm table-hover align-middle mb-0 records-table records-table--portfolio-events transactions-table dashboard-actions-table portfolio-events-table">
+                        <table class="table records-table records-table--portfolio-events">
                             <colgroup>
                                 <col class="records-col records-col--date">
                                 <col class="records-col records-col--type">
@@ -118,7 +119,7 @@
                                 <col class="records-col records-col--notes">
                                 <col class="records-col records-col--actions">
                             </colgroup>
-                            <thead class="table-light">
+                            <thead>
                                 <tr>
                                     <th class="small records-cell">Date</th>
                                     <th class="small records-cell">Type</th>

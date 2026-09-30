@@ -1,10 +1,7 @@
-"""Colour maths shared by the design-token guardrails.
+"""Colour maths shared by design-token guardrails.
 
-Everything here models what a browser actually does — sRGB compositing and
-WCAG 2.1 relative luminance — so a test can predict the pixel a reader ends
-up looking at rather than the value an author typed.
-
-Not a test module: no `test_` prefix, so pytest collects nothing from it.
+The preset is authored in OKLCH. Conversion follows the CSS Color 4 OKLab
+matrices before WCAG 2.1 luminance is calculated in linear sRGB.
 """
 
 import re
@@ -55,11 +52,81 @@ def stack(*veils):
     return veils[0][0], 1 - remaining
 
 
-def to_rgb(hex_colour):
-    value = hex_colour.lstrip('#')
-    if len(value) == 3:
-        value = ''.join(ch * 2 for ch in value)
-    return tuple(int(value[i:i + 2], 16) for i in (0, 2, 4))
+def _linear_to_srgb(channel):
+    channel = max(0.0, min(1.0, channel))
+    encoded = 12.92 * channel if channel <= 0.0031308 else (
+        1.055 * (channel ** (1 / 2.4)) - 0.055
+    )
+    return round(encoded * 255)
+
+
+def _oklab_to_rgb(lightness, a, b):
+    l_ = lightness + 0.3963377774 * a + 0.2158037573 * b
+    m_ = lightness - 0.1055613458 * a - 0.0638541728 * b
+    s_ = lightness - 0.0894841775 * a - 1.2914855480 * b
+    l, m, s = l_ ** 3, m_ ** 3, s_ ** 3
+    return tuple(map(_linear_to_srgb, (
+        4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+        -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+        -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s,
+    )))
+
+
+def _oklch_to_rgb(lightness, chroma, hue):
+    from math import cos, radians, sin
+
+    angle = radians(hue)
+    return _oklab_to_rgb(
+        lightness,
+        chroma * cos(angle),
+        chroma * sin(angle),
+    )
+
+
+def mix_oklab(first, second, first_weight):
+    """Mix two opaque OKLCH literals in Cartesian OKLab coordinates."""
+    from math import cos, radians, sin
+
+    def coordinates(value):
+        match = re.fullmatch(
+            r'oklch\(\s*([\d.]+)\s+([\d.]+)\s+([\d.]+)\s*\)',
+            value.strip(),
+        )
+        assert match, f'expected opaque OKLCH literal, got {value!r}'
+        lightness, chroma, hue = map(float, match.groups())
+        angle = radians(hue)
+        return lightness, chroma * cos(angle), chroma * sin(angle)
+
+    first_oklab = coordinates(first)
+    second_oklab = coordinates(second)
+    second_weight = 1 - first_weight
+    mixed = tuple(
+        a * first_weight + b * second_weight
+        for a, b in zip(first_oklab, second_oklab)
+    )
+    return _oklab_to_rgb(*mixed)
+
+
+def to_rgba(colour):
+    value = colour.strip()
+    if value.startswith('#'):
+        raw = value.lstrip('#')
+        if len(raw) == 3:
+            raw = ''.join(ch * 2 for ch in raw)
+        return tuple(int(raw[i:i + 2], 16) for i in (0, 2, 4)) + (1.0,)
+
+    match = re.fullmatch(
+        r'oklch\(\s*([\d.]+)\s+([\d.]+)\s+([\d.]+)'
+        r'(?:\s*/\s*([\d.]+)(%?))?\s*\)', value,
+    )
+    assert match, f'unsupported colour literal {colour!r}'
+    lightness, chroma, hue, alpha, percent = match.groups()
+    opacity = float(alpha) / 100 if alpha and percent else float(alpha or 1)
+    return _oklch_to_rgb(float(lightness), float(chroma), float(hue)) + (opacity,)
+
+
+def to_rgb(colour):
+    return to_rgba(colour)[:3]
 
 
 _LINEAR = [
@@ -70,7 +137,7 @@ _LINEAR = [
 
 
 def relative_luminance(colour):
-    r, g, b = to_rgb(colour) if isinstance(colour, str) else colour
+    r, g, b = to_rgb(colour) if isinstance(colour, str) else colour[:3]
     return 0.2126 * _LINEAR[r] + 0.7152 * _LINEAR[g] + 0.0722 * _LINEAR[b]
 
 
@@ -90,7 +157,7 @@ def declarations(block):
 
 
 def resolve(name, declared, seen=None):
-    """Follow `var(--x)` chains down to a literal hex colour."""
+    """Follow `var(--x)` chains down to a supported colour literal."""
     seen = seen or set()
     if name in seen:
         pytest.fail(f'circular token reference at --{name}')
@@ -100,7 +167,7 @@ def resolve(name, declared, seen=None):
     if value is None:
         pytest.fail(f'token --{name} is not defined for this theme')
 
-    if value.startswith('#'):
+    if value.startswith(('#', 'oklch(')):
         return value
 
     match = re.fullmatch(r'var\(\s*(--[\w-]+)\s*\)', value)

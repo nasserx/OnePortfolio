@@ -22,16 +22,37 @@
 
 @layer components {
 
+  /* Shared Tabler-style 24x24 stroke icon. Geometry is supplied by the
+     document sprite; size and colour always inherit from the consumer. */
+  .icon-sprite {
+    position: absolute;
+    width: 0;
+    height: 0;
+    overflow: hidden;
+  }
+
+  .icon {
+    display: block;
+    flex: none;
+    width: 1rem;
+    height: 1rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
   /* ======================================================================
      1. BUTTONS
      ====================================================================== */
 
   .btn {
-    --btn-bg: transparent;
-    --btn-fg: var(--fg-default);
-    --btn-line: var(--line-default);
-    --btn-bg-hover: var(--bg-hover);
-    --btn-line-hover: var(--line-strong);
+    --btn-bg: var(--control-background);
+    --btn-fg: var(--foreground);
+    --btn-line: transparent;
+    --btn-bg-hover: var(--accent);
+    --btn-line-hover: transparent;
 
     display: inline-flex;
     align-items: center;
@@ -40,7 +61,7 @@
     min-height: var(--control-h);
     padding: 0 var(--control-pad-x);
     border: 1px solid var(--btn-line);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-lg);
     background-color: var(--btn-bg);
     color: var(--btn-fg);
     font-size: var(--text-sm);
@@ -64,96 +85,91 @@
 
   /* Press reads as the button settling back down, not shrinking away. */
   .btn:active {
-    filter: brightness(0.97);
+    transform: translateY(1px);
     box-shadow: none;
   }
 
-  /* One focus indicator, not two. The crisp outline was already doing the
-     job; the translucent halo stacked behind it only added a glow. */
+  /* Nova couples the active border to a three-pixel half-opacity ring. */
   .btn:focus-visible {
-    outline: 2px solid var(--focus-ring);
-    outline-offset: 2px;
+    border-color: var(--ring);
+    outline: none;
+    box-shadow: 0 0 0 3px var(--focus-ring-soft);
   }
 
   .btn:disabled,
   .btn.disabled {
-    opacity: 0.45;
+    opacity: 0.5;
     cursor: not-allowed;
     filter: none;
     box-shadow: none;
     pointer-events: none;
   }
 
-  .btn .bi { font-size: 1em; }
+  .btn :is(.icon, .bi) { font-size: 1em; }
+  .btn .icon { width: 1em; height: 1em; }
 
   .btn-sm {
     min-height: var(--control-h-sm);
-    padding: 0 var(--space-2);
+    padding: 0 var(--control-pad-x);
+    border-radius: min(var(--radius-md), 0.75rem);
     font-size: var(--text-xs);
   }
 
   .btn-lg {
-    min-height: 2.75rem;
-    padding: 0 var(--space-5);
-    font-size: var(--text-md);
+    min-height: 2.25rem;
+    padding: 0 var(--control-pad-x);
+    font-size: var(--text-sm);
   }
 
   /* ---- solid ---------------------------------------------------------- */
   .btn-primary {
-    --btn-bg: var(--brand-solid);
-    --btn-fg: var(--fg-on-brand);
-    --btn-line: var(--brand-solid);
-    --btn-bg-hover: var(--brand-solid-hover);
-    --btn-line-hover: var(--brand-solid-hover);
+    --btn-bg: var(--primary);
+    --btn-fg: var(--primary-foreground);
+    --btn-line: transparent;
+    --btn-bg-hover: color-mix(in oklch, var(--primary) 80%, transparent);
+    --btn-line-hover: transparent;
   }
 
-  /* The only solid that is not the brand: the warning on a button that
-     destroys something. There is deliberately no `.btn-success` and no
-     `.btn-warning` — green, red and amber mean a signed financial value
-     here, and borrowing them for actions made a deposit look like a gain.
-     Every action that is not destructive is `.btn-primary`. */
+  /* Nova's destructive action is soft rather than a second solid brand.
+     Financial negative remains a distinct value-only role. */
   .btn-danger {
-    --btn-bg: var(--neg);
-    --btn-fg: var(--fg-on-solid);
-    --btn-line: var(--neg);
-    --btn-bg-hover: var(--neg);
-    --btn-line-hover: var(--neg);
+    --btn-bg: var(--destructive-soft);
+    --btn-fg: var(--destructive);
+    --btn-line: transparent;
+    --btn-bg-hover: var(--destructive-soft-hover);
+    --btn-line-hover: transparent;
   }
 
-  /* No second hand-tuned colour, so it hovers through a veil that moves
-     away from the label in each theme. `.btn-primary` is deliberately not
-     here: it has a real hover step, and stacking a wash on top of that took
-     its white label from 4.60:1 to 3.77:1. */
   .btn-danger:hover {
-    background-image: linear-gradient(var(--solid-hover-veil), var(--solid-hover-veil));
+    background-image: none;
   }
 
   /* ---- outline -------------------------------------------------------- */
-  .btn-secondary,
-  .btn-outline-secondary {
-    --btn-bg: var(--bg-surface);
-    --btn-fg: var(--fg-default);
-    --btn-line: var(--line-default);
-    --btn-bg-hover: var(--bg-hover);
+  .btn-secondary {
+    --btn-bg: var(--secondary);
+    --btn-fg: var(--secondary-foreground);
+    --btn-line: transparent;
+    --btn-bg-hover: var(--accent);
   }
 
-  .btn-outline-primary {
-    --btn-fg: var(--brand);
-    --btn-line: var(--brand-line);
-    --btn-bg-hover: var(--brand-soft);
-    --btn-line-hover: var(--brand);
+  .btn-outline-secondary {
+    --btn-bg: var(--control-background);
+    --btn-fg: var(--foreground);
+    --btn-line: var(--input);
+    --btn-bg-hover: var(--muted);
+    --btn-line-hover: var(--input);
   }
 
   .btn-outline-danger {
-    --btn-fg: var(--neg);
-    --btn-line: var(--neg-line);
-    --btn-bg-hover: var(--neg-soft);
-    --btn-line-hover: var(--neg);
+    --btn-fg: var(--destructive);
+    --btn-line: var(--destructive-line);
+    --btn-bg-hover: var(--destructive-soft);
+    --btn-line-hover: var(--destructive);
   }
 
   /* ---- ghost / link --------------------------------------------------- */
   .btn-link {
-    --btn-fg: var(--brand);
+    --btn-fg: var(--foreground);
     --btn-line: transparent;
     --btn-bg-hover: transparent;
     --btn-line-hover: transparent;
@@ -163,7 +179,7 @@
   }
 
   .btn-link:hover {
-    color: var(--brand-hover);
+    color: var(--foreground);
     box-shadow: none;
     text-decoration: underline;
     text-underline-offset: 3px;
@@ -173,10 +189,7 @@
      2. ICON & ACTION BUTTONS
      ====================================================================== */
 
-  /* Brand-coloured at rest on nothing — no fill, no border. The tint is
-     what makes a row of small glyphs read as controls rather than
-     decoration beside the figures, and `--brand` clears 4.5:1 on every
-     surface so it can carry that alone. */
+  /* Icon actions stay neutral until interaction. */
   .btn-icon {
     width: var(--control-h-sm);
     height: var(--control-h-sm);
@@ -184,8 +197,8 @@
     padding: 0;
     border-color: transparent;
     background-color: transparent;
-    color: var(--brand);
-    border-radius: var(--radius-sm);
+    color: var(--muted-foreground);
+    border-radius: var(--radius-lg);
   }
 
   /* Row actions sit inside dense tables, so their hover state stays tonal
@@ -247,7 +260,7 @@
     width: var(--control-h);
     height: var(--control-h);
     border: 1px solid transparent;
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-lg);
     background-color: transparent;
     color: var(--fg-muted);
     cursor: pointer;
@@ -264,10 +277,28 @@
 
   .icon-button:active { transform: scale(0.92); }
 
-  .icon-button .bi {
+  .icon-button :is(.icon, .bi) {
     font-size: 1rem;
     transition: transform var(--dur-3) var(--ease-spring);
   }
+
+  .btn-danger:focus-visible,
+  .btn-outline-danger:focus-visible {
+    border-color: var(--destructive);
+    box-shadow: 0 0 0 3px color-mix(in oklch, var(--destructive) 20%, transparent);
+  }
+
+  .theme-icon--sun { display: none; }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .theme-icon--moon { display: none; }
+    :root:not([data-theme="light"]) .theme-icon--sun { display: block; }
+  }
+
+  :root[data-theme="dark"] .theme-icon--moon { display: none; }
+  :root[data-theme="dark"] .theme-icon--sun { display: block; }
+  :root[data-theme="light"] .theme-icon--moon { display: block; }
+  :root[data-theme="light"] .theme-icon--sun { display: none; }
 
   /* ======================================================================
      3. SEGMENTED CONTROL
@@ -279,9 +310,9 @@
     position: relative;
     display: inline-flex;
     padding: 3px;
-    border: 1px solid var(--line-subtle);
-    border-radius: var(--radius-sm);
-    background-color: var(--bg-inset);
+    border: 0;
+    border-radius: var(--radius-lg);
+    background-color: var(--muted);
   }
 
   .segmented__thumb {
@@ -289,8 +320,8 @@
     top: 3px;
     bottom: 3px;
     left: 0;
-    border-radius: calc(var(--radius-sm) - 2px);
-    background-color: var(--bg-surface);
+    border-radius: var(--radius-md);
+    background-color: var(--background);
     box-shadow: var(--shadow-raised);
     transition:
       transform var(--dur-3) var(--ease-out),
@@ -305,17 +336,17 @@
     height: 1.75rem;
     border: 0;
     background: none;
-    color: var(--fg-muted);
+    color: var(--muted-foreground);
     font-size: var(--text-xs);
     font-weight: var(--weight-medium);
     white-space: nowrap;
     cursor: pointer;
-    border-radius: calc(var(--radius-sm) - 2px);
+    border-radius: var(--radius-md);
     transition: color var(--dur-2) var(--ease-out);
   }
 
-  .segmented__option:hover { color: var(--fg-default); }
-  .segmented__option[aria-selected="true"] { color: var(--fg-default); }
+  .segmented__option:hover { color: var(--foreground); }
+  .segmented__option[aria-selected="true"] { color: var(--foreground); }
 
   /* ======================================================================
      4. FORMS
@@ -336,10 +367,10 @@
     width: 100%;
     min-height: var(--control-h);
     padding: 0 var(--control-pad-x);
-    border: 1px solid var(--field-border);
-    border-radius: var(--radius-sm);
-    background-color: var(--field-bg);
-    color: var(--fg-default);
+    border: 1px solid var(--input);
+    border-radius: var(--radius-lg);
+    background-color: var(--control-background);
+    color: var(--foreground);
     font-size: var(--text-md);
     line-height: var(--leading-snug);
     box-shadow: none;
@@ -357,7 +388,7 @@
 
   .form-control:hover:not(:disabled):not([readonly]),
   .form-select:hover:not(:disabled) {
-    border-color: var(--line-strong);
+    background-color: var(--control-background-hover);
   }
 
   /* Every field state is the same mechanism: a 1px hairline that doubles to
@@ -366,18 +397,20 @@
      outside it — no halo, no glow, and no change to the field's size. */
   .form-control:focus,
   .form-select:focus {
-    border-color: var(--focus-ring);
-    background-color: var(--field-bg-focus);
-    box-shadow: inset 0 0 0 1px var(--focus-ring);
+    border-color: var(--ring);
+    background-color: var(--control-background);
+    box-shadow: 0 0 0 3px var(--focus-ring-soft);
     outline: none;
-    color: var(--fg-default);
+    color: var(--foreground);
   }
 
   .form-control[readonly],
   .form-select[readonly],
-  .form-control:disabled {
-    background-color: var(--field-bg-disabled);
+  .form-control:disabled,
+  .form-select:disabled {
+    background-color: var(--control-background-disabled);
     color: var(--fg-muted);
+    opacity: 0.5;
     cursor: default;
   }
 
@@ -388,7 +421,21 @@
     background-position: right 0.75rem center;
     background-size: 15px;
     appearance: none;
+    color-scheme: light;
   }
+
+  .form-select option,
+  .form-select optgroup {
+    background-color: var(--popover);
+    color: var(--popover-foreground);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .form-select { color-scheme: dark; }
+  }
+
+  :root[data-theme="dark"] .form-select { color-scheme: dark; }
+  :root[data-theme="light"] .form-select { color-scheme: light; }
 
   /* Validation changes colour and nothing else. Bootstrap also injects a
      status icon and widens the right padding, so a field jumps as you fill
@@ -406,26 +453,26 @@
   }
 
   /* A fully saturated red hairline next to a 14%-alpha neutral one reads as
-     a different weight class. `--neg-line` sits at the same alpha as the
+     a different weight class. `--destructive-line` sits at the same alpha as the
      neutral one, so the error carries at the weight of everything around
      it and the red message below does the telling. */
   .form-control.is-invalid,
   .form-select.is-invalid {
-    border-color: var(--neg-line);
-    background-color: var(--neg-soft);
+    border-color: var(--destructive-line);
+    background-color: var(--destructive-soft);
   }
 
   .form-control.is-invalid:focus,
   .form-select.is-invalid:focus {
-    border-color: var(--neg);
-    background-color: var(--neg-soft);
-    box-shadow: inset 0 0 0 1px var(--neg);
+    border-color: var(--destructive);
+    background-color: var(--destructive-soft);
+    box-shadow: 0 0 0 3px color-mix(in oklch, var(--destructive) 30%, transparent);
   }
 
   .invalid-feedback {
     display: none;
     margin-top: var(--space-1);
-    color: var(--neg);
+    color: var(--destructive);
     font-size: var(--text-xs);
     line-height: var(--leading-snug);
   }
@@ -439,7 +486,6 @@
      small text a user is required to read. */
   .form-text,
   .withdraw-available-hint,
-  .tx-preview,
   .notes-counter {
     font-size: var(--text-3xs);
   }
@@ -449,37 +495,7 @@
     color: var(--fg-subtle);
   }
 
-  .form-text--ok { color: var(--pos); }
-
-  .form-check-input {
-    width: 1rem;
-    height: 1rem;
-    margin-top: 0.16rem;
-    border: 1px solid var(--line-strong);
-    background-color: var(--bg-inset);
-    cursor: pointer;
-    transition:
-      background-color var(--dur-1) var(--ease-out),
-      border-color var(--dur-1) var(--ease-out);
-  }
-
-  .form-check-input:checked {
-    background-color: var(--brand-solid);
-    border-color: var(--brand-solid);
-  }
-
-  .form-check-input:focus {
-    border-color: var(--focus-ring);
-    outline: 2px solid var(--focus-ring);
-    outline-offset: 2px;
-    box-shadow: none;
-  }
-
-  .form-check-label {
-    color: var(--fg-muted);
-    font-size: var(--text-sm);
-    cursor: pointer;
-  }
+  .form-text--ok { color: var(--muted-foreground); }
 
   /* ---- field with leading icon / trailing action ---------------------- */
   .field-wrap {
@@ -498,7 +514,7 @@
     transition: color var(--dur-1) var(--ease-out);
   }
 
-  .field-wrap:focus-within .fi { color: var(--brand); }
+  .field-wrap:focus-within .fi { color: var(--foreground); }
 
   .field-wrap input { padding-left: 2.375rem; }
   /* `--fg-subtle`, not `--fg-faint`: the faint step holds 3:1 and is for
@@ -512,7 +528,7 @@
     transition: color var(--dur-1) var(--ease-out);
   }
 
-  .notes-counter.is-danger { color: var(--neg); }
+  .notes-counter.is-danger { color: var(--destructive); }
 
   /* ---- inline max helper (withdraw / sell) ---------------------------- */
   .sell-max-inline {
@@ -526,15 +542,15 @@
     padding: 0 var(--space-2);
     min-height: 1.5rem;
     border-radius: var(--radius-xs);
-    background-color: var(--brand-soft);
-    color: var(--brand);
+    background-color: var(--secondary);
+    color: var(--secondary-foreground);
     font-size: var(--text-2xs);
     font-weight: var(--weight-medium);
     text-decoration: none;
   }
 
   .sell-max-btn:hover {
-    background-color: var(--brand-soft-hover);
+    background-color: var(--accent);
     text-decoration: none;
   }
 
@@ -542,7 +558,10 @@
   .tx-type-tabs {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: var(--space-2);
+    gap: 3px;
+    padding: 3px;
+    border-radius: var(--radius-lg);
+    background-color: var(--muted);
   }
 
   .tx-type-tab {
@@ -551,52 +570,133 @@
     justify-content: center;
     gap: var(--space-2);
     min-height: var(--control-h);
-    border: 1px solid var(--line-default);
-    border-radius: var(--radius-sm);
-    background-color: var(--bg-inset);
-    color: var(--fg-muted);
+    border: 1px solid transparent;
+    border-radius: var(--radius-md);
+    background-color: transparent;
+    color: var(--muted-foreground);
     font-size: var(--text-sm);
     font-weight: var(--weight-medium);
     cursor: pointer;
     transition:
       background-color var(--dur-1) var(--ease-out),
       border-color var(--dur-1) var(--ease-out),
-      color var(--dur-1) var(--ease-out),
-      transform var(--dur-2) var(--ease-spring);
+      color var(--dur-1) var(--ease-out);
   }
 
   .tx-type-tab:hover {
-    border-color: var(--line-strong);
-    color: var(--fg-default);
+    background-color: var(--accent);
+    color: var(--accent-foreground);
   }
 
-  .tx-type-tab:active { transform: scale(0.98); }
-
-  .tx-tab-buy.active {
-    background-color: var(--pos-soft);
-    border-color: var(--pos);
-    color: var(--pos);
+  /* OnePortfolio transaction-direction semantics. These financial roles are
+     intentionally confined to the selected Buy/Sell choice. */
+  .tx-tab-buy.active,
+  .tx-tab-buy.active:hover,
+  .tx-tab-buy.active:focus,
+  .tx-tab-buy.active:focus-visible {
+    border-color: var(--financial-positive-line);
+    background-color: var(--financial-positive-soft);
+    color: var(--financial-positive);
   }
 
-  .tx-tab-sell.active {
-    background-color: var(--neg-soft);
-    border-color: var(--neg);
-    color: var(--neg);
+  .tx-tab-sell.active,
+  .tx-tab-sell.active:hover,
+  .tx-tab-sell.active:focus,
+  .tx-tab-sell.active:focus-visible {
+    border-color: var(--financial-negative-line);
+    background-color: var(--financial-negative-soft);
+    color: var(--financial-negative);
   }
 
-  /* ---- running cost preview -------------------------------------------- */
+  /* OnePortfolio's command composition is intentionally flatter than a
+     general InputGroup. It keeps Nova's compact geometry but rests directly
+     on the command surface; focus changes tone without drawing an edge. */
+  .command-input-group {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    height: var(--control-h);
+    min-height: 0;
+    padding: 0 var(--space-2);
+    border: 0;
+    border-radius: var(--radius-lg);
+    background-color: transparent;
+    box-shadow: none;
+    outline: 0;
+  }
+
+  .command-input-group:focus-within {
+    border: 0;
+    background-color: var(--accent);
+    box-shadow: none;
+    outline: 0;
+  }
+
+  .command-input-group > .icon {
+    color: var(--muted-foreground);
+    opacity: 0.5;
+  }
+
+  .command-input-control {
+    flex: 1;
+    min-width: 0;
+    width: 100%;
+    height: calc(var(--control-h) - 2px);
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: var(--popover-foreground);
+    font-size: var(--text-sm);
+    box-shadow: none;
+    outline: 0;
+  }
+
+  .command-input-control:focus,
+  .command-input-control:focus-visible {
+    border: 0;
+    box-shadow: none;
+    outline: 0;
+  }
+
+  .command-input-control::placeholder {
+    color: var(--muted-foreground);
+    opacity: 1;
+  }
+
+  .command-input-group:focus-within > .icon {
+    color: var(--accent-foreground);
+    opacity: 0.8;
+  }
+
+  .command-input-group:focus-within > .command-input-control {
+    color: var(--accent-foreground);
+  }
+
+  .command-input-group:focus-within > .command-input-control::placeholder {
+    color: var(--accent-foreground);
+    opacity: 0.7;
+  }
+
+  /* ---- calculated field summary ---------------------------------------- */
   .tx-preview {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--space-1);
     min-height: 1.25rem;
-    color: var(--fg-subtle);
+    margin-top: var(--space-2);
+    color: var(--muted-foreground);
+    font-size: var(--text-sm);
+    line-height: 1.5;
   }
 
-  /* One step down from the page's ink. This number is a running preview of
-     something the user is still typing, not a figure they have committed —
-     at full strength it was the loudest thing in a row of quiet help text,
-     which is what made the whole hint line read as heavy. The weight stays,
-     because that is what makes it scannable without being dark. */
-  .tx-preview-amount {
-    color: var(--fg-muted);
+  /* The label follows Nova's supporting hierarchy; the calculated value is
+     deliberate output, so it returns to normal foreground without acquiring
+     a financial-positive or financial-negative meaning. */
+  .tx-preview__label { color: var(--muted-foreground); }
+
+  .tx-preview__value {
+    color: var(--foreground);
     font-weight: var(--weight-medium);
     font-variant-numeric: tabular-nums;
   }
@@ -629,14 +729,54 @@
      5. CARDS & PANELS
      ====================================================================== */
 
+  /* Shared Nova surface contracts. Structural page classes compose these
+     recipes instead of restating an outer border, radius, or elevation. */
   .card,
-  .panel {
+  .panel,
+  .surface-card,
+  .surface-table {
     position: relative;
-    border: 1px solid var(--line-default);
-    border-radius: var(--radius-md);
-    background-color: var(--bg-surface);
+    border: 0;
+    border-radius: var(--radius-xl);
+    background-color: var(--card);
+    color: var(--card-foreground);
     background-clip: border-box;
-    box-shadow: var(--shadow-raised);
+    box-shadow: 0 0 0 1px var(--surface-ring);
+  }
+
+  .surface-interactive {
+    transition:
+      background-color var(--dur-1) var(--ease-out),
+      box-shadow var(--dur-1) var(--ease-out);
+  }
+
+  .surface-interactive:has(.surface-interactive__control:focus-visible) {
+    box-shadow:
+      0 0 0 1px var(--surface-ring),
+      0 0 0 4px var(--focus-ring-soft);
+  }
+
+  .surface-interactive__control:focus-visible {
+    outline: none;
+    box-shadow: none;
+  }
+
+  .surface-popover,
+  .dropdown-menu {
+    border: 0;
+    border-radius: var(--radius-lg);
+    background-color: var(--popover);
+    color: var(--popover-foreground);
+    box-shadow: var(--shadow-menu), 0 0 0 1px var(--surface-ring);
+  }
+
+  .surface-dialog,
+  .modal-content {
+    border: 0;
+    border-radius: var(--radius-xl);
+    background-color: var(--popover);
+    color: var(--popover-foreground);
+    box-shadow: var(--shadow-dialog), 0 0 0 1px var(--surface-ring);
   }
 
   .card-header {
@@ -645,16 +785,16 @@
     justify-content: space-between;
     gap: var(--space-3);
     padding: var(--space-3) var(--card-pad);
-    border-bottom: 1px solid var(--line-subtle);
+    border-bottom: 1px solid var(--border);
     background-color: transparent;
-    border-radius: var(--radius-md) var(--radius-md) 0 0;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
   }
 
   .panel__title {
     margin: 0;
     font-size: var(--text-sm);
     font-weight: var(--weight-semibold);
-    color: var(--fg-default);
+    color: var(--card-foreground);
   }
 
   /* ======================================================================
@@ -667,11 +807,21 @@
   }
 
   .table {
+    /* Bootstrap remains the vendor behavior layer, but Nova owns every table
+       paint. Clearing the accent variables prevents its cell inset shadows
+       and contextual backgrounds from competing with the shared row states. */
+    --bs-table-bg: transparent;
+    --bs-table-accent-bg: transparent;
+    --bs-table-striped-bg: transparent;
+    --bs-table-hover-bg: transparent;
+    --bs-table-hover-color: inherit;
+    --bs-table-border-color: transparent;
+
     width: 100%;
     margin: 0;
     border-collapse: separate;
     border-spacing: 0;
-    color: var(--fg-default);
+    color: var(--foreground);
     font-size: var(--text-sm);
     vertical-align: middle;
   }
@@ -682,6 +832,7 @@
     border-bottom-width: 0;
     box-shadow: none;
     color: inherit;
+    vertical-align: middle;
   }
 
   .table thead th {
@@ -690,9 +841,9 @@
     z-index: 1;
     padding-top: var(--space-2);
     padding-bottom: var(--space-2);
-    border-bottom: 1px solid var(--line-default);
-    background-color: var(--table-head-bg);
-    color: var(--fg-subtle);
+    border-bottom: 1px solid var(--border);
+    background-color: transparent;
+    color: var(--foreground);
     font-size: var(--text-2xs);
     font-weight: var(--weight-medium);
     letter-spacing: var(--tracking-label);
@@ -700,25 +851,27 @@
     white-space: nowrap;
   }
 
-  .table-light,
-  .table thead.table-light th {
-    background-color: var(--table-head-bg);
+  /* Nova puts the interaction paint on each row's cells. This makes the
+     state reliable with a real table formatting context and leaves nested
+     action buttons free to render their own hover/focus states. */
+  .table tbody tr > * {
+    background-color: transparent;
+    transition:
+      background-color var(--dur-1) var(--ease-out),
+      color var(--dur-1) var(--ease-out);
   }
 
-  .table tbody tr {
-    transition: background-color var(--dur-1) var(--ease-out);
+  .table tbody tr:not(:last-child) > * {
+    border-bottom: 1px solid var(--border);
   }
 
-  .table tbody tr:not(:last-child) > td {
-    border-bottom: 1px solid var(--line-subtle);
+  .table tbody tr:hover > * {
+    background-color: var(--muted-half);
   }
 
-  .table-hover > tbody > tr:hover > *,
-  .table tbody tr:hover > td {
-    background-color: var(--table-row-hover);
-    color: var(--fg-default);
+  .table tbody tr[data-state="selected"] > * {
+    background-color: var(--muted);
   }
-
 
   /* ---- records tables --------------------------------------------------
      A shared shell for every ledger-style table in the product. Column
@@ -787,15 +940,24 @@
     display: inline-flex;
     align-items: center;
     gap: var(--space-1);
-    padding: 0.1875rem var(--space-2);
-    border: 1px solid var(--line-subtle);
-    border-radius: var(--radius-sm);
-    background-color: var(--bg-sunken);
-    color: var(--fg-muted);
-    font-size: var(--text-2xs);
+    height: 1.25rem;
+    padding: 0.125rem var(--space-2);
+    border: 1px solid transparent;
+    border-radius: var(--radius-4xl);
+    background-color: var(--primary);
+    color: var(--primary-foreground);
+    font-size: var(--text-xs);
     font-weight: var(--weight-medium);
     line-height: 1.35;
     white-space: nowrap;
+  }
+
+  /* Official Nova secondary badge: a reusable, low-emphasis contextual
+     label. Entity identity remains neutral and never borrows chart or
+     financial semantic colours. */
+  .badge--secondary {
+    background-color: var(--secondary);
+    color: var(--secondary-foreground);
   }
 
   /* A label-over-figure pair inside a grid. `min-width: 0` is the whole rule:
@@ -803,6 +965,41 @@
      and lets one long number push a four-column row wider than its card. Here
      for the same reason as `.delta` below — the marketing card uses it. */
   .fact { min-width: 0; }
+
+  /* Compact, non-interactive translation of Nova's outline Item: px-3,
+     py-2.5, border-border, rounded-lg, and no fill or elevation. */
+  .supporting-item {
+    min-width: 0;
+    padding: var(--control-pad-x) var(--space-3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background-color: transparent;
+    box-shadow: none;
+  }
+
+  .supporting-item__label {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    margin: 0 0 var(--space-1);
+    color: var(--muted-foreground);
+    font-size: var(--text-xs);
+    font-weight: var(--weight-medium);
+    line-height: 1.35;
+    white-space: nowrap;
+  }
+
+  .supporting-item__value {
+    margin: 0;
+    overflow: hidden;
+    color: var(--foreground);
+    font-size: var(--num-lg);
+    font-weight: var(--weight-medium);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.015em;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 
   /* The return pill. It lives here rather than with the app shell because
      the marketing card is built out of product components, and app.css is
@@ -822,9 +1019,10 @@
     font-variant-numeric: tabular-nums;
   }
 
-  .delta--pos { background-color: var(--pos-soft); border-color: var(--pos-line); color: var(--pos); }
-  .delta--neg { background-color: var(--neg-soft); border-color: var(--neg-line); color: var(--neg); }
-  .delta--flat { color: var(--fg-subtle); }
+  .delta--pos { background-color: var(--financial-positive-soft); border-color: var(--financial-positive-line); color: var(--financial-positive); }
+  .delta--neg { background-color: var(--financial-negative-soft); border-color: var(--financial-negative-line); color: var(--financial-negative); }
+  .delta--flat { color: var(--financial-flat); }
+  .delta .icon { width: 0.75rem; height: 0.75rem; }
 
   /* Entry types — Buy / Sell / Income / Deposit / Withdraw.
      Colour alone carries the meaning. A chip around every row's type column
@@ -846,14 +1044,12 @@
 
   .type-buy,
   .type-deposit,
-  .tx-type-buy { color: var(--pos); }
-
+  .tx-type-buy,
   .type-sell,
   .type-withdrawal,
-  .tx-type-sell { color: var(--neg); }
-
+  .tx-type-sell,
   .type-income,
-  .badge-dividend { color: var(--income); }
+  .badge-dividend { color: var(--muted-foreground); }
 
   /* ======================================================================
      8. DROPDOWNS
@@ -863,10 +1059,6 @@
     --bs-dropdown-padding-y: var(--space-1);
     min-width: 11rem;
     padding: var(--space-1);
-    border: 1px solid var(--line-default);
-    border-radius: var(--radius-md);
-    background-color: var(--bg-raised);
-    box-shadow: var(--shadow-overlay);
   }
 
   /* Popper owns `transform` while a menu is open. Animating that property
@@ -879,11 +1071,11 @@
     align-items: center;
     gap: var(--space-2);
     width: 100%;
-    padding: var(--space-2) var(--space-3);
+    padding: var(--space-1) 0.375rem;
     border: 0;
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-md);
     background: none;
-    color: var(--fg-muted);
+    color: var(--popover-foreground);
     font-size: var(--text-xs);
     line-height: var(--leading-normal);
     text-align: left;
@@ -893,42 +1085,42 @@
 
   .dropdown-item:hover,
   .dropdown-item:focus {
-    background-color: var(--bg-hover);
-    color: var(--fg-default);
+    background-color: var(--accent);
+    color: var(--accent-foreground);
   }
 
   .dropdown-item.active,
   .dropdown-item:active {
-    background-color: var(--nav-active-bg);
-    color: var(--nav-active-fg);
+    background-color: var(--accent);
+    color: var(--accent-foreground);
   }
 
   .dropdown-divider {
     margin: var(--space-1) 0;
-    border-top: 1px solid var(--line-subtle);
+    border-top: 1px solid var(--border);
     opacity: 1;
   }
 
   .action-menu__trigger::after { display: none; }
 
-  .dropdown-item--danger { color: var(--neg); }
+  .dropdown-item--danger { color: var(--destructive); }
 
   .dropdown-item--danger:hover,
   .dropdown-item--danger:focus,
   .dropdown-item--danger:active {
-    background-color: var(--neg-soft);
-    color: var(--neg);
+    background-color: var(--destructive-soft);
+    color: var(--destructive);
   }
 
   .btn-logout:hover {
-    background-color: var(--neg-soft);
-    color: var(--neg);
+    background-color: var(--destructive-soft);
+    color: var(--destructive);
   }
 
   /* ---- filter trigger -------------------------------------------------- */
   .filter-dropdown-btn {
-    --btn-bg: var(--bg-surface);
-    --btn-fg: var(--fg-default);
+    --btn-bg: var(--background);
+    --btn-fg: var(--foreground);
     gap: var(--space-2);
   }
 
@@ -950,15 +1142,12 @@
 
   .modal-backdrop {
     background-color: var(--bg-backdrop);
+    backdrop-filter: blur(4px);
   }
 
   .modal-backdrop.show { opacity: 1; }
 
   .modal-content {
-    border: 1px solid var(--line-default);
-    border-radius: var(--radius-lg);
-    background-color: var(--bg-raised);
-    box-shadow: var(--shadow-overlay);
     overflow: hidden;
   }
 
@@ -980,8 +1169,8 @@
     align-items: center;
     justify-content: space-between;
     gap: var(--space-3);
-    padding: var(--space-4) var(--space-5);
-    border-bottom: 1px solid var(--line-subtle);
+    padding: var(--space-4);
+    border-bottom: 1px solid var(--border);
   }
 
   .modal-title {
@@ -990,12 +1179,12 @@
     gap: var(--space-2);
     font-size: var(--text-md);
     font-weight: var(--weight-semibold);
-    color: var(--fg-default);
+    color: var(--popover-foreground);
   }
 
-  .modal-title-icon { color: var(--fg-subtle); }
+  .modal-title-icon { color: var(--muted-foreground); }
 
-  .modal-body { padding: var(--space-5); }
+  .modal-body { padding: var(--space-4); }
 
   .modal-body > .mb-3:last-child,
   .modal-body > *:last-child { margin-bottom: 0; }
@@ -1005,9 +1194,9 @@
     align-items: center;
     justify-content: flex-end;
     gap: var(--space-2);
-    padding: var(--space-3) var(--space-5);
-    border-top: 1px solid var(--line-subtle);
-    background-color: var(--table-head-bg);
+    padding: var(--space-4);
+    border-top: 1px solid var(--border);
+    background-color: var(--muted);
   }
 
   .modal-footer > * { margin: 0; }
@@ -1022,10 +1211,10 @@
     height: 1.75rem;
     padding: 0;
     border: 0;
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-lg);
     background: none;
     opacity: 1;
-    color: var(--fg-subtle);
+    color: var(--muted-foreground);
     transition: background-color var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out);
   }
 
@@ -1039,8 +1228,8 @@
   }
 
   .btn-close:hover {
-    background-color: var(--bg-hover);
-    color: var(--fg-default);
+    background-color: var(--accent);
+    color: var(--accent-foreground);
     opacity: 1;
   }
 
@@ -1081,7 +1270,11 @@
     to   { opacity: 1; transform: none; }
   }
 
-  .flash-alert__icon { margin-top: 0.1rem; font-size: 0.9rem; }
+  .flash-alert__icon {
+    width: 0.9rem;
+    height: 0.9rem;
+    margin-top: 0.1rem;
+  }
   .flash-alert__msg { flex: 1; line-height: var(--leading-snug); }
 
   .flash-alert__close {
@@ -1104,14 +1297,14 @@
     color: var(--fg-default);
   }
 
-  .flash-alert--success { border-left-color: var(--pos); }
-  .flash-alert--success .flash-alert__icon { color: var(--pos); }
-  .flash-alert--danger { border-left-color: var(--neg); }
-  .flash-alert--danger .flash-alert__icon { color: var(--neg); }
-  .flash-alert--warning { border-left-color: var(--warn); }
-  .flash-alert--warning .flash-alert__icon { color: var(--warn); }
-  .flash-alert--info { border-left-color: var(--income); }
-  .flash-alert--info .flash-alert__icon { color: var(--income); }
+  .flash-alert--success,
+  .flash-alert--warning,
+  .flash-alert--info { border-left-color: var(--border); }
+  .flash-alert--success .flash-alert__icon,
+  .flash-alert--warning .flash-alert__icon,
+  .flash-alert--info .flash-alert__icon { color: var(--foreground); }
+  .flash-alert--danger { border-left-color: var(--destructive); }
+  .flash-alert--danger .flash-alert__icon { color: var(--destructive); }
 
   /* ---- inline alerts (in-page and in-modal) --------------------------- */
   .alert {
@@ -1120,15 +1313,15 @@
     gap: var(--space-2);
     padding: var(--space-3) var(--space-4);
     border: 1px solid var(--line-default);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-md);
     background-color: var(--bg-inset);
     color: var(--fg-default);
     font-size: var(--text-sm);
   }
 
-  .alert-danger  { background-color: var(--neg-soft); border-color: var(--neg-line); color: var(--neg); }
-  .alert-warning { background-color: var(--warn-soft); border-color: var(--warn-line); color: var(--warn); }
-  .alert-info    { background-color: var(--income-soft); border-color: var(--income-line); color: var(--income); }
+  .alert-danger  { background-color: var(--destructive-soft); border-color: var(--destructive-line); color: var(--destructive); }
+  .alert-warning,
+  .alert-info { background-color: var(--muted); border-color: var(--border); color: var(--foreground); }
 
   /* ======================================================================
      11. TOOLTIPS
@@ -1142,7 +1335,7 @@
     max-width: 17rem;
     padding: var(--space-2) var(--space-3);
     border: 1px solid transparent;
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-md);
     background-color: var(--tooltip-bg);
     box-shadow: var(--shadow-overlay);
     color: var(--tooltip-fg);
@@ -1163,6 +1356,8 @@
 
   .info-dot:hover,
   .info-dot:focus-visible { color: var(--fg-default); }
+
+  .info-dot .icon { width: 0.75rem; height: 0.75rem; }
 
   /* ======================================================================
      12. PAGINATION
@@ -1229,9 +1424,6 @@
     align-items: center;
     gap: var(--space-3);
     padding: var(--space-16) var(--space-6);
-    border: 1px dashed var(--line-default);
-    border-radius: var(--radius-md);
-    background-color: var(--bg-surface);
     text-align: center;
   }
 
@@ -1241,11 +1433,13 @@
     justify-content: center;
     width: 3rem;
     height: 3rem;
-    border-radius: var(--radius-md);
-    background-color: var(--bg-inset);
-    color: var(--fg-faint);
+    border-radius: var(--radius-xl);
+    background-color: var(--muted);
+    color: var(--muted-foreground);
     font-size: 1.25rem;
   }
+
+  .empty-state__icon .icon { width: 1.25rem; height: 1.25rem; }
 
   .empty-state-title {
     font-size: var(--text-lg);
@@ -1280,26 +1474,39 @@
   }
 
   .allocation-legend li {
+    min-width: 0;
+  }
+
+  .allocation-legend__row {
     display: grid;
-    grid-template-columns: 0.5rem 1fr auto auto;
+    grid-template-columns: 0.5rem minmax(0, 1fr) minmax(5.5rem, auto) minmax(3rem, auto);
     align-items: center;
-    gap: var(--space-2);
+    gap: 0.375rem;
+    width: 100%;
     padding: 0.3125rem var(--space-2);
-    border-radius: var(--radius-sm);
     font-size: var(--text-xs);
+  }
+
+  .allocation-legend__toggle {
+    border: 0;
+    border-radius: var(--radius-lg);
+    background: none;
+    color: inherit;
+    font-family: inherit;
+    text-align: left;
     cursor: pointer;
     transition: background-color var(--dur-1) var(--ease-out), opacity var(--dur-2) var(--ease-out);
   }
 
-  .allocation-legend li:hover { background-color: var(--bg-hover); }
+  .allocation-legend__toggle:hover { background-color: var(--bg-hover); }
 
-  .allocation-legend li.is-hidden { opacity: 0.4; }
+  .allocation-legend li.is-hidden .allocation-legend__toggle { opacity: 0.4; }
 
   .allocation-legend .swatch {
     width: 0.5rem;
     height: 0.5rem;
     border-radius: 2px;
-    background-color: var(--cat-other);
+    background-color: var(--portfolio-chart-5);
   }
 
   .allocation-legend li.is-hidden .swatch { background-color: var(--fg-faint); }
@@ -1312,8 +1519,10 @@
   }
 
   .allocation-legend .value {
+    min-width: 5.5rem;
     color: var(--fg-default);
     font-variant-numeric: tabular-nums;
+    text-align: right;
   }
 
   .allocation-legend .pct {
@@ -1323,28 +1532,14 @@
     text-align: right;
   }
 
-  .allocation-legend .swatch-1, .allocation-marker-1 { background-color: var(--cat-1); }
-  .allocation-legend .swatch-2, .allocation-marker-2 { background-color: var(--cat-2); }
-  .allocation-legend .swatch-3, .allocation-marker-3 { background-color: var(--cat-3); }
-  .allocation-legend .swatch-4, .allocation-marker-4 { background-color: var(--cat-4); }
-  .allocation-legend .swatch-5, .allocation-marker-5 { background-color: var(--cat-5); }
-  .allocation-legend .swatch-6, .allocation-marker-6 { background-color: var(--cat-6); }
-  .allocation-legend .swatch-7, .allocation-marker-7 { background-color: var(--cat-7); }
-  .allocation-legend .swatch-other { background-color: var(--cat-other); }
+  .allocation-legend .swatch-1 { background-color: var(--portfolio-chart-1); }
+  .allocation-legend .swatch-2 { background-color: var(--portfolio-chart-2); }
+  .allocation-legend .swatch-3 { background-color: var(--portfolio-chart-3); }
+  .allocation-legend .swatch-4 { background-color: var(--portfolio-chart-4); }
+  .allocation-legend .swatch-5,
+  .allocation-legend .swatch-other { background-color: var(--portfolio-chart-5); }
 
-  .allocation-marker-1 { --marker-fg: var(--cat-1-fg); }
-  .allocation-marker-2 { --marker-fg: var(--cat-2-fg); }
-  .allocation-marker-3 { --marker-fg: var(--cat-3-fg); }
-  .allocation-marker-4 { --marker-fg: var(--cat-4-fg); }
-  .allocation-marker-5 { --marker-fg: var(--cat-5-fg); }
-  .allocation-marker-6 { --marker-fg: var(--cat-6-fg); }
-  .allocation-marker-7 { --marker-fg: var(--cat-7-fg); }
-  .allocation-marker-other {
-    --marker-fg: var(--cat-other-fg);
-    background-color: var(--cat-other);
-  }
-
-  /* Portfolio initial chip — the colour ties a row to its chart slice. */
+  /* Portfolio initials identify entities without borrowing chart colour. */
   .marker {
     display: inline-flex;
     align-items: center;
@@ -1352,8 +1547,10 @@
     flex: none;
     width: 1.5rem;
     height: 1.5rem;
-    border-radius: var(--radius-xs);
-    color: var(--marker-fg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background-color: var(--muted);
+    color: var(--muted-foreground);
     font-size: var(--text-2xs);
     font-weight: var(--weight-semibold);
   }
@@ -1369,9 +1566,10 @@
     flex: none;
     width: 1.75rem;
     height: 1.75rem;
-    border-radius: var(--radius-sm);
-    background-color: var(--brand-soft);
-    color: var(--brand);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background-color: var(--muted);
+    color: var(--muted-foreground);
     font-size: var(--text-xs);
     font-weight: var(--weight-semibold);
   }
@@ -1445,80 +1643,4 @@
   :root[data-theme="light"] .brand-logo--dark { display: none; }
   :root[data-theme="light"] .brand-logo--light { display: block; }
 
-  /* ======================================================================
-     16. DATE PICKER (flatpickr)
-     ====================================================================== */
-
-  .op-flatpickr.flatpickr-calendar {
-    z-index: var(--z-datepicker);
-    border: 1px solid var(--line-default);
-    border-radius: var(--radius-md);
-    background-color: var(--bg-raised);
-    box-shadow: var(--shadow-overlay);
-    color: var(--fg-default);
-    font-family: var(--font-sans);
-  }
-
-  .op-flatpickr .flatpickr-months,
-  .op-flatpickr .flatpickr-month {
-    background-color: transparent;
-    color: var(--fg-default);
-    fill: var(--fg-default);
-  }
-
-  .op-flatpickr .flatpickr-current-month input.cur-year,
-  .op-flatpickr .flatpickr-monthDropdown-month {
-    background-color: transparent;
-    color: var(--fg-default);
-  }
-
-  .op-flatpickr .flatpickr-monthDropdown-month { background-color: var(--bg-raised); }
-
-  .op-flatpickr .flatpickr-weekday {
-    color: var(--fg-subtle);
-    font-size: var(--text-2xs);
-    font-weight: var(--weight-medium);
-  }
-
-  .op-flatpickr .flatpickr-day {
-    border-radius: var(--radius-sm);
-    color: var(--fg-default);
-    border-color: transparent;
-    transition: background-color var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out);
-  }
-
-  .op-flatpickr .flatpickr-day:hover {
-    background-color: var(--bg-hover);
-    border-color: transparent;
-  }
-
-  .op-flatpickr .flatpickr-day.today {
-    border-color: var(--brand-line);
-  }
-
-  .op-flatpickr .flatpickr-day.selected,
-  .op-flatpickr .flatpickr-day.selected:hover,
-  .op-flatpickr .flatpickr-day.selected:focus {
-    background-color: var(--brand-solid);
-    border-color: var(--brand-solid);
-    color: var(--fg-on-brand);
-  }
-
-  .op-flatpickr .flatpickr-day.flatpickr-disabled,
-  .op-flatpickr .flatpickr-day.prevMonthDay,
-  .op-flatpickr .flatpickr-day.nextMonthDay {
-    color: var(--fg-faint);
-  }
-
-  .op-flatpickr .flatpickr-prev-month:hover svg,
-  .op-flatpickr .flatpickr-next-month:hover svg {
-    fill: var(--brand);
-  }
-
-  .op-flatpickr.arrowTop::before,
-  .op-flatpickr.arrowTop::after,
-  .op-flatpickr.arrowBottom::before,
-  .op-flatpickr.arrowBottom::after {
-    display: none;
-  }
 }

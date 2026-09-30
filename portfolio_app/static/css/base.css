@@ -92,10 +92,26 @@
      --------------------------------------------------------------------- */
   :focus { outline: none; }
 
-  :focus-visible {
-    outline: 2px solid var(--focus-ring);
-    outline-offset: 2px;
-    border-radius: var(--radius-xs);
+  :where(a, button, [role="button"], [tabindex]):focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--focus-ring-soft);
+  }
+
+  @media (forced-colors: active) {
+    :where(a, button, input, select, textarea, [role="button"], [tabindex]):focus-visible {
+      outline: 2px solid CanvasText;
+      outline-offset: 2px;
+      box-shadow: none;
+    }
+
+    :root ::selection {
+      background-color: Highlight;
+      color: HighlightText;
+    }
+
+    :root :where(input, textarea, [contenteditable="true"]) {
+      caret-color: auto;
+    }
   }
 
   /* ---------------------------------------------------------------------
@@ -114,6 +130,10 @@
 
   textarea { resize: vertical; }
 
+  :where(input, textarea, [contenteditable="true"]) {
+    caret-color: var(--caret-color);
+  }
+
   input[type="number"] { -moz-appearance: textfield; }
 
   input[type="number"]::-webkit-inner-spin-button,
@@ -131,7 +151,7 @@
   select:-webkit-autofill {
     -webkit-text-fill-color: var(--fg-default);
     -webkit-box-shadow: 0 0 0 100px var(--field-bg) inset;
-    caret-color: var(--fg-default);
+    caret-color: var(--caret-color);
     transition: background-color 9999s ease-in-out 0s;
   }
 
@@ -141,8 +161,8 @@
   }
 
   ::selection {
-    background-color: var(--brand-soft-hover);
-    color: var(--fg-default);
+    background-color: var(--selection-background);
+    color: var(--selection-foreground);
   }
 
   /* ---------------------------------------------------------------------
@@ -179,10 +199,10 @@
     white-space: nowrap;
   }
 
-  .num--pos { color: var(--pos); }
-  .num--neg { color: var(--neg); }
-  .num--income { color: var(--income); }
-  .num--flat { color: var(--flat); }
+  .num--pos { color: var(--financial-positive); }
+  .num--neg { color: var(--financial-negative); }
+  .num--income { color: var(--financial-income); }
+  .num--flat { color: var(--financial-flat); }
 
   /* ---------------------------------------------------------------------
      Motion primitives

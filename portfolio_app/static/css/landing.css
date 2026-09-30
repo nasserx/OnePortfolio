@@ -136,16 +136,8 @@
      Hero
      ====================================================================== */
 
-  /* The intro's background is one gradient on the section itself — no
-     layer, no element, nothing to download. `--intro-wash` is shared with
-     the auth showcase and owned in `tokens.css`; this rule may point at it
-     but must not restate it, or the two surfaces start drifting apart.
-
-     It ends where this box ends, on a straight edge. Four rounds of masked
-     dissolve came before that decision and every one was asked to be
-     weaker, because a dissolve has to spend a stretch of backdrop hiding
-     its own boundary and that spent stretch is the thing people see. An
-     edge spends none. */
+  /* The migration alias currently resolves to no decorative background;
+     the intro and auth showcase remain structurally shared. */
   .lp-hero {
     position: relative;
     padding: calc(4rem + var(--space-16)) 0 calc(var(--space-16) + var(--space-6));
@@ -179,29 +171,9 @@
     text-wrap: balance;
   }
 
-  /* The page's leading visual element, and the only piece of brand colour
-     here that is not a control. With nothing decorative behind it, the
-     heading is what the intro is; cobalt into violet is the whole of the
-     ornament budget.
-
-     Both ends come from `--hero-title-from`/`--hero-title-to`, which are
-     semantic roles, so one declaration in `tokens.css` serves both themes
-     and there is no dark-mode rule down here to keep in step. Large text,
-     so the floor is 3:1 — the reason a saturated pair can carry a heading
-     at all. `color` stays declared so a browser without `background-clip`
-     keeps a solid heading rather than an invisible one. */
-  @supports (background-clip: text) or (-webkit-background-clip: text) {
-    .lp-hero .lp-title {
-      background-image: linear-gradient(
-        96deg,
-        var(--hero-title-from),
-        var(--hero-title-to)
-      );
-      -webkit-background-clip: text;
-      background-clip: text;
-      color: transparent;
-    }
-  }
+  /* The preset keeps the heading neutral; hierarchy comes from scale and
+     weight rather than a page-local colour treatment. */
+  .lp-hero .lp-title { color: var(--foreground); }
 
   .lp-lede {
     max-width: 46ch;
@@ -296,22 +268,8 @@
     gap: var(--space-1);
   }
 
-  /* The app's own label colour. These used to sit a step up from it, and
-     that step was bought glass: the fill was bounded by the quietest ink on
-     the card, so a quieter label cost picture. With the card opaque there is
-     nothing to buy, and the preview is more convincing printing exactly what
-     the application prints.
-
-     Declared here rather than inherited because this page loads landing.css
-     *instead of* app.css, which is where `.fact__label` gets its colour;
-     `.allocation-legend .pct` needs no rule at all, since components.css
-     already gives it this same role. */
-  .lp-shot__label,
-  .lp-shot__facts .fact__label {
-    color: var(--fg-subtle);
-  }
-
   .lp-shot__label {
+    color: var(--fg-subtle);
     font-size: var(--text-2xs);
     font-weight: var(--weight-medium);
     letter-spacing: var(--tracking-label);
@@ -339,22 +297,6 @@
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: var(--space-3);
     margin: var(--space-5) 0;
-    padding: var(--space-4) 0;
-    border-block: 1px solid var(--line-subtle);
-  }
-
-  .lp-shot__facts .fact__label {
-    display: block;
-    margin-bottom: 2px;
-    font-size: var(--text-2xs);
-    font-weight: var(--weight-medium);
-    letter-spacing: var(--tracking-label);
-  }
-
-  .lp-shot__facts .fact__value {
-    display: block;
-    font-size: var(--num-sm);
-    font-weight: var(--weight-medium);
   }
 
   .lp-shot__split {
@@ -582,11 +524,11 @@
     font-size: 0.75rem;
   }
 
-  .lp-limits__list .lp-yes { color: var(--pos); }
+  .lp-limits__list .lp-yes { color: var(--foreground); }
 
   .lp-limits__list li:last-child {
-    border-color: var(--pos-line);
-    background-color: var(--pos-soft);
+    border-color: var(--border);
+    background-color: var(--muted);
     color: var(--fg-default);
   }
 

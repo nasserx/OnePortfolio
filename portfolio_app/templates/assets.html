@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css"
       integrity="sha384-RkASv+6KfBMW9eknReJIJ6b3UnjKOKC5bOUaNgIY778NFbQ8MtWq9Lr/khUgqtTt"
       crossorigin="anonymous">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/flatpickr-nova.css', v=ASSET_VERSION) }}">
 {% endblock %}
 
 {% block page_title %}Assets{% endblock %}
@@ -67,10 +68,10 @@
             {% set symbol_dividend_total = dividend_totals.get(symbol_key, 0) %}
             {% set show_dividend_rows = symbol_dividends|length > 0 %}
             {% set panel_id = 'transactions-' ~ item.html_group_id %}
-            <article class="disclosure__item symbol-card" data-symbol="{{ item.symbol }}">
+            <article class="disclosure__item symbol-card surface-card surface-interactive" data-symbol="{{ item.symbol }}">
 
                 <div class="disclosure__head">
-                    <button type="button" class="disclosure__toggle"
+                    <button type="button" class="disclosure__toggle surface-interactive__control"
                             aria-expanded="false" aria-controls="{{ panel_id }}"
                             data-disclosure="{{ item.html_group_id }}"
                             data-command="{{ item.symbol }} · {{ item.portfolio.name }}"
@@ -80,7 +81,7 @@
 
                         <span class="disclosure__identity">
                             <span class="disclosure__name" title="{{ item.symbol }}">{{ item.symbol }}</span>
-                            <span class="badge">{{ item.portfolio.name }}</span>
+                            <span class="badge badge--secondary">{{ item.portfolio.name }}</span>
                         </span>
 
                         <span class="disclosure__metrics" style="--metric-columns:7">
@@ -132,7 +133,7 @@
                 <div class="disclosure__panel" id="{{ panel_id }}" hidden>
                     {% if item.transactions|length > 0 or show_dividend_rows %}
                     <div class="table-responsive">
-                        <table class="table table-sm table-hover align-middle mb-0 records-table records-table--asset-entries transactions-table dashboard-actions-table">
+                        <table class="table records-table records-table--asset-entries">
                             <colgroup>
                                 <col class="records-col records-col--date">
                                 <col class="records-col records-col--type">
@@ -145,7 +146,7 @@
                                 <col class="records-col records-col--notes">
                                 <col class="records-col records-col--actions">
                             </colgroup>
-                            <thead class="table-light">
+                            <thead>
                                 <tr>
                                     <th class="small records-cell">Date</th>
                                     <th class="small records-cell">Type</th>
@@ -284,7 +285,7 @@
         <div id="outer-pg-bar" class="tx-pagination-bar"></div>
 
         {% else %}
-        {% call empty_state('plus-square', 'No assets yet',
+        {% call empty_state('square-plus', 'No assets yet',
             'Add an asset, then record manual buy, sell, and income activity.') %}
             {% if portfolios|length > 0 %}
             <button type="button" class="btn btn-primary js-add-symbol-btn">
@@ -454,7 +455,7 @@
                                     {% if _tx_add_errs.get('fees') %}
                                     <div class="invalid-feedback">{{ _tx_add_errs.get('fees') }}</div>
                                     {% endif %}
-                                    <div id="total_cost_preview" class="tx-preview"></div>
+                                    <div id="total_cost_preview" class="tx-preview" aria-live="polite"></div>
                                 </div>
                             </div>
                             <div class="col-6">
@@ -567,7 +568,7 @@
                                 {% if _tx_edit_errs.get('edit_fees') %}
                                 <div class="invalid-feedback">{{ _tx_edit_errs.get('edit_fees') }}</div>
                                 {% endif %}
-                                <div id="edit_total_cost_preview" class="tx-preview"></div>
+                                <div id="edit_total_cost_preview" class="tx-preview" aria-live="polite"></div>
                             </div>
                         </div>
                         <div class="col-6">
@@ -1379,8 +1380,6 @@ window.openDeleteSymbolModal = function(portfolioId, portfolioName, symbol, txCo
         buyBtn.setAttribute('aria-pressed', isBuy ? 'true' : 'false');
         sellBtn.setAttribute('aria-pressed', isSell ? 'true' : 'false');
 
-        modalEl.classList.toggle('tx-theme-buy', isBuy);
-        modalEl.classList.toggle('tx-theme-sell', isSell);
     }
 
     maxBtn.addEventListener('click', function() {

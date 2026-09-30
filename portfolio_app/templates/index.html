@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from 'macros/ui.html' import money, percent, fact, info, marker, empty_state %}
+{% from 'macros/icons.html' import icon %}
 
 {% block title %}Overview — OnePortfolio{% endblock %}
 
@@ -14,11 +15,11 @@
       gives the page a reading order.
     #}
     <section class="overview-hero enter" aria-labelledby="overview-headline">
-        <div class="hero-figure">
-            <p class="hero-figure__label" id="overview-headline">
+        <div class="hero-figure surface-card">
+            <h2 class="hero-figure__label" id="overview-headline">
                 Book value
                 {{ info('Total cash plus the recorded cost basis of current positions') }}
-            </p>
+            </h2>
 
             <p class="hero-figure__value num"
                data-countup="{{ totals.total_value }}"
@@ -30,9 +31,13 @@
                 {% else %}
                     <span class="delta {% if totals.return_percent > 0 %}delta--pos{% elif totals.return_percent < 0 %}delta--neg{% else %}delta--flat{% endif %}">
                         {% if totals.return_percent > 0 %}
-                            <i class="bi bi-arrow-up-right" aria-hidden="true"></i>
+                            <span class="visually-hidden">Positive return:</span>
+                            {{ icon('arrow-up-right') }}
                         {% elif totals.return_percent < 0 %}
-                            <i class="bi bi-arrow-down-right" aria-hidden="true"></i>
+                            <span class="visually-hidden">Negative return:</span>
+                            {{ icon('arrow-down-right') }}
+                        {% else %}
+                            <span class="visually-hidden">No gain or loss:</span>
                         {% endif %}
                         {{ totals.return_percent|fmt_display_percent(signed=True) }}
                     </span>
@@ -60,19 +65,25 @@
                 <h2 class="panel__title" id="split-title">Portfolio split</h2>
                 <div class="segmented" role="tablist" aria-label="Split basis" data-alloc-switch>
                     <span class="segmented__thumb" aria-hidden="true"></span>
-                    <button type="button" class="segmented__option" role="tab"
-                            aria-selected="true" data-alloc-view="book_value_chart">By book value</button>
-                    <button type="button" class="segmented__option" role="tab"
-                            aria-selected="false" data-alloc-view="capital_chart">By capital</button>
+                    <button type="button" class="segmented__option" id="split-book-tab" role="tab"
+                            aria-selected="true" aria-controls="allocation-panel" tabindex="0"
+                            data-alloc-view="book_value_chart">By book value</button>
+                    <button type="button" class="segmented__option" id="split-capital-tab" role="tab"
+                            aria-selected="false" aria-controls="allocation-panel" tabindex="-1"
+                            data-alloc-view="capital_chart">By capital</button>
                 </div>
             </div>
-            <div class="alloc-panel__body">
+            <div class="alloc-panel__body" id="allocation-panel" role="tabpanel"
+                 aria-labelledby="split-book-tab">
                 <div class="alloc-canvas">
                     <canvas id="allocationChart" role="img"
-                            aria-label="Portfolio split by book value">Portfolio split chart.</canvas>
+                            aria-label="Portfolio split by book value"
+                            aria-describedby="allocationLegend allocationChartStatus">Portfolio split by book value. Details follow in the interactive legend.</canvas>
                 </div>
-                <ul class="allocation-legend" id="allocationLegend"></ul>
+                <ul class="allocation-legend" id="allocationLegend"
+                    aria-label="Portfolio split by book value legend"></ul>
                 <p class="alloc-empty" data-alloc-empty hidden>No portfolio data available.</p>
+                <p class="visually-hidden" id="allocationChartStatus" aria-live="polite"></p>
             </div>
         </section>
     </section>
@@ -81,7 +92,7 @@
         <h2 class="visually-hidden" id="portfolios-title">Portfolios</h2>
 
         {% if portfolio_summary|length > 0 %}
-        <div class="ledger" role="table" aria-label="Portfolio summary">
+        <div class="ledger surface-table" role="table" aria-label="Portfolio summary">
             <div class="ledger__row ledger__row--head" role="row">
                 <div role="columnheader">Portfolio</div>
                 <div role="columnheader">Book value</div>
@@ -94,7 +105,7 @@
             {% for item in portfolio_summary %}
             <div class="ledger__row" role="row">
                 <div class="ledger__name" role="cell">
-                    {{ marker(item.name, loop.index0) }}
+                    {{ marker(item.name) }}
                     <span title="{{ item.name }}">{{ item.name }}</span>
                 </div>
                 <div class="ledger__num" role="cell" data-label="Book value">
@@ -112,11 +123,12 @@
                 <div class="ledger__action" role="cell">
                     <a href="{{ url_for('transactions.transaction_list', portfolio=item.name) }}"
                        class="ledger-link"
+                       aria-label="View assets in {{ item.name }}"
                        data-command="Open {{ item.name }}"
                        data-command-group="Portfolios"
-                       data-command-icon="wallet2">
+                       data-command-icon="wallet">
                         <span>View assets</span>
-                        <i class="bi bi-arrow-right" aria-hidden="true"></i>
+                        {{ icon('arrow-right') }}
                     </a>
                 </div>
             </div>
@@ -126,7 +138,7 @@
         {% call empty_state('folder-plus', 'No portfolios yet',
             'Create your first portfolio to start recording cash events, asset entries, and income.') %}
             <a href="{{ url_for('portfolios.portfolios_list') }}" class="btn btn-primary">
-                <i class="bi bi-plus-lg" aria-hidden="true"></i>
+                {{ icon('plus') }}
                 <span>Create portfolio</span>
             </a>
         {% endcall %}

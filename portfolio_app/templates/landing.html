@@ -1,3 +1,4 @@
+{% from 'macros/icons.html' import icon %}
 {#
   Marketing page.
 
@@ -15,8 +16,8 @@
     <meta name="description" content="Track portfolios manually: capital, asset activity, income, and realized results from your own entries. No live prices, no broker connections, no market noise.">
 
     {% include 'components/favicon_links.html' %}
-    <meta name="theme-color" content="#f6f6f8" media="(prefers-color-scheme: light)">
-    <meta name="theme-color" content="#07070a" media="(prefers-color-scheme: dark)">
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)">
 
     <script nonce="{{ csp_nonce }}">
     (function () {
@@ -60,6 +61,8 @@
 </head>
 <body class="landing">
 
+{% include 'components/icon_sprite.html' %}
+
 <a class="skip-link" href="#main">Skip to content</a>
 
 <header class="lp-nav">
@@ -77,8 +80,9 @@
         </nav>
 
         <div class="lp-nav__actions">
-            <button type="button" class="icon-button" data-theme-toggle aria-label="Switch theme">
-                <i class="bi bi-moon-stars" aria-hidden="true"></i>
+            <button type="button" class="icon-button theme-toggle" data-theme-toggle aria-label="Switch theme">
+                {{ icon('moon', class='theme-icon theme-icon--moon') }}
+                {{ icon('sun', class='theme-icon theme-icon--sun') }}
             </button>
             <a class="btn btn-primary" href="{{ url_for('auth.login') }}">Get started</a>
         </div>
@@ -137,29 +141,29 @@
                     </div>
 
                     <div class="lp-shot__facts">
-                        <div class="fact">
-                            <span class="fact__label">Total capital</span>
-                            <span class="fact__value num" data-landing-metric="totalCapital"></span>
+                        <div class="fact supporting-item">
+                            <span class="fact__label supporting-item__label">Total capital</span>
+                            <span class="fact__value supporting-item__value num" data-landing-metric="totalCapital"></span>
                         </div>
-                        <div class="fact">
-                            <span class="fact__label">Total cash</span>
-                            <span class="fact__value num" data-landing-metric="totalCash"></span>
+                        <div class="fact supporting-item">
+                            <span class="fact__label supporting-item__label">Total cash</span>
+                            <span class="fact__value supporting-item__value num" data-landing-metric="totalCash"></span>
                         </div>
-                        <div class="fact">
-                            <span class="fact__label">Income</span>
-                            <span class="fact__value num num--income" data-landing-metric="totalIncome"></span>
+                        <div class="fact supporting-item">
+                            <span class="fact__label supporting-item__label">Income</span>
+                            <span class="fact__value supporting-item__value num num--income" data-landing-metric="totalIncome"></span>
                         </div>
-                        <div class="fact">
-                            <span class="fact__label">Realized P&amp;L</span>
-                            <span class="fact__value num num--pos" data-landing-metric="realizedPnl"></span>
+                        <div class="fact supporting-item">
+                            <span class="fact__label supporting-item__label">Realized P&amp;L</span>
+                            <span class="fact__value supporting-item__value num num--pos" data-landing-metric="realizedPnl"></span>
                         </div>
                     </div>
 
                     <div class="lp-shot__split">
                         <div class="lp-shot__chart">
-                            <canvas id="landingChart"></canvas>
+                            <canvas id="landingChart" role="img" aria-label="Sample portfolio split by book value" aria-describedby="landingLegend">Sample portfolio split by book value. Details follow in the legend.</canvas>
                         </div>
-                        <ul class="allocation-legend" id="landingLegend"></ul>
+                        <ul class="allocation-legend" id="landingLegend" aria-label="Sample portfolio split by book value legend"></ul>
                     </div>
                 </div>
             </div>
@@ -282,6 +286,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"
         integrity="sha384-e6nUZLBkQ86NJ6TVVKAeSaK8jWa3NhkYWZFomE39AvDbQWeie9PlQqM3pmYW5d1g"
         crossorigin="anonymous"></script>
+<script src="{{ url_for('static', filename='js/display_formatters.js', v=ASSET_VERSION) }}"></script>
 <script src="{{ url_for('static', filename='js/shell.js', v=ASSET_VERSION) }}"></script>
 <script src="{{ url_for('static', filename='js/landing.js', v=ASSET_VERSION) }}"></script>
 </body>

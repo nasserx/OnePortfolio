@@ -1,566 +1,410 @@
-# Design System
+# OnePortfolio design system
 
-OnePortfolio's interface is a **quiet ledger**: a dense record-keeping tool where
-the numbers are the interface and everything else recedes. Its foundation uses
-cool neutral surfaces, restrained borders and elevation, moderate radii, and
-compact controls inspired by the `b1YmpWHpo` visual direction. It supports light
-and dark themes, and a compact density mode.
+OnePortfolio keeps its Flask/Jinja structure, financial workflows, and compact
+ledger character. Its visual source of truth is the official shadcn preset
+`b1YmpWHpo`: Nova style, neutral base and theme, blue charts, Tabler icons,
+Geist typography, a `0.625rem` radius, subtle menu accent, and default menu
+colour.
 
-## Governing rules
+This document separates four contracts. They must not be blended into a
+second, application-specific brand palette.
 
-Three rules decide most design questions. When in doubt, apply them in order.
+## A. Official preset contract
 
-1. **Colour means something.** Green, red, and blue are reserved for signed
-   financial values (`positive` / `negative` / `income`). Brand violet identifies
-   primary and inline actions; navigation selection stays neutral so application
-   chrome does not compete with financial meaning.
-   Those two roles need *different* violets in dark mode — see
-   [`--brand` vs `--brand-solid`](#brand-vs-brand-solid).
+The canonical CSS API is defined in `static/css/tokens.css`.
 
-   **A button is not a value, so a button does not get a value's colour.**
-   Every action in the product is `.btn-primary` — deposit, withdraw, buy,
-   sell, record income, save, create. The single exception is destruction:
-   `.btn-danger` and `.btn-outline-danger`, where red is a warning rather
-   than a quantity. There is deliberately no `.btn-success` and no
-   `.btn-warning` to reach for. A green *Record Deposit* button beside a red
-   *Record Withdraw* button read as a gain and a loss, which is what neither
-   of them is: both are entries the user chose to make, and the sign belongs
-   to the figure they produce, not to the control that produced it.
+| Role | Light | Dark |
+|---|---|---|
+| `--background` | `oklch(1 0 0)` | `oklch(0.145 0 0)` |
+| `--foreground` | `oklch(0.145 0 0)` | `oklch(0.985 0 0)` |
+| `--card`, `--popover` | `oklch(1 0 0)` | `oklch(0.205 0 0)` |
+| card/popover foreground | `oklch(0.145 0 0)` | `oklch(0.985 0 0)` |
+| `--primary` | `oklch(0.205 0 0)` | `oklch(0.922 0 0)` |
+| `--primary-foreground` | `oklch(0.985 0 0)` | `oklch(0.205 0 0)` |
+| secondary/muted/accent | `oklch(0.97 0 0)` | `oklch(0.269 0 0)` |
+| `--muted-foreground` | `oklch(0.556 0 0)` | `oklch(0.708 0 0)` |
+| `--destructive` | `oklch(0.577 0.245 27.325)` | `oklch(0.704 0.191 22.216)` |
+| `--border` | `oklch(0.922 0 0)` | `oklch(1 0 0 / 10%)` |
+| `--input` | `oklch(0.922 0 0)` | `oklch(1 0 0 / 15%)` |
+| `--ring` | `oklch(0.708 0 0)` | `oklch(0.556 0 0)` |
 
-   Violet is therefore what an action looks like, filled or not: the primary
-   button and `.btn-icon` — the row actions, which take the brand colour on no
-   surface at all. The tint is what makes a line
-   of small glyphs read as controls rather than as decoration beside the
-   figures, and `--brand` clears 4.5:1 on every surface, so it can carry
-   that with no fill and no border behind it.
+`--secondary-foreground` and `--accent-foreground` are the preset's primary
+neutral ink for their surfaces. Sidebar roles are also canonical: sidebar
+surface, foreground, primary, accent, border, and ring are not aliases to an
+unrelated application palette.
 
-   Entity actions stay neutral inside their three-dot menu. Destruction is the
-   exception: `.dropdown-item--danger` carries the warning colour because it
-   previews permanent loss rather than a financial direction.
-2. **One hero number per screen.** A screen with five equally-weighted figures
-   has no reading order. Promote one; demote the rest to supporting facts.
-3. **Density is a preference, not a constant.** Never hard-code a compact size —
-   scale it from `--density-scale` so the comfortable/compact switch works.
+Normal actions use `--primary`; destruction uses `--destructive`. Success,
+warning, and information messages do not borrow financial colours. There is no
+green `.btn-success` or amber `.btn-warning` contract. Nova's destructive
+button is a restrained red treatment, while ordinary actions stay primary.
 
-Three consequences worth stating outright, because they are easy to undo by
-accident:
+### Chart palette
 
-- **Entry types are coloured words, not chips.** Buy, Sell, Income, Deposit and
-  Withdraw appear once per row; wrapping each in a tinted pill turns a ledger
-  into a field of badges and out-shouts the figures. A chip is still right for a
-  *category* tag that appears once per group (the portfolio name beside an asset
-  symbol).
-- **Row actions appear on engagement.** The three-dot menu trigger is
-  `opacity: 0` until its own row is hovered or focused. It keeps its layout
-  space, stays in the tab order, and is permanently visible under
-  `@media (hover: none)`. Menu items use the `--text-xs` detail step with the
-  standard menu padding, and neutral text except for the destructive action,
-  which carries the warning colour. Action menus use the shared
-  viewport-aware, fixed Popper contract so card and table-scroll overflow do
-  not clip them. Dropdown motion must not animate `transform`, because Popper
-  owns that property for its computed coordinates.
-- **A number must never sit next to a control.** Where a table ends in an
-  action column, that column is a fixed track wider than its content, so the
-  surplus becomes a gutter between the data and the things that act on it.
-  Sized to `auto` it collapses onto the last figure, and a value one 12px gap
-  from a button reads as belonging to it.
-- **Two tables stacked in one card share their edges, not their columns.**
-  A disclosure's summary row and the record table inside it hold different
-  things and can never align column-for-column. What they can align is where
-  their data stops and where their action menus start: `--row-actions-w` is that
-  right-hand zone, declared once on `.disclosure` and consumed by both. The
-  panel is also inset by `--space-4 − --cell-pad-x`, because a row pads
-  itself at the edges while a table pads inside each cell — miss that and
-  both rows sit 16px out of true down their whole length.
-- **The allocation ring shows four slices plus a grouped remainder.** Past four
-  wedges the small ones become unlabelable slivers. Full per-portfolio detail
-  lives in the summary table directly below, so nothing is hidden — only
-  simplified. The cap is `ALLOCATION_TOP_N` in
-  `calculators/allocation_charts.py`.
-- **Figures are right-aligned wherever a column of them is meant to be
-  compared.** That is the full ledger on the Overview: it reads vertically,
-  row against row, so the decimal points must stack. Left-aligned numbers let
-  them wander by tens of pixels.
-  Where the unit being read is a label/value *pair* rather than a column, it
-  centres instead — the disclosure summary strips — or stays left, as in the
-  overview hero's supporting facts. The test is what the reader is comparing:
-  a figure against the figure above it, or a figure against its own label.
-- **A column heading and its data must be the same column, structurally.**
-  Alignment is not a `text-align` question. If a header row and its body rows
-  are separate grid containers, each resolves its own track sizes and any
-  content-sized column (an action link vs an empty "Actions" label) knocks
-  every heading out of step with the figures beneath it. `.ledger` declares its
-  tracks once and every row adopts them with `grid-template-columns: subgrid`.
-  Real `<table>`s get this for free — which is why they are still the right
-  tool for the record lists.
-- **Validation changes colour and nothing else.** Bootstrap's invalid state
-  also injects an icon and widens the right padding, which resizes the field
-  and makes an error read as a different component. Both are reset.
-- **Every field state is the same mechanism.** A 1px hairline at rest, which
-  doubles to a crisp 2px edge when the field is focused or focused-and-wrong.
-  The doubling is an `inset` shadow so it lands *on* the border rather than
-  blooming outside it — no halo, no glow, and the field never changes size.
-  An unfocused invalid field keeps the hairline weight and switches hue plus
-  a faint wash: a fully saturated red line beside a 14%-alpha neutral one
-  reads as a different weight class, which is what made errors look like a
-  stray wire rather than the same control in another state.
-- **One focus indicator, never two.** The crisp `outline` from `base.css` is
-  it. Stacking a translucent ring behind an outline only produces the glow
-  this system is trying not to have.
-
-## File layout
-
-```
-static/css/
-  tokens.css      layers + design tokens (loaded first, always)
-  base.css        reset, element defaults, typography, focus, motion primitives
-  components.css  reusable UI: buttons, forms, tables, modals, toasts, …
-  app.css         the authenticated product: shell + per-page layout
-  landing.css     the marketing page (loaded instead of app.css)
-```
-
-Templates load `tokens → base → components → app` (or `landing`). **`tokens.css`
-must stay first**: it declares the cascade layer order and imports Bootstrap.
-
-`app.css` and `landing.css` are alternatives, never both — which makes
-`components.css` the only file a class used on both sides may live in. A
-component written into `app.css` and then used in the marketing page's product
-card renders as *unstyled markup*: no error, no missing file, no failing test,
-just an element quietly wearing none of its own rules. `.delta` did this for
-several redesigns and read as plain dark text where the product shows a green
-pill. **If a page outside the app shell uses a class, that class belongs in
-`components.css`.**
-
-## Cascade layers
+The preset supplies exactly five visualization roles:
 
 ```css
-@layer vendor, tokens, base, components, pages, utilities;
-@import url("…bootstrap.min.css") layer(vendor);
+--chart-1: oklch(0.809 0.105 251.813);
+--chart-2: oklch(0.623 0.214 259.815);
+--chart-3: oklch(0.546 0.245 262.881);
+--chart-4: oklch(0.488 0.243 264.376);
+--chart-5: oklch(0.424 0.199 265.638);
 ```
 
-Bootstrap is imported *into* the `vendor` layer, which places every rule we write
-above it without a single `!important`. Write new rules inside the layer that
-matches the file, and specificity stops being a fight.
+The official chart roles remain immutable preset truth. OnePortfolio adds a
+separate visualization-only categorical contract for the allocation chart:
 
-**The one exception:** `!important` declarations reverse layer order, so
-Bootstrap's utilities (`.text-muted`, `.d-none`, `.mb-3`, …) still win over our
-layered rules. That is deliberate — utilities should win. When one of those
-utilities needs to change colour, drive it through its `--bs-*` variable in the
-bridge at the bottom of `tokens.css` rather than trying to out-cascade it.
-
-**Which is exactly why a utility must never be stapled to an element a
-component already styles.** It does not merge with the component's decision;
-it silently outranks it, and nothing in the stylesheet shows that it
-happened. If a component gets the wrong colour, change the component.
-
-The tell that this has been happening is an `!important` in one of *our*
-layers, because that is the only way to win the argument back. Three had
-accumulated — `.table .text-muted`, `.records-table tbody td small.text-muted`,
-and `.sell-max-btn`'s padding fighting `p-0` — and every one was removed by
-taking the utility off the element rather than by escalating. What is left is three legitimate uses:
-`.visually-hidden`, the reduced-motion block, and `.sym-filter-hide`, which
-has to beat whatever `display` the element it lands on already has.
-
-**Bootstrap's reboot is a source of behaviour, not just of looks.** It sets
-`scroll-behavior: smooth` on the root, which on the root scroller animates
-*every* programmatic scroll — `scrollTo(0, 0)` takes about a second, and the
-browser's own scroll restoration after a reload (which this app does after
-every modal action) becomes a page that sits still and then glides on its
-own. `base.css` overrides it to `auto`; deleting our declaration is not
-enough, because then the vendor layer simply wins. The marketing page opts
-back in from `landing.css`, where it is wanted for jump links and where the
-`pages` layer outranks `base`.
-
-## Tokens
-
-Three layers, and components may only consume the middle one:
-
-| Layer | Example | Use |
+| Role | Light | Dark |
 |---|---|---|
-| Primitives | `--n-50`, `--brand-500`, `--green-dark` | never referenced by components |
-| Roles | `--bg-surface`, `--fg-muted`, `--pos`, `--line-subtle` | **the only thing components use** |
-| Bridge | `--bs-primary-rgb`, `--bs-card-bg` | maps roles onto Bootstrap |
+| `--portfolio-chart-1` | `var(--chart-3)` | `var(--chart-2)` |
+| `--portfolio-chart-2` | `oklch(0.58 0.12 210)` | `oklch(0.72 0.12 210)` |
+| `--portfolio-chart-3` | `oklch(0.55 0.16 300)` | `oklch(0.70 0.14 300)` |
+| `--portfolio-chart-4` | `oklch(0.56 0.12 165)` | `oklch(0.70 0.12 165)` |
+| `--portfolio-chart-5` | `oklch(0.64 0.14 70)` | `oklch(0.76 0.13 75)` |
 
-Adding a colour means adding a *role*, not a one-off hex. If no existing role
-fits, the design probably needs a new semantic — not a new shade.
+This restrained blue, cyan, violet, teal, and single amber palette is a
+OnePortfolio extension, not part of `b1YmpWHpo`. It is allowed only in Chart.js
+datasets and their corresponding legend swatches. Neither official chart roles
+nor the extension may style portfolio initials, avatars, buttons, navigation,
+generic badges, or entity UI. There is no `--chart-6`, `--chart-7`, or
+`--chart-other`; the existing top-four-plus-Other behavior uses five slots.
 
-### `--brand` vs `--brand-solid`
+### Radius
 
-The brand has two roles because one violet cannot do both jobs in dark mode:
+The sole foundation is `--radius: 0.625rem`. The generated shadcn derivation is
+translated exactly:
 
-| Role | Used for | Constraint |
-|---|---|---|
-| `--brand` | brand-coloured **text**, icons, and action hairlines | ≥ 4.5:1 *as* text on a dark surface → must be light |
-| `--brand-solid` | any **filled** block with a label on it: primary button, checked box, selected calendar day | must carry white text at ≥ 4.5:1 → must be dark |
+```css
+--radius-sm: calc(var(--radius) * 0.6);
+--radius-md: calc(var(--radius) * 0.8);
+--radius-lg: var(--radius);
+--radius-xl: calc(var(--radius) * 1.4);
+--radius-2xl: calc(var(--radius) * 1.8);
+--radius-3xl: calc(var(--radius) * 2.2);
+--radius-4xl: calc(var(--radius) * 2.6);
+```
 
-In the light theme they coincide. In dark they are three ramp steps apart, and
-the gap is not stylistic: the usable band for a white-labelled violet on this
-palette is a relative luminance of roughly 0.14–0.18, and `--brand` sits well
-above it. Reaching for `--brand` as a fill is the mistake this split exists to
-prevent — `tests/test_design_tokens_contrast.py` fails the build if it happens.
-
-**Hover must move away from the label, not toward it.** Only the destructive
-solid `.btn-danger` uses the semantic red treatment and paints
-`--solid-hover-veil` over its fill: black in light, where its label is white;
-white in dark, where its label is near-black. Normal actions remain
-`.btn-primary` and swap to `--brand-solid-hover` instead. There is deliberately
-no `.btn-success` or `.btn-warning`. The contrast test composites the danger
-veil, so it checks the shipped hover colour rather than only the resting one.
+Nova controls use `--radius-lg`; compact menu items and tab triggers use
+`--radius-md`; cards and dialogs use `--radius-xl`; dropdown and tooltip panels
+use the recipe-specific `--radius-lg` and `--radius-md`. A pill radius is
+allowed only where the shape itself carries established meaning, such as a
+badge or compact signed delta.
 
 ### Themes
 
-The light theme is built on a **cool zinc-neutral** ramp with an off-white canvas
-and nearly white panels. Dark mode mirrors that hierarchy from near-black canvas
-to progressively lighter surfaces. The semantic green, red, blue, and amber
-remain separately tuned for each theme and clear their contrast floors on every
-surface; neutralizing the chrome must never neutralize financial meaning.
+Light is the base `:root`. Dark roles are repeated under system dark preference
+and explicit `data-theme="dark"`; automated tests require those two blocks to
+remain identical. The inline preference script applies the saved theme before
+paint. Canvas content is redrawn on `op:themechange`, because canvas pixels do
+not react to CSS custom properties.
 
-Light is the base definition on `:root`. Dark is redefined twice: under
-`@media (prefers-color-scheme: dark)` guarded by `:root:not([data-theme="light"])`,
-and again under `:root[data-theme="dark"]` so an explicit choice wins in both
-directions. A theme preference is applied by an inline script in `<head>` before
-first paint, so the page never flashes the wrong palette.
+## B. OnePortfolio financial extensions
 
-**Canvas content does not follow CSS variables.** Anything drawn into a
-`<canvas>` bakes in the palette it was created with. Chart owners listen for the
-`op:themechange` event on `window` and redraw.
+The only application colour extensions are:
 
-## Typography
+- `--financial-positive`
+- `--financial-negative`
+- `--financial-income`
+- `--financial-flat`
 
-`Inter`, with `font-variant-numeric: tabular-nums` set once on `body` — that
-single declaration is why every figure in the product aligns in a column.
+They are permitted only when colour communicates real financial meaning:
+signed returns, realized profit/loss, signed income, financial delta
+indicators, and the currently selected Buy/Sell transaction direction.
+Explicit signs, values, and selector labels remain the primary cue; colour is
+never the only cue.
 
-Numbers have their own scale (`--num-sm` … `--num-hero`) independent of the prose
-scale (`--text-2xs` … `--text-3xl`), so figures can be tuned without dragging
-body copy along.
+They are forbidden on portfolio markers, ordinary buttons, navigation,
+generic badges, chart categories, generic notifications, and decorative
+surfaces. The selected transaction-direction control is the sole workflow
+exception. `--destructive` remains distinct from `--financial-negative`, even
+where their appearance is close.
 
-Labels are **sentence case**. No `text-transform: uppercase`; at 11px with wide
-tracking it reads worse and looks templated.
+## C. Temporary migration aliases
 
-Two steps below the body scale carry specific jobs:
+Names such as `--bg-canvas`, `--fg-default`, `--line-default`, `--field-border`,
+and `--brand-solid` are compatibility aliases for untouched pages. They resolve
+to canonical preset roles and do not form a second palette. New or reworked
+shared components must use canonical names. Aliases remain only while a current
+production stylesheet consumes them; repository-wide consumer checks are the
+removal gate.
 
-- `--text-detail` — record rows revealed inside a disclosure, and nothing
-  else. A page's own primary table stays at `--text-sm`.
-- `--text-2xs` — field help text (`.form-text`, the inline hints, the cost
-  preview, the notes counter). Guidance *about* a control is the quietest
-  thing in a form. Error messages are deliberately excluded: they are the one
-  piece of small text a user is required to read.
+The `--bs-*` declarations at the bottom of `tokens.css` are a controlled
+Bootstrap bridge, not component API. Bootstrap remains in the `vendor` layer
+for modal, dropdown, Popper, validation, and utility behavior; our semantic
+CSS owns the final appearance.
 
-Maximum font weight is `600`.
+## D. Structural application rules
 
-## Elevation, radius, motion
+### File and cascade layout
 
-- Two shadows only: `--shadow-raised` (cards) and `--shadow-overlay` (modals,
-  dropdowns, toasts). Never decorative.
-- Three radii with distinct jobs: `--radius-sm` controls, `--radius-md` cards,
-  `--radius-lg` modals.
-- Motion uses `--dur-1` … `--dur-4` and `--ease-out` / `--ease-spring`. Nothing
-  animates on a hand-written duration.
-- Every animation degrades through the single global
-  `@media (prefers-reduced-motion: reduce)` block in `base.css`. Do not write
-  per-component reduced-motion guards.
-
-**Never set the `transition` shorthand on an element that also has hover
-choreography.** The marketing page's scroll reveal originally did, and silently
-replaced each card's own `border-color` / `box-shadow` / `transform`
-transitions with its own. Entrances use `animation` for exactly this reason —
-and with `animation-fill-mode: backwards`, not `forwards`, so the final
-keyframe does not outrank a later hover transform and leave the element inert.
-
-**An entrance may decide when content appears, never whether.** The scroll
-reveal is the only place in the product where CSS hides real content and
-JavaScript brings it back, and both halves of that arrangement have failed
-here at least once:
-
-- *The trigger was too strict.* `threshold: 0.12` with a negative bottom
-  `rootMargin` meant an element had to push an eighth of itself past a line
-  above the fold before it was allowed to exist. A block resting at the fold
-  on load was visible space with nothing in it, and at some window heights a
-  section never appeared at all. It is `threshold: 0` now: any pixel counts.
-  A reveal is decoration and gets the loosest trigger there is.
-- *The hiding rule was unconditional.* `[data-reveal] { opacity: 0 }` applies
-  whether or not the script that removes it ever runs, so one thrown error or
-  one blocked CDN blanked the whole page below the hero — invisibly, since
-  the markup and the layout are both perfectly correct. The rule is now
-  scoped to `:root[data-reveal-ready]`, set inline in the head before first
-  paint and taken back off at `load` if `shell.js` never stamped
-  `data-reveal-mounted`.
-
-Scoping a hiding rule is a specificity trap, and it is worth knowing before
-you repeat it: `:root[data-reveal-ready] [data-reveal]` is 0,3,0 and
-`[data-reveal].is-revealed` is 0,2,0, so guarding only the hiding rule wins
-the cascade and hides the page permanently — the observer still fires and the
-class still lands. **Every rule in the block carries the guard, including the
-ones that un-hide.**
-
-**Charts are the one place a long duration is right.** The allocation ring
-draws itself once, when a page of numbers first appears, and it takes 1150ms
-on `easeInOutQuart` — slow enough to be watched, and eased at *both* ends so
-the sweep reads as deliberate rather than as dragging to a halt. Ease-out
-alone at that length looks sluggish; ease-in-out spends its speed in the
-middle, where it is not perceived as waiting. Everything the reader triggers
-afterwards answers on its own short transition (`legendToggle`, 300ms):
-replaying an entrance on every legend click puts their input behind an
-animation they have already seen.
-
-Contrast is enforced by `tests/test_design_tokens_contrast.py`, which parses
-`tokens.css` directly. A palette tweak that drops any text role below its floor
-fails the suite rather than shipping.
-
-**The quiet text step sits the same distance above the floor in both themes.**
-`--fg-subtle` is what field help, character counters and column headings use,
-and it is deliberately close to 4.5:1 — 4.65 light, 4.73 dark. It cannot go
-lighter; that *is* the lightest readable step, and anything quieter belongs to
-`--fg-faint`, which is for text nobody has to read.
-
-## Numbers in templates
-
-Every figure goes through the macros in `templates/macros/ui.html`:
-
-```jinja
-{% from 'macros/ui.html' import money, percent, quantity, metric, fact %}
-
-{{ money(item.realized_pnl, tone='sign', signed=true) }}
-{{ percent(item.return_percent, item.return_display) }}
+```text
+static/css/
+  tokens.css      layers, canonical tokens, migration aliases, Bootstrap bridge
+  base.css        reset, elements, typography, focus and motion primitives
+  components.css  reusable controls, cards, tables, menus, dialogs and states
+  flatpickr-nova.css  unlayered adapter loaded after Flatpickr's vendor CSS
+  app.css         authenticated shell and page layout
+  landing.css     marketing-page layout
 ```
 
-`tone` is `plain` (default), `sign` (green/red/muted), or `income` (blue). The
-macros own the display/exact-value split (compact text, full value in `title`),
-so a change to how money is rendered is a one-file change.
-
-Do not hand-write the `{% if x > 0 %}profit{% elif … %}` conditional in a
-template. That pattern is what the macros exist to delete.
-
-## Page anatomy
-
-`base.html` provides the shell and four blocks: `page_title`, `page_subtitle`,
-`page_actions`, `content`. There is no top bar — the page header inside the
-content column carries the title and its actions.
-
-Two layout primitives cover the product:
-
-- **`.ledger`** — a summary table of peers (the overview's portfolio list). It
-  restacks below 60rem, re-attaching column names from each cell's `data-label`.
-- **`.disclosure`** — a summary row that opens onto its records (portfolios and
-  assets). The whole summary is one `<button aria-expanded>`, so it is
-  keyboard-reachable and announces its own state; row actions sit *outside* that
-  button or they would be unclickable.
-
-The overview hero is stretched to the height of the chart panel beside it, so
-it always has slack to place. That slack goes **into** the supporting facts —
-they claim the leftover height and spread through it as a 2×2 grid — rather
-than being pinned somewhere as empty space. Anchoring the facts to the bottom
-instead just relocates the gap under the headline, and centring the whole group
-puts a dead band above the card's own title.
-
-The two halves of that row are **equal**, not a panel and a sidecar. Given
-half the width the split chart puts its legend beside the ring instead of
-under it, which converts width into ring diameter rather than into blank
-space. The centre label is sized from `arc.innerRadius`, so it stays in
-proportion when the ring grows.
-
-Two spacing rules for the disclosure summary row, both about ownership of a
-number: the identity column is fixed (so every card's metric strip starts at
-the same x) but sized to the names rather than to the longest name
-imaginable, and the strip stops short of the action menu. Run it to the full
-width and the last figure's right edge sits under the trigger, which makes the
-figure read as its label.
-
-Because the summary lives inside a `<button>`, its contents must be phrasing
-content — which is why the `metric` macro emits spans rather than divs.
-
-## The intro surfaces
-
-Two surfaces open the product to a stranger: the marketing intro (`.lp-hero`)
-and the auth showcase (`.auth__showcase`). They share one background
-treatment and nothing else.
-
-**There is no image.** Both surfaces carried a photographic backdrop for a
-long time — `hero.avif`/`hero.webp` inside a `.hero-media` wrapper, under a
-`--hero-shade` scrim whose alpha was measured against the shipped file's own
-pixels. It worked, and it cost more than it returned. The scrim existed only
-because the background under a word was whatever the picture happened to be
-doing there, and everything downstream inherited that problem: a test module
-that opened the WebP and bisected for a required alpha, a Pillow dependency
-to read it, a per-theme card opacity, a second set of colours for the header
-row, a step-up from `--fg-muted` to `--fg-default` on every line of intro
-copy, and a rule that the picture must never be re-encoded without re-running
-the arithmetic. A short vector composition replaced it briefly and had the
-same shape of problem in miniature: a clip to keep it off the copy, an
-opacity ladder per breakpoint, and its own legibility proof.
-
-What ships instead is one gradient:
+Templates load `tokens → base → components → app` (or `landing`). `tokens.css`
+must remain first because it declares the cascade layer order and imports
+Bootstrap into `vendor`:
 
 ```css
---intro-wash:
-  radial-gradient(
-    120% 92% at 78% 6%,
-    color-mix(in srgb, var(--brand) 9%, transparent) 0%,
-    color-mix(in srgb, var(--income) 5%, transparent) 44%,
-    transparent 74%
-  );
+@layer vendor, tokens, base, components, pages, utilities;
 ```
 
-Declared once in `tokens.css`, applied by both surfaces as
-`background-image: var(--intro-wash)`, and never overridden per theme. It
-does not need to be: custom properties substitute at use time, so the roles
-inside it resolve against whichever theme is live. Both stops sit under 10%,
-which is what makes everything else simple — copy on these surfaces uses the
-product's ordinary roles with no step-ups anywhere, because there is nothing
-to step up from.
+Do not solve vendor conflicts with escalating specificity. Restyle stable
+Bootstrap component contracts in `components.css`, map variables in the single
+bridge, and keep Bootstrap's runtime attributes and lifecycle intact.
 
-`tests/test_landing.py` composites the strongest stop over `--bg-canvas` and
-checks every ink either surface prints, including both ends of the headline
-gradient. It also pins the stops in single digits: past about a tenth this
-stops being a wash and becomes a surface that type has to be checked against
-case by case, which is the whole thing being escaped.
+### Typography
 
-**The headline is the visual.** With nothing decorative behind it, the intro
-*is* its heading, and that heading is the only piece of brand colour on
-either surface that is not a control:
+The canonical API is `--font-sans`, `--font-heading`, and `--font-mono`.
+Components never name Inter directly. Inter remains the loaded face until the
+separate Geist migration; that task may change token values without rewriting
+components. Body text is compact and readable, headings use the heading token,
+and financial columns use tabular numbers.
 
-```css
---hero-title-from: var(--income);   /* cobalt */
---hero-title-to:   var(--brand);    /* violet */
-```
+Numeric typography is separate from display precision. Changing a font size or
+weight must never alter financial rendering rules.
 
-Painted through `background-clip: text` on `.lp-title`, with `color` still
-declared so an engine without `background-clip` renders a solid heading
-rather than an invisible one. Both ends are semantic roles rather than raw
-ramp steps, which is exactly why one declaration serves both themes: light
-resolves to a deep cobalt and a deep violet against the neutral canvas, dark to a bright
-pair against near-black. Large text, so the floor is 3:1 — the reason a
-saturated pair can carry a heading at all. A theme block that pins either end
-is a regression; it would mean the gradient had stopped being one decision.
+### Numbers in templates
 
-**The header wears one appearance.** `.lp-nav` is `fixed`, not `sticky`:
-sticky keeps it in flow, which pushes the intro down by the header's height
-and puts a band of flat colour above the section. It carries one thing the
-whole way down the page: its panel, 82% `--bg-canvas` under a 12px blur.
+All figures go through the existing macros in `templates/macros/ui.html`.
+Authoritative behavior remains:
 
-**No divider under it, in any state.** The panel and the blur already say
-where the header ends; a hairline beneath them draws a second edge in the
-same place, and against an intro whose background is a low-alpha gradient
-that line is the hardest thing on screen. The border went with the two-state
-header — revealing it was the other half of what `.is-stuck` used to switch
-on.
+- money: fixed two decimals by default;
+- quantity: variable precision with trailing zeros removed;
+- percentage: two decimals by default;
+- price: per-asset precision;
+- average cost: at least two decimals or price precision;
+- fees: trailing zeros removed;
+- realized profit/loss: explicit sign plus financial semantic role;
+- income: financial income role;
+- undefined: em dash.
 
-That is a deliberate retreat from a two-state header. The old rest state was
-invisible over the picture, and `landing.js` added `.is-stuck` past eight
-pixels of scroll to bring the panel in. The invisible half cost a scroll
-listener, an element id, a class, and three rules giving every control in the
-row a second set of colours for reading against bare photograph — all to
-describe a state a visitor saw for the first eight pixels of the page.
-Collapsing to the panel deleted all of it and took the page's only scroll
-listener with it.
+Internal Decimal precision and display precision remain separate. Do not
+reproduce sign/format conditionals in individual templates.
 
-**Surfaces that float on the intro are opaque.** The marketing preview card
-is `--bg-surface`, its chrome is `--bg-inset`, and nothing shows through
-either. It was glass once, tuned per theme by measuring every ink printed on
-it against what was behind it. The preview is meant to read as the
-application, and an application does not have a mountain range behind its
-numbers. Going opaque deleted a token, a `backdrop-filter`, two per-theme
-values, a measured floor, a measured ceiling, and the apparatus that modelled
-a photograph reaching type through a translucent surface. What replaced it is
-already there: `test_design_tokens_contrast.py` checks every text role against
-`--bg-surface` and `--bg-inset` in both themes, which is all a solid card
-needs.
+### Layout and fixed geometry
 
-**And flat as well as opaque.** Its border draws the card's edge; the
-elevation shadow it used to carry drew a second, softer one just outside
-that. Depth was worth paying for when the card floated on a photograph and
-had to separate itself from it — it sits on the page now, so it is drawn like
-the page. `--shadow-overlay` still belongs to things that genuinely float:
-modals, drawers, the command palette.
+Keep one hero number per screen and demote supporting figures. Comparative
+numeric columns are right-aligned with tabular numbers. The application has one
+fixed compact/readable geometry: two-rem controls, 2.5rem financial rows,
+0.5rem vertical cell padding, and the canonical card/page spacing tokens.
+There is no density preference, alternate token scale, or `data-density`
+rendering mode.
 
-The rule worth keeping from that episode: **a tinted wash under type of its
-own hue is a veil running backwards.** `--pos-soft` behind `--pos` text moves
-the background *toward* the ink. On an opaque surface that is a cost the
-surface can absorb, which is why the delta pill keeps its fill; on glass it
-was decisive, wanting a 98% fill to hold 4.5:1. If a surface here is ever
-translucent again, that is the constraint that binds first.
+The application skeleton remains recognizable:
 
-**Nothing in the intro is bound to scrolling.** No root scroll-timeline, no
-`animation-timeline`, no JavaScript scroll effect, no per-frame work. A former
-scroll-linked opacity fade on the backdrop caused multi-second rendering and
-input stalls during top and bottom boundary overscroll in desktop Chromium.
-The durable form of that contract is the current one: there is no decorative
-layer left to bind to anything. Keep it that way — if decoration returns,
-normal document scrolling stays in charge of it.
+- authenticated sidebar/mobile navigation and in-content page header;
+- Overview hero, allocation visualization, and portfolio ledger;
+- Portfolios and Assets disclosure/table workflows;
+- existing filters and search;
+- modal-based CRUD;
+- settings and authentication flows.
 
-**A backdrop ends where its box ends.** The intro's `padding-bottom` is clear
-space below the last line of copy, and then a straight edge. This mattered
-more when there was a picture to end, and the reasoning is kept because it
-generalises: a masked fade went through four rounds — linear, curved,
-weighted late, lengthened — each asked for by the same complaint, that the
-gradient was too strong. Alpha has to travel the whole way from 1 to 0, so a
-dissolve *must* spend a stretch of backdrop making itself invisible, and that
-spent stretch is precisely what a reader calls "a strong gradient". Shape
-decides where it lands and how fast; nothing removes it. An edge spends
-nothing, because it has no boundary to hide: it *is* the boundary.
+Presentation may change; destinations, form names/actions, modal lifecycle,
+AJAX contracts, calculations, and financial meanings may not.
 
-## Command palette
+### Shared components
 
-`Ctrl/Cmd+K`. It reads static navigation entries from a JSON script tag in
-`base.html`, plus **any element on the page carrying `data-command="Label"`**
-(optionally `data-command-group` and `data-command-icon`). A page extends the
-palette by adding one attribute — there is no registration step.
+The authored shadcn Nova registry stylesheet is the component-recipe reference,
+not only a source of theme variables. Its compact geometry is translated to
+semantic Flask CSS: default controls are 2rem high, focus-visible uses the
+component border plus a three-pixel 50%-opacity `--ring`, cards and popovers use
+a 10%-foreground hairline ring, and disabled controls retain their native
+meaning at 50% opacity. Forced-colors mode supplies a system outline instead of
+changing the ordinary Nova appearance.
 
-## The brand lockup
+- Buttons: primary, secondary/outline, ghost/link, and destructive variants.
+- Forms: canonical input, ring, muted disabled state, and destructive errors.
+- Cards/tables: card roles, restrained border/ring, compact rows, and Nova's
+  single `--border` separator with a `--muted` 50% body-row hover. Tables rest
+  on the containing surface without Bootstrap contextual fills or inset
+  accent shadows; selected rows use `--muted`, while headers remain neutral
+  foreground text with medium weight rather than a filled band.
+- Menus/popovers/dialogs: popover roles, recipe-specific radii, restrained
+  foreground hairline ring, and overlay elevation.
+- Tabs/segmented controls: muted track, neutral selected surface.
+- Alerts/toasts: neutral by default; destructive only for destructive/error
+  meaning, never financial positive/income decoration.
+- Empty states: card/muted roles and existing calls to action only.
+- Entity initials: neutral muted surface, border, and foreground.
 
-The mark and the `OnePortfolio` wordmark are one unit, and `.brand` in
-`components.css` owns every dimension of it: `--brand-mark-size` (2rem), the
-wordmark's `--text-lg`/`--weight-semibold`, and the `--space-2` between them.
-Both consumers — the app shell's `.sidenav__brand` and the marketing
-`.lp-nav` — take it unchanged. Neither page stylesheet may restate any of
-those four values; `app.css` and `landing.css` never load together, so a rule
-in one is invisible from the other, which is precisely how a shared component
-acquires two sizes.
+#### Surface ownership
 
-It was sized for the company it keeps. In the marketing header the lockup sits
-beside `Get started`, a 38px control with 13px medium type, and at 26px/14px
-it read as a caption next to it. Neither header row was resized to fit the
-larger lockup and neither needed to be: the shell reserves 2.5rem for that
-row, the marketing bar 4rem.
+Reusable outer edges live in `components.css`; page styles own internal layout
+only. The contracts are:
 
-`components/logo_mark.html` still writes `width`/`height` attributes so the
-mark reserves its box before CSS arrives, and its default has to equal what
-`--brand-mark-size` resolves to — `tests/test_brand_lockup.py` fails if they
-drift, because a mismatch is a visible jump on first paint. Passing
-`logo_size` beside a `.brand` is the duplication that contract replaced.
+- `.surface-card`: card background/foreground, `--radius-xl`, and one
+  10%-foreground hairline ring. `.card` and `.panel` share this recipe.
+- `.surface-interactive`: composes with a card and moves keyboard focus to the
+  containing surface without changing its geometry. Its primary control uses
+  `.surface-interactive__control` so an inner button does not draw a second
+  ring. A disclosure header uses the same neutral hover affordance while its
+  trigger is collapsed or expanded; only the header is tinted, never the
+  revealed body.
+- `.surface-table`: the same quiet outer frame for a table-like composition;
+  table headers and rows own only their internal canonical `--border`
+  separators.
+- `.surface-popover`: popover roles, `--radius-lg`, menu shadow, and one
+  hairline ring. Bootstrap dropdown menus consume the same contract.
+- `.surface-dialog`: popover roles, `--radius-xl`, dialog shadow, and one
+  hairline ring. Bootstrap modals and the command palette consume it.
 
-The standalone mark on the auth and error pages is **not** this lockup. It
-appears without the wordmark, centred above a card at 40px, and is separate
-furniture that happens to use the same image.
+Overview hero, allocation card, ledger, disclosure cards, authentication
+preview, and empty states compose these contracts. Their page selectors must
+not restate outer borders, radii, backgrounds, or elevation. A responsive table
+may replace its frame with per-row cards when the semantic table is deliberately
+restacked; that is a structural exception, not a second desktop surface recipe.
 
-## Behaviour that lives in one place
+#### Standalone and compound inputs
 
-Two widgets are mounted globally and must not be mounted again by a page.
-Both failures are silent, which is what makes the rule worth writing down.
+`.form-control` and `.form-select` are standalone fields and own their complete
+input edge and focus recipe. The command palette instead uses the authoritative
+`.command-input-group` / `.command-input-control` composition based on Nova
+CommandInput geometry: it rests flat and transparent on the popover with no
+border, outline, ring, or shadow. Focus uses only an `--accent` background plus
+stronger icon, text, and placeholder emphasis; the native input remains
+edge-free. Forced-colors mode may supply the operating system outline. This is
+not a generic input variant and must not be applied to normal fields or the
+sidebar Search trigger.
 
-- **Tooltips.** `TooltipManager` in `main.js` mounts every
-  `[data-bs-toggle="tooltip"]` on the page, with `getOrCreateInstance`.
-  Constructing a second `bootstrap.Tooltip` over the same element does not
-  replace the first: Bootstrap overwrites its own instance map, but the
-  orphan keeps every listener it attached, so the element carries two live
-  tooltips whose show/hide state can drift apart. The first construction also
-  moves `title` into `data-bs-original-title`, so the second reads an empty
-  title and which of the two renders is incidental. `index.html` and
-  `portfolios.html` each mounted their own on top of the manager.
-- **Pixel positions read once are wrong forever.** The allocation switcher's
-  thumb is placed by measuring the selected option, and its `resize` handler
-  closed over the option selected *at mount*. Resizing the window after
-  switching slid the indicator back under the label the page opened with,
-  while the chart kept showing the other. Anything that re-measures on resize
-  must read current state at that moment, never a captured reference.
+#### Transaction direction
+
+`.tx-type-tabs` and `.tx-type-tab` form the reusable neutral segmented contract
+for transaction direction. Only `.tx-tab-buy.active` and
+`.tx-tab-sell.active` extend it: the selected Buy uses the financial-positive
+soft surface/line/foreground, and selected Sell uses the corresponding
+financial-negative roles. Unselected choices, ordinary buttons, tabs,
+navigation, and badges remain canonical neutral components. The hidden native
+select stays authoritative; JavaScript only mirrors its value into `.active`
+and `aria-pressed` states. The soft roles mix 6% positive or 12% negative into
+`--popover` in Cartesian OKLab (line roles use 32%), preventing low-chroma hue rotation as the
+semantic colour approaches the neutral surface. Selected hover and focus keep
+the semantic surface; the shared focus-visible contract remains responsible
+for keyboard indication.
+
+#### Context labels and supporting items
+
+`.badge--secondary` is the official Nova secondary Badge translation: compact
+`--radius-4xl` geometry with `--secondary` and `--secondary-foreground`. It is
+the shared low-emphasis contract for contextual labels such as an asset's
+portfolio name; it never carries financial or chart meaning.
+
+`.supporting-item` is the non-interactive Flask translation of Nova's outline
+Item: transparent inherited surface, one `--border` edge, `--radius-lg`,
+compact `px-3`/`py-2.5` spacing, and no shadow. It does not use Nova's separate
+muted-fill variant. Labels use `--muted-foreground`, values use `--foreground`,
+and only the nested formatted number may add a genuine financial semantic role.
+
+`.tx-preview` is the calculated form-output contract derived from Nova
+FieldDescription rather than validation/help styling. It uses text-sm type and
+shared field spacing; its label is muted while `.tx-preview__value` uses normal
+foreground, medium weight, and tabular numerals. Buy Total and Sell Total
+Received share this presentation. The arithmetic result is neutral, never a
+positive/negative financial state.
+
+The sidebar search is a shell-owned trigger rather than a form field. It uses
+the sidebar background/border/ring/accent roles, Nova input radius, and a single
+wrapper focus ring while preserving its command shortcut behavior.
+
+Public and authenticated shells use the same `.icon-button.theme-toggle`
+contract, shared Tabler moon/sun symbols, CSS theme-state visibility, and
+`shell.js` persistence/accessible-label behavior. Landing does not maintain a
+separate decorative theme icon or button variant.
+
+### Accessibility and motion
+
+Focus uses the canonical `--ring` and a visible three-pixel soft ring. Do not
+remove focus indication or rely on colour alone. Preserve semantic tables,
+heading order, keyboard navigation, touch targets, and live regions.
+
+Use the duration/easing tokens. The global reduced-motion rule owns motion
+reduction; component-specific work should not bypass it. Popper-positioned
+dropdowns must not animate `transform`.
+
+### Text selection and caret
+
+The generated `b1YmpWHpo` Nova stylesheet does not define a dedicated text
+selection or caret recipe. OnePortfolio therefore adds no independent colour
+palette: `--selection-background` aliases canonical `--primary`,
+`--selection-foreground` aliases `--primary-foreground`, and `--caret-color`
+aliases `--foreground`. The single global `::selection` rule covers page copy,
+financial values, tables, and editable controls; inputs, textareas, and the
+Command input share the same canonical caret. Financial and chart roles are
+never valid selection colours. In forced-colours mode, system `Highlight`,
+`HighlightText`, and the automatic caret remain authoritative.
+
+### Overview allocation contract
+
+The allocation ring retains current dataset values and switching behavior.
+Chart.js reads `--portfolio-chart-1` through `--portfolio-chart-5` from computed
+styles. The HTML legend uses the same roles. The official `--chart-*` values
+remain unchanged as preset reference roles. Portfolio ledger initials remain
+neutral and are intentionally not tied to slice colours.
+
+The current product behavior groups the allocation tail after the first four
+portfolios. The grouped remainder uses the fifth allocation-visualization role.
+Full portfolio detail remains in the ledger, so presentation grouping does not
+change data.
+
+The public Landing preview uses deterministic sample data but shares the
+authenticated Overview's `.supporting-item`, `.allocation-legend`,
+`.allocation-legend__row`, swatch, name, value, percentage, financial-number,
+and visualization-token contracts. `static/js/display_formatters.js` is the
+single browser-side contract for fixed-two-decimal money, signed display, and
+percentage precision used by live transaction summaries and both charts. It
+mirrors only the necessary display behavior; Python/Jinja filters remain
+authoritative for server-rendered financial values. Landing must never query
+authenticated data.
+
+### Third-party widget adaptation
+
+Third-party behavior remains vendor-owned, while appearance is mapped to the
+canonical roles. Flatpickr uses popover, foreground, muted, accent, primary,
+border, ring, radius, and shadow roles for explicit and system dark modes; its
+adapter is deliberately unlayered and loaded after Flatpickr because unlayered
+vendor declarations outrank normal declarations inside named cascade layers.
+Its locale, values, limits, and lifecycle remain untouched. Native selects set
+`color-scheme` per theme and explicitly style option foreground/background as
+the safest platform-compatible dark-popup contract. Native popup geometry
+remains browser/OS-owned; a future custom select, if required, must be a shared
+progressive enhancement that preserves the native control as authoritative.
+
+### Iconography
+
+The target system is reusable, `currentColor`, Tabler-style 24×24 stroke SVG
+through `templates/macros/icons.html` and
+`templates/components/icon_sprite.html`. Decorative icons are hidden from the
+accessibility tree; meaningful icons require a label. Bootstrap Icons remain
+loaded during migration, but new authenticated-shell or Overview work must not
+add `bi-*` classes.
+
+The visible OnePortfolio mark is neutral, with near-black and near-white SVG
+variants selected by theme. The fallback favicon and installed raster icons use
+a mid-neutral mark that retains at least 4.5:1 contrast against black and white;
+installed-platform icons do not claim dynamic theme switching. Theme-colour
+metadata follows the canonical page backgrounds.
+
+### Modal and behavior ownership
+
+Bootstrap continues to own modal focus lifecycle, backdrop behavior, reopening,
+dropdown positioning, and validation hooks. Shared CSS changes surfaces and
+spacing only. Global tooltip management and command-palette behavior remain in
+their existing JavaScript owners; pages must not mount duplicates.
 
 ## Avoid
 
-- Decorative gradients, glows, and ornamental shadows. The only gradients in
-  the product are the hero scrims (see [Hero backdrops](#hero-backdrops)),
-  and they are functional — they exist to make text readable, not to decorate.
-- New one-off surface colours, radii, or durations.
-- `!important` in our own layers.
-- Uppercase labels.
-- Inline `style` attributes, except to pass a numeric custom property
-  (`--enter-index`, `--metric-columns`) that is genuinely data-driven.
+- raw colour literals outside `tokens.css`, except documented encoded assets;
+- invented chart roles or categorical portfolio colours;
+- financial colours used as generic UI status or decoration;
+- gradients, glows, and ornamental elevation;
+- page-specific radii where a canonical radius role exists;
+- new consumers of migration aliases;
+- `!important` in application layers unless an existing vendor/runtime
+  constraint is documented;
+- inline styles except data-driven custom-property values;
+- changes to formatting precision in presentation work.

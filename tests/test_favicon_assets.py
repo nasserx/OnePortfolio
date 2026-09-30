@@ -1,5 +1,7 @@
 from html.parser import HTMLParser
+import json
 from pathlib import Path
+import re
 
 from flask import render_template
 
@@ -163,3 +165,26 @@ def test_every_brand_surface_ships_both_variants(app):
     for name in ("base.html", "auth_base.html", "landing.html"):
         source = Path("portfolio_app/templates", name).read_text(encoding="utf-8")
         assert "logo_surface" not in source
+
+
+def test_brand_assets_and_metadata_follow_neutral_theme_policy():
+    icon_root = Path('portfolio_app/static/icons')
+    expected = {
+        'favicon.svg': '#757575',
+        'favicon-light.svg': '#0A0A0A',
+        'favicon-dark.svg': '#FAFAFA',
+    }
+    for name, colour in expected.items():
+        source = (icon_root / name).read_text(encoding='utf-8')
+        assert f'<g fill="{colour}" mask="url(#logo-cutout)">' in source
+        assert not re.search(r'#(?:6A55E8|5B45E8|9D88FF)', source, re.IGNORECASE)
+
+    manifest = json.loads((icon_root / 'site.webmanifest').read_text(encoding='utf-8'))
+    assert manifest['theme_color'] == '#171717'
+    assert manifest['background_color'] == '#ffffff'
+    assert {icon['purpose'] for icon in manifest['icons']} == {'any'}
+
+    for name in ('base.html', 'auth_base.html', 'landing.html'):
+        source = Path('portfolio_app/templates', name).read_text(encoding='utf-8')
+        assert '<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">' in source
+        assert '<meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)">' in source

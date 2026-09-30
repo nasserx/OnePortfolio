@@ -5,11 +5,6 @@ const AppConfig = {
         symbolPattern: /^[A-Z0-9][A-Z0-9._\-]{0,19}$/,
         numberPattern: /^[-+]?\d+(?:\.\d+)?(?:[eE][-+]?\d+)?$/,
         datePattern: /^\d{4}-\d{2}-\d{2}$/
-    },
-    currency: {
-        locale: 'en-US',
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
     }
 };
 
@@ -38,13 +33,7 @@ const Utils = {
 
     formatMoney(value) {
         if (!Number.isFinite(value)) return '0.00';
-        return value.toLocaleString(
-            AppConfig.currency.locale,
-            {
-                minimumFractionDigits: AppConfig.currency.minimumFractionDigits,
-                maximumFractionDigits: AppConfig.currency.maximumFractionDigits
-            }
-        );
+        return window.OnePortfolioDisplay.money(value, false);
     },
 
     isValidSymbol(raw) {
@@ -557,9 +546,9 @@ class TransactionFormHandler {
         }
 
         const formatted = Utils.formatMoney(total);
-        this.preview.innerHTML = isSell
-            ? `Total Received: <span class="tx-preview-amount">${formatted}</span>`
-            : `Total: <span class="tx-preview-amount">${formatted}</span>`;
+        const label = isSell ? 'Total Received:' : 'Total:';
+        this.preview.innerHTML = `<span class="tx-preview__label">${label}</span>`
+            + `<span class="tx-preview__value">${formatted}</span>`;
     }
 
     attachPreviewCalculation() {

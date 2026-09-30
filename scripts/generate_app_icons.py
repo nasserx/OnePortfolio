@@ -29,18 +29,19 @@ from xml.etree import ElementTree as ET
 ROOT = Path(__file__).resolve().parents[1]
 ICONS_DIR = ROOT / "portfolio_app" / "static" / "icons"
 MASTER_SVG = ICONS_DIR / "favicon.svg"
-LIGHT_SURFACE_ARTWORK = "#09090B"
-DARK_SURFACE_ARTWORK = "#FFFFFF"
+DEFAULT_SURFACE_ARTWORK = "#757575"
+LIGHT_SURFACE_ARTWORK = "#0A0A0A"
+DARK_SURFACE_ARTWORK = "#FAFAFA"
 SVG_VARIANTS = {
     ICONS_DIR / "favicon-light.svg": LIGHT_SURFACE_ARTWORK,
     ICONS_DIR / "favicon-dark.svg": DARK_SURFACE_ARTWORK,
 }
 SVG_ARTWORK_COLORS = {
-    MASTER_SVG: LIGHT_SURFACE_ARTWORK,
+    MASTER_SVG: DEFAULT_SURFACE_ARTWORK,
     **SVG_VARIANTS,
 }
 TARGET_SURFACES = {
-    MASTER_SVG: ("#FFFFFF", "#E0E0E0"),
+    MASTER_SVG: ("#FFFFFF", "#000000"),
     ICONS_DIR / "favicon-light.svg": ("#FFFFFF", "#E0E0E0"),
     ICONS_DIR / "favicon-dark.svg": ("#000000", "#202020"),
 }
@@ -313,7 +314,7 @@ def validate_png(path: Path, expected_size: int, *, app_icon: bool) -> dict[str,
         raise IconValidationError(f"{path.name} does not have an alpha channel")
     if app_icon and not any(px[3] == 0 for px in pixels):
         raise IconValidationError(f"{path.name} has no transparent pixels")
-    expected_rgb = _hex_rgb(LIGHT_SURFACE_ARTWORK)
+    expected_rgb = _hex_rgb(DEFAULT_SURFACE_ARTWORK)
     opaque_colors = {
         pixel[:3]
         for pixel in pixels
@@ -466,6 +467,25 @@ def write_ico(entries: dict[int, Path], ico_path: Path) -> None:
             offset += len(data)
         for _, data in images:
             fh.write(data)
+
+
+def recolor_png(path: Path, artwork_color: str) -> None:
+    """Replace raster artwork RGB while preserving its antialiased alpha mask."""
+    width, height, _, pixels = decode_png(path)
+    red, green, blue = _hex_rgb(artwork_color)
+    recolored = [(red, green, blue, alpha) for _, _, _, alpha in pixels]
+    path.write_bytes(_rgba_to_png(width, height, recolored))
+
+
+def recolor_existing_rasters() -> None:
+    """Apply the neutral installed-icon policy without invoking a browser."""
+    for name in APP_PNGS:
+        recolor_png(ICONS_DIR / name, DEFAULT_SURFACE_ARTWORK)
+    with tempfile.TemporaryDirectory(prefix="oneportfolio-icon-recolor-") as td:
+        entries = extract_ico_pngs(ICONS_DIR / "favicon.ico", Path(td))
+        for path in entries.values():
+            recolor_png(path, DEFAULT_SURFACE_ARTWORK)
+        write_ico(entries, ICONS_DIR / "favicon.ico")
 
 
 def inspect_ico(ico_path: Path) -> list[dict[str, object]]:
@@ -641,12 +661,22 @@ def main() -> None:
         help="validate existing PNG/ICO/manifest outputs without regenerating files",
     )
     parser.add_argument(
+        "--recolor-only",
+        action="store_true",
+        help="recolor existing PNG/ICO alpha masks without browser rendering",
+    )
+    parser.add_argument(
         "--preview",
         type=Path,
         help="optional output path for a temporary visual preview sheet",
     )
     args = parser.parse_args()
-    if not args.validate_only:
+    if args.validate_only and args.recolor_only:
+        parser.error("--validate-only and --recolor-only are mutually exclusive")
+    if args.recolor_only:
+        generate_svg_variants()
+        recolor_existing_rasters()
+    elif not args.validate_only:
         generate()
     validate()
     if args.preview:

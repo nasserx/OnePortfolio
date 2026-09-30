@@ -1,0 +1,121 @@
+/* Flatpickr's vendor stylesheet is intentionally unlayered. This adapter is
+   loaded immediately after it so canonical Nova roles win without !important
+   or specificity escalation. Flatpickr continues to own all behavior. */
+
+.op-flatpickr.flatpickr-calendar {
+  z-index: var(--z-datepicker);
+  border: 0;
+  border-radius: var(--radius-xl);
+  background-color: var(--popover);
+  box-shadow: var(--shadow-menu), 0 0 0 1px var(--surface-ring);
+  color: var(--popover-foreground);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color-scheme: light;
+}
+
+.op-flatpickr .flatpickr-months,
+.op-flatpickr .flatpickr-month,
+.op-flatpickr .flatpickr-innerContainer,
+.op-flatpickr .flatpickr-rContainer,
+.op-flatpickr .flatpickr-weekdays,
+.op-flatpickr .flatpickr-days,
+.op-flatpickr .dayContainer {
+  background-color: transparent;
+  color: var(--popover-foreground);
+}
+
+.op-flatpickr .flatpickr-prev-month,
+.op-flatpickr .flatpickr-next-month,
+.op-flatpickr .flatpickr-prev-month svg,
+.op-flatpickr .flatpickr-next-month svg {
+  color: var(--muted-foreground);
+  fill: currentColor;
+}
+
+.op-flatpickr .flatpickr-prev-month:hover,
+.op-flatpickr .flatpickr-next-month:hover { color: var(--popover-foreground); }
+
+.op-flatpickr .flatpickr-current-month input.cur-year,
+.op-flatpickr .flatpickr-current-month .numInputWrapper,
+.op-flatpickr .flatpickr-current-month .flatpickr-monthDropdown-months {
+  background-color: transparent;
+  color: var(--popover-foreground);
+}
+
+.op-flatpickr .flatpickr-monthDropdown-month,
+.op-flatpickr .flatpickr-current-month .flatpickr-monthDropdown-months option {
+  background-color: var(--popover);
+  color: var(--popover-foreground);
+}
+
+.op-flatpickr .numInputWrapper span { border-color: var(--border); }
+
+.op-flatpickr .numInputWrapper span::after {
+  border-bottom-color: var(--muted-foreground);
+  border-top-color: var(--muted-foreground);
+}
+
+.op-flatpickr span.flatpickr-weekday {
+  background-color: transparent;
+  color: var(--muted-foreground);
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-medium);
+}
+
+.op-flatpickr .flatpickr-day {
+  border-radius: var(--radius-md);
+  background-color: transparent;
+  color: var(--popover-foreground);
+  border-color: transparent;
+  transition: background-color var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out);
+}
+
+.op-flatpickr .flatpickr-day:hover,
+.op-flatpickr .flatpickr-day:focus-visible {
+  background-color: var(--accent);
+  border-color: transparent;
+  color: var(--accent-foreground);
+}
+
+.op-flatpickr .flatpickr-day.today { border-color: var(--ring); }
+
+.op-flatpickr .flatpickr-day:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring-soft);
+}
+
+.op-flatpickr .flatpickr-day.selected,
+.op-flatpickr .flatpickr-day.selected:hover,
+.op-flatpickr .flatpickr-day.selected:focus {
+  background-color: var(--primary);
+  border-color: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.op-flatpickr .flatpickr-day.flatpickr-disabled,
+.op-flatpickr .flatpickr-day.flatpickr-disabled:hover,
+.op-flatpickr .flatpickr-day.prevMonthDay,
+.op-flatpickr .flatpickr-day.nextMonthDay {
+  background-color: transparent;
+  color: var(--muted-foreground);
+  opacity: 0.5;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .op-flatpickr.flatpickr-calendar,
+  :root:not([data-theme="light"]) .op-flatpickr select { color-scheme: dark; }
+}
+
+:root[data-theme="dark"] .op-flatpickr.flatpickr-calendar,
+:root[data-theme="dark"] .op-flatpickr select { color-scheme: dark; }
+
+:root[data-theme="light"] .op-flatpickr.flatpickr-calendar,
+:root[data-theme="light"] .op-flatpickr select { color-scheme: light; }
+
+.op-flatpickr.arrowTop::before,
+.op-flatpickr.arrowTop::after,
+.op-flatpickr.arrowBottom::before,
+.op-flatpickr.arrowBottom::after {
+  display: none;
+}

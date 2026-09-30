@@ -1,0 +1,19 @@
+{#
+  Tabler-style product icon primitive.
+
+  Decorative by default:
+      {{ icon('search') }}
+
+  Standalone meaningful icon:
+      {{ icon('info-circle', label='More information') }}
+
+  Geometry lives once in components/icon_sprite.html. The macro owns the
+  24x24 viewport, currentColor stroke contract, and accessible state.
+#}
+{%- macro icon(name, class='', label=none) -%}
+<svg class="icon{% if class %} {{ class }}{% endif %}"
+     viewBox="0 0 24 24" focusable="false"
+     {% if label %}role="img" aria-label="{{ label }}"{% else %}aria-hidden="true"{% endif %}>
+  <use href="#op-icon-{{ name }}"></use>
+</svg>
+{%- endmacro -%}

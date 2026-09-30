@@ -1,183 +1,120 @@
-"""Contrast guardrails for the design tokens.
-
-Colour choices in `tokens.css` are the one place where a small aesthetic
-tweak can silently push text below a legibility threshold — the change looks
-fine on the author's monitor and fails for everyone else. These tests parse
-the real stylesheet, so they track the shipped values rather than a copy that
-can drift.
-
-Targets follow WCAG 2.1 AA: 4.5:1 for text, 3:1 for the `faint` step, which
-is reserved for placeholders, disabled hints and decorative icons.
-
-Text over the hero photograph is a different problem — the background there
-is an image, not a token — and lives in `test_hero_legibility.py`.
-"""
+"""OKLCH-aware contrast guardrails for the canonical preset roles."""
 
 from pathlib import Path
 
 import pytest
 
-from tests._colour import (
-    NON_TEXT_MIN,
-    TEXT_MIN,
-    composite,
-    contrast,
-    parse_veil,
-    relative_luminance,
-    resolve,
-    theme_tokens,
-)
+from tests._colour import TEXT_MIN, contrast, mix_oklab, resolve, theme_tokens, to_rgb
 
 
 TOKENS = Path('portfolio_app/static/css/tokens.css')
 
-# Foreground roles that carry text, and the floor each must clear against
-# every surface in its theme.
-FOREGROUNDS = {
-    'fg-default': TEXT_MIN,
-    'fg-muted': TEXT_MIN,
-    'fg-subtle': TEXT_MIN,
-    'fg-faint': NON_TEXT_MIN,
-    'pos': TEXT_MIN,
-    'neg': TEXT_MIN,
-    'income': TEXT_MIN,
-    'warn': TEXT_MIN,
-    'brand': TEXT_MIN,
-}
-
-SURFACES = ('bg-canvas', 'bg-surface', 'bg-raised', 'bg-inset')
-
-# Solid buttons: (fill role, label role, hover fill role, veiled on hover?).
-# Only two ship. Every action in the product is `.btn-primary` except the
-# ones that destroy something, which are `.btn-danger` — green and amber
-# fills were retired because green, red and amber mean a signed financial
-# value here, and a button is not a value.
-#
-# `.btn-danger` hovers by painting `--solid-hover-veil` over its fill, so
-# that veil is part of the shipped hover colour and part of this check.
-# `.btn-primary` is excluded from that rule — it swaps its fill instead.
-SOLID_BUTTONS = (
-    ('brand-solid', 'fg-on-brand', 'brand-solid-hover', False),
-    ('neg', 'fg-on-solid', 'neg', True),
-)
-
-CATEGORICAL_MARKERS = tuple(
-    (f'cat-{index}', f'cat-{index}-fg') for index in range(1, 8)
-) + (('cat-other', 'cat-other-fg'),)
-
 
 @pytest.fixture(scope='module')
 def css():
-    assert TOKENS.exists(), f'{TOKENS} not found'
+    assert TOKENS.exists()
     return TOKENS.read_text(encoding='utf-8')
 
 
 @pytest.mark.parametrize('theme', ['light', 'dark'])
-def test_every_text_role_clears_its_contrast_floor(css, theme):
+@pytest.mark.parametrize(
+    ('foreground', 'background'),
+    [
+        ('foreground', 'background'),
+        ('card-foreground', 'card'),
+        ('popover-foreground', 'popover'),
+        ('primary-foreground', 'primary'),
+        ('secondary-foreground', 'secondary'),
+        ('accent-foreground', 'accent'),
+        ('destructive-foreground', 'destructive'),
+    ],
+)
+def test_canonical_text_pairs_meet_wcag_aa(css, theme, foreground, background):
     declared = theme_tokens(css, theme)
-
-    failures = []
-    for role, floor in FOREGROUNDS.items():
-        fg = resolve(role, declared)
-        for surface in SURFACES:
-            bg = resolve(surface, declared)
-            ratio = contrast(fg, bg)
-            if ratio < floor:
-                failures.append(
-                    f'{theme}: --{role} ({fg}) on --{surface} ({bg}) '
-                    f'is {ratio:.2f}:1, needs {floor}:1'
-                )
-
-    assert not failures, 'contrast regressions:\n  ' + '\n  '.join(failures)
-
-
-@pytest.mark.parametrize('theme', ['light', 'dark'])
-def test_surface_ladder_is_ordered_and_separated(css, theme):
-    """Canvas -> surface -> raised must step consistently in one direction.
-
-    Elevation is carried mostly by these steps rather than by shadow, so a
-    ladder that flattens or inverts quietly removes the product's depth cues.
-    """
-    declared = theme_tokens(css, theme)
-    ladder = [relative_luminance(resolve(n, declared))
-              for n in ('bg-canvas', 'bg-surface', 'bg-raised')]
-
-    if theme == 'dark':
-        assert ladder[0] < ladder[1] < ladder[2], \
-            f'dark surfaces must get lighter as they rise, got {ladder}'
-    else:
-        assert ladder[0] < ladder[1] <= ladder[2], \
-            f'light surfaces must get lighter as they rise, got {ladder}'
-
-    for lower, higher in zip(ladder, ladder[1:]):
-        assert higher - lower > 0.002, \
-            f'{theme}: adjacent surfaces are too close to tell apart ({ladder})'
-
-
-@pytest.mark.parametrize('theme', ['light', 'dark'])
-def test_solid_button_labels_stay_legible_at_rest_and_on_hover(css, theme):
-    """A button's label sits on its fill, not on a page surface.
-
-    Hover is checked too, and with the white overlay composited in: a hover
-    state that brightens past the threshold makes the label fade exactly as
-    the pointer lands on it, which is the worst possible moment for it.
-    """
-    declared = theme_tokens(css, theme)
-    veil = parse_veil(declared['solid-hover-veil'])
-
-    failures = []
-    for fill_role, label_role, hover_role, veiled in SOLID_BUTTONS:
-        label = resolve(label_role, declared)
-        hover_fill = resolve(hover_role, declared)
-        states = (
-            ('rest', resolve(fill_role, declared)),
-            ('hover', composite(hover_fill, veil) if veiled else hover_fill),
-        )
-        for state, fill in states:
-            ratio = contrast(label, fill)
-            if ratio < TEXT_MIN:
-                failures.append(
-                    f'{theme}: --{label_role} ({label}) on --{fill_role} '
-                    f'{state} ({fill}) is {ratio:.2f}:1'
-                )
-
-    assert not failures, 'button label contrast:\n  ' + '\n  '.join(failures)
-
-
-def test_brand_fill_is_distinguishable_from_the_page(css):
-    """The solid brand is a shape, so it needs 3:1 against what surrounds it.
-
-    This is the constraint that forces `--brand` and `--brand-solid` apart in
-    dark mode: one violet cannot both carry white text and stay bright enough
-    to read as text itself.
-    """
-    for theme in ('light', 'dark'):
-        declared = theme_tokens(css, theme)
-        fill = resolve('brand-solid', declared)
-        for surface in SURFACES:
-            bg = resolve(surface, declared)
-            ratio = contrast(fill, bg)
-            assert ratio >= NON_TEXT_MIN, (
-                f'{theme}: --brand-solid ({fill}) on --{surface} ({bg}) '
-                f'is {ratio:.2f}:1'
-            )
+    ratio = contrast(resolve(foreground, declared), resolve(background, declared))
+    assert ratio >= TEXT_MIN, (
+        f'{theme}: --{foreground} on --{background} is {ratio:.2f}:1'
+    )
 
 
 @pytest.mark.parametrize('theme', ['light', 'dark'])
 @pytest.mark.parametrize(
-    ('background_role', 'foreground_role'), CATEGORICAL_MARKERS,
+    'role',
+    ['financial-positive', 'financial-negative', 'financial-income', 'financial-flat'],
 )
-def test_categorical_marker_text_meets_wcag_aa(
-    css, theme, background_role, foreground_role,
-):
-    """Every small portfolio marker must clear WCAG AA on its chart hue."""
+@pytest.mark.parametrize('surface', ['background', 'card', 'popover'])
+def test_financial_text_roles_meet_wcag_aa(css, theme, role, surface):
     declared = theme_tokens(css, theme)
-    background = resolve(background_role, declared)
-    foreground = resolve(foreground_role, declared)
-    ratio = contrast(foreground, background)
-
+    ratio = contrast(resolve(role, declared), resolve(surface, declared))
     assert ratio >= TEXT_MIN, (
-        f'{theme}: --{foreground_role} ({foreground}) on '
-        f'--{background_role} ({background}) is {ratio:.2f}:1, '
-        f'needs {TEXT_MIN}:1'
+        f'{theme}: --{role} on --{surface} is {ratio:.2f}:1'
+    )
+
+
+@pytest.mark.parametrize('theme', ['light', 'dark'])
+def test_muted_text_remains_readable(css, theme):
+    declared = theme_tokens(css, theme)
+    for surface in ('background', 'card', 'popover'):
+        ratio = contrast(
+            resolve('muted-foreground', declared), resolve(surface, declared)
+        )
+        assert ratio >= TEXT_MIN, (
+            f'{theme}: --muted-foreground on --{surface} is {ratio:.2f}:1'
+        )
+
+
+@pytest.mark.parametrize('theme', ['light', 'dark'])
+def test_global_selection_pair_meets_wcag_aa(css, theme):
+    declared = theme_tokens(css, theme)
+    ratio = contrast(
+        resolve('selection-foreground', declared),
+        resolve('selection-background', declared),
+    )
+    assert ratio >= TEXT_MIN, f'{theme}: selection pair is {ratio:.2f}:1'
+    assert declared['selection-background'] == 'var(--primary)'
+    assert declared['selection-foreground'] == 'var(--primary-foreground)'
+    assert declared['caret-color'] == 'var(--foreground)'
+
+
+@pytest.mark.parametrize('theme', ['light', 'dark'])
+@pytest.mark.parametrize('role', ['financial-positive', 'financial-negative'])
+def test_transaction_direction_text_is_readable_on_soft_selected_surface(
+    css, theme, role,
+):
+    declared = theme_tokens(css, theme)
+    foreground = to_rgb(resolve(role, declared))
+    soft_surface = mix_oklab(
+        resolve(role, declared),
+        resolve('popover', declared),
+        0.06 if role == 'financial-positive' else 0.12,
+    )
+    ratio = contrast(foreground, soft_surface)
+    assert ratio >= TEXT_MIN, (
+        f'{theme}: --{role} on its soft selected surface is {ratio:.2f}:1'
+    )
+
+    if role == 'financial-positive':
+        assert soft_surface[1] > soft_surface[0], (
+            f'{theme}: positive soft surface drifted out of the green family'
+        )
+    else:
+        assert soft_surface[0] > soft_surface[1], (
+            f'{theme}: negative soft surface drifted out of the red family'
+        )
+
+
+@pytest.mark.parametrize('theme', ['light', 'dark'])
+def test_transaction_direction_tokens_use_deterministic_oklab_derivation(css, theme):
+    declared = theme_tokens(css, theme)
+    assert declared['financial-positive-soft'] == (
+        'color-mix(in oklab, var(--financial-positive) 6%, var(--popover))'
+    )
+    assert declared['financial-positive-line'] == (
+        'color-mix(in oklab, var(--financial-positive) 32%, var(--popover))'
+    )
+    assert declared['financial-negative-soft'] == (
+        'color-mix(in oklab, var(--financial-negative) 12%, var(--popover))'
+    )
+    assert declared['financial-negative-line'] == (
+        'color-mix(in oklab, var(--financial-negative) 32%, var(--popover))'
     )

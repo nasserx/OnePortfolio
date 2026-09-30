@@ -19,15 +19,13 @@ from tests._colour import (
 
 _TOKENS = Path('portfolio_app/static/css/tokens.css')
 
-# What the hero actually prints, and the floor each needs. The title is 56px
-# semibold, so WCAG's large-text floor applies to its two gradient stops; the
-# proof icons are the only non-text mark.
+# What the hero actually prints, and the floor each needs. The title uses the
+# canonical foreground directly; the proof icons are the only non-text mark.
 HERO_INKS = {
+    'foreground': TEXT_MIN,
     'fg-default': TEXT_MIN,
     'fg-muted': TEXT_MIN,
     'fg-subtle': NON_TEXT_MIN,
-    'hero-title-from': 3.0,
-    'hero-title-to': 3.0,
 }
 
 
@@ -321,7 +319,6 @@ def _wash_stops():
         r'color-mix\(\s*in srgb,\s*var\(\s*(--[\w-]+)\s*\)\s*([\d.]+)%',
         block.group(1),
     )
-    assert stops, 'the wash declares no colour-mix stops'
     return stops
 
 
@@ -433,38 +430,13 @@ def test_intro_wash_stays_a_wash():
         )
 
 
-def test_the_hero_title_is_a_cobalt_violet_gradient_in_both_themes():
-    """The headline carries the intro, and it does it the same way in both.
-
-    Two semantic roles rather than raw ramp steps, which is the whole reason
-    one declaration serves light and dark: `--income` and `--brand` already
-    resolve to a deep pair against cream and a bright pair against near
-    black. A theme block that pins either end is the regression here — it
-    would mean the gradient had stopped being one decision.
-    """
+def test_the_hero_title_uses_the_neutral_preset_foreground_in_both_themes():
+    """The headline uses the preset foreground without private stop tokens."""
     css = _TOKENS.read_text(encoding='utf-8')
-    stops = ('hero-title-from', 'hero-title-to')
-
-    for theme in ('light', 'dark'):
-        declared = theme_tokens(css, theme)
-        ends = [resolve(stop, declared) for stop in stops]
-        assert ends[0] != ends[1], (
-            f'{theme}: both title stops resolve to {ends[0]}; a gradient with '
-            f'one colour is a flat fill, and this heading is meant to ramp'
-        )
-        for stop, end in zip(stops, ends):
-            assert end != resolve('fg-default', declared), (
-                f'{theme}: --{stop} collapsed onto --fg-default. The headline '
-                f'is the one piece of brand colour on this page that is not a '
-                f'control; losing it is a design change, not a tidy-up.'
-            )
-
-    # Declared once, in the light block, and never overridden per theme.
-    for stop in stops:
-        assert css.count(f'--{stop}:') == 1, (
-            f'--{stop} is declared more than once; both ends are semantic '
-            f'roles precisely so the theme blocks need say nothing about them'
-        )
+    landing = Path('portfolio_app/static/css/landing.css').read_text(encoding='utf-8')
+    title = re.search(r'\.lp-hero \.lp-title\s*\{([^}]*)\}', landing)
+    assert title and 'color: var(--foreground)' in title.group(1)
+    assert '--hero-title-' not in css + landing
 
 
 def test_landing_sample_data_is_internally_consistent():

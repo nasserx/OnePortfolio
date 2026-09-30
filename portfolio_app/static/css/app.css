@@ -511,14 +511,14 @@
     align-items: center;
     gap: var(--space-2);
     margin: 0;
-    color: var(--fg-subtle);
+    color: var(--muted-foreground);
     font-size: var(--text-xs);
     font-weight: var(--weight-medium);
   }
 
   .hero-figure__value {
     margin-top: var(--space-2);
-    color: var(--fg-default);
+    color: var(--foreground);
     font-size: var(--num-hero);
     font-weight: var(--weight-semibold);
     line-height: 1.05;
@@ -531,7 +531,7 @@
     gap: var(--space-3);
     flex-wrap: wrap;
     margin-top: var(--space-3);
-    color: var(--fg-subtle);
+    color: var(--muted-foreground);
     font-size: var(--text-xs);
     line-height: 1.45;
   }
@@ -547,7 +547,6 @@
 
   @media (min-width: 68.0625rem) {
     .hero-figure__facts {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
       flex: 1;
       align-content: end;
       margin-top: var(--space-6);
@@ -567,7 +566,7 @@
 
   .alloc-canvas {
     position: relative;
-    height: 9rem;
+    height: clamp(10rem, 24vw, 12rem);
     flex: none;
   }
 
@@ -601,7 +600,7 @@
     display: grid;
     place-items: center;
     min-height: 10rem;
-    color: var(--fg-subtle);
+    color: var(--muted-foreground);
     font-size: var(--text-sm);
     text-align: center;
   }
@@ -644,6 +643,8 @@
      The name column takes an equal share, not the 1.6 it had — names are
      short, and the extra width only opened a canyon before the first
      figure. */
+  .overview-ledger__title { margin-bottom: var(--space-3); }
+
   .ledger {
     display: grid;
     grid-template-columns:
@@ -664,7 +665,6 @@
     padding: 0 var(--space-4);
     min-height: var(--row-h);
     border-bottom: 1px solid var(--border);
-    transition: background-color var(--dur-1) var(--ease-out);
   }
 
   /* Fallback for engines without subgrid: rows keep their own identical
@@ -686,15 +686,11 @@
 
   .ledger__row--head {
     min-height: 2.25rem;
-    background-color: var(--bg-inset);
-    color: var(--fg-subtle);
+    background-color: transparent;
+    color: var(--muted-foreground);
     font-size: var(--text-2xs);
     font-weight: var(--weight-medium);
     letter-spacing: var(--tracking-label);
-  }
-
-  .ledger__row:not(.ledger__row--head):is(:hover, :focus-within) {
-    background-color: var(--bg-hover);
   }
 
   .ledger__name {
@@ -730,21 +726,17 @@
     gap: var(--space-1);
     padding: 0.25rem var(--space-2);
     border-radius: var(--radius-sm);
-    color: var(--fg-subtle);
+    color: var(--muted-foreground);
     font-size: var(--text-xs);
     font-weight: var(--weight-medium);
     white-space: nowrap;
     transition: background-color var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out);
   }
 
-  .ledger-link .icon { transition: transform var(--dur-2) var(--ease-out); }
-
   .ledger-link:hover {
     background-color: var(--accent);
     color: var(--accent-foreground);
   }
-
-  .ledger-link:hover .icon { transform: translateX(2px); }
 
   @media (max-width: 60rem) {
     .ledger__row--head { display: none; }
@@ -789,7 +781,7 @@
     /* Header labels are re-attached per cell once the grid stacks. */
     .ledger__num::before {
       content: attr(data-label);
-      color: var(--fg-faint);
+      color: var(--muted-foreground);
       font-size: var(--text-2xs);
       font-weight: var(--weight-medium);
       letter-spacing: var(--tracking-label);

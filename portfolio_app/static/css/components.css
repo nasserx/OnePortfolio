@@ -862,6 +862,18 @@
     background-color: var(--muted);
   }
 
+  /* Shared row interaction for semantic table-like layouts that cannot use
+     native tr/td structure because they responsively restack their cells. */
+  .table-row-interactive {
+    transition:
+      background-color var(--dur-1) var(--ease-out),
+      color var(--dur-1) var(--ease-out);
+  }
+
+  .table-row-interactive:is(:hover, :focus-within) {
+    background-color: var(--muted-half);
+  }
+
   /* ---- records tables --------------------------------------------------
      A shared shell for every ledger-style table in the product. Column
      widths are supplied per table through --records-col-* so the markup
@@ -1480,7 +1492,7 @@
     transition: background-color var(--dur-1) var(--ease-out), opacity var(--dur-2) var(--ease-out);
   }
 
-  .allocation-legend__toggle:hover { background-color: var(--bg-hover); }
+  .allocation-legend__toggle:hover { background-color: var(--accent); }
 
   .allocation-legend li.is-hidden .allocation-legend__toggle { opacity: 0.4; }
 
@@ -1491,10 +1503,10 @@
     background-color: var(--portfolio-chart-5);
   }
 
-  .allocation-legend li.is-hidden .swatch { background-color: var(--fg-faint); }
+  .allocation-legend li.is-hidden .swatch { background-color: var(--muted-foreground); }
 
   .allocation-legend .name {
-    color: var(--fg-muted);
+    color: var(--muted-foreground);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -1502,14 +1514,14 @@
 
   .allocation-legend .value {
     min-width: 5.5rem;
-    color: var(--fg-default);
+    color: var(--foreground);
     font-variant-numeric: tabular-nums;
     text-align: right;
   }
 
   .allocation-legend .pct {
     min-width: 3rem;
-    color: var(--fg-subtle);
+    color: var(--muted-foreground);
     font-variant-numeric: tabular-nums;
     text-align: right;
   }

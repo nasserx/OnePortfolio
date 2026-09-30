@@ -307,7 +307,7 @@
             }
           },
           centreText: {
-            label: this.view === 'capital_chart' ? 'Total capital' : 'Book value',
+            label: this.view === 'capital_chart' ? 'Total Capital' : 'Book Value',
             value: compact(dataset.total || 0)
           }
         }

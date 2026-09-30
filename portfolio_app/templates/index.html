@@ -88,8 +88,8 @@
         </section>
     </section>
 
-    <section class="enter" style="--enter-index:1" aria-labelledby="portfolios-title">
-        <h2 class="visually-hidden" id="portfolios-title">Portfolios</h2>
+    <section class="overview-ledger enter" style="--enter-index:1" aria-labelledby="portfolios-title">
+        <h2 class="panel__title overview-ledger__title" id="portfolios-title">Portfolios</h2>
 
         {% if portfolio_summary|length > 0 %}
         <div class="ledger surface-table" role="table" aria-label="Portfolio summary">
@@ -103,7 +103,7 @@
             </div>
 
             {% for item in portfolio_summary %}
-            <div class="ledger__row" role="row">
+            <div class="ledger__row table-row-interactive" role="row">
                 <div class="ledger__name" role="cell">
                     {{ marker(item.name) }}
                     <span title="{{ item.name }}">{{ item.name }}</span>

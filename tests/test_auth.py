@@ -117,7 +117,7 @@ def test_email_entry_ui_is_single_accessible_passwordless_flow(client):
     html = client.get('/login').get_data(as_text=True)
     assert 'name="email"' in html
     assert 'type="email"' in html
-    assert '<label class="visually-hidden" for="email">Email address</label>' in html
+    assert '<label class="form-label" for="email">Email Address</label>' in html
     assert 'name="password"' not in html
     assert 'remember' not in html.lower()
     assert 'Continue with Google' not in html
@@ -134,14 +134,14 @@ def test_verification_ui_uses_concise_generic_copy_and_accessible_controls(
     _create_user(app)
     _begin(client, mail_log)
     html = client.get('/verify-code').get_data(as_text=True)
-    assert '<h1 class="h4 fw-500 mb-1">Verification code</h1>' in html
+    assert '<h1 class="auth-title">Verification Code</h1>' in html
     assert MESSAGES['AUTH_CODE_REQUEST_RESULT'] == (
         'Check your email for a verification code.'
     )
     assert MESSAGES['AUTH_CODE_REQUEST_RESULT'] in html
-    assert '<label class="visually-hidden" for="code">Verification code</label>' in html
+    assert '<label class="form-label auth-code-label" for="code">Verification Code</label>' in html
     assert 'autocomplete="one-time-code"' in html
-    assert 'Send a new code' in html
+    assert 'Send New Code' in html
     assert '>Back</a>' in html
     assert 'alice@example.com' not in html
     assert '6-digit' not in html
@@ -155,9 +155,9 @@ def test_settings_remains_protected_and_exposes_only_passwordless_controls(
     _create_user(app)
     _verify(client, _begin(client, mail_log))
     html = client.get('/settings?tab=security').get_data(as_text=True)
-    assert 'Email verification code' in html
+    assert 'Email Verification Code' in html
     assert 'Update Email' in html
-    assert 'Delete account' in html
+    assert 'Delete Account' in html
     assert 'name="password"' not in html
     assert '/change-password' not in html
     assert '/auth/google' not in html

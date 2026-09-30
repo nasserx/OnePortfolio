@@ -1,20 +1,20 @@
 {% extends 'auth_base.html' %}
 {% from 'macros/icons.html' import icon %}
 
-{% block title %}Rate limit reached — OnePortfolio{% endblock %}
+{% block title %}Rate Limit Reached — OnePortfolio{% endblock %}
 
 {% block auth_content %}
 
-    <div class="text-center mb-4">
-        {% set logo_class = 'op-logo-mark auth-logo mb-3' %}
+    <header class="auth-header">
+        {% set logo_class = 'op-logo-mark auth-logo' %}
         {% set logo_size = 40 %}
         {% include 'components/logo_mark.html' %}
-        <h1 class="h4 fw-500 mb-1">Slow down for a moment</h1>
-        <p class="auth-subtitle mb-0">{{ message }}</p>
-    </div>
+        <h1 class="auth-title">Slow Down for a Moment</h1>
+        <p class="auth-subtitle">{{ message }}</p>
+    </header>
 
     <a href="{{ url_for('dashboard.index') }}" class="btn btn-outline-secondary btn-sm w-100">
-        {{ icon('arrow-left', class='me-1') }}Back home
+        {{ icon('arrow-left') }}Back Home
     </a>
 
 {% endblock %}

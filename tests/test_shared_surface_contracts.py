@@ -34,7 +34,7 @@ def test_shared_surface_contract_owns_each_outer_edge_once():
     assert surface.count('0 0 0 1px var(--surface-ring)') == 1
 
     app = APP.read_text(encoding='utf-8')
-    for selector in ('.hero-figure', '.ledger', '.disclosure__item', '.auth__preview'):
+    for selector in ('.hero-figure', '.ledger', '.disclosure__item'):
         _assert_no_outer_edge(_rule(app, selector), selector)
 
 
@@ -51,7 +51,8 @@ def test_surface_consumers_are_declared_in_templates():
     assert 'portfolio-card surface-card surface-interactive' in portfolios
     assert 'symbol-card surface-card surface-interactive' in assets
     assert 'class="empty-state surface-card"' in macros
-    assert 'class="auth__preview surface-card"' in auth
+    assert 'class="auth-card surface-card"' in auth
+    assert 'auth__showcase' not in auth
 
 
 def test_disclosure_has_neutral_hover_and_container_focus_contract():

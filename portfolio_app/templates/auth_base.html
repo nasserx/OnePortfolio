@@ -1,10 +1,7 @@
 {#
   Authentication shell.
 
-  Two columns: the form on the left, a quiet portrait of the product on the
-  right, over the same photographic backdrop the marketing hero uses. The
-  showcase collapses away below 60rem, so the form is never competing for
-  space on a phone.
+  Restrained centered shell shared by the passwordless authentication flows.
 #}
 <!DOCTYPE html>
 <html lang="en">
@@ -48,40 +45,10 @@
 <div class="auth">
 
     <main class="auth__form-side">
-        <div class="auth-card">
+        <div class="auth-card surface-card">
             {% block auth_content %}{% endblock %}
         </div>
     </main>
-
-    <aside class="auth__showcase" aria-hidden="true">
-        {# Decorative panel, hidden below 60rem. Its backdrop is `--intro-wash`
-           on the aside itself — the same treatment the landing intro uses, and
-           the reason a phone signing in now downloads nothing for it at all. #}
-        <p class="auth__quote">A clear record of every portfolio you manage.</p>
-        <p class="auth__quote-sub">
-            Capital, asset activity, income, and realized results — from your own
-            entries. No live prices, no broker connections, no market noise.
-        </p>
-
-        <div class="auth__preview surface-card">
-            <span class="auth__preview-label">Book value</span>
-            <div class="auth__preview-value num">42,180.00</div>
-            <div class="auth__preview-rows">
-                <div class="auth__preview-row">
-                    <span>Total capital</span><span class="num">48,000.00</span>
-                </div>
-                <div class="auth__preview-row">
-                    <span>Total cash</span><span class="num">6,320.00</span>
-                </div>
-                <div class="auth__preview-row">
-                    <span>Total income</span><span class="num num--income">+1,240.00</span>
-                </div>
-                <div class="auth__preview-row">
-                    <span>Realized P&amp;L</span><span class="num num--pos">+2,410.00</span>
-                </div>
-            </div>
-        </div>
-    </aside>
 
 </div>
 

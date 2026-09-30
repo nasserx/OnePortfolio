@@ -12,8 +12,8 @@ APP_CSS = ROOT / 'portfolio_app' / 'static' / 'css' / 'app.css'
 def test_content_panel_headings_share_horizontal_icon_label_contract():
     template = SETTINGS_TEMPLATE.read_text(encoding='utf-8')
     headings = re.findall(
-        r'<h3 class="settings-section-heading mb-4">\s*'
-        r"\{\{ icon\('([^']+)'\) \}\}<span>([^<]+)</span>\s*</h3>",
+        r'<h2 class="settings-section-heading">\s*'
+        r"\{\{ icon\('([^']+)'\) \}\}<span>([^<]+)</span>\s*</h2>",
         template,
     )
     assert headings == [

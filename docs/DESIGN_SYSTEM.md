@@ -123,7 +123,7 @@ where their appearance is close.
 
 ## C. Temporary migration aliases
 
-Names such as `--bg-canvas`, `--fg-default`, `--line-default`, `--field-border`,
+Names such as `--bg-canvas`, `--fg-default`, `--line-default`,
 and `--brand-solid` are compatibility aliases for untouched pages. They resolve
 to canonical preset roles and do not form a second palette. New or reworked
 shared components must use canonical names. Aliases remain only while a current

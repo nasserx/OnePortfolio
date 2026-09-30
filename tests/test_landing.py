@@ -365,15 +365,8 @@ def test_landing_intro_carries_no_decorative_media(app):
     )
 
 
-def test_intro_wash_is_shared_by_both_surfaces_from_one_declaration():
-    """One gradient, one owner, two consumers.
-
-    The landing intro and the auth showcase are the same treatment, and they
-    stay the same treatment by both reading the same token rather than each
-    carrying a copy. A second declaration is the failure this exists to
-    catch: the two surfaces would drift a percent at a time and nothing would
-    ever go red.
-    """
+def test_intro_wash_has_one_token_owner_and_is_landing_only():
+    """The marketing wash remains isolated from the restrained auth shell."""
     tokens = _TOKENS.read_text(encoding='utf-8')
     app_css = Path('portfolio_app/static/css/app.css').read_text(encoding='utf-8')
 
@@ -381,9 +374,7 @@ def test_intro_wash_is_shared_by_both_surfaces_from_one_declaration():
         'the wash is declared more than once; it is theme-agnostic by '
         'construction and must not be overridden per theme'
     )
-    assert 'background-image: var(--intro-wash);' in app_css, (
-        'the auth showcase no longer shares the intro wash'
-    )
+    assert 'var(--intro-wash)' not in app_css
 
 
 @pytest.mark.parametrize('theme', ['light', 'dark'])

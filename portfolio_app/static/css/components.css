@@ -927,7 +927,7 @@
      back; the table states the quiet step itself instead. */
   .records-table tbody td small {
     font-size: inherit;
-    color: var(--fg-subtle);
+    color: var(--muted-foreground);
   }
 
   .records-table .record-type { font-size: inherit; }

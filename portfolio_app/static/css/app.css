@@ -845,14 +845,14 @@
 
   .disclosure__chevron {
     flex: none;
-    color: var(--fg-faint);
+    color: var(--muted-foreground);
     font-size: 0.75rem;
     transition: transform var(--dur-2) var(--ease-out), color var(--dur-1) var(--ease-out);
   }
 
   .disclosure__toggle[aria-expanded="true"] .disclosure__chevron {
     transform: rotate(90deg);
-    color: var(--fg-muted);
+    color: var(--foreground);
   }
 
   /* Fixed, so the metric strip starts at the same x on every card. Sized to
@@ -906,7 +906,7 @@
   .metric__label {
     display: block;
     margin: 0 0 2px;
-    color: var(--fg-faint);
+    color: var(--muted-foreground);
     font-size: var(--text-2xs);
     font-weight: var(--weight-medium);
     letter-spacing: var(--tracking-label);
@@ -918,7 +918,7 @@
   .metric__value {
     display: block;
     margin: 0;
-    color: var(--fg-default);
+    color: var(--foreground);
     font-size: var(--num-sm);
     font-weight: var(--weight-medium);
     font-variant-numeric: tabular-nums;

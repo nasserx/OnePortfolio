@@ -81,7 +81,7 @@ def test_portfolios_page_renders_capital_metrics_and_log(app):
         # Shortened to 'Entries': the strip is already inside a portfolio
         # card, so 'Capital' was restating its own context.
         'Entries', 'Total Capital', 'Total Cash',
-        'Positions', 'Book Value', 'Date', 'Type', 'Amount',
+        'Positions', 'Book Value', 'Date', 'Type', 'Total Amount',
         'Notes', 'Actions',
     ):
         assert label in html

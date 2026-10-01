@@ -1,5 +1,6 @@
 from datetime import datetime
 from decimal import Decimal
+from pathlib import Path
 
 from portfolio_app import db
 from portfolio_app.calculators import PortfolioCalculator
@@ -79,8 +80,8 @@ def test_portfolios_page_renders_capital_metrics_and_log(app):
     for label in (
         # Shortened to 'Entries': the strip is already inside a portfolio
         # card, so 'Capital' was restating its own context.
-        'Entries', 'Total capital', 'Total cash',
-        'Positions', 'Book value', 'Date', 'Type', 'Amount',
+        'Entries', 'Total Capital', 'Total Cash',
+        'Positions', 'Book Value', 'Date', 'Type', 'Total Amount',
         'Notes', 'Actions',
     ):
         assert label in html
@@ -99,6 +100,17 @@ def test_portfolios_page_renders_capital_metrics_and_log(app):
     assert 'withdraw_portfolio_title' not in html
     assert 'Record Deposit' in html
     assert 'Record Withdraw' in html
+    assert 'Available To Withdraw' not in html
+    assert 'withdraw-available-hint' not in html
+    assert 'withdraw_available_cash' not in html
+    assert 'id="withdraw_max_btn">Max</button>' in html
+    assert 'data-withdrawable-cash-input="750.00"' in html
+    assert "document.getElementById('withdraw_max_btn').dataset.maxAmount" in html
+    assert "btn.addEventListener('click'" in html
+    assert 'amountInput.value = maxAmount;' in html
+
+    components = Path('portfolio_app/static/css/components.css').read_text(encoding='utf-8')
+    assert '.withdraw-available-hint' not in components
     assert 'ملاحظة عربية' in html
 
 

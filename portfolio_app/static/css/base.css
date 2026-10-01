@@ -28,8 +28,8 @@
   body {
     margin: 0;
     min-height: 100dvh;
-    background-color: var(--bg-canvas);
-    color: var(--fg-default);
+    background-color: var(--background);
+    color: var(--foreground);
     font-family: var(--font-sans);
     font-size: var(--text-md);
     line-height: var(--leading-normal);
@@ -48,7 +48,8 @@
      --------------------------------------------------------------------- */
   h1, h2, h3, h4, h5, h6 {
     margin: 0;
-    color: var(--fg-default);
+    color: var(--foreground);
+    font-family: var(--font-heading);
     font-weight: var(--weight-semibold);
     line-height: var(--leading-tight);
     letter-spacing: -0.018em;
@@ -61,7 +62,7 @@
 
   p {
     margin: 0 0 var(--space-3);
-    color: var(--fg-muted);
+    color: var(--muted-foreground);
   }
 
   p:last-child { margin-bottom: 0; }
@@ -72,7 +73,7 @@
     height: 1px;
     margin: var(--space-5) 0;
     border: 0;
-    background-color: var(--line-subtle);
+    background-color: var(--border);
     opacity: 1;
   }
 
@@ -80,22 +81,38 @@
      Links
      --------------------------------------------------------------------- */
   a {
-    color: var(--brand);
+    color: var(--primary);
     text-decoration: none;
     transition: color var(--dur-1) var(--ease-out);
   }
 
-  a:hover { color: var(--brand-hover); }
+  a:hover { color: color-mix(in oklch, var(--primary) 80%, transparent); }
 
   /* ---------------------------------------------------------------------
      Focus — one visible treatment, applied only to keyboard focus
      --------------------------------------------------------------------- */
   :focus { outline: none; }
 
-  :focus-visible {
-    outline: 2px solid var(--focus-ring);
-    outline-offset: 2px;
-    border-radius: var(--radius-xs);
+  :where(a, button, [role="button"], [tabindex]):focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--focus-ring-soft);
+  }
+
+  @media (forced-colors: active) {
+    :where(a, button, input, select, textarea, [role="button"], [tabindex]):focus-visible {
+      outline: 2px solid CanvasText;
+      outline-offset: 2px;
+      box-shadow: none;
+    }
+
+    :root ::selection {
+      background-color: Highlight;
+      color: HighlightText;
+    }
+
+    :root :where(input, textarea, [contenteditable="true"]) {
+      caret-color: auto;
+    }
   }
 
   /* ---------------------------------------------------------------------
@@ -114,6 +131,10 @@
 
   textarea { resize: vertical; }
 
+  :where(input, textarea, [contenteditable="true"]) {
+    caret-color: var(--caret-color);
+  }
+
   input[type="number"] { -moz-appearance: textfield; }
 
   input[type="number"]::-webkit-inner-spin-button,
@@ -129,20 +150,20 @@
   input:-webkit-autofill:focus,
   textarea:-webkit-autofill,
   select:-webkit-autofill {
-    -webkit-text-fill-color: var(--fg-default);
-    -webkit-box-shadow: 0 0 0 100px var(--bg-inset) inset;
-    caret-color: var(--fg-default);
+    -webkit-text-fill-color: var(--foreground);
+    -webkit-box-shadow: 0 0 0 100px transparent inset;
+    caret-color: var(--caret-color);
     transition: background-color 9999s ease-in-out 0s;
   }
 
   ::placeholder {
-    color: var(--fg-faint);
+    color: var(--muted-foreground);
     opacity: 1;
   }
 
   ::selection {
-    background-color: var(--brand-soft-hover);
-    color: var(--fg-default);
+    background-color: var(--selection-background);
+    color: var(--selection-foreground);
   }
 
   /* ---------------------------------------------------------------------
@@ -150,7 +171,7 @@
      --------------------------------------------------------------------- */
   * {
     scrollbar-width: thin;
-    scrollbar-color: var(--line-strong) transparent;
+    scrollbar-color: var(--ring) transparent;
   }
 
   ::-webkit-scrollbar {
@@ -161,13 +182,13 @@
   ::-webkit-scrollbar-track { background: transparent; }
 
   ::-webkit-scrollbar-thumb {
-    background-color: var(--line-default);
+    background-color: var(--border);
     border: 3px solid transparent;
     border-radius: var(--radius-pill);
     background-clip: content-box;
   }
 
-  ::-webkit-scrollbar-thumb:hover { background-color: var(--line-strong); }
+  ::-webkit-scrollbar-thumb:hover { background-color: var(--ring); }
 
   /* ---------------------------------------------------------------------
      Numeric typography
@@ -179,10 +200,10 @@
     white-space: nowrap;
   }
 
-  .num--pos { color: var(--pos); }
-  .num--neg { color: var(--neg); }
-  .num--income { color: var(--income); }
-  .num--flat { color: var(--flat); }
+  .num--pos { color: var(--financial-positive); }
+  .num--neg { color: var(--financial-negative); }
+  .num--income { color: var(--financial-income); }
+  .num--flat { color: var(--financial-flat); }
 
   /* ---------------------------------------------------------------------
      Motion primitives
@@ -232,8 +253,8 @@
     z-index: var(--z-palette);
     padding: var(--space-2) var(--space-4);
     border-radius: var(--radius-sm);
-    background-color: var(--brand-solid);
-    color: var(--fg-on-brand);
+    background-color: var(--primary);
+    color: var(--primary-foreground);
     font-size: var(--text-sm);
     font-weight: var(--weight-medium);
     transform: translateY(-160%);
@@ -242,7 +263,7 @@
 
   .skip-link:focus-visible {
     transform: none;
-    color: var(--fg-on-brand);
+    color: var(--primary-foreground);
   }
 
   /* ---------------------------------------------------------------------

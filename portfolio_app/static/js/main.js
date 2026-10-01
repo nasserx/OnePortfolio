@@ -5,11 +5,6 @@ const AppConfig = {
         symbolPattern: /^[A-Z0-9][A-Z0-9._\-]{0,19}$/,
         numberPattern: /^[-+]?\d+(?:\.\d+)?(?:[eE][-+]?\d+)?$/,
         datePattern: /^\d{4}-\d{2}-\d{2}$/
-    },
-    currency: {
-        locale: 'en-US',
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
     }
 };
 
@@ -38,13 +33,7 @@ const Utils = {
 
     formatMoney(value) {
         if (!Number.isFinite(value)) return '0.00';
-        return value.toLocaleString(
-            AppConfig.currency.locale,
-            {
-                minimumFractionDigits: AppConfig.currency.minimumFractionDigits,
-                maximumFractionDigits: AppConfig.currency.maximumFractionDigits
-            }
-        );
+        return window.OnePortfolioDisplay.money(value, false);
     },
 
     isValidSymbol(raw) {
@@ -155,9 +144,8 @@ const Utils = {
         return div.innerHTML;
     },
 
-    // The server answers with either { errors: { __all__, field } } or a
-    // legacy { error }. Checking only the legacy shape is what used to turn
-    // a real service-layer message into "Operation failed".
+    // Normalize both supported AJAX error envelopes so service-layer messages
+    // remain visible instead of falling through to the generic fallback.
     extractAjaxError(data, fallback) {
         if (data && data.errors && typeof data.errors === 'object') {
             if (data.errors.__all__) return data.errors.__all__;
@@ -168,6 +156,82 @@ const Utils = {
         return (data && data.error) || fallback;
     }
 };
+
+
+/* Shared client-side pagination presentation. Pages retain ownership of
+   their item lists, page size, filtering, and state; this component owns the
+   semantic controls and accessible Nova/Tabler presentation only. */
+const Pagination = {
+    render(container, options) {
+        if (!container) return;
+
+        const currentPage = options.currentPage;
+        const totalPages = options.totalPages;
+        const onPageChange = options.onPageChange;
+
+        container.replaceChildren();
+        container.hidden = totalPages <= 1;
+        if (totalPages <= 1) return;
+
+        const navigation = document.createElement('nav');
+        navigation.className = 'pagination';
+        navigation.setAttribute('aria-label', options.label || 'Pagination');
+
+        const appendControl = ({ label, page, icon, current = false, disabled = false }) => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'pagination__control' + (icon ? ' pagination__control--icon' : '');
+            button.setAttribute('aria-label', label);
+            button.disabled = disabled;
+
+            if (current) {
+                button.classList.add('is-current');
+                button.setAttribute('aria-current', 'page');
+            }
+
+            if (icon) {
+                button.appendChild(window.OnePortfolioIcons.create(icon));
+            } else {
+                button.textContent = String(page);
+            }
+
+            button.addEventListener('click', () => {
+                if (!button.disabled && page !== currentPage) onPageChange(page);
+            });
+            navigation.appendChild(button);
+        };
+
+        appendControl({
+            label: 'Previous Page',
+            page: currentPage - 1,
+            icon: 'chevron-left',
+            disabled: currentPage <= 1,
+        });
+
+        let windowStart = Math.max(1, currentPage - 1);
+        const windowEnd = Math.min(totalPages, windowStart + 2);
+        if (windowEnd - windowStart < 2) windowStart = Math.max(1, windowEnd - 2);
+
+        for (let page = windowStart; page <= windowEnd; page += 1) {
+            appendControl({
+                label: `Page ${page}`,
+                page,
+                current: page === currentPage,
+            });
+        }
+
+        appendControl({
+            label: 'Next Page',
+            page: currentPage + 1,
+            icon: 'chevron-right',
+            disabled: currentPage >= totalPages,
+        });
+
+        container.appendChild(navigation);
+    },
+};
+
+window.OnePortfolioPagination = Object.freeze(Pagination);
 
 function todayStr() {
     const d = new Date();
@@ -557,9 +621,9 @@ class TransactionFormHandler {
         }
 
         const formatted = Utils.formatMoney(total);
-        this.preview.innerHTML = isSell
-            ? `Total Received: <span class="tx-preview-amount">${formatted}</span>`
-            : `Total: <span class="tx-preview-amount">${formatted}</span>`;
+        const label = isSell ? 'Total Received:' : 'Total Spent:';
+        this.preview.innerHTML = `<span class="tx-preview__label">${label}</span>`
+            + `<span class="tx-preview__value">${formatted}</span>`;
     }
 
     attachPreviewCalculation() {
@@ -1078,13 +1142,8 @@ class ModalAjaxHandler {
             { modalId: 'withdrawFundsModal',        formSelector: '#withdrawFundsForm' },
             { modalId: 'editPortfolioEventModal',   formSelector: '#editPortfolioEventForm' },
             { modalId: 'addSymbolModal',            formSelector: 'form[action$="/symbols/add"]' },
-            // Delete-confirm dialogs — every delete modal in the app
-            // funnels through here so they all render errors the same
-            // way (alert-danger banner injected at the top of
-            // .modal-body via showModalBanner). Previously the three
-            // transactions-side delete modals had bespoke inline
-            // handlers that wrote to a static <div> at the *bottom* of
-            // the body, which left the UX inconsistent across the app.
+            // Delete-confirm dialogs share this owner so every workflow uses
+            // the same modal-body error banner and submit lifecycle.
             { modalId: 'deletePortfolioEventModal', formSelector: '#deletePortfolioEventForm' },
             { modalId: 'deletePortfolioModal',      formSelector: '#deletePortfolioForm' },
             { modalId: 'deleteTransactionModal',    formSelector: '#deleteTransactionForm' },
@@ -1215,9 +1274,7 @@ class ModalAjaxHandler {
         const banner = document.createElement('div');
         banner.className = 'alert alert-danger js-modal-banner d-flex align-items-center mb-3';
         banner.setAttribute('role', 'alert');
-        const icon = document.createElement('i');
-        icon.className = 'bi bi-exclamation-circle me-2';
-        icon.setAttribute('aria-hidden', 'true');
+        const icon = window.OnePortfolioIcons.create('alert-circle', 'me-2');
         const text = document.createElement('span');
         text.textContent = message;
         banner.appendChild(icon);
@@ -1258,13 +1315,6 @@ class InvestmentPortfolioApp {
         new ModalManager();
         new ModalAjaxHandler();
         new NotesCounterHandler();
-
-        const navbar = document.querySelector('.app-navbar');
-        if (navbar) {
-            const onScroll = () => navbar.classList.toggle('scrolled', window.scrollY > 8);
-            window.addEventListener('scroll', onScroll, { passive: true });
-            onScroll();
-        }
 
         document.querySelectorAll('.modal').forEach(modal => {
             modal.addEventListener('shown.bs.modal', () => initDateFields(modal));

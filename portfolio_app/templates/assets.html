@@ -1,5 +1,6 @@
 {% extends "base.html" %}
-{% from 'macros/ui.html' import money, percent, quantity, metric, empty_state, action_menu %}
+{% from 'macros/ui.html' import money, percent, quantity, metric, empty_state, action_menu, record_type %}
+{% from 'macros/icons.html' import icon %}
 
 {% block title %}Assets — OnePortfolio{% endblock %}
 
@@ -7,6 +8,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css"
       integrity="sha384-RkASv+6KfBMW9eknReJIJ6b3UnjKOKC5bOUaNgIY778NFbQ8MtWq9Lr/khUgqtTt"
       crossorigin="anonymous">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/flatpickr-nova.css', v=ASSET_VERSION) }}">
 {% endblock %}
 
 {% block page_title %}Assets{% endblock %}
@@ -16,14 +18,14 @@
     <div class="dropdown">
         <button class="btn btn-outline-secondary filter-dropdown-btn" type="button"
                 data-bs-toggle="dropdown" aria-expanded="false">
-            <i class="bi bi-funnel" aria-hidden="true"></i>
-            <span>{{ selected_portfolio or 'All portfolios' }}</span>
-            <i class="bi bi-chevron-down" aria-hidden="true"></i>
+            {{ icon('filter') }}
+            <span class="filter-dropdown-btn__label">{{ selected_portfolio or 'All Portfolios' }}</span>
+            {{ icon('chevron-down', class='filter-dropdown-btn__chevron') }}
         </button>
         <ul class="dropdown-menu">
             <li>
                 <a class="dropdown-item {% if not selected_portfolio %}active{% endif %}"
-                   href="{{ url_for('transactions.transaction_list') }}">All portfolios</a>
+                   href="{{ url_for('transactions.transaction_list') }}">All Portfolios</a>
             </li>
             {% if portfolios %}
             <li><hr class="dropdown-divider"></li>
@@ -39,57 +41,57 @@
 
     <!-- Asset search -->
     <div class="search-field">
-        <i class="bi bi-search" aria-hidden="true"></i>
-        <label class="visually-hidden" for="symbolSearch">Search asset</label>
+        {{ icon('search') }}
+        <label class="visually-hidden" for="symbolSearch">Search Asset</label>
         <input type="text" class="form-control" id="symbolSearch"
-               placeholder="Search asset…" autocomplete="off">
+               placeholder="Search Asset…" autocomplete="off">
     </div>
 
     {% if portfolios|length > 0 %}
         <button type="button" class="btn btn-primary js-add-symbol-btn"
-                data-command="Add asset" data-command-group="Create" data-command-icon="plus-lg">
-            <i class="bi bi-plus-lg" aria-hidden="true"></i>
-            <span>Add asset</span>
+                data-command="Add Asset" data-command-group="Create" data-command-icon="plus">
+            {{ icon('plus') }}
+            <span>Add Asset</span>
         </button>
     {% else %}
-        <a class="btn btn-primary" href="{{ url_for('portfolios.portfolios_list') }}">Create a portfolio first</a>
+        <a class="btn btn-primary" href="{{ url_for('portfolios.portfolios_list') }}">Create Portfolio First</a>
     {% endif %}
 {% endblock %}
 
 {% block content %}
-<div class="transactions-page">
+<div class="transactions-page stack">
 
         {% if holdings|length > 0 %}
-        <div class="disclosure enter">
+        <section class="disclosure enter" aria-label="Asset List">
             {% for item in holdings %}
             {% set symbol_key = (item.portfolio.id, item.symbol) %}
             {% set symbol_dividends = dividends_by_symbol.get(symbol_key, []) %}
             {% set symbol_dividend_total = dividend_totals.get(symbol_key, 0) %}
             {% set show_dividend_rows = symbol_dividends|length > 0 %}
             {% set panel_id = 'transactions-' ~ item.html_group_id %}
-            <article class="disclosure__item symbol-card" data-symbol="{{ item.symbol }}">
+            <article class="disclosure__item symbol-card surface-card surface-interactive" data-symbol="{{ item.symbol }}">
 
                 <div class="disclosure__head">
-                    <button type="button" class="disclosure__toggle"
+                    <button type="button" class="disclosure__toggle surface-interactive__control"
                             aria-expanded="false" aria-controls="{{ panel_id }}"
                             data-disclosure="{{ item.html_group_id }}"
                             data-command="{{ item.symbol }} · {{ item.portfolio.name }}"
                             data-command-group="Assets"
-                            data-command-icon="box-seam">
-                        <i class="bi bi-chevron-right disclosure__chevron" aria-hidden="true"></i>
+                            data-command-icon="package">
+                        {{ icon('chevron-right', class='disclosure__chevron') }}
 
                         <span class="disclosure__identity">
                             <span class="disclosure__name" title="{{ item.symbol }}">{{ item.symbol }}</span>
-                            <span class="badge">{{ item.portfolio.name }}</span>
+                            <span class="badge badge--secondary">{{ item.portfolio.name }}</span>
                         </span>
 
-                        <span class="disclosure__metrics" style="--metric-columns:7">
+                        <span class="disclosure__metrics disclosure__metrics--assets">
                             {% call metric('Entries') %}{{ item.summary.transaction_count + symbol_dividends|length }}{% endcall %}
-                            {% call metric('Total buy cost') %}{{ money(item.summary.total_buy_cost) }}{% endcall %}
+                            {% call metric('Total Spent') %}{{ money(item.summary.total_buy_cost) }}{% endcall %}
                             {% call metric('Quantity') %}{{ quantity(item.summary.total_quantity_held) }}{% endcall %}
-                            {% call metric('Average cost') %}{{ money(item.summary.average_cost, decimals=item.avg_cost_decimal_places) }}{% endcall %}
+                            {% call metric('Average Cost') %}{{ money(item.summary.average_cost, decimals=item.avg_cost_decimal_places) }}{% endcall %}
                             {% call metric('Realized P&L') %}{{ money(item.summary.realized_pnl, tone='sign', signed=true) }}{% endcall %}
-                            {% call metric('Realized return') %}{{ percent(item.summary.return_percent, item.summary.return_display) }}{% endcall %}
+                            {% call metric('Realized Return') %}{{ percent(item.summary.return_percent, item.summary.return_display) }}{% endcall %}
                             {% call metric('Income') %}{{ money(symbol_dividend_total, tone='income', signed=true) }}{% endcall %}
                         </span>
                     </button>
@@ -101,7 +103,7 @@
                                 data-portfolio-id="{{ item.portfolio.id }}"
                                 data-portfolio="{{ item.portfolio.name|e }}"
                                 data-symbol="{{ item.symbol|e }}">
-                                <i class="bi bi-plus-lg" aria-hidden="true"></i>
+                                {{ icon('plus') }}
                                 <span>Buy / Sell</span>
                             </button>
                         </li>
@@ -109,8 +111,8 @@
                             <button type="button" class="dropdown-item js-add-dividend-btn"
                                 data-portfolio-id="{{ item.portfolio.id }}"
                                 data-symbol="{{ item.symbol|e }}">
-                                <i class="bi bi-cash-stack" aria-hidden="true"></i>
-                                <span>Add income</span>
+                                {{ icon('cash-banknote') }}
+                                <span>Add Income</span>
                             </button>
                         </li>
                         <li><hr class="dropdown-divider"></li>
@@ -121,7 +123,7 @@
                                 data-symbol="{{ item.symbol|e }}"
                                 data-tx-count="{{ item.summary.transaction_count or 0 }}"
                                 data-income-count="{{ symbol_dividends|length }}">
-                                <i class="bi bi-trash" aria-hidden="true"></i>
+                                {{ icon('trash') }}
                                 <span>Remove</span>
                             </button>
                         </li>
@@ -132,7 +134,8 @@
                 <div class="disclosure__panel" id="{{ panel_id }}" hidden>
                     {% if item.transactions|length > 0 or show_dividend_rows %}
                     <div class="table-responsive">
-                        <table class="table table-sm table-hover align-middle mb-0 records-table records-table--asset-entries transactions-table dashboard-actions-table">
+                        <table class="table records-table records-table--asset-entries">
+                            <caption class="visually-hidden">Entries for {{ item.symbol }} in {{ item.portfolio.name }}</caption>
                             <colgroup>
                                 <col class="records-col records-col--date">
                                 <col class="records-col records-col--type">
@@ -145,18 +148,18 @@
                                 <col class="records-col records-col--notes">
                                 <col class="records-col records-col--actions">
                             </colgroup>
-                            <thead class="table-light">
+                            <thead>
                                 <tr>
-                                    <th class="small records-cell">Date</th>
-                                    <th class="small records-cell">Type</th>
-                                    <th class="small records-cell records-cell--number">Price</th>
-                                    <th class="small records-cell records-cell--number">Quantity</th>
-                                    <th class="small records-cell records-cell--number">Fee</th>
-                                    <th class="small records-cell records-cell--number">Total</th>
-                                    <th class="small records-cell records-cell--number">Realized P&amp;L</th>
-                                    <th class="small records-cell records-cell--number">Return</th>
-                                    <th class="small records-cell">Notes</th>
-                                    <th class="small records-cell records-cell--actions">Actions</th>
+                                    <th class="records-cell">Date</th>
+                                    <th class="records-cell">Type</th>
+                                    <th class="records-cell records-cell--number">Price</th>
+                                    <th class="records-cell records-cell--number">Quantity</th>
+                                    <th class="records-cell records-cell--number">Fee</th>
+                                    <th class="records-cell records-cell--number">Total Amount</th>
+                                    <th class="records-cell records-cell--number">Realized P&amp;L</th>
+                                    <th class="records-cell records-cell--number">Return</th>
+                                    <th class="records-cell">Notes</th>
+                                    <th class="records-cell records-cell--actions">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -164,11 +167,7 @@
                                 <tr>
                                     <td class="records-cell"><small>{{ transaction.date_short }}</small></td>
                                     <td class="records-cell">
-                                        {% if transaction.transaction_type == 'Buy' %}
-                                            <span class="tx-type-label tx-type-buy type-buy">Buy</span>
-                                        {% else %}
-                                            <span class="tx-type-label tx-type-sell type-sell">Sell</span>
-                                        {% endif %}
+                                        {{ record_type(transaction.transaction_type) }}
                                     </td>
                                     <td class="records-cell records-cell--number">{{ money(transaction.price, decimals=item.price_decimal_places) }}</td>
                                     <td class="records-cell records-cell--number">{{ quantity(transaction.quantity) }}</td>
@@ -205,7 +204,7 @@
                                                         "notes": (transaction.notes or ""),
                                                         "dateShort": transaction.date_short
                                                     }|tojson|e }}'>
-                                                    <i class="bi bi-pencil" aria-hidden="true"></i>
+                                                    {{ icon('edit') }}
                                                     <span>Edit</span>
                                                 </button>
                                             </li>
@@ -213,7 +212,7 @@
                                             <li>
                                                 <button type="button" class="dropdown-item dropdown-item--danger js-delete-transaction-btn"
                                                         data-tx-id="{{ transaction.id }}">
-                                                    <i class="bi bi-trash" aria-hidden="true"></i>
+                                                    {{ icon('trash') }}
                                                     <span>Remove</span>
                                                 </button>
                                             </li>
@@ -227,7 +226,7 @@
                                 <tr>
                                     <td class="records-cell"><small>{{ div.date_short }}</small></td>
                                     <td class="records-cell">
-                                        <span class="badge badge-dividend type-income">Income</span>
+                                        {{ record_type('Income') }}
                                     </td>
                                     <td class="records-cell records-cell--number"><span class="num num--flat">—</span></td>
                                     <td class="records-cell records-cell--number"><span class="num num--flat">—</span></td>
@@ -245,7 +244,7 @@
                                             <li>
                                                 <button type="button" class="dropdown-item js-edit-dividend-btn"
                                                         data-div='{{ {"id": div.id, "portfolioId": div.portfolio_id, "amount": ("%.10f"|format(div.amount)), "dateShort": div.date_short, "notes": (div.notes or "")}|tojson|e }}'>
-                                                    <i class="bi bi-pencil" aria-hidden="true"></i>
+                                                    {{ icon('edit') }}
                                                     <span>Edit</span>
                                                 </button>
                                             </li>
@@ -253,7 +252,7 @@
                                             <li>
                                                 <button type="button" class="dropdown-item dropdown-item--danger js-delete-dividend-btn"
                                                         data-div-id="{{ div.id }}">
-                                                    <i class="bi bi-trash" aria-hidden="true"></i>
+                                                    {{ icon('trash') }}
                                                     <span>Remove</span>
                                                 </button>
                                             </li>
@@ -266,33 +265,35 @@
                             </tbody>
                         </table>
                     </div>
-                    <div class="tx-pagination-bar" id="pgbar-{{ item.html_group_id }}"></div>
+                    <div class="pagination-bar" id="pgbar-{{ item.html_group_id }}"
+                         data-pagination-label="Entries for {{ item.symbol }}" hidden></div>
                     {% else %}
                     <p class="inline-empty">
                         <button type="button" class="btn btn-secondary btn-sm js-add-transaction-btn"
                                 data-portfolio-id="{{ item.portfolio.id }}"
                                 data-portfolio="{{ item.portfolio.name|e }}"
                                 data-symbol="{{ item.symbol|e }}">
-                            <i class="bi bi-plus-lg" aria-hidden="true"></i> Add entry
+                            {{ icon('plus') }} Add Entry
                         </button>
                     </p>
                     {% endif %}
                 </div>
             </article>
             {% endfor %}
-        </div>
-        <div id="outer-pg-bar" class="tx-pagination-bar"></div>
+        </section>
+        <div id="outer-pg-bar" class="pagination-bar"
+             data-pagination-label="Asset Pages" hidden></div>
 
         {% else %}
-        {% call empty_state('plus-square', 'No assets yet',
+        {% call empty_state('square-plus', 'No Assets Yet',
             'Add an asset, then record manual buy, sell, and income activity.') %}
             {% if portfolios|length > 0 %}
             <button type="button" class="btn btn-primary js-add-symbol-btn">
-                <i class="bi bi-plus-lg" aria-hidden="true"></i>
-                <span>Add asset</span>
+                {{ icon('plus') }}
+                <span>Add Asset</span>
             </button>
             {% else %}
-            <a class="btn btn-primary" href="{{ url_for('portfolios.portfolios_list') }}">Create a portfolio first</a>
+            <a class="btn btn-primary" href="{{ url_for('portfolios.portfolios_list') }}">Create Portfolio First</a>
             {% endif %}
         {% endcall %}
         {% endif %}
@@ -317,7 +318,7 @@
                                 {% set _symbol_errs = (form_errors.get('symbol_add', {}) if form_errors else {}) %}
                                 {% set _symbol_vals = (form_values.get('symbol_add', {}) if form_values else {}) %}
                                 <select class="form-select {% if _symbol_errs.get('symbol_portfolio_id') %}is-invalid{% endif %}" id="symbol_portfolio_id" name="symbol_portfolio_id">
-                                    <option value="">Select portfolio...</option>
+                                    <option value="">Select Portfolio…</option>
                                     {% for portfolio in portfolios %}
                                     <option value="{{ portfolio.id }}" {% if (_symbol_vals.get('symbol_portfolio_id') and _symbol_vals.get('symbol_portfolio_id')|int == portfolio.id) or (not _symbol_vals.get('symbol_portfolio_id') and selected_portfolio == portfolio.name) %}selected{% endif %}>
                                         {{ portfolio.name }}
@@ -341,12 +342,12 @@
                         </div>
                     </div>
                     <div class="alert alert-info mb-0">
-                        <i class="bi bi-info-circle"></i>
+                        {{ icon('info-circle') }}
                         Then use Add Entry to add buys and sells.
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="submit" class="btn btn-primary">Add</button>
+                    <button type="submit" class="btn btn-primary">Add Asset</button>
                 </div>
             </form>
         </div>
@@ -372,7 +373,7 @@
                                 <label for="portfolio_id" class="form-label">Portfolio</label>
                                 {% set _tx_add_vals = (form_values.get('transaction_add', {}) if form_values else {}) %}
                                 <select class="form-select {% if _tx_add_errs.get('portfolio_id') %}is-invalid{% endif %}" id="portfolio_id" name="portfolio_id">
-                                    <option value="">Select portfolio...</option>
+                                    <option value="">Select Portfolio…</option>
                                     {% for portfolio in portfolios %}
                                     <option value="{{ portfolio.id }}">{{ portfolio.name }}</option>
                                     {% endfor %}
@@ -420,7 +421,7 @@
                         <div class="row g-2">
                             <div class="col-6">
                                 <div class="mb-3">
-                                    <label for="price" class="form-label">Price (per unit)</label>
+                                    <label for="price" class="form-label">Price (Per Unit)</label>
                                     <input type="text" inputmode="decimal" class="form-control {% if _tx_add_errs.get('price') %}is-invalid{% endif %}" id="price" name="price"
                                         placeholder="0.0000">
                                     {% if _tx_add_errs.get('price') %}
@@ -454,7 +455,7 @@
                                     {% if _tx_add_errs.get('fees') %}
                                     <div class="invalid-feedback">{{ _tx_add_errs.get('fees') }}</div>
                                     {% endif %}
-                                    <div id="total_cost_preview" class="tx-preview"></div>
+                                    <div id="total_cost_preview" class="tx-preview" aria-live="polite"></div>
                                 </div>
                             </div>
                             <div class="col-6">
@@ -470,7 +471,7 @@
                     </div>
 
                     <div class="mb-3">
-                        <label for="notes" class="form-label">Notes (optional)</label>
+                        <label for="notes" class="form-label">Notes (Optional)</label>
                         <textarea class="form-control js-notes-input" id="notes" name="notes" rows="2" maxlength="300"></textarea>
                         <small class="notes-counter">0 / 300</small>
                     </div>
@@ -498,8 +499,8 @@
                 <div class="modal-body">
                     {% set _tx_edit_errs = (form_errors.get('transaction_edit', {}) if form_errors else {}) %}
                     {% if _tx_edit_errs.get('__all__') %}
-                    <div class="alert alert-danger d-flex align-items-center mb-3">
-                        <i class="bi bi-exclamation-circle me-2"></i>{{ _tx_edit_errs.get('__all__') }}
+                    <div class="alert alert-danger mb-3">
+                        {{ icon('alert-circle') }}{{ _tx_edit_errs.get('__all__') }}
                     </div>
                     {% endif %}
                     <div class="row g-2">
@@ -507,7 +508,7 @@
                             <div class="mb-3">
                                 <label for="edit_portfolio_id_display" class="form-label">Portfolio</label>
                                 <select class="form-select" id="edit_portfolio_id_display" disabled>
-                                    <option value="">Select portfolio...</option>
+                                    <option value="">Select Portfolio…</option>
                                     {% for portfolio in portfolios %}
                                     <option value="{{ portfolio.id }}">{{ portfolio.name }}</option>
                                     {% endfor %}
@@ -527,7 +528,7 @@
                     <div class="mb-3">
                         <label for="edit_transaction_type_display" class="form-label">Entry Type</label>
                         <select class="form-select" id="edit_transaction_type_display" disabled>
-                            <option value="">Select type...</option>
+                            <option value="">Select Type…</option>
                             <option value="Buy">Buy</option>
                             <option value="Sell">Sell</option>
                         </select>
@@ -536,7 +537,7 @@
                     <div class="row g-2">
                         <div class="col-6">
                             <div class="mb-3">
-                                <label for="edit_price" class="form-label">Price (per unit)</label>
+                                <label for="edit_price" class="form-label">Price (Per Unit)</label>
                                 {% set _tx_edit_errs = (form_errors.get('transaction_edit', {}) if form_errors else {}) %}
                                 {% set _tx_edit_vals = (form_values.get('transaction_edit', {}) if form_values else {}) %}
                                 <input type="text" inputmode="decimal" class="form-control {% if _tx_edit_errs.get('edit_price') %}is-invalid{% endif %}" id="edit_price" name="edit_price"
@@ -567,7 +568,7 @@
                                 {% if _tx_edit_errs.get('edit_fees') %}
                                 <div class="invalid-feedback">{{ _tx_edit_errs.get('edit_fees') }}</div>
                                 {% endif %}
-                                <div id="edit_total_cost_preview" class="tx-preview"></div>
+                                <div id="edit_total_cost_preview" class="tx-preview" aria-live="polite"></div>
                             </div>
                         </div>
                         <div class="col-6">
@@ -582,7 +583,7 @@
                     </div>
 
                     <div class="mb-3">
-                        <label for="edit_notes" class="form-label">Notes (optional)</label>
+                        <label for="edit_notes" class="form-label">Notes (Optional)</label>
                         <textarea class="form-control js-notes-input {% if _tx_edit_errs.get('edit_notes') %}is-invalid{% endif %}"
                                   id="edit_notes" name="edit_notes" rows="2" maxlength="300"></textarea>
                         <small class="notes-counter">0 / 300</small>
@@ -592,7 +593,7 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="submit" class="btn btn-primary">Save</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
                 </div>
             </form>
         </div>
@@ -600,29 +601,30 @@
 </div>
 
 <!-- Remove Asset Entry Modal -->
-<div class="modal fade" id="deleteTransactionModal" tabindex="-1" aria-labelledby="deleteTransactionModalTitle">
+<div class="modal fade" id="deleteTransactionModal" tabindex="-1"
+     aria-labelledby="deleteTransactionModalTitle" aria-describedby="deleteTransactionDescription">
     <div class="modal-dialog">
         <div class="modal-content">
             <form method="POST" id="deleteTransactionForm" novalidate>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="modal-header">
-                    <h5 class="modal-title d-flex align-items-center gap-2" id="deleteTransactionModalTitle">
-                        <i class="bi bi-trash modal-title-icon" aria-hidden="true"></i>
-                        Confirm Remove
+                    <h5 class="modal-title" id="deleteTransactionModalTitle">
+                        {{ icon('trash', class='modal-title-icon') }}
+                        Remove Asset Entry
                     </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <p>{{ MESSAGES['CONFIRM_REMOVE_TRANSACTION'] }}</p>
+                    <p id="deleteTransactionDescription">{{ MESSAGES['CONFIRM_REMOVE_TRANSACTION'] }}</p>
                     <div class="alert alert-warning">
-                        <i class="bi bi-exclamation-triangle"></i>
+                        {{ icon('alert-triangle') }}
                         This will recalculate average costs for this asset.
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-danger">
-                        <i class="bi bi-trash me-1"></i>Remove
+                        {{ icon('trash') }}Remove
                     </button>
                 </div>
             </form>
@@ -631,7 +633,8 @@
 </div>
 
 <!-- Remove Asset Modal -->
-<div class="modal fade" id="deleteSymbolModal" tabindex="-1" aria-labelledby="deleteSymbolModalTitle">
+<div class="modal fade" id="deleteSymbolModal" tabindex="-1"
+     aria-labelledby="deleteSymbolModalTitle" aria-describedby="deleteSymbolDescription">
     <div class="modal-dialog">
         <div class="modal-content">
             <form method="POST" id="deleteSymbolForm" action="{{ url_for('transactions.symbol_delete') }}" novalidate>
@@ -639,23 +642,23 @@
                 <input type="hidden" name="delete_symbol_portfolio_id" id="delete_symbol_portfolio_id">
                 <input type="hidden" name="delete_symbol_ticker" id="delete_symbol_ticker">
                 <div class="modal-header">
-                    <h5 class="modal-title d-flex align-items-center gap-2" id="deleteSymbolModalTitle">
-                        <i class="bi bi-trash modal-title-icon" aria-hidden="true"></i>
-                        Confirm Remove
+                    <h5 class="modal-title" id="deleteSymbolModalTitle">
+                        {{ icon('trash', class='modal-title-icon') }}
+                        Remove Asset
                     </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <p class="mb-2">Remove <span class="text-emphasis" id="delete_symbol_name"></span>?</p>
+                    <p class="mb-2" id="deleteSymbolDescription">Remove <span class="text-emphasis" id="delete_symbol_name"></span>?</p>
                     <div id="delete_symbol_warning" class="alert alert-warning mb-2 d-none">
-                        <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                        {{ icon('alert-triangle') }}
                         <span id="delete_symbol_warning_text"></span>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-danger">
-                        <i class="bi bi-trash me-1"></i>Remove
+                        {{ icon('trash') }}Remove
                     </button>
                 </div>
             </form>
@@ -679,8 +682,8 @@
                 </div>
                 <div class="modal-body">
                     {% if _div_add_errs.get('__all__') %}
-                    <div class="alert alert-danger d-flex align-items-center mb-3">
-                        <i class="bi bi-exclamation-circle me-2"></i>{{ _div_add_errs.get('__all__') }}
+                    <div class="alert alert-danger mb-3">
+                        {{ icon('alert-circle') }}{{ _div_add_errs.get('__all__') }}
                     </div>
                     {% endif %}
                     <div class="row g-2">
@@ -711,7 +714,7 @@
                         </div>
                     </div>
                     <div class="mb-3">
-                        <label for="add_div_notes" class="form-label">Notes (optional)</label>
+                        <label for="add_div_notes" class="form-label">Notes (Optional)</label>
                         <textarea class="form-control js-notes-input {% if _div_add_errs.get('notes') %}is-invalid{% endif %}"
                                   id="add_div_notes" name="notes" rows="2" maxlength="300"></textarea>
                         <small class="notes-counter">0 / 300</small>
@@ -742,8 +745,8 @@
                 </div>
                 <div class="modal-body">
                     {% if _div_edit_errs.get('__all__') %}
-                    <div class="alert alert-danger d-flex align-items-center mb-3">
-                        <i class="bi bi-exclamation-circle me-2"></i>{{ _div_edit_errs.get('__all__') }}
+                    <div class="alert alert-danger mb-3">
+                        {{ icon('alert-circle') }}{{ _div_edit_errs.get('__all__') }}
                     </div>
                     {% endif %}
                     <div class="row g-2">
@@ -776,7 +779,7 @@
                         </div>
                     </div>
                     <div class="mb-3">
-                        <label for="edit_dividend_notes" class="form-label">Notes (optional)</label>
+                        <label for="edit_dividend_notes" class="form-label">Notes (Optional)</label>
                         <textarea class="form-control js-notes-input {% if _div_edit_errs.get('edit_notes') %}is-invalid{% endif %}"
                                   id="edit_dividend_notes" name="edit_notes" rows="2" maxlength="300"></textarea>
                         <small class="notes-counter">0 / 300</small>
@@ -786,7 +789,7 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="submit" class="btn btn-primary">Save</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
                 </div>
             </form>
         </div>
@@ -794,25 +797,26 @@
 </div>
 
 <!-- Remove Income Modal -->
-<div class="modal fade" id="deleteDividendModal" tabindex="-1" aria-labelledby="deleteDividendModalTitle">
+<div class="modal fade" id="deleteDividendModal" tabindex="-1"
+     aria-labelledby="deleteDividendModalTitle" aria-describedby="deleteDividendDescription">
     <div class="modal-dialog">
         <div class="modal-content">
             <form method="POST" id="deleteDividendForm" novalidate>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="modal-header">
-                    <h5 class="modal-title d-flex align-items-center gap-2" id="deleteDividendModalTitle">
-                        <i class="bi bi-trash modal-title-icon" aria-hidden="true"></i>
-                        Confirm Remove
+                    <h5 class="modal-title" id="deleteDividendModalTitle">
+                        {{ icon('trash', class='modal-title-icon') }}
+                        Remove Income
                     </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <p>{{ MESSAGES['CONFIRM_REMOVE_DIVIDEND'] }}</p>
+                    <p id="deleteDividendDescription">{{ MESSAGES['CONFIRM_REMOVE_DIVIDEND'] }}</p>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-danger">
-                        <i class="bi bi-trash me-1"></i>Remove
+                        {{ icon('trash') }}Remove
                     </button>
                 </div>
             </form>
@@ -978,7 +982,12 @@ function openAddSymbolModal() {
 
         if (rows.length <= PAGE_SIZE) {
             rows.forEach(function(r) { r.style.display = ''; });
-            if (bar) bar.style.display = 'none';
+            if (bar) window.OnePortfolioPagination.render(bar, {
+                currentPage: 1,
+                totalPages: 1,
+                label: bar.dataset.paginationLabel,
+                onPageChange: function() {}
+            });
             return;
         }
 
@@ -995,46 +1004,16 @@ function openAddSymbolModal() {
 
         if (!bar) return;
 
-        var winStart = Math.max(1, page - 1);
-        var winEnd   = Math.min(totalPages, winStart + 2);
-        if (winEnd - winStart < 2) winStart = Math.max(1, winEnd - 2);
-
-        var nums = '';
-        for (var p = winStart; p <= winEnd; p++) {
-            nums += '<span class="tx-pg-num' + (p === page ? ' active' : '') + '" data-gid="' + groupId + '" data-page="' + p + '">' + p + '</span>';
-        }
-
-        bar.style.display = 'flex';
-        bar.innerHTML =
-            '<div class="tx-pg-indicator">' +
-                '<button class="btn btn-sm tx-pg-prev px-1 py-0"' + (page <= 1 ? ' disabled' : '') + ' data-gid="' + groupId + '">&#8249;</button>' +
-                nums +
-                '<button class="btn btn-sm tx-pg-next px-1 py-0"' + (page >= totalPages ? ' disabled' : '') + ' data-gid="' + groupId + '">&#8250;</button>' +
-            '</div>';
+        window.OnePortfolioPagination.render(bar, {
+            currentPage: page,
+            totalPages: totalPages,
+            label: bar.dataset.paginationLabel,
+            onPageChange: function(nextPage) {
+                state[groupId].page = nextPage;
+                renderBar(groupId);
+            }
+        });
     }
-
-    document.addEventListener('click', function(e) {
-        var prev = e.target.closest ? e.target.closest('.tx-pg-prev') : null;
-        if (prev) {
-            var gid = prev.getAttribute('data-gid');
-            if (state[gid] && state[gid].page > 1) { state[gid].page--; renderBar(gid); }
-            return;
-        }
-        var next = e.target.closest ? e.target.closest('.tx-pg-next') : null;
-        if (next) {
-            var gid = next.getAttribute('data-gid');
-            if (!state[gid]) state[gid] = { page: 1 };
-            state[gid].page++;
-            renderBar(gid);
-            return;
-        }
-        var num = e.target.closest ? e.target.closest('.tx-pg-num') : null;
-        if (num) {
-            var gid = num.getAttribute('data-gid');
-            var pg = parseInt(num.getAttribute('data-page'), 10);
-            if (gid && pg) { if (!state[gid]) state[gid] = { page: 1 }; state[gid].page = pg; renderBar(gid); }
-        }
-    });
 
     window.initSymbolPagination = function(groupId) {
         if (!state[groupId]) state[groupId] = { page: 1 };
@@ -1073,34 +1052,25 @@ function openAddSymbolModal() {
         if (!bar) return;
 
         if (visible.length <= PAGE_SIZE) {
-            bar.style.display = 'none';
+            window.OnePortfolioPagination.render(bar, {
+                currentPage: 1,
+                totalPages: 1,
+                label: bar.dataset.paginationLabel,
+                onPageChange: function() {}
+            });
             return;
         }
 
-        var winStart = Math.max(1, currentPage - 1);
-        var winEnd   = Math.min(totalPages, winStart + 2);
-        if (winEnd - winStart < 2) winStart = Math.max(1, winEnd - 2);
-
-        var nums = '';
-        for (var p = winStart; p <= winEnd; p++) {
-            nums += '<span class="tx-pg-num' + (p === currentPage ? ' active' : '') + '" data-outer-page="' + p + '">' + p + '</span>';
-        }
-
-        bar.style.display = 'flex';
-        bar.innerHTML =
-            '<div class="tx-pg-indicator">' +
-                '<button class="btn btn-sm px-1 py-0 outer-pg-prev"' + (currentPage <= 1 ? ' disabled' : '') + '>&#8249;</button>' +
-                nums +
-                '<button class="btn btn-sm px-1 py-0 outer-pg-next"' + (currentPage >= totalPages ? ' disabled' : '') + '>&#8250;</button>' +
-            '</div>';
+        window.OnePortfolioPagination.render(bar, {
+            currentPage: currentPage,
+            totalPages: totalPages,
+            label: bar.dataset.paginationLabel,
+            onPageChange: function(nextPage) {
+                currentPage = nextPage;
+                render();
+            }
+        });
     }
-
-    document.addEventListener('click', function(e) {
-        if (e.target.closest('.outer-pg-prev')) { if (currentPage > 1) { currentPage--; render(); } return; }
-        if (e.target.closest('.outer-pg-next')) { currentPage++; render(); return; }
-        var num = e.target.closest('[data-outer-page]');
-        if (num) { currentPage = parseInt(num.getAttribute('data-outer-page'), 10); render(); }
-    });
 
     window.refreshOuterPagination = function(resetPage) {
         if (resetPage) currentPage = 1;
@@ -1379,8 +1349,6 @@ window.openDeleteSymbolModal = function(portfolioId, portfolioName, symbol, txCo
         buyBtn.setAttribute('aria-pressed', isBuy ? 'true' : 'false');
         sellBtn.setAttribute('aria-pressed', isSell ? 'true' : 'false');
 
-        modalEl.classList.toggle('tx-theme-buy', isBuy);
-        modalEl.classList.toggle('tx-theme-sell', isSell);
     }
 
     maxBtn.addEventListener('click', function() {
@@ -1539,11 +1507,8 @@ function openStandaloneDividendModal(portfolioId, symbol) {
     bootstrap.Modal.getOrCreateInstance(document.getElementById('addDividendModal')).show();
 }
 
-// addDividendModal submission is wired by the central ModalAjaxHandler
-// (see static/js/main.js). The earlier per-form XMLHttpRequest handler
-// here was a duplicate — having both attached caused every dividend to
-// be POSTed twice, which the user reported as "operation duplicated"
-// (added 100, total showed 200).
+// ModalAjaxHandler in static/js/main.js is the sole submit owner. Do not add
+// a per-form XMLHttpRequest listener here; two owners would submit twice.
 
 
 // -----------------------------------------------------------------------
@@ -1573,12 +1538,9 @@ function openEditDividendModal(id, amount, dateShort, notes) {
     new bootstrap.Modal(document.getElementById('editDividendModal')).show();
 }
 
-// editDividendModal submission is wired by the central ModalAjaxHandler
-// (see static/js/main.js), exactly like addDividendModal above. A second
-// per-form XMLHttpRequest handler used to live here; because neither
-// listener stopped propagation, a valid Save fired both and the edit was
-// POSTed twice. Field validation (#edit_amount, #edit_dividend_date) is
-// owned by FormValidator, which runs first and calls
+// ModalAjaxHandler in static/js/main.js is the sole submit owner here too.
+// Field validation (#edit_amount, #edit_dividend_date) is owned by
+// FormValidator, which runs first and calls
 // stopImmediatePropagation() on invalid input, and inline/banner error
 // state is cleared by ModalAjaxHandler on hidden.bs.modal.
 

@@ -7,6 +7,7 @@
     page_actions   buttons on the right of the page header
     content        the page body
 #}
+{% from 'macros/icons.html' import icon %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -16,8 +17,8 @@
     <title>{% block title %}OnePortfolio{% endblock %}</title>
 
     {% include 'components/favicon_links.html' %}
-    <meta name="theme-color" content="#f6f6f8" media="(prefers-color-scheme: light)">
-    <meta name="theme-color" content="#07070a" media="(prefers-color-scheme: dark)">
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)">
 
     {#
       Applied before the first paint so a stored preference never flashes
@@ -31,8 +32,6 @@
             if (theme === 'dark' || theme === 'light') {
                 document.documentElement.setAttribute('data-theme', theme);
             }
-            var density = localStorage.getItem('op:density');
-            if (density) document.documentElement.setAttribute('data-density', density);
             document.documentElement.setAttribute(
                 'data-sidebar', localStorage.getItem('op:sidebar') || 'expanded');
         } catch (e) {}
@@ -42,10 +41,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css"
-          integrity="sha384-QuGBSgV5Im3DzL2z+8Ko9/hqNy/N0O7zwvXAtfd1MvPKWa/UbeLV65cfm4BV5Wgq"
-          crossorigin="anonymous">
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&display=swap" rel="stylesheet">
 
     {# tokens.css declares the cascade layers and pulls Bootstrap into
        `vendor`, so it must stay first. #}
@@ -58,7 +54,9 @@
 </head>
 <body>
 
-<a class="skip-link" href="#main">Skip to content</a>
+{% include 'components/icon_sprite.html' %}
+
+<a class="skip-link" href="#main">Skip to Content</a>
 
 <div class="shell" data-nav-open="false">
 
@@ -67,33 +65,32 @@
 
         <div class="sidenav__brand">
             <a class="brand" href="{{ url_for('dashboard.index') }}">
-                {% set logo_class = 'op-logo-mark' %}
                 {% include 'components/logo_mark.html' %}
                 <span class="brand__word">OnePortfolio</span>
             </a>
             <button type="button" class="icon-button sidenav__collapse d-none d-lg-inline-flex"
                     data-sidebar-toggle aria-label="Collapse navigation">
-                <i class="bi bi-chevron-left" aria-hidden="true"></i>
+                {{ icon('chevron-left') }}
             </button>
         </div>
 
         <button type="button" class="nav-search" data-palette-open aria-label="Open command palette">
-            <i class="bi bi-search" aria-hidden="true"></i>
+            {{ icon('search') }}
             <span class="nav-search__label">Search</span>
             <kbd class="kbd">Ctrl K</kbd>
         </button>
 
         <nav class="sidenav__nav">
             {% set nav_items = [
-                ('dashboard.index',              'grid-1x2',  'Overview'),
-                ('portfolios.portfolios_list',   'wallet2',   'Portfolios'),
-                ('transactions.transaction_list','box-seam',  'Assets')
+                ('dashboard.index',              'dashboard', 'Overview'),
+                ('portfolios.portfolios_list',   'wallet',    'Portfolios'),
+                ('transactions.transaction_list','package',   'Assets')
             ] %}
-            {% for endpoint, icon, label in nav_items %}
+            {% for endpoint, icon_name, label in nav_items %}
             <a class="navlink {% if request.endpoint == endpoint %}active{% endif %}"
                href="{{ url_for(endpoint) }}" data-label="{{ label }}"
                {% if request.endpoint == endpoint %}aria-current="page"{% endif %}>
-                <i class="bi bi-{{ icon }}" aria-hidden="true"></i>
+                {{ icon(icon_name) }}
                 <span class="navlink__text">{{ label }}</span>
             </a>
             {% endfor %}
@@ -108,33 +105,28 @@
                         aria-expanded="false" aria-label="Account menu">
                     <span class="user-avatar" aria-hidden="true">{{ current_user.username[0].upper() }}</span>
                     <span class="userchip__name">{{ current_user.username }}</span>
-                    <i class="bi bi-chevron-up userchip__chevron" aria-hidden="true"></i>
+                    {{ icon('chevron-up', class='userchip__chevron') }}
                 </button>
                 <ul class="dropdown-menu">
                     <li>
                         <a class="dropdown-item" href="{{ url_for('auth.settings') }}">
-                            <i class="bi bi-gear" aria-hidden="true"></i> Settings
+                            {{ icon('settings') }} Settings
                         </a>
-                    </li>
-                    <li>
-                        <button type="button" class="dropdown-item" data-density-toggle>
-                            <i class="bi bi-arrows-collapse" aria-hidden="true"></i>
-                            <span data-density-label>Compact density</span>
-                        </button>
                     </li>
                     <li><hr class="dropdown-divider"></li>
                     <li>
                         <form method="post" action="{{ url_for('auth.logout') }}" class="m-0">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button type="submit" class="dropdown-item btn-logout">
-                                <i class="bi bi-box-arrow-right" aria-hidden="true"></i> Sign out
+                                {{ icon('logout') }} Sign Out
                             </button>
                         </form>
                     </li>
                 </ul>
             </div>
-            <button type="button" class="icon-button" data-theme-toggle aria-label="Switch theme">
-                <i class="bi bi-moon-stars" aria-hidden="true"></i>
+            <button type="button" class="icon-button theme-toggle" data-theme-toggle aria-label="Switch theme">
+                {{ icon('moon', class='theme-icon theme-icon--moon') }}
+                {{ icon('sun', class='theme-icon theme-icon--sun') }}
             </button>
         </div>
         {% endif %}
@@ -152,7 +144,7 @@
                     <button type="button" class="icon-button page__menu"
                             data-nav-open-toggle aria-controls="sidenav" aria-expanded="false"
                             aria-label="Open navigation">
-                        <i class="bi bi-list" aria-hidden="true"></i>
+                        {{ icon('menu') }}
                     </button>
                     <h1 class="page__title">{% block page_title %}{% endblock %}</h1>
                     {% block page_subtitle %}{% endblock %}
@@ -175,12 +167,14 @@
 <!-- ══ Command palette ═══════════════════════════════════════════════════ -->
 <div class="palette" id="commandPalette" role="dialog" aria-modal="true"
      aria-label="Command palette" hidden>
-    <div class="palette__dialog">
+    <div class="palette__dialog surface-dialog">
         <div class="palette__search">
-            <i class="bi bi-search" aria-hidden="true"></i>
-            <input type="text" class="palette__input" id="commandPaletteInput"
-                   placeholder="Jump to a page or action…" autocomplete="off"
-                   aria-controls="commandPaletteList">
+            <div class="command-input-group">
+                {{ icon('search') }}
+                <input type="text" class="palette__input command-input-control" id="commandPaletteInput"
+                       placeholder="Jump to a page or action…" autocomplete="off"
+                       aria-controls="commandPaletteList">
+            </div>
         </div>
         <ul class="palette__list" id="commandPaletteList" role="listbox"
             aria-label="Commands"></ul>
@@ -191,10 +185,10 @@
    data-command="Label" — see shell.js CommandPalette.collect(). #}
 <script type="application/json" id="commandPaletteData">
 {{ [
-    {'label': 'Overview',   'group': 'Navigate', 'icon': 'grid-1x2',  'href': url_for('dashboard.index')},
-    {'label': 'Portfolios', 'group': 'Navigate', 'icon': 'wallet2',   'href': url_for('portfolios.portfolios_list')},
-    {'label': 'Assets',     'group': 'Navigate', 'icon': 'box-seam',  'href': url_for('transactions.transaction_list')},
-    {'label': 'Settings',   'group': 'Navigate', 'icon': 'gear',      'href': url_for('auth.settings')}
+    {'label': 'Overview',   'group': 'Navigate', 'icon': 'dashboard', 'href': url_for('dashboard.index')},
+    {'label': 'Portfolios', 'group': 'Navigate', 'icon': 'wallet',    'href': url_for('portfolios.portfolios_list')},
+    {'label': 'Assets',     'group': 'Navigate', 'icon': 'package',   'href': url_for('transactions.transaction_list')},
+    {'label': 'Settings',   'group': 'Navigate', 'icon': 'settings',  'href': url_for('auth.settings')}
 ] | tojson }}
 </script>
 
@@ -204,17 +198,17 @@
     <div class="flash-container" aria-live="polite">
         {% for category, message in messages %}
         {% set cat = 'danger' if category == 'error' else category %}
-        {% set icon = {
-            'success': 'bi-check-circle-fill',
-            'danger':  'bi-exclamation-circle-fill',
-            'warning': 'bi-exclamation-triangle-fill',
-            'info':    'bi-info-circle-fill'
-        }.get(cat, 'bi-info-circle-fill') %}
+        {% set icon_name = {
+            'success': 'circle-check',
+            'danger':  'alert-circle',
+            'warning': 'alert-triangle',
+            'info':    'info-circle'
+        }.get(cat, 'info-circle') %}
         <div class="flash-alert flash-alert--{{ cat }}" role="alert">
-            <i class="bi {{ icon }} flash-alert__icon" aria-hidden="true"></i>
+            {{ icon(icon_name, class='flash-alert__icon') }}
             <span class="flash-alert__msg">{{ message }}</span>
             <button type="button" class="flash-alert__close" aria-label="Close">
-                <i class="bi bi-x" aria-hidden="true"></i>
+                {{ icon('x') }}
             </button>
         </div>
         {% endfor %}
@@ -225,6 +219,7 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"
         integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz"
         crossorigin="anonymous"></script>
+<script src="{{ url_for('static', filename='js/display_formatters.js', v=ASSET_VERSION) }}"></script>
 <script src="{{ url_for('static', filename='js/shell.js', v=ASSET_VERSION) }}"></script>
 <script src="{{ url_for('static', filename='js/main.js', v=ASSET_VERSION) }}"></script>
 

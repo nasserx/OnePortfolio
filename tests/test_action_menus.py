@@ -89,11 +89,12 @@ class _ActionMenuParser(HTMLParser):
             self._item = _ActionItem(attrs)
             self._item_depth = self._depth
             self._current.items.append(self._item)
-        elif tag == 'i':
+        elif tag == 'use':
+            icon_ref = attrs.get('href')
             if self._item is not None:
-                self._item.icons.append(classes)
+                self._item.icons.append(icon_ref)
             elif self._trigger_depth is not None:
-                self._current.trigger_icons.append(classes)
+                self._current.trigger_icons.append(icon_ref)
 
     def handle_starttag(self, tag, attrs):
         self._open(tag, attrs)
@@ -198,7 +199,7 @@ def test_action_menus_render_the_expected_entity_actions(app):
         'Edit', 'Remove',
     ]
     assert [item.text for item in asset_menus['Actions for AAPL in Growth'].items] == [
-        'Buy / Sell', 'Add income', 'Remove',
+        'Buy / Sell', 'Add Income', 'Remove',
     ]
     assert [item.text for item in asset_menus['Actions for Buy entry for AAPL on 2024-01-02'].items] == [
         'Edit', 'Remove',
@@ -229,7 +230,7 @@ def test_action_menu_triggers_keep_bootstrap_and_accessibility_contracts(app):
         assert {'dropdown-menu', 'dropdown-menu-end', 'action-menu__menu'} <= set(
             menu.menu['class'].split()
         )
-        assert menu.trigger_icons == [{'bi', 'bi-three-dots-vertical'}]
+        assert menu.trigger_icons == ['#op-icon-dots-vertical']
 
 
 def test_action_menus_share_viewport_safe_popper_positioning():
@@ -264,7 +265,7 @@ def test_action_items_preserve_dispatch_classes_and_payloads(app):
     assert portfolio.item('Deposit').attrs['data-portfolio-id'] == str(ids['portfolio_id'])
     assert portfolio.item('Deposit').attrs['data-name'] == 'Growth'
     assert portfolio.item('Withdraw').attrs['class'].endswith('js-withdraw-funds-btn')
-    assert 'data-withdrawable-cash' in portfolio.item('Withdraw').attrs
+    assert 'data-withdrawable-cash-input' in portfolio.item('Withdraw').attrs
     assert portfolio.item('Remove').attrs['class'].endswith('js-delete-portfolio-btn')
 
     event = portfolio_menus['Actions for Deposit entry on 2024-01-01']
@@ -276,7 +277,7 @@ def test_action_items_preserve_dispatch_classes_and_payloads(app):
     asset = asset_menus['Actions for AAPL in Growth']
     assert asset.item('Buy / Sell').attrs['class'].endswith('js-add-transaction-btn')
     assert asset.item('Buy / Sell').attrs['data-symbol'] == 'AAPL'
-    assert asset.item('Add income').attrs['class'].endswith('js-add-dividend-btn')
+    assert asset.item('Add Income').attrs['class'].endswith('js-add-dividend-btn')
     assert asset.item('Remove').attrs['class'].endswith('js-delete-symbol-btn')
     assert asset.item('Remove').attrs['data-tx-count'] == '1'
     assert asset.item('Remove').attrs['data-income-count'] == '1'
@@ -324,7 +325,7 @@ def test_remove_items_keep_destructive_presentation(app):
             classes = set(item.attrs['class'].split())
             if item.text == 'Remove':
                 assert 'dropdown-item--danger' in classes
-                assert {'bi', 'bi-trash'} in item.icons
+                assert '#op-icon-trash' in item.icons
             else:
                 assert 'dropdown-item--danger' not in classes
 
@@ -332,7 +333,8 @@ def test_remove_items_keep_destructive_presentation(app):
     dropdown_item_rule = css.split('.dropdown-item {', 1)[1].split('}', 1)[0]
     assert 'font-size: var(--text-xs);' in dropdown_item_rule
     assert 'line-height: var(--leading-normal);' in dropdown_item_rule
-    assert 'padding: var(--space-2) var(--space-3);' in dropdown_item_rule
-    assert '.dropdown-item--danger { color: var(--neg); }' in css
+    assert 'padding: var(--space-1) 0.375rem;' in dropdown_item_rule
+    assert 'border-radius: var(--radius-md);' in dropdown_item_rule
+    assert '.dropdown-item--danger { color: var(--destructive); }' in css
     assert '.dropdown-item--danger:hover,' in css
-    assert 'background-color: var(--neg-soft);' in css
+    assert 'background-color: var(--destructive-soft);' in css

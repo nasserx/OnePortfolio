@@ -279,7 +279,7 @@ def create_app(config_class=Config):
     # Defence-in-depth: HSTS (only when serving over HTTPS), clickjacking
     # protection, MIME sniffing protection, locked-down referrer/permission
     # policy, and a CSP scoped to the origins this app actually loads from
-    # (Bootstrap + bootstrap-icons via jsdelivr, Inter via Google Fonts).
+    # (Bootstrap via jsDelivr and Geist via Google Fonts).
     # Executable inline <script> blocks use one request-scoped nonce; inline
     # HTML event-handler attributes remain prohibited by ``script-src-attr
     # 'none'``. ``style-src 'unsafe-inline'`` separately permits inline styles.

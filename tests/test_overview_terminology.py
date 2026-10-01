@@ -2,6 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 from html.parser import HTMLParser
 import json
+from pathlib import Path
 import re
 from urllib.parse import quote_plus
 
@@ -11,6 +12,12 @@ from portfolio_app.calculators.allocation_charts import ALLOCATION_TOP_N
 from portfolio_app.models.user import User
 from tests._auth import authenticate_client
 from portfolio_app.services.factory import Services
+
+
+COMPONENTS_CSS = Path('portfolio_app/static/css/components.css')
+APP_CSS = Path('portfolio_app/static/css/app.css')
+OVERVIEW_TEMPLATE = Path('portfolio_app/templates/index.html')
+UI_MACROS = Path('portfolio_app/templates/macros/ui.html')
 
 
 class _VisibleTextParser(HTMLParser):
@@ -38,6 +45,12 @@ def _dec(value):
     return Decimal(str(value))
 
 
+def _css_rule(css, selector):
+    match = re.search(re.escape(selector) + r'\s*\{([^}]*)\}', css)
+    assert match, f'missing rule: {selector}'
+    return match.group(1)
+
+
 def _seed_user(username='overview_user'):
     user = User(username=username, email=f'{username}@example.com', is_verified=True)
     user.password_hash = 'legacy-test-hash'
@@ -57,7 +70,7 @@ def _visible_text(html):
 
 
 def _portfolio_rows_text(html):
-    start = html.index('<div class="ledger"')
+    start = html.index('<div class="ledger ')
     end = html.index('</section>', start)
     return _visible_text(html[start:end])
 
@@ -147,42 +160,48 @@ def test_overview_uses_current_health_metrics_and_terminology(app):
     row_text = _portfolio_rows_text(html)
     chart_data = _chart_data(html)
 
-    # Metric vocabulary. Labels are sentence case since the redesign, so the
-    # assertion is on the words, not on their casing.
     for label in (
-        'Total capital',
-        'Total cash',
-        'Book value',
-        'Total income',
+        'Total Capital',
+        'Total Cash',
+        'Book Value',
+        'Total Income',
         'Realized P&L',
     ):
         assert label in text
 
     for label in (
         'Portfolio',
-        'Book value',
+        'Book Value',
         'Realized P&L',
         'Return',
         'Income',
-        'assets',
+        'Assets',
     ):
         assert label in row_text
 
     column_positions = [
         row_text.index(label)
-        for label in ('Portfolio', 'Book value', 'Income', 'Realized P&L', 'Return', 'assets')
+        for label in ('Portfolio', 'Book Value', 'Income', 'Realized P&L', 'Return', 'Assets')
     ]
     assert column_positions == sorted(column_positions)
-    assert 'class="marker allocation-marker-1"' in html
+    assert 'class="marker"' in html
     assert '>ا</span>' in html
 
     # One canvas, with a segmented control swapping the basis in place.
-    assert 'By book value' in text
-    assert 'By capital' in text
+    assert 'By Book Value' in text
+    assert 'By Capital' in text
     assert html.count('<canvas') == 1
     assert '<canvas id="allocationChart"' in html
     assert 'data-alloc-view="book_value_chart"' in html
     assert 'data-alloc-view="capital_chart"' in html
+    assert 'id="split-book-tab" role="tab"' in html
+    assert 'id="split-capital-tab" role="tab"' in html
+    assert html.count('aria-controls="allocation-panel"') == 2
+    assert 'id="allocation-panel" role="tabpanel"' in html
+    assert 'aria-describedby="allocationLegend allocationChartStatus"' in html
+    assert 'id="allocationChartStatus" aria-live="polite"' in html
+    assert '<h2 class="hero-figure__label" id="overview-headline">' in html
+    assert 'Positive return:' in html
     assert 'href="/charts"' not in html
     assert '>Charts<' not in html
     assert set(chart_data) == {'book_value_chart', 'capital_chart'}
@@ -196,14 +215,14 @@ def test_overview_uses_current_health_metrics_and_terminology(app):
     # The summary table carries per-portfolio figures only; account-level
     # totals belong to the hero and must not be duplicated in the rows.
     for removed_card_label in (
-        'Total capital',
-        'Total cash',
+        'Total Capital',
+        'Total Cash',
         'Positions',
-        'Total income',
+        'Total Income',
     ):
         assert removed_card_label not in row_text
 
-    assert 'View assets' in text
+    assert 'View Assets' in text
 
     for old_label in (
         'TOTAL CONTRIBUTED',
@@ -232,6 +251,21 @@ def test_overview_uses_current_health_metrics_and_terminology(app):
     assert '+100.00' in row_text
     assert '+1.75%' in row_text
     assert f'href="/transactions/?portfolio={quote_plus(portfolio.name)}"' in html
+    assert f'aria-label="View assets in {portfolio.name}"' in html
+
+
+def test_overview_chart_controls_keep_native_keyboard_semantics():
+    source = Path('portfolio_app/static/js/overview_charts.js').read_text(encoding='utf-8')
+
+    assert "toggle.type = 'button'" in source
+    assert "toggle.className = 'allocation-legend__row allocation-legend__toggle'" in source
+    assert "event.key === 'ArrowRight'" in source
+    assert "event.key === 'ArrowLeft'" in source
+    assert "event.key === 'Home'" in source
+    assert "event.key === 'End'" in source
+    assert "setAttribute('tabindex', selected ? '0' : '-1')" in source
+    assert 'if (this.legendWired) return;' in source
+    assert 'if (this.canvasWrap) this.canvasWrap.hidden = true;' in source
 
 
 def test_overview_empty_portfolios_render_empty_chart_context(app):
@@ -247,7 +281,7 @@ def test_overview_empty_portfolios_render_empty_chart_context(app):
     text = _visible_text(html)
     chart_data = _chart_data(html)
 
-    assert 'No portfolios yet' in text
+    assert 'No Portfolios Yet' in text
     # Both bases share one canvas, so there is a single empty message and the
     # server still ships both (empty) datasets for the switcher.
     assert 'No portfolio data available.' in text
@@ -331,3 +365,65 @@ def test_overview_keeps_related_routes_available(app):
     assert client.get('/charts').status_code == 404
     assert client.get('/portfolios/').status_code == 200
     assert client.get('/transactions/').status_code == 200
+
+
+def test_overview_supporting_metrics_use_one_shared_item_grid_contract():
+    template = OVERVIEW_TEMPLATE.read_text(encoding='utf-8')
+    macros = UI_MACROS.read_text(encoding='utf-8')
+    components = COMPONENTS_CSS.read_text(encoding='utf-8')
+    app_css = APP_CSS.read_text(encoding='utf-8')
+
+    labels = re.findall(r"call fact\('([^']+)'", template)
+    assert labels == [
+        'Total Capital',
+        'Total Cash',
+        'Total Income',
+        'Realized P&L',
+    ]
+    assert "money(totals.total_capital)" in template
+    assert "money(totals.total_cash)" in template
+    assert "money(totals.total_income, tone='income', signed=true)" in template
+    assert "money(totals.realized_pnl, tone='sign', signed=true)" in template
+
+    assert 'class="fact supporting-item"' in macros
+    assert 'class="fact__label supporting-item__label"' in macros
+    assert 'class="fact__value supporting-item__value"' in macros
+
+    tile = _css_rule(components, '.supporting-item')
+    assert 'background-color: transparent' in tile
+    assert 'border: 1px solid var(--border)' in tile
+    assert tile.count('border:') == 1
+    assert 'border-radius: var(--radius-lg)' in tile
+    assert 'padding: var(--control-pad-x) var(--space-3)' in tile
+    assert 'box-shadow: none' in tile
+    assert 'var(--muted)' not in tile
+    assert 'var(--muted-half)' not in tile
+    assert 'var(--secondary)' not in tile
+    assert not re.search(
+        r'financial-|(?:portfolio-)?chart-|#[0-9a-f]{3,8}\b|(?:oklch|rgba?)\(',
+        tile,
+        re.I,
+    )
+    assert ':hover' not in re.search(
+        r'/\* Compact, non-interactive.*?(?=/\*|/\* ={5,})',
+        components,
+        re.S,
+    ).group(0)
+
+    label = _css_rule(components, '.supporting-item__label')
+    value = _css_rule(components, '.supporting-item__value')
+    assert 'color: var(--muted-foreground)' in label
+    assert 'color: var(--foreground)' in value
+    assert 'font-variant-numeric: tabular-nums' in value
+    assert 'white-space: nowrap' in value
+    assert 'financial-' not in label + value
+
+    grid = _css_rule(app_css, '.hero-figure__facts')
+    assert 'grid-template-columns: repeat(2, minmax(0, 1fr))' in grid
+    mobile = re.search(
+        r'@media \(max-width: 32rem\)\s*\{.*?\.hero-figure__facts\s*\{([^}]*)\}',
+        app_css,
+        re.S,
+    )
+    assert mobile
+    assert 'grid-template-columns: minmax(0, 1fr)' in mobile.group(1)

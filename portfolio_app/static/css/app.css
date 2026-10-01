@@ -23,7 +23,7 @@
   .shell {
     display: flex;
     min-height: 100dvh;
-    background-color: var(--bg-canvas);
+    background-color: var(--background);
   }
 
   .shell__main {
@@ -44,8 +44,9 @@
     width: var(--sidebar-w);
     height: 100dvh;
     padding: var(--space-3);
-    border-right: 1px solid var(--line-subtle);
-    background-color: var(--bg-surface);
+    border-right: 1px solid var(--sidebar-border);
+    background-color: var(--sidebar);
+    color: var(--sidebar-foreground);
     transition: width var(--dur-3) var(--ease-out);
   }
 
@@ -66,9 +67,9 @@
     height: 1.75rem;
   }
 
-  .sidenav__collapse .bi { font-size: 0.8rem; }
+  .sidenav__collapse .icon { width: 0.8rem; height: 0.8rem; }
 
-  :root[data-sidebar="collapsed"] .sidenav__collapse .bi { transform: rotate(180deg); }
+  :root[data-sidebar="collapsed"] .sidenav__collapse .icon { transform: rotate(180deg); }
 
   /* ---- search trigger -------------------------------------------------- */
   .nav-search {
@@ -79,10 +80,10 @@
     height: var(--control-h);
     margin-bottom: var(--space-4);
     padding: 0 var(--space-2) 0 var(--space-3);
-    border: 1px solid var(--line-subtle);
-    border-radius: var(--radius-sm);
-    background-color: var(--bg-inset);
-    color: var(--fg-faint);
+    border: 1px solid var(--sidebar-border);
+    border-radius: var(--radius-lg);
+    background-color: var(--background);
+    color: var(--muted-foreground);
     font-size: var(--text-sm);
     text-align: left;
     cursor: pointer;
@@ -90,8 +91,15 @@
   }
 
   .nav-search:hover {
-    border-color: var(--line-default);
-    color: var(--fg-muted);
+    border-color: var(--sidebar-accent);
+    background-color: var(--sidebar-accent);
+    color: var(--sidebar-accent-foreground);
+  }
+
+  .nav-search:focus-visible {
+    border-color: var(--sidebar-ring);
+    outline: none;
+    box-shadow: 0 0 0 3px color-mix(in oklch, var(--sidebar-ring) 50%, transparent);
   }
 
   .nav-search__label {
@@ -105,10 +113,10 @@
     align-items: center;
     gap: 1px;
     padding: 0.125rem 0.3125rem;
-    border: 1px solid var(--line-default);
-    border-radius: var(--radius-xs);
-    background-color: var(--bg-surface);
-    color: var(--fg-subtle);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background-color: var(--card);
+    color: var(--muted-foreground);
     font-family: var(--font-sans);
     font-size: var(--text-2xs);
     line-height: 1.2;
@@ -131,8 +139,8 @@
     gap: var(--space-3);
     height: 2.25rem;
     padding: 0 var(--space-3);
-    border-radius: var(--radius-sm);
-    color: var(--fg-muted);
+    border-radius: var(--radius-md);
+    color: var(--muted-foreground);
     font-size: var(--text-sm);
     font-weight: var(--weight-medium);
     white-space: nowrap;
@@ -140,49 +148,28 @@
   }
 
   .navlink:hover {
-    background-color: var(--bg-hover);
-    color: var(--fg-default);
+    background-color: var(--sidebar-accent);
+    color: var(--sidebar-accent-foreground);
   }
 
-  .navlink .bi {
+  .navlink .icon {
     flex: none;
     width: 1rem;
-    font-size: 0.9375rem;
-    text-align: center;
-    transition: transform var(--dur-2) var(--ease-spring);
+    height: 1rem;
+    transition: color var(--dur-1) var(--ease-out);
   }
 
-  .navlink:hover .bi { transform: scale(1.1); }
+  .navlink:hover .icon { color: var(--sidebar-accent-foreground); }
 
   .navlink.active {
-    background-color: var(--brand-soft);
-    color: var(--brand);
-  }
-
-  /* The active marker is the only brand-coloured shape in the chrome. */
-  .navlink.active::before {
-    content: "";
-    position: absolute;
-    left: calc(-1 * var(--space-3) - 1px);
-    top: 50%;
-    width: 3px;
-    height: 1.125rem;
-    translate: 0 -50%;
-    border-radius: 0 var(--radius-pill) var(--radius-pill) 0;
-    background-color: var(--brand);
-    animation: op-fade-in var(--dur-2) var(--ease-out);
+    background-color: var(--sidebar-accent);
+    color: var(--sidebar-accent-foreground);
   }
 
   .navlink__text {
     overflow: hidden;
     white-space: nowrap;
     transition: opacity var(--dur-2) var(--ease-out);
-  }
-
-  .sidenav__divider {
-    height: 1px;
-    margin: var(--space-3) var(--space-2);
-    background-color: var(--line-subtle);
   }
 
   /* ---- footer ---------------------------------------------------------- */
@@ -192,21 +179,12 @@
     gap: var(--space-1);
     margin-top: var(--space-3);
     padding-top: var(--space-3);
-    border-top: 1px solid var(--line-subtle);
+    border-top: 1px solid var(--sidebar-border);
   }
 
   .sidenav__user {
     flex: 1;
     min-width: 0;
-  }
-
-  .dropdown-note {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    padding: var(--space-2) var(--space-3);
-    color: var(--fg-faint);
-    font-size: var(--text-xs);
   }
 
   .userchip {
@@ -218,16 +196,16 @@
     height: 2.25rem;
     padding: 0 var(--space-2);
     border: 1px solid transparent;
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-md);
     background: none;
-    color: var(--fg-default);
+    color: var(--sidebar-foreground);
     font-size: var(--text-sm);
     cursor: pointer;
     transition: background-color var(--dur-1) var(--ease-out);
   }
 
   .userchip:hover,
-  .userchip[aria-expanded="true"] { background-color: var(--bg-hover); }
+  .userchip[aria-expanded="true"] { background-color: var(--sidebar-accent); }
 
   .userchip__name {
     flex: 1;
@@ -241,8 +219,9 @@
 
   .userchip__chevron {
     flex: none;
-    color: var(--fg-faint);
-    font-size: 0.7rem;
+    width: 0.7rem;
+    height: 0.7rem;
+    color: var(--muted-foreground);
     transition: transform var(--dur-2) var(--ease-out);
   }
 
@@ -288,11 +267,11 @@
     translate: 0 -50%;
     z-index: var(--z-sidebar);
     padding: var(--space-1) var(--space-2);
-    border: 1px solid var(--line-default);
+    border: 1px solid var(--border);
     border-radius: var(--radius-sm);
-    background-color: var(--bg-raised);
-    box-shadow: var(--shadow-overlay);
-    color: var(--fg-default);
+    background-color: var(--popover);
+    box-shadow: var(--shadow-menu);
+    color: var(--foreground);
     font-size: var(--text-xs);
     white-space: nowrap;
     opacity: 0;
@@ -322,8 +301,18 @@
       inset: 0 auto 0 0;
       width: min(17rem, 84vw);
       transform: translateX(-100%);
-      box-shadow: var(--shadow-overlay);
+      box-shadow: var(--shadow-dialog);
       transition: transform var(--dur-3) var(--ease-out);
+    }
+
+    .sidenav :is(.nav-search, .navlink, .userchip) {
+      height: 2.75rem;
+    }
+
+    .sidenav .icon-button:not(.theme-toggle),
+    .page__menu {
+      width: 2.75rem;
+      height: 2.75rem;
     }
 
     .shell[data-nav-open="true"] .sidenav { transform: none; }
@@ -366,7 +355,6 @@
     place-items: start center;
     padding: max(8vh, var(--space-8)) var(--space-4) var(--space-4);
     background-color: var(--bg-backdrop);
-    backdrop-filter: blur(3px);
     animation: op-fade-in var(--dur-2) var(--ease-out);
   }
 
@@ -374,32 +362,13 @@
 
   .palette__dialog {
     width: min(34rem, 100%);
-    border: 1px solid var(--line-default);
-    border-radius: var(--radius-lg);
-    background-color: var(--bg-raised);
-    box-shadow: var(--shadow-overlay);
     overflow: hidden;
     animation: op-scale-in var(--dur-3) var(--ease-out);
   }
 
   .palette__search {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    padding: 0 var(--space-4);
-    border-bottom: 1px solid var(--line-subtle);
-  }
-
-  .palette__search .bi { color: var(--fg-faint); }
-
-  .palette__input {
-    flex: 1;
-    height: 3rem;
-    border: 0;
-    background: none;
-    color: var(--fg-default);
-    font-size: var(--text-md);
-    outline: none;
+    padding: var(--space-1);
+    padding-bottom: 0;
   }
 
   .palette__list {
@@ -415,34 +384,34 @@
     align-items: center;
     gap: var(--space-3);
     padding: var(--space-2) var(--space-3);
-    border-radius: var(--radius-sm);
-    color: var(--fg-muted);
+    border-radius: var(--radius-lg);
+    color: var(--muted-foreground);
     font-size: var(--text-sm);
     cursor: pointer;
   }
 
-  .palette__item .bi {
+  .palette__item .icon {
     width: 1rem;
-    color: var(--fg-faint);
-    text-align: center;
+    height: 1rem;
+    color: var(--muted-foreground);
   }
 
   .palette__item[aria-selected="true"] {
-    background-color: var(--brand-soft);
-    color: var(--brand);
+    background-color: var(--accent);
+    color: var(--accent-foreground);
   }
 
-  .palette__item[aria-selected="true"] .bi { color: var(--brand); }
+  .palette__item[aria-selected="true"] .icon { color: var(--accent-foreground); }
 
   .palette__hint {
     margin-left: auto;
-    color: var(--fg-faint);
+    color: var(--muted-foreground);
     font-size: var(--text-2xs);
   }
 
   .palette__empty {
     padding: var(--space-6);
-    color: var(--fg-subtle);
+    color: var(--muted-foreground);
     font-size: var(--text-sm);
     text-align: center;
   }
@@ -477,7 +446,7 @@
   }
 
   .page__title {
-    font-size: var(--text-xl);
+    font-size: var(--text-2xl);
     font-weight: var(--weight-semibold);
     letter-spacing: -0.02em;
   }
@@ -511,10 +480,7 @@
      4. OVERVIEW
      ====================================================================== */
 
-  /* Equal halves. The split panel used to be a 24rem sidecar, which capped
-     the ring at a size the page had room to beat. Given half the row it can
-     sit beside its own legend instead of stacked above it, so the chart gets
-     both a wider box and a taller one. */
+  /* Equal halves keep the metric hierarchy and allocation panel balanced. */
   .overview-hero {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -530,10 +496,6 @@
     display: flex;
     flex-direction: column;
     padding: var(--space-6);
-    border: 1px solid var(--line-subtle);
-    border-radius: var(--radius-md);
-    background-color: var(--bg-surface);
-    box-shadow: var(--shadow-raised);
   }
 
   /* The card stretches to match the allocation panel, so it always has slack
@@ -545,14 +507,15 @@
     display: flex;
     align-items: center;
     gap: var(--space-2);
-    color: var(--fg-subtle);
+    margin: 0;
+    color: var(--muted-foreground);
     font-size: var(--text-xs);
     font-weight: var(--weight-medium);
   }
 
   .hero-figure__value {
     margin-top: var(--space-2);
-    color: var(--fg-default);
+    color: var(--foreground);
     font-size: var(--num-hero);
     font-weight: var(--weight-semibold);
     line-height: 1.05;
@@ -563,57 +526,28 @@
     display: flex;
     align-items: center;
     gap: var(--space-3);
+    flex-wrap: wrap;
     margin-top: var(--space-3);
-    color: var(--fg-subtle);
+    color: var(--muted-foreground);
     font-size: var(--text-xs);
+    line-height: 1.45;
   }
 
-  /* The card is stretched to the chart panel beside it, leaving ~120px of
-     slack. The facts block absorbs it rather than being pinned to the
-     bottom, which would only relocate the gap under the headline. */
+  /* Four supporting Items retain a strict 2x2 reading order on wide screens;
+     their shared visual contract lives in components.css. */
   .hero-figure__facts {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
-    gap: var(--space-4) var(--space-5);
-    padding-top: var(--space-5);
-    border-top: 1px solid var(--line-subtle);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-3);
     margin-top: var(--space-5);
   }
 
   @media (min-width: 68.0625rem) {
     .hero-figure__facts {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
       flex: 1;
-      align-content: space-between;
-      row-gap: var(--space-5);
+      align-content: end;
       margin-top: var(--space-6);
     }
-  }
-
-  .fact__label {
-    display: flex;
-    align-items: center;
-    gap: var(--space-1);
-    margin: 0 0 var(--space-1);
-    color: var(--fg-subtle);
-    font-size: var(--text-xs);
-    font-weight: var(--weight-medium);
-    letter-spacing: 0;
-    white-space: nowrap;
-  }
-
-  /* These four carry the whole lower half of the hero card. At the number
-     scale's small step they left it looking unfinished; one step up gives
-     the card a second centre of gravity under the headline figure. */
-  .fact__value {
-    margin: 0;
-    color: var(--fg-default);
-    font-size: var(--num-lg);
-    font-weight: var(--weight-medium);
-    font-variant-numeric: tabular-nums;
-    letter-spacing: -0.015em;
-    overflow: hidden;
-    text-overflow: ellipsis;
   }
 
   /* ---- allocation panel ------------------------------------------------ */
@@ -629,7 +563,7 @@
 
   .alloc-canvas {
     position: relative;
-    height: 9rem;
+    height: clamp(10rem, 24vw, 12rem);
     flex: none;
   }
 
@@ -663,9 +597,30 @@
     display: grid;
     place-items: center;
     min-height: 10rem;
-    color: var(--fg-subtle);
+    color: var(--muted-foreground);
     font-size: var(--text-sm);
     text-align: center;
+  }
+
+  @media (max-width: 32rem) {
+    .hero-figure { padding: var(--space-5); }
+
+    .hero-figure__facts {
+      grid-template-columns: minmax(0, 1fr);
+      margin-top: var(--space-4);
+    }
+
+    .alloc-panel .card-header {
+      align-items: stretch;
+      flex-direction: column;
+    }
+
+    .alloc-panel .segmented { display: flex; }
+
+    .alloc-panel .segmented__option {
+      flex: 1 1 50%;
+      padding-inline: var(--space-2);
+    }
   }
 
   /* ---- portfolio ledger table ------------------------------------------
@@ -685,6 +640,8 @@
      The name column takes an equal share, not the 1.6 it had — names are
      short, and the extra width only opened a canyon before the first
      figure. */
+  .overview-ledger__title { margin-bottom: var(--space-3); }
+
   .ledger {
     display: grid;
     grid-template-columns:
@@ -693,10 +650,6 @@
       12rem;
     column-gap: var(--space-3);
     row-gap: 0;
-    border: 1px solid var(--line-subtle);
-    border-radius: var(--radius-md);
-    background-color: var(--bg-surface);
-    box-shadow: var(--shadow-raised);
     overflow: hidden;
   }
 
@@ -708,8 +661,7 @@
     gap: var(--space-3);
     padding: 0 var(--space-4);
     min-height: var(--row-h);
-    border-bottom: 1px solid var(--line-subtle);
-    transition: background-color var(--dur-1) var(--ease-out);
+    border-bottom: 1px solid var(--border);
   }
 
   /* Fallback for engines without subgrid: rows keep their own identical
@@ -731,14 +683,12 @@
 
   .ledger__row--head {
     min-height: 2.25rem;
-    background-color: var(--bg-inset);
-    color: var(--fg-subtle);
+    background-color: transparent;
+    color: var(--muted-foreground);
     font-size: var(--text-2xs);
     font-weight: var(--weight-medium);
     letter-spacing: var(--tracking-label);
   }
-
-  .ledger__row:not(.ledger__row--head):hover { background-color: var(--bg-hover); }
 
   .ledger__name {
     display: flex;
@@ -773,21 +723,17 @@
     gap: var(--space-1);
     padding: 0.25rem var(--space-2);
     border-radius: var(--radius-sm);
-    color: var(--fg-subtle);
+    color: var(--muted-foreground);
     font-size: var(--text-xs);
     font-weight: var(--weight-medium);
     white-space: nowrap;
     transition: background-color var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out);
   }
 
-  .ledger-link .bi { transition: transform var(--dur-2) var(--ease-out); }
-
   .ledger-link:hover {
-    background-color: var(--brand-soft);
-    color: var(--brand);
+    background-color: var(--accent);
+    color: var(--accent-foreground);
   }
-
-  .ledger-link:hover .bi { transform: translateX(2px); }
 
   @media (max-width: 60rem) {
     .ledger__row--head { display: none; }
@@ -796,8 +742,14 @@
        own two-column card, so a shared track list would only impose a
        31rem minimum on a phone-width viewport. */
     .ledger {
-      display: block;
+      display: grid;
       grid-template-columns: none;
+      gap: var(--space-3);
+      border: 0;
+      border-radius: 0;
+      background-color: transparent;
+      box-shadow: none;
+      overflow: visible;
     }
 
     .ledger__row {
@@ -805,7 +757,13 @@
       grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
       gap: var(--space-2) var(--space-3);
       padding: var(--space-3) var(--space-4);
+      border: 0;
+      border-radius: var(--radius-xl);
+      background-color: var(--card);
+      box-shadow: 0 0 0 1px var(--surface-ring);
     }
+
+    .ledger__row:last-child { border-bottom: 0; }
 
     .ledger__name { grid-column: 1 / -1; }
 
@@ -820,7 +778,7 @@
     /* Header labels are re-attached per cell once the grid stacks. */
     .ledger__num::before {
       content: attr(data-label);
-      color: var(--fg-faint);
+      color: var(--muted-foreground);
       font-size: var(--text-2xs);
       font-weight: var(--weight-medium);
       letter-spacing: var(--tracking-label);
@@ -850,22 +808,20 @@
   .disclosure.enter { animation-name: op-fade-in; }
 
   .disclosure__item {
-    border: 1px solid var(--line-subtle);
-    border-radius: var(--radius-md);
-    background-color: var(--bg-surface);
-    box-shadow: var(--shadow-raised);
     overflow: hidden;
-    transition: border-color var(--dur-2) var(--ease-out);
   }
-
-  .disclosure__item:hover { border-color: var(--line-default); }
-  .disclosure__item:has(.disclosure__toggle[aria-expanded="true"]) { border-color: var(--line-default); }
 
   .disclosure__head {
     display: flex;
     align-items: center;
     gap: var(--space-3);
     padding: var(--space-3) var(--space-4);
+    transition: background-color var(--dur-1) var(--ease-out);
+  }
+
+  .disclosure__head:has(.disclosure__toggle:hover),
+  .disclosure__head:has(.disclosure__toggle:focus-visible) {
+    background-color: var(--muted-half);
   }
 
   /* The whole summary row is one button: keyboard-reachable, announces its
@@ -886,14 +842,14 @@
 
   .disclosure__chevron {
     flex: none;
-    color: var(--fg-faint);
+    color: var(--muted-foreground);
     font-size: 0.75rem;
     transition: transform var(--dur-2) var(--ease-out), color var(--dur-1) var(--ease-out);
   }
 
   .disclosure__toggle[aria-expanded="true"] .disclosure__chevron {
     transform: rotate(90deg);
-    color: var(--fg-muted);
+    color: var(--foreground);
   }
 
   /* Fixed, so the metric strip starts at the same x on every card. Sized to
@@ -934,6 +890,10 @@
     margin-right: var(--row-actions-gutter);
   }
 
+  /* Seven existing asset figures share the disclosure layout but collapse
+     through the same responsive column contract as Portfolio summaries. */
+  .disclosure__metrics--assets { --metric-columns: 7; }
+
   /* Each cell is a label above its value, and that pair is the unit being
      read here — centring binds the two lines together. The trade is that
      the figures no longer stack decimal-for-decimal; the Overview ledger is
@@ -947,7 +907,7 @@
   .metric__label {
     display: block;
     margin: 0 0 2px;
-    color: var(--fg-faint);
+    color: var(--muted-foreground);
     font-size: var(--text-2xs);
     font-weight: var(--weight-medium);
     letter-spacing: var(--tracking-label);
@@ -959,7 +919,7 @@
   .metric__value {
     display: block;
     margin: 0;
-    color: var(--fg-default);
+    color: var(--foreground);
     font-size: var(--num-sm);
     font-weight: var(--weight-medium);
     font-variant-numeric: tabular-nums;
@@ -993,12 +953,10 @@
      each cell, and the difference is what the panel makes up. */
   .disclosure__panel {
     padding-inline: calc(var(--space-4) - var(--cell-pad-x));
-    border-top: 1px solid var(--line-subtle);
-    background-color: var(--bg-inset);
+    border-top: 1px solid var(--border);
+    background-color: var(--card);
     animation: op-fade-in var(--dur-3) var(--ease-out);
   }
-
-  .disclosure__panel .table thead th { background-color: var(--bg-inset); }
 
   /* Records revealed inside a disclosure are one level below the summary row
      that opened them, and read half a step smaller to say so. Page-level
@@ -1051,12 +1009,12 @@
     min-width: 9rem;
   }
 
-  .search-field .bi {
+  .search-field .icon {
     position: absolute;
     top: 50%;
     left: var(--space-3);
     translate: 0 -50%;
-    color: var(--fg-faint);
+    color: var(--muted-foreground);
     font-size: 0.85rem;
     pointer-events: none;
   }
@@ -1077,12 +1035,19 @@
 
   @media (max-width: 56rem) {
     .settings { grid-template-columns: minmax(0, 1fr); gap: var(--space-4); }
+
+    .settings-sidebar {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .settings-sidebar-link { justify-content: center; }
   }
 
   .settings-sidebar {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: var(--space-1);
     margin: 0;
     padding: 0;
     list-style: none;
@@ -1099,9 +1064,9 @@
     height: 2.25rem;
     padding: 0 var(--space-3);
     border: 0;
-    border-radius: var(--radius-sm);
-    background: none;
-    color: var(--fg-muted);
+    border-radius: var(--radius-lg);
+    background: transparent;
+    color: var(--muted-foreground);
     font-size: var(--text-sm);
     font-weight: var(--weight-medium);
     text-align: left;
@@ -1110,19 +1075,43 @@
   }
 
   .settings-sidebar-link:hover {
-    background-color: var(--bg-hover);
-    color: var(--fg-default);
+    background-color: var(--accent);
+    color: var(--accent-foreground);
   }
 
   .settings-sidebar-link.active {
-    background-color: var(--brand-soft);
-    color: var(--brand);
+    background-color: var(--accent);
+    color: var(--accent-foreground);
   }
 
-  .settings-sidebar-link .bi { width: 1rem; text-align: center; }
+  .settings-sidebar-link:focus-visible {
+    box-shadow: 0 0 0 2px color-mix(in oklch, var(--ring) 50%, transparent);
+  }
 
   .settings-tab-content .tab-pane.fade {
     transition: opacity var(--dur-3) var(--ease-out);
+  }
+
+  .settings-section-heading {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin: 0 0 var(--space-5);
+    font-size: var(--text-lg);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-tight);
+  }
+
+  .settings-section-heading .icon {
+    color: var(--muted-foreground);
+  }
+
+  .settings-panel {
+    padding: var(--space-5);
+  }
+
+  .settings-field + .settings-field {
+    margin-top: var(--space-4);
   }
 
   .settings-readonly-field {
@@ -1131,20 +1120,28 @@
     gap: var(--space-2);
     min-height: var(--control-h);
     padding: 0 var(--control-pad-x);
-    border: 1px solid var(--line-subtle);
-    border-radius: var(--radius-sm);
-    background-color: var(--bg-inset);
-    color: var(--fg-default);
+    border: 1px solid var(--input);
+    border-radius: var(--radius-lg);
+    background-color: var(--muted);
+    color: var(--foreground);
     font-size: var(--text-sm);
+  }
+
+  .settings-readonly-field > .icon { color: var(--muted-foreground); }
+
+  .settings-readonly-field > span:not(.settings-verified-badge) {
+    min-width: 0;
+    overflow-wrap: anywhere;
   }
 
   .settings-verified-badge {
     display: inline-flex;
     align-items: center;
     gap: var(--space-1);
-    color: var(--pos);
+    color: var(--foreground);
     font-size: var(--text-xs);
     font-weight: var(--weight-medium);
+    margin-left: auto;
   }
 
   .settings-action-row {
@@ -1158,40 +1155,71 @@
   .settings-action-title {
     display: flex;
     align-items: center;
-    color: var(--fg-default);
+    gap: var(--space-2);
+    color: var(--foreground);
     font-size: var(--text-sm);
     font-weight: var(--weight-medium);
   }
 
   .settings-action-desc {
-    color: var(--fg-subtle);
+    margin-top: var(--space-1);
+    color: var(--muted-foreground);
     font-size: var(--text-xs);
+    overflow-wrap: anywhere;
+  }
+
+  .settings-group-label {
+    margin: 0 0 var(--space-3);
+    color: var(--muted-foreground);
+    font-size: var(--text-xs);
+    font-weight: var(--weight-medium);
+  }
+
+  .settings-separator {
+    margin: var(--space-4) 0;
+    border-color: var(--border);
+    opacity: 1;
+  }
+
+  .settings-action-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin-top: var(--space-3);
+  }
+
+  .settings-status {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin: var(--space-3) 0;
   }
 
   .settings-danger-zone {
     padding: var(--space-4);
-    border: 1px solid var(--neg-line);
-    border-radius: var(--radius-md);
-    background-color: var(--neg-soft);
+    border: 1px solid var(--destructive-line);
+    border-radius: var(--radius-xl);
+    background-color: var(--destructive-soft);
   }
 
   .settings-danger-header {
     display: flex;
     align-items: center;
-    color: var(--neg);
+    gap: var(--space-2);
+    color: var(--destructive);
     font-size: var(--text-sm);
     font-weight: var(--weight-semibold);
   }
 
   .settings-danger-desc {
     margin: var(--space-2) 0 var(--space-1);
-    color: var(--fg-muted);
+    color: var(--muted-foreground);
     font-size: var(--text-sm);
   }
 
   .settings-danger-warning {
     margin-bottom: var(--space-4);
-    color: var(--neg);
+    color: var(--destructive);
     font-size: var(--text-xs);
   }
 
@@ -1201,36 +1229,69 @@
 
   .auth {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    place-items: center;
     min-height: 100dvh;
-    background-color: var(--bg-canvas);
+    background-color: var(--background);
   }
 
   .auth__form-side {
     display: grid;
     place-items: center;
+    width: 100%;
+    min-width: 0;
     padding: var(--space-8) var(--space-5);
   }
 
   .auth-card {
-    width: min(23rem, 100%);
+    width: min(24rem, 100%);
+    padding: var(--space-6);
     animation: op-fade-up var(--dur-4) var(--ease-out) backwards;
   }
 
   .auth-logo { margin-inline: auto; }
 
+  .auth-header {
+    display: grid;
+    justify-items: center;
+    gap: var(--space-2);
+    margin-bottom: var(--space-5);
+    text-align: center;
+  }
+
   .auth-title {
+    margin: var(--space-1) 0 0;
     font-size: var(--text-2xl);
     font-weight: var(--weight-semibold);
     letter-spacing: -0.025em;
   }
 
   .auth-subtitle {
-    color: var(--fg-subtle);
+    margin: 0;
+    color: var(--muted-foreground);
     font-size: var(--text-sm);
   }
 
-  a.auth-subtitle:hover { color: var(--brand); }
+  a.auth-subtitle:hover { color: var(--foreground); }
+
+  .auth-form,
+  .form-stack {
+    display: grid;
+    gap: var(--space-4);
+  }
+
+  .field-group { min-width: 0; }
+
+  .auth-footnote,
+  .auth-resend {
+    margin-top: var(--space-4);
+    text-align: center;
+  }
+
+  .auth-separator { margin: var(--space-5) 0; }
+
+  .auth-cancel { margin-top: var(--space-3); }
+
+  .auth-code-label { text-align: center; }
 
   .btn-auth {
     width: 100%;
@@ -1238,107 +1299,29 @@
     font-size: var(--text-md);
   }
 
-  /* Secondary auth screens (update email and verify code)
-     render their form inside a card rather than bare on the canvas. */
   .auth-inner-card {
-    border-radius: var(--radius-lg);
+    padding: var(--space-6);
   }
+
+  .auth-inner-header { margin-bottom: var(--space-5); }
 
   .auth-inner-title {
-    font-size: var(--text-xl);
+    margin: 0;
+    font-size: var(--text-lg);
     font-weight: var(--weight-semibold);
   }
 
-  /* ---- showcase side ---------------------------------------------------
-     A muted, static portrait of the product. It is decoration with a job:
-     it tells a first-time visitor what they are signing in to.
-     -------------------------------------------------------------------- */
-  /* A flat shade, not a gradient: the copy is vertically centred, so its
-     band within the panel moves with the viewport and any falloff would
-     hold only at the height it was eyeballed on. Nothing dissolves either —
-     a bounded panel has no edge to hide. The surface colour stays beneath,
-     so the panel still looks deliberate if the picture never arrives. */
-  .auth__showcase {
-    position: relative;
+  .form-actions {
     display: flex;
-    flex-direction: column;
-    justify-content: center;
-    gap: var(--space-6);
-    padding: var(--space-12);
-    border-left: 1px solid var(--line-subtle);
-    background-color: var(--bg-surface);
-    background-image: var(--intro-wash);
-    overflow: hidden;
-  }
-
-  .auth__quote {
-    position: relative;
-    max-width: 26rem;
-    color: var(--fg-default);
-    font-size: var(--text-2xl);
-    font-weight: var(--weight-medium);
-    line-height: var(--leading-snug);
-    letter-spacing: -0.02em;
-  }
-
-  /* Full strength rather than a quieter step. This sat over a photograph
-     once, where tinting text down was paid for by the picture; the panel is
-     a flat surface under a sub-10% wash now, so the reason is simply that
-     the quote and its follow-on are one thought and size already separates
-     them. */
-  .auth__quote-sub {
-    position: relative;
-    max-width: 26rem;
-    color: var(--fg-default);
-    font-size: var(--text-sm);
-  }
-
-  .auth__preview {
-    position: relative;
-    max-width: 26rem;
-    padding: var(--space-5);
-    border: 1px solid var(--line-subtle);
-    border-radius: var(--radius-md);
-    background-color: var(--bg-raised);
-    box-shadow: var(--shadow-raised);
-  }
-
-  .auth__preview-label {
-    color: var(--fg-subtle);
-    font-size: var(--text-2xs);
-    font-weight: var(--weight-medium);
-    letter-spacing: var(--tracking-label);
-  }
-
-  .auth__preview-value {
-    margin-top: var(--space-1);
-    font-size: 1.75rem;
-    font-weight: var(--weight-semibold);
-    letter-spacing: -0.03em;
-  }
-
-  .auth__preview-rows {
-    display: flex;
-    flex-direction: column;
+    flex-wrap: wrap;
     gap: var(--space-2);
-    margin-top: var(--space-4);
-    padding-top: var(--space-4);
-    border-top: 1px solid var(--line-subtle);
   }
 
-  .auth__preview-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-3);
-    font-size: var(--text-xs);
-  }
-
-  .auth__preview-row span:first-child { color: var(--fg-subtle); }
-
-  @media (max-width: 60rem) {
-    .auth { grid-template-columns: minmax(0, 1fr); }
-    .auth__showcase { display: none; }
+  @media (max-width: 30rem) {
+    .auth__form-side { padding: var(--space-4); }
+    .auth-card,
+    .auth-inner-card { padding: var(--space-5); }
+    .settings-sidebar-link { padding-inline: var(--space-2); }
   }
 
   /* ======================================================================
@@ -1377,6 +1360,5 @@
    ========================================================================== */
 
 @layer utilities {
-  .text-emphasis { color: var(--fg-default); font-weight: var(--weight-medium); }
-  .fw-500 { font-weight: 500; }
+  .text-emphasis { color: var(--foreground); font-weight: var(--weight-medium); }
 }

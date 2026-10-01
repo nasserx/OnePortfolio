@@ -2,7 +2,7 @@
    OnePortfolio — Application shell
    ==========================================================================
 
-   Owns everything that lives outside a page's content: theme, density,
+   Owns everything that lives outside a page's content: theme,
    navigation state, toasts, the command palette, and the shared motion
    helpers. Page-level behaviour stays in main.js and the page templates.
 
@@ -15,21 +15,30 @@
 
   var STORAGE = {
     theme: 'op:theme',
-    density: 'op:density',
     sidebar: 'op:sidebar'
   };
+
+  var SVG_NS = 'http://www.w3.org/2000/svg';
+
+  function createIcon(name, className) {
+    var svg = document.createElementNS(SVG_NS, 'svg');
+    var use = document.createElementNS(SVG_NS, 'use');
+
+    svg.setAttribute('class', 'icon' + (className ? ' ' + className : ''));
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('focusable', 'false');
+    svg.setAttribute('aria-hidden', 'true');
+    use.setAttribute('href', '#op-icon-' + name);
+    svg.appendChild(use);
+    return svg;
+  }
+
+  /* The templates and dynamic UI share one canonical sprite-name contract. */
+  window.OnePortfolioIcons = Object.freeze({ create: createIcon });
 
   var prefersReducedMotion = function () {
     return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   };
-
-  function readStored(key) {
-    try {
-      return window.localStorage.getItem(key);
-    } catch (e) {
-      return null;
-    }
-  }
 
   function writeStored(key, value) {
     try {
@@ -40,7 +49,7 @@
   }
 
   /* ======================================================================
-     Theme & density
+     Theme
      The initial theme is applied by an inline script in <head> so the page
      never paints in the wrong palette; this class only handles changes.
      ====================================================================== */
@@ -65,45 +74,25 @@
         writeStored(STORAGE.theme, next);
         ThemePreference.syncControls(next);
 
-        // CSS repaints itself, but anything drawn into a <canvas> has already
-        // baked in the old palette. Canvas owners listen for this and redraw.
+        // CSS repaints itself; canvas pixels require their owners to redraw.
         window.dispatchEvent(new CustomEvent('op:themechange', {
           detail: { theme: next }
         }));
       });
     });
 
-    document.querySelectorAll('[data-density-toggle]').forEach(function (button) {
-      button.addEventListener('click', function () {
-        var next = root.getAttribute('data-density') === 'compact' ? 'comfortable' : 'compact';
-        root.setAttribute('data-density', next);
-        writeStored(STORAGE.density, next);
-        ThemePreference.syncControls();
-      });
-    });
-
     ThemePreference.syncControls(root.getAttribute('data-theme'));
   };
 
-  /* Keep every toggle's icon and label in step with the active preference. */
+  /* Keep every theme toggle's accessible label in step with the preference. */
   ThemePreference.syncControls = function (theme) {
-    var root = document.documentElement;
     var resolved = theme || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-    var compact = root.getAttribute('data-density') === 'compact';
 
     document.querySelectorAll('[data-theme-toggle]').forEach(function (button) {
-      var icon = button.querySelector('.bi');
-      if (icon) {
-        icon.className = 'bi ' + (resolved === 'dark' ? 'bi-sun' : 'bi-moon-stars');
-      }
       button.setAttribute(
         'aria-label',
         resolved === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'
       );
-    });
-
-    document.querySelectorAll('[data-density-toggle] [data-density-label]').forEach(function (label) {
-      label.textContent = compact ? 'Comfortable density' : 'Compact density';
     });
   };
 
@@ -174,10 +163,10 @@
      ====================================================================== */
 
   var TOAST_ICONS = {
-    success: 'bi-check-circle-fill',
-    danger: 'bi-exclamation-circle-fill',
-    warning: 'bi-exclamation-triangle-fill',
-    info: 'bi-info-circle-fill'
+    success: 'circle-check',
+    danger: 'alert-circle',
+    warning: 'alert-triangle',
+    info: 'info-circle'
   };
 
   var TOAST_DISMISS_MS = 4200;
@@ -230,17 +219,13 @@
     element.className = 'flash-alert flash-alert--' + category;
     element.setAttribute('role', 'alert');
 
-    var icon = document.createElement('i');
-    icon.className = 'bi ' + TOAST_ICONS[category] + ' flash-alert__icon';
-    icon.setAttribute('aria-hidden', 'true');
+    var icon = createIcon(TOAST_ICONS[category], 'flash-alert__icon');
 
     var text = document.createElement('span');
     text.className = 'flash-alert__msg';
     text.textContent = message;
 
-    var closeIcon = document.createElement('i');
-    closeIcon.className = 'bi bi-x';
-    closeIcon.setAttribute('aria-hidden', 'true');
+    var closeIcon = createIcon('x');
 
     var close = document.createElement('button');
     close.type = 'button';
@@ -332,7 +317,7 @@
       items.push({
         label: element.getAttribute('data-command'),
         group: element.getAttribute('data-command-group') || 'On this page',
-        icon: element.getAttribute('data-command-icon') || 'arrow-return-right',
+        icon: element.getAttribute('data-command-icon') || 'arrow-right',
         href: element.getAttribute('href') || null,
         element: element
       });
@@ -406,9 +391,7 @@
       row.dataset.index = String(index);
       row.setAttribute('role', 'option');
 
-      var icon = document.createElement('i');
-      icon.className = 'bi bi-' + item.icon;
-      icon.setAttribute('aria-hidden', 'true');
+      var icon = createIcon(item.icon);
 
       var label = document.createElement('span');
       label.textContent = item.label;

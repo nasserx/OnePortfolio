@@ -11,11 +11,11 @@
 (function () {
   'use strict';
 
-  var PALETTE_SIZE = 7;
+  var PALETTE_SIZE = 5;
+  var display = window.OnePortfolioDisplay;
 
-  function cssVar(name, fallback) {
-    var value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-    return value || fallback;
+  function cssVar(name) {
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
   }
 
   function prefersReducedMotion() {
@@ -25,25 +25,14 @@
   function palette() {
     var colors = [];
     for (var i = 1; i <= PALETTE_SIZE; i += 1) {
-      colors.push(cssVar('--cat-' + i, '#7461f3'));
+      colors.push(cssVar('--portfolio-chart-' + i));
     }
     return colors;
   }
 
   /* Large figures collapse to B/M so the ring's centre label always fits;
      everything else keeps two decimals so the legend column stays aligned. */
-  function compact(value) {
-    var number = Number(value) || 0;
-    var magnitude = Math.abs(number);
-
-    if (magnitude >= 1e9) return (number / 1e9).toFixed(2) + 'B';
-    if (magnitude >= 1e6) return (number / 1e6).toFixed(2) + 'M';
-
-    return number.toLocaleString('en-US', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    });
-  }
+  function compact(value) { return display.compactMoney(value); }
 
   function truncate(text, max) {
     var value = text || '';
@@ -101,12 +90,12 @@
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
 
-      ctx.fillStyle = cssVar('--fg-subtle', '#82828e');
-      ctx.font = '500 ' + labelSize + 'px Inter, sans-serif';
+      ctx.fillStyle = cssVar('--muted-foreground');
+      ctx.font = '500 ' + labelSize + 'px ' + cssVar('--font-sans');
       ctx.fillText(options.label, arc.x, arc.y - Math.round(valueSize * 0.72));
 
-      ctx.fillStyle = cssVar('--fg-default', '#ededf1');
-      ctx.font = '600 ' + valueSize + 'px Inter, sans-serif';
+      ctx.fillStyle = cssVar('--foreground');
+      ctx.font = '600 ' + valueSize + 'px ' + cssVar('--font-sans');
       ctx.fillText(options.value, arc.x, arc.y + Math.round(valueSize * 0.55));
 
       ctx.restore();
@@ -121,13 +110,17 @@
     this.view = 'book_value_chart';
 
     this.canvas = document.getElementById('allocationChart');
+    this.canvasWrap = this.canvas ? this.canvas.closest('.alloc-canvas') : null;
     this.legend = document.getElementById('allocationLegend');
     this.empty = document.querySelector('[data-alloc-empty]');
     this.switcher = document.querySelector('[data-alloc-switch]');
+    this.panel = document.getElementById('allocation-panel');
+    this.status = document.getElementById('allocationChartStatus');
+    this.legendWired = false;
   }
 
   AllocationChart.prototype.colorFor = function (name) {
-    if (name === 'Other Portfolios') return cssVar('--cat-other', '#7b7b8a');
+    if (name === 'Other Portfolios') return this.colors[4];
     var index = this.colorMap[name];
     if (!isFinite(index)) index = 0;
     return this.colors[index % this.colors.length];
@@ -152,7 +145,7 @@
     // be rebuilt from the new palette whenever the theme flips.
     window.addEventListener('op:themechange', function () {
       self.colors = palette();
-      window.Chart.defaults.color = cssVar('--fg-muted', '#a3a3ae');
+      window.Chart.defaults.color = cssVar('--muted-foreground');
       self.render();
     });
   };
@@ -181,15 +174,37 @@
       || options[0];
     if (!current) return;
 
-    options.forEach(function (option) {
-      option.addEventListener('click', function () {
-        options.forEach(function (other) {
-          other.setAttribute('aria-selected', other === option ? 'true' : 'false');
-        });
-        current = option;
-        moveThumb(current);
-        self.view = option.getAttribute('data-alloc-view');
-        self.render();
+    function select(option, moveFocus) {
+      options.forEach(function (other) {
+        var selected = other === option;
+        other.setAttribute('aria-selected', selected ? 'true' : 'false');
+        other.setAttribute('tabindex', selected ? '0' : '-1');
+      });
+      current = option;
+      moveThumb(current);
+      self.view = option.getAttribute('data-alloc-view');
+      if (self.panel && option.id) self.panel.setAttribute('aria-labelledby', option.id);
+      self.render();
+      if (moveFocus) option.focus();
+    }
+
+    options.forEach(function (option, index) {
+      option.addEventListener('click', function () { select(option, false); });
+      option.addEventListener('keydown', function (event) {
+        var nextIndex;
+        if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+          nextIndex = (index + 1) % options.length;
+        } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+          nextIndex = (index - 1 + options.length) % options.length;
+        } else if (event.key === 'Home') {
+          nextIndex = 0;
+        } else if (event.key === 'End') {
+          nextIndex = options.length - 1;
+        } else {
+          return;
+        }
+        event.preventDefault();
+        select(options[nextIndex], true);
       });
     });
 
@@ -201,26 +216,38 @@
 
   AllocationChart.prototype.render = function () {
     var dataset = this.data[this.view] || {};
+    var basis = this.view === 'capital_chart' ? 'capital' : 'book value';
+    var accessibleLabel = 'Portfolio split by ' + basis;
 
     if (this.chart) {
       this.chart.destroy();
       this.chart = null;
     }
     this.legend.replaceChildren();
+    this.canvas.setAttribute('aria-label', accessibleLabel);
+    this.canvas.textContent = accessibleLabel + '. Details follow in the interactive legend.';
+    this.legend.setAttribute('aria-label', accessibleLabel + ' legend');
 
     if (!hasData(dataset)) {
       this.canvas.hidden = true;
+      if (this.canvasWrap) this.canvasWrap.hidden = true;
       this.legend.hidden = true;
       if (this.empty) this.empty.hidden = false;
+      if (this.status) this.status.textContent = accessibleLabel + ': no portfolio data available.';
       return;
     }
 
     this.canvas.hidden = false;
+    if (this.canvasWrap) this.canvasWrap.hidden = false;
     this.legend.hidden = false;
     if (this.empty) this.empty.hidden = true;
 
     this.renderChart(dataset);
     this.renderLegend(dataset);
+    if (this.status) {
+      this.status.textContent = accessibleLabel + ' showing '
+        + dataset.categories.length + (dataset.categories.length === 1 ? ' portfolio.' : ' portfolios.');
+    }
   };
 
   AllocationChart.prototype.renderChart = function (dataset) {
@@ -235,7 +262,7 @@
           backgroundColor: dataset.categories.map(function (name) {
             return self.colorFor(name);
           }),
-          borderColor: cssVar('--chart-ring-gap', '#121216'),
+          borderColor: cssVar('--card'),
           borderWidth: 2,
           hoverOffset: 6
         }]
@@ -265,22 +292,22 @@
         plugins: {
           legend: { display: false },
           tooltip: {
-            backgroundColor: cssVar('--bg-raised', '#18181d'),
-            borderColor: cssVar('--line-default', 'rgba(255,255,255,.11)'),
+            backgroundColor: cssVar('--popover'),
+            borderColor: cssVar('--border'),
             borderWidth: 1,
-            titleColor: cssVar('--fg-default', '#ededf1'),
-            bodyColor: cssVar('--fg-muted', '#a3a3ae'),
+            titleColor: cssVar('--popover-foreground'),
+            bodyColor: cssVar('--muted-foreground'),
             padding: 10,
             displayColors: false,
             callbacks: {
               label: function (ctx) {
                 var pct = Number(ctx.parsed);
-                return ' ' + (isFinite(pct) ? pct.toFixed(1) : '0.0') + '%';
+                return ' ' + display.percentage(pct, 1, false);
               }
             }
           },
           centreText: {
-            label: this.view === 'capital_chart' ? 'Total capital' : 'Book value',
+            label: this.view === 'capital_chart' ? 'Total Capital' : 'Book Value',
             value: compact(dataset.total || 0)
           }
         }
@@ -296,9 +323,11 @@
       var row = document.createElement('li');
       row.title = name;
       row.dataset.idx = String(index);
-      row.setAttribute('role', 'button');
-      row.setAttribute('tabindex', '0');
-      row.setAttribute('aria-pressed', 'false');
+
+      var toggle = document.createElement('button');
+      toggle.type = 'button';
+      toggle.className = 'allocation-legend__row allocation-legend__toggle';
+      toggle.setAttribute('aria-pressed', 'false');
 
       var swatch = document.createElement('span');
       swatch.className = self.swatchClass(name);
@@ -314,9 +343,14 @@
       var pct = document.createElement('span');
       pct.className = 'pct';
       var share = Number(dataset.allocations[index]);
-      pct.textContent = (isFinite(share) ? share.toFixed(1) : '0.0') + '%';
+      pct.textContent = display.percentage(share, 1, false);
 
-      row.append(swatch, label, value, pct);
+      toggle.setAttribute(
+        'aria-label',
+        'Hide ' + name + ', ' + value.textContent + ', ' + pct.textContent
+      );
+      toggle.append(swatch, label, value, pct);
+      row.appendChild(toggle);
       fragment.appendChild(row);
     });
 
@@ -325,6 +359,9 @@
   };
 
   AllocationChart.prototype.wireLegend = function () {
+    if (this.legendWired) return;
+    this.legendWired = true;
+
     var self = this;
 
     function toggle(row) {
@@ -333,7 +370,14 @@
 
       var nowHidden = !row.classList.contains('is-hidden');
       row.classList.toggle('is-hidden', nowHidden);
-      row.setAttribute('aria-pressed', nowHidden ? 'true' : 'false');
+      var button = row.querySelector('.allocation-legend__toggle');
+      if (button) {
+        button.setAttribute('aria-pressed', nowHidden ? 'true' : 'false');
+        button.setAttribute(
+          'aria-label',
+          (nowHidden ? 'Show ' : 'Hide ') + row.title
+        );
+      }
       self.chart.toggleDataVisibility(index);
       /* Hiding a slice answers the click, so it runs on its own short
          transition rather than replaying the chart's entrance. A 1150ms
@@ -359,8 +403,8 @@
 
   window.initPortfolioAllocationChart = function (chartData) {
     if (!window.Chart || !chartData) return;
-    window.Chart.defaults.color = cssVar('--fg-muted', '#a3a3ae');
-    window.Chart.defaults.font.family = 'Inter, sans-serif';
+    window.Chart.defaults.color = cssVar('--muted-foreground');
+    window.Chart.defaults.font.family = cssVar('--font-sans');
     new AllocationChart(chartData).mount();
   };
 }());

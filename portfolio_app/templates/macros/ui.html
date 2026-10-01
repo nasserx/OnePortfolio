@@ -18,6 +18,20 @@
     income  the income blue, regardless of sign
   ============================================================================
 #}
+{% from 'macros/icons.html' import icon %}
+
+
+{# Financial record type text: semantic foreground only, never a badge fill. #}
+{%- macro record_type(value) -%}
+  {%- set role = {
+    'Buy': 'positive',
+    'Deposit': 'positive',
+    'Sell': 'negative',
+    'Withdrawal': 'negative',
+    'Income': 'income'
+  }.get(value, 'neutral') -%}
+  <span class="record-type record-type--{{ role }}">{{ value }}</span>
+{%- endmacro -%}
 
 
 {# Resolve a value's tone class. Internal helper for the macros below. #}
@@ -75,12 +89,12 @@
   `hint` renders an accessible tooltip dot next to the label.
 #}
 {%- macro fact(label, hint=none) -%}
-  <div class="fact">
-    <p class="fact__label">
+  <div class="fact supporting-item">
+    <p class="fact__label supporting-item__label">
       {{ label }}
       {%- if hint %} {{ info(hint) }}{% endif -%}
     </p>
-    <p class="fact__value">{{ caller() }}</p>
+    <p class="fact__value supporting-item__value">{{ caller() }}</p>
   </div>
 {%- endmacro -%}
 
@@ -102,13 +116,13 @@
 
 {# Tooltip dot. The text serves as both the visual tooltip and the a11y name. #}
 {%- macro info(text) -%}
-  <span class="bi bi-info-circle info-dot"
+  <span class="info-dot"
         tabindex="0"
         role="img"
         aria-label="{{ text }}"
         data-bs-toggle="tooltip"
         data-bs-placement="top"
-        title="{{ text }}"></span>
+        title="{{ text }}">{{ icon('info-circle') }}</span>
 {%- endmacro -%}
 
 
@@ -125,7 +139,7 @@
             aria-expanded="false"
             aria-haspopup="true"
             aria-label="{{ label }}">
-      <i class="bi bi-three-dots-vertical" aria-hidden="true"></i>
+      {{ icon('dots-vertical') }}
     </button>
     <ul class="dropdown-menu dropdown-menu-end action-menu__menu">
       {{ caller() }}
@@ -134,13 +148,9 @@
 {%- endmacro -%}
 
 
-{#
-  The coloured initial that ties a portfolio row to its slice of the
-  allocation chart. `index` is the zero-based row position; the palette
-  wraps at seven, matching the chart's own colour map.
-#}
-{%- macro marker(name, index=0) -%}
-  <span class="marker allocation-marker-{{ (index % 7) + 1 }}" aria-hidden="true">{{ name[:1]|upper }}</span>
+{# Neutral portfolio/entity initial; entity identity never selects a colour. #}
+{%- macro marker(name) -%}
+  <span class="marker" aria-hidden="true">{{ name[:1]|upper }}</span>
 {%- endmacro -%}
 
 
@@ -148,12 +158,12 @@
   Full-page empty state. Pass the call block for the action button.
 
       {% call empty_state('folder-plus', 'No portfolios yet', 'Create one…') %}
-        <a class="btn btn-primary" href="…">Create portfolio</a>
+        <a class="btn btn-primary" href="…">Create Portfolio</a>
       {% endcall %}
 #}
-{%- macro empty_state(icon, title, text) -%}
-  <div class="empty-state">
-    <span class="empty-state__icon" aria-hidden="true"><i class="bi bi-{{ icon }}"></i></span>
+{%- macro empty_state(icon_name, title, text) -%}
+  <div class="empty-state surface-card">
+    <span class="empty-state__icon" aria-hidden="true">{{ icon(icon_name) }}</span>
     <h2 class="empty-state-title">{{ title }}</h2>
     <p class="empty-state-text">{{ text }}</p>
     {{ caller() }}

@@ -1,37 +1,37 @@
 {% extends 'auth_base.html' %}
+{% from 'macros/icons.html' import icon %}
 {% block title %}Continue — OnePortfolio{% endblock %}
 {% block auth_content %}
-<div class="text-center mb-4">
-    {% set logo_class = 'op-logo-mark auth-logo mb-3' %}
-    {% set logo_size = 40 %}
+<header class="auth-header">
+    {% set logo_class = 'auth-logo' %}
     {% include 'components/logo_mark.html' %}
     <h1 class="auth-title">Continue to OnePortfolio</h1>
-    <p class="auth-subtitle mb-0">Sign in or create an account with your email.</p>
-</div>
+    <p class="auth-subtitle">Sign in or create an account with your email.</p>
+</header>
 {% with messages = get_flashed_messages(with_categories=true) %}
     {% for category, message in messages %}
-        <div class="alert alert-{{ category }} alert-dismissible fade show py-2 mb-3" role="alert">
+        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
             {{ message }}
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
     {% endfor %}
 {% endwith %}
 {% if form_errors.get('__all__') %}
-    <div class="alert alert-danger mb-3" role="alert"><i class="bi bi-exclamation-circle me-2" aria-hidden="true"></i>{{ form_errors['__all__'] }}</div>
+    <div class="alert alert-danger" role="alert">{{ icon('alert-circle') }}{{ form_errors['__all__'] }}</div>
 {% endif %}
-<form method="post" action="{{ url_for('auth.login') }}{% if safe_next %}?next={{ safe_next|urlencode }}{% endif %}" novalidate>
+<form class="auth-form" method="post" action="{{ url_for('auth.login') }}{% if safe_next %}?next={{ safe_next|urlencode }}{% endif %}" novalidate>
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <div class="mb-4">
-        <label class="visually-hidden" for="email">Email address</label>
+    <div class="field-group">
+        <label class="form-label" for="email">Email Address</label>
         <div class="field-wrap">
-            <i class="bi bi-envelope fi" aria-hidden="true"></i>
+            {{ icon('mail', class='field-wrap__icon') }}
             <input type="email" id="email" name="email" autocomplete="email"
                    class="form-control form-control-auth {% if form_errors.get('email') %}is-invalid{% endif %}"
-                   value="{{ form_values.get('email', '') }}" placeholder="Email address" autofocus required>
+                   value="{{ form_values.get('email', '') }}" placeholder="Email Address" autofocus required>
         </div>
-        {% if form_errors.get('email') %}<div class="invalid-feedback d-block mt-1">{{ form_errors['email'] }}</div>{% endif %}
+        {% if form_errors.get('email') %}<div class="invalid-feedback d-block">{{ form_errors['email'] }}</div>{% endif %}
     </div>
     <button type="submit" class="btn btn-primary btn-auth w-100">Continue</button>
 </form>
-<p class="auth-subtitle text-center mt-4 mb-0">We’ll email you a verification code.</p>
+<p class="auth-subtitle auth-footnote">We’ll email you a verification code.</p>
 {% endblock %}

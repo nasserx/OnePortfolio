@@ -7,7 +7,7 @@
 @layer pages {
 
   .landing {
-    background-color: var(--bg-canvas);
+    background-color: var(--background);
   }
 
   .lp-shell {
@@ -25,34 +25,15 @@
      Navigation
      ====================================================================== */
 
-  /* Fixed, not sticky: sticky stays in flow and would push the intro down by
-     the header's height, putting a band of flat colour above the section.
-
-     One appearance, always. This used to be two — invisible over the intro,
-     then a panel once `landing.js` saw the page scroll — and the invisible
-     half was the expensive one: it needed a scroll listener to leave, and it
-     left every control in the row carrying a second set of colours that
-     existed for the first eight pixels of scroll and nothing else. The panel
-     is what the row looked like for the rest of the page anyway.
-
-     Still translucent, so the page moves under it and the row does not read
-     as a lid: at 82% of the page colour under a 12px blur it is mostly page.
-     Everything it sits over is now either the canvas or `--intro-wash` at
-     under 10%, so the row simply uses the product's ordinary chrome colours
-     — no step-ups, no per-state overrides.
-
-     No divider, at rest or after scrolling. The panel and the blur already
-     say where the header ends; a hairline under them draws a second edge in
-     the same place, and on a page whose intro is a soft gradient that line
-     is the hardest thing on screen. It went with the two-state header — it
-     was the other half of what `.is-stuck` used to switch on. */
+  /* The fixed translucent header stays out of document flow and keeps one
+     appearance. Blur establishes its boundary without a second divider. */
   .lp-nav {
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
     z-index: var(--z-sticky);
-    background-color: color-mix(in srgb, var(--bg-canvas) 82%, transparent);
+    background-color: color-mix(in oklch, var(--background) 88%, transparent);
     backdrop-filter: blur(12px);
   }
 
@@ -89,32 +70,20 @@
   }
 
   .lp-nav__links a {
-    position: relative;
-    color: var(--fg-muted);
+    padding: var(--space-2);
+    border-radius: var(--radius-lg);
+    color: var(--muted-foreground);
     font-size: var(--text-sm);
     font-weight: var(--weight-medium);
+    transition: background-color var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out);
   }
 
   /* Underline grows from the centre rather than fading in — it reads as a
      deliberate response to the pointer instead of a hover wash. */
-  .lp-nav__links a::after {
-    content: "";
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: -0.375rem;
-    height: 1.5px;
-    border-radius: var(--radius-pill);
-    background-color: var(--brand);
-    transform: scaleX(0);
-    transition: transform var(--dur-2) var(--ease-out);
-  }
-
   .lp-nav__links a:hover {
-    color: var(--fg-default);
+    background-color: var(--accent);
+    color: var(--accent-foreground);
   }
-
-  .lp-nav__links a:hover::after { transform: scaleX(1); }
 
   .lp-nav__actions {
     display: flex;
@@ -128,29 +97,14 @@
     .lp-nav__actions { margin-left: auto; }
   }
 
-  @media (max-width: 30rem) {
-    .lp-nav__actions .btn-secondary { display: none; }
-  }
-
   /* ======================================================================
      Hero
      ====================================================================== */
 
-  /* The intro's background is one gradient on the section itself — no
-     layer, no element, nothing to download. `--intro-wash` is shared with
-     the auth showcase and owned in `tokens.css`; this rule may point at it
-     but must not restate it, or the two surfaces start drifting apart.
-
-     It ends where this box ends, on a straight edge. Four rounds of masked
-     dissolve came before that decision and every one was asked to be
-     weaker, because a dissolve has to spend a stretch of backdrop hiding
-     its own boundary and that spent stretch is the thing people see. An
-     edge spends none. */
   .lp-hero {
     position: relative;
     padding: calc(4rem + var(--space-16)) 0 calc(var(--space-16) + var(--space-6));
     overflow: hidden;
-    background-image: var(--intro-wash);
   }
 
   .lp-hero__grid {
@@ -160,6 +114,8 @@
     gap: var(--space-10);
     align-items: center;
   }
+
+  .lp-hero__grid > * { min-width: 0; }
 
   @media (max-width: 64rem) {
     .lp-hero { padding-top: calc(4rem + var(--space-10)); }
@@ -179,34 +135,14 @@
     text-wrap: balance;
   }
 
-  /* The page's leading visual element, and the only piece of brand colour
-     here that is not a control. With nothing decorative behind it, the
-     heading is what the intro is; cobalt into violet is the whole of the
-     ornament budget.
-
-     Both ends come from `--hero-title-from`/`--hero-title-to`, which are
-     semantic roles, so one declaration in `tokens.css` serves both themes
-     and there is no dark-mode rule down here to keep in step. Large text,
-     so the floor is 3:1 — the reason a saturated pair can carry a heading
-     at all. `color` stays declared so a browser without `background-clip`
-     keeps a solid heading rather than an invisible one. */
-  @supports (background-clip: text) or (-webkit-background-clip: text) {
-    .lp-hero .lp-title {
-      background-image: linear-gradient(
-        96deg,
-        var(--hero-title-from),
-        var(--hero-title-to)
-      );
-      -webkit-background-clip: text;
-      background-clip: text;
-      color: transparent;
-    }
-  }
+  /* The preset keeps the heading neutral; hierarchy comes from scale and
+     weight rather than a page-local colour treatment. */
+  .lp-hero .lp-title { color: var(--foreground); }
 
   .lp-lede {
     max-width: 46ch;
     margin: var(--space-5) 0 0;
-    color: var(--fg-muted);
+    color: var(--muted-foreground);
     font-size: var(--text-lg);
     line-height: var(--leading-relaxed);
   }
@@ -218,9 +154,6 @@
     margin-top: var(--space-6);
   }
 
-  .lp-cta .bi { transition: transform var(--dur-2) var(--ease-out); }
-  .lp-cta .btn:hover .bi { transform: translateX(3px); }
-
   .lp-proof {
     display: flex;
     flex-wrap: wrap;
@@ -230,61 +163,26 @@
     list-style: none;
   }
 
-  /* Nothing on the hero goes below `--fg-muted`: through the scrim
-     `--fg-subtle` at 12px reaches only 4.06:1 and `--fg-faint` misses even
-     the non-text floor. */
+  /* Proof points use the canonical readable muted foreground. */
   .lp-proof li {
     display: inline-flex;
     align-items: center;
     gap: var(--space-2);
-    color: var(--fg-muted);
+    color: var(--muted-foreground);
     font-size: var(--text-xs);
   }
 
-  .lp-proof .bi { color: var(--fg-subtle); }
+  .lp-proof .icon { color: var(--muted-foreground); }
 
   /* ======================================================================
      Product shot
      ====================================================================== */
 
-  /* Solid, and on the product's own surfaces. This was glass for a while,
-     tuned by measuring the quietest ink printed on it against a photograph
-     showing through. It reads better opaque: the preview is meant to be the
-     application, and an application does not have a mountain range behind
-     its numbers. There is no picture left to expose either way.
-
-     The dividend is that every colour on this card is now an ordinary
-     surface pairing: `tests/test_design_tokens_contrast.py` already checks
-     every text role against `--bg-surface` and `--bg-inset` in both themes,
-     so the card needs no legibility rule of its own.
-
-     Flat as well as opaque: the border draws the card's edge, and an
-     elevation shadow under it drew a second one, softer and larger, in a
-     section whose whole background is a low-alpha gradient. Depth was worth
-     paying for when the card floated on a photograph and had to separate
-     from it. It sits on the page now, so it is drawn like the page. */
+  /* The preview composes the canonical opaque card surface. Its shared edge
+     is sufficient separation, so the Landing layout adds no elevation. */
   .lp-shot {
-    border: 1px solid var(--line-default);
-    border-radius: var(--radius-lg);
-    background-color: var(--bg-surface);
     overflow: hidden;
     animation: op-fade-up var(--dur-4) var(--ease-out) 120ms backwards;
-  }
-
-  .lp-shot__chrome {
-    display: flex;
-    align-items: center;
-    gap: 0.375rem;
-    padding: var(--space-3) var(--space-4);
-    border-bottom: 1px solid var(--line-subtle);
-    background-color: var(--bg-inset);
-  }
-
-  .lp-shot__chrome span {
-    width: 0.5rem;
-    height: 0.5rem;
-    border-radius: 50%;
-    background-color: var(--line-strong);
   }
 
   .lp-shot__body { padding: var(--space-5); }
@@ -296,22 +194,8 @@
     gap: var(--space-1);
   }
 
-  /* The app's own label colour. These used to sit a step up from it, and
-     that step was bought glass: the fill was bounded by the quietest ink on
-     the card, so a quieter label cost picture. With the card opaque there is
-     nothing to buy, and the preview is more convincing printing exactly what
-     the application prints.
-
-     Declared here rather than inherited because this page loads landing.css
-     *instead of* app.css, which is where `.fact__label` gets its colour;
-     `.allocation-legend .pct` needs no rule at all, since components.css
-     already gives it this same role. */
-  .lp-shot__label,
-  .lp-shot__facts .fact__label {
-    color: var(--fg-subtle);
-  }
-
   .lp-shot__label {
+    color: var(--muted-foreground);
     font-size: var(--text-2xs);
     font-weight: var(--weight-medium);
     letter-spacing: var(--tracking-label);
@@ -324,12 +208,7 @@
     letter-spacing: -0.03em;
   }
 
-  /* The pill gets its wash back. It was dropped because `--pos-soft` is a
-     green film under green type — harmless on an opaque surface, but on
-     glass a second veil pulling the background toward the ink, and it was
-     the binding constraint on every percent of picture behind this card.
-     On `--bg-surface` the full pill measures 4.59:1 light and 7.03:1 dark,
-     so the component's own styling stands. */
+  /* The shared delta component owns its contrast on the canonical card. */
   .lp-shot__hero .delta {
     margin-top: var(--space-2);
   }
@@ -339,22 +218,6 @@
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: var(--space-3);
     margin: var(--space-5) 0;
-    padding: var(--space-4) 0;
-    border-block: 1px solid var(--line-subtle);
-  }
-
-  .lp-shot__facts .fact__label {
-    display: block;
-    margin-bottom: 2px;
-    font-size: var(--text-2xs);
-    font-weight: var(--weight-medium);
-    letter-spacing: var(--tracking-label);
-  }
-
-  .lp-shot__facts .fact__value {
-    display: block;
-    font-size: var(--num-sm);
-    font-weight: var(--weight-medium);
   }
 
   .lp-shot__split {
@@ -362,6 +225,7 @@
     grid-template-columns: 9rem minmax(0, 1fr);
     gap: var(--space-4);
     align-items: center;
+    min-width: 0;
   }
 
   .lp-shot__chart {
@@ -385,8 +249,8 @@
   .lp-section { padding: var(--space-16) 0; }
 
   .lp-section--alt {
-    border-block: 1px solid var(--line-subtle);
-    background-color: var(--bg-surface);
+    border-block: 1px solid var(--border);
+    background-color: var(--card);
   }
 
   @media (max-width: 48rem) {
@@ -415,7 +279,7 @@
   .lp-head p {
     max-width: 52ch;
     margin: var(--space-3) auto 0;
-    color: var(--fg-subtle);
+    color: var(--muted-foreground);
     font-size: var(--text-md);
     text-wrap: pretty;
   }
@@ -431,41 +295,8 @@
   @media (max-width: 36rem) { .lp-grid--4 { grid-template-columns: minmax(0, 1fr); } }
 
   .lp-card {
-    position: relative;
     padding: var(--space-5);
-    border: 1px solid var(--line-subtle);
-    border-radius: var(--radius-md);
-    background-color: var(--bg-surface);
-    overflow: hidden;
-    transition:
-      border-color var(--dur-2) var(--ease-out),
-      transform var(--dur-3) var(--ease-out),
-      box-shadow var(--dur-3) var(--ease-out);
   }
-
-  .lp-section--alt .lp-card { background-color: var(--bg-canvas); }
-
-  /* A brand rule that draws itself across the top edge on hover. It grows
-     from the left rather than fading, so the card answers the pointer with
-     a direction instead of a wash. */
-  .lp-card::before {
-    content: "";
-    position: absolute;
-    inset: 0 0 auto;
-    height: 2px;
-    background-color: var(--brand);
-    transform: scaleX(0);
-    transform-origin: left;
-    transition: transform var(--dur-3) var(--ease-out);
-  }
-
-  .lp-card:hover {
-    border-color: var(--brand-line);
-    transform: translateY(-4px);
-    box-shadow: var(--shadow-lift);
-  }
-
-  .lp-card:hover::before { transform: scaleX(1); }
 
   .lp-card__icon {
     display: inline-flex;
@@ -474,19 +305,12 @@
     width: 2.25rem;
     height: 2.25rem;
     margin-bottom: var(--space-4);
-    border-radius: var(--radius-sm);
-    background-color: var(--brand-soft);
-    color: var(--brand);
-    font-size: 1rem;
-    transition:
-      background-color var(--dur-2) var(--ease-out),
-      transform var(--dur-3) var(--ease-spring);
+    border-radius: var(--radius-lg);
+    background-color: var(--muted);
+    color: var(--foreground);
   }
 
-  .lp-card:hover .lp-card__icon {
-    background-color: var(--brand-soft-hover);
-    transform: translateY(-2px) scale(1.06);
-  }
+  .lp-card__icon .icon { width: 1rem; height: 1rem; }
 
   .lp-card h3 {
     margin-bottom: var(--space-2);
@@ -496,7 +320,7 @@
 
   .lp-card p {
     margin: 0;
-    color: var(--fg-subtle);
+    color: var(--muted-foreground);
     font-size: var(--text-sm);
     line-height: var(--leading-relaxed);
   }
@@ -509,7 +333,6 @@
     margin: 0;
     padding: 0;
     list-style: none;
-    counter-reset: step;
   }
 
   @media (max-width: 56rem) {
@@ -518,16 +341,13 @@
 
   .lp-step {
     padding-top: var(--space-5);
-    border-top: 2px solid var(--line-subtle);
-    transition: border-color var(--dur-2) var(--ease-out);
+    border-top: 1px solid var(--border);
   }
-
-  .lp-step:hover { border-top-color: var(--brand); }
 
   .lp-step__num {
     display: block;
     margin-bottom: var(--space-3);
-    color: var(--brand);
+    color: var(--muted-foreground);
     font-size: var(--text-xs);
     font-weight: var(--weight-semibold);
     font-variant-numeric: tabular-nums;
@@ -543,17 +363,15 @@
 
   .lp-step p {
     margin: 0;
-    color: var(--fg-subtle);
+    color: var(--muted-foreground);
     font-size: var(--text-sm);
     line-height: var(--leading-relaxed);
   }
 
   /* ---- limits ---------------------------------------------------------- */
 
-  /* Same head as every other section, list underneath on the same 44rem
-     measure. It used to face its heading across a two-column gutter — the
-     one block reading sideways, and it broke the axis exactly where the
-     page makes its most direct claim. */
+  /* The list follows the shared centered section head on the same 44rem
+     measure, preserving the page's vertical reading axis. */
   .lp-limits__list {
     display: flex;
     flex-direction: column;
@@ -569,25 +387,25 @@
     align-items: center;
     gap: var(--space-3);
     padding: var(--space-3) var(--space-4);
-    border: 1px solid var(--line-subtle);
-    border-radius: var(--radius-sm);
-    background-color: var(--bg-surface);
-    color: var(--fg-muted);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background-color: var(--card);
+    color: var(--muted-foreground);
     font-size: var(--text-sm);
   }
 
-  .lp-limits__list .bi {
+  .lp-limits__list .icon {
     flex: none;
-    color: var(--fg-faint);
+    color: var(--muted-foreground);
     font-size: 0.75rem;
   }
 
-  .lp-limits__list .lp-yes { color: var(--pos); }
+  .lp-limits__list .lp-yes { color: var(--foreground); }
 
   .lp-limits__list li:last-child {
-    border-color: var(--pos-line);
-    background-color: var(--pos-soft);
-    color: var(--fg-default);
+    border-color: var(--border);
+    background-color: var(--muted);
+    color: var(--foreground);
   }
 
   /* ======================================================================
@@ -610,10 +428,6 @@
     gap: var(--space-6);
     max-width: 52rem;
     padding: var(--space-10);
-    border: 1px solid var(--line-subtle);
-    border-radius: var(--radius-lg);
-    background-color: var(--bg-surface);
-    box-shadow: var(--shadow-raised);
     text-align: center;
   }
 
@@ -624,7 +438,7 @@
 
   .lp-close__panel p {
     margin: var(--space-2) 0 0;
-    color: var(--fg-subtle);
+    color: var(--muted-foreground);
     font-size: var(--text-sm);
   }
 
@@ -637,7 +451,7 @@
 
   .lp-footer {
     padding: var(--space-6) 0;
-    border-top: 1px solid var(--line-subtle);
+    border-top: 1px solid var(--border);
   }
 
   .lp-footer__inner {
@@ -646,7 +460,7 @@
     justify-content: space-between;
     gap: var(--space-4);
     flex-wrap: wrap;
-    color: var(--fg-subtle);
+    color: var(--muted-foreground);
     font-size: var(--text-xs);
   }
 
@@ -656,8 +470,8 @@
     flex-wrap: wrap;
   }
 
-  .lp-footer__links a { color: var(--fg-subtle); }
-  .lp-footer__links a:hover { color: var(--fg-default); }
+  .lp-footer__links a { color: var(--muted-foreground); }
+  .lp-footer__links a:hover { color: var(--foreground); }
 
   /* The only link here that leaves the site, so it gets a divider and a
      mark. The label stays: a bare glyph asks the reader to recognise a logo
@@ -668,16 +482,13 @@
     gap: var(--space-2);
     margin-left: var(--space-2);
     padding-left: var(--space-5);
-    border-left: 1px solid var(--line-subtle);
+    border-left: 1px solid var(--border);
   }
 
-  .lp-footer__source .bi {
-    font-size: 1rem;
-    line-height: 1;
-    transition: transform var(--dur-2) var(--ease-out);
+  .lp-footer__source .icon {
+    width: 1rem;
+    height: 1rem;
   }
-
-  .lp-footer__source:hover .bi { transform: scale(1.12); }
 
   @media (max-width: 36rem) {
     .lp-footer__source {
@@ -694,12 +505,7 @@
      `.is-revealed` as each element enters the viewport.
      ====================================================================== */
 
-  /* An animation, not a transition: these elements have their own hover
-     transitions (.lp-card) and a `transition` shorthand would replace them.
-     `backwards`, not `forwards`, so the last keyframe's `transform: none`
-     cannot outrank the hover lift and leave the card inert.
-
-     Every rule here carries the guard, including the ones that un-hide:
+  /* Every rule here carries the guard, including the ones that un-hide:
      guarding only the hiding rule puts it at 0,3,0 against `.is-revealed`'s
      0,2,0 and hides the page for good. */
   :root[data-reveal-ready] [data-reveal] { opacity: 0; }

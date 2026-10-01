@@ -228,7 +228,7 @@ def generate_logo_component() -> None:
 
 
 def _hex_rgb(color: str) -> tuple[int, int, int]:
-    value = color.removeprefix("#")
+    value = color[1:] if color.startswith("#") else color
     if len(value) != 6:
         raise IconValidationError(f"Expected a six-digit hex color: {color!r}")
     return tuple(int(value[index:index + 2], 16) for index in (0, 2, 4))

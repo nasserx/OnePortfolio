@@ -218,9 +218,11 @@ def test_manifest_references_generated_assets_without_new_platform_claims():
         },
     ]
     for icon in manifest['icons']:
+        source = icon['src']
+        relative_source = source[len('/static/'):] if source.startswith('/static/') else source
         assert (
             ROOT / 'portfolio_app' / 'static'
-            / icon['src'].removeprefix('/static/')
+            / relative_source
         ).is_file()
 
 

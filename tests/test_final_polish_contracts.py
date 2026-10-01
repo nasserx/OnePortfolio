@@ -96,7 +96,9 @@ def test_landing_sample_book_value_and_percentages_are_consistent():
     assert sum(values) == 42180.0
     shares = [value / sum(values) * 100 for value in values]
     assert round(sum(shares), 10) == 100.0
-    assert sum(round(value, 1) for value in shares) == 100.0
+    displayed_shares = [round(value, 1) for value in shares]
+    assert displayed_shares == [43.6, 33.7, 22.7]
+    assert round(sum(displayed_shares), 1) == 100.0
 
     assert "bookValue: display.money(total('bookValue'), false)" in LANDING
     assert 'var grandTotal = total(\'bookValue\');' in LANDING

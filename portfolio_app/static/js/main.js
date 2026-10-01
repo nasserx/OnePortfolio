@@ -144,9 +144,8 @@ const Utils = {
         return div.innerHTML;
     },
 
-    // The server answers with either { errors: { __all__, field } } or a
-    // legacy { error }. Checking only the legacy shape is what used to turn
-    // a real service-layer message into "Operation failed".
+    // Normalize both supported AJAX error envelopes so service-layer messages
+    // remain visible instead of falling through to the generic fallback.
     extractAjaxError(data, fallback) {
         if (data && data.errors && typeof data.errors === 'object') {
             if (data.errors.__all__) return data.errors.__all__;
@@ -1143,13 +1142,8 @@ class ModalAjaxHandler {
             { modalId: 'withdrawFundsModal',        formSelector: '#withdrawFundsForm' },
             { modalId: 'editPortfolioEventModal',   formSelector: '#editPortfolioEventForm' },
             { modalId: 'addSymbolModal',            formSelector: 'form[action$="/symbols/add"]' },
-            // Delete-confirm dialogs — every delete modal in the app
-            // funnels through here so they all render errors the same
-            // way (alert-danger banner injected at the top of
-            // .modal-body via showModalBanner). Previously the three
-            // transactions-side delete modals had bespoke inline
-            // handlers that wrote to a static <div> at the *bottom* of
-            // the body, which left the UX inconsistent across the app.
+            // Delete-confirm dialogs share this owner so every workflow uses
+            // the same modal-body error banner and submit lifecycle.
             { modalId: 'deletePortfolioEventModal', formSelector: '#deletePortfolioEventForm' },
             { modalId: 'deletePortfolioModal',      formSelector: '#deletePortfolioForm' },
             { modalId: 'deleteTransactionModal',    formSelector: '#deleteTransactionForm' },

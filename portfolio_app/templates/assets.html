@@ -1507,11 +1507,8 @@ function openStandaloneDividendModal(portfolioId, symbol) {
     bootstrap.Modal.getOrCreateInstance(document.getElementById('addDividendModal')).show();
 }
 
-// addDividendModal submission is wired by the central ModalAjaxHandler
-// (see static/js/main.js). The earlier per-form XMLHttpRequest handler
-// here was a duplicate — having both attached caused every dividend to
-// be POSTed twice, which the user reported as "operation duplicated"
-// (added 100, total showed 200).
+// ModalAjaxHandler in static/js/main.js is the sole submit owner. Do not add
+// a per-form XMLHttpRequest listener here; two owners would submit twice.
 
 
 // -----------------------------------------------------------------------
@@ -1541,12 +1538,9 @@ function openEditDividendModal(id, amount, dateShort, notes) {
     new bootstrap.Modal(document.getElementById('editDividendModal')).show();
 }
 
-// editDividendModal submission is wired by the central ModalAjaxHandler
-// (see static/js/main.js), exactly like addDividendModal above. A second
-// per-form XMLHttpRequest handler used to live here; because neither
-// listener stopped propagation, a valid Save fired both and the edit was
-// POSTed twice. Field validation (#edit_amount, #edit_dividend_date) is
-// owned by FormValidator, which runs first and calls
+// ModalAjaxHandler in static/js/main.js is the sole submit owner here too.
+// Field validation (#edit_amount, #edit_dividend_date) is owned by
+// FormValidator, which runs first and calls
 // stopImmediatePropagation() on invalid input, and inline/banner error
 // state is cleared by ModalAjaxHandler on hidden.bs.modal.
 

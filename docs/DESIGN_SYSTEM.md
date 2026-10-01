@@ -123,10 +123,9 @@ where their appearance is close.
 
 ## C. Compatibility boundary
 
-The completed modernization has no OnePortfolio migration aliases: shared and
-page styles consume the canonical preset roles directly. Deprecated names such
-as `--bg-canvas`, `--fg-default`, `--line-default`, and `--brand-solid` must not
-be reintroduced.
+OnePortfolio component and page styles consume the canonical preset roles
+directly. Names such as `--bg-canvas`, `--fg-default`, `--line-default`, and
+`--brand-solid` are not part of the current design-system API.
 
 The `--bs-*` declarations at the bottom of `tokens.css` are the only controlled
 compatibility bridge. They are vendor inputs, not OnePortfolio component API.
@@ -465,7 +464,7 @@ their existing JavaScript owners; pages must not mount duplicates.
 - financial colours used as generic UI status or decoration;
 - gradients, glows, and ornamental elevation;
 - page-specific radii where a canonical radius role exists;
-- migration aliases or component code that bypasses canonical roles;
+- compatibility aliases or component code that bypasses canonical roles;
 - `!important` in application layers unless an existing vendor/runtime
   constraint is documented;
 - inline styles except data-driven custom-property values;

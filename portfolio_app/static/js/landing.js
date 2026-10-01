@@ -6,10 +6,8 @@
    ring. The numbers live here rather than in the template so the preview
    stays internally consistent — the totals are derived, never hand-typed.
 
-   Nothing here listens to scrolling. The header used to swap appearance at
-   8px of scroll and this file drove it; the header now has one appearance,
-   so the listener and the state class went with it. Scroll reveal and the
-   theme toggle come from shell.js, which this page also loads.
+   Header state, scroll reveal, and the theme toggle are shared shell concerns;
+   this file owns only the deterministic preview metrics and allocation ring.
    ========================================================================== */
 
 (function () {

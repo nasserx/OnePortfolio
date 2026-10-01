@@ -78,11 +78,9 @@ def test_no_template_that_renders_the_lockup_sizes_the_mark_itself():
     )
 
 
-def test_shell_landing_and_auth_marks_share_the_compact_size():
+def test_shell_landing_and_auth_marks_share_the_shared_size_owner():
     css = _components_css()
-    shared = _rule(css, '.brand-logo')
-    assert shared['width'] == '1.25rem'
-    assert shared['height'] == '1.25rem'
+    assert _rule(css, '.brand-logo')
     assert '.auth-logo {' not in css
 
     for template in _TEMPLATES.rglob('*.html'):

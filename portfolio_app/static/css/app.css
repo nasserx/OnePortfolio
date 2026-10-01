@@ -480,10 +480,7 @@
      4. OVERVIEW
      ====================================================================== */
 
-  /* Equal halves. The split panel used to be a 24rem sidecar, which capped
-     the ring at a size the page had room to beat. Given half the row it can
-     sit beside its own legend instead of stacked above it, so the chart gets
-     both a wider box and a taller one. */
+  /* Equal halves keep the metric hierarchy and allocation panel balanced. */
   .overview-hero {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));

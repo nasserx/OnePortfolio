@@ -25,6 +25,7 @@ def test_settings_shell_uses_shared_panels_and_independent_tab_navigation():
     assert '<nav aria-label="Settings Sections">' in template
     assert template.count('class="card settings-panel"') == 3
     assert template.count('settings-sidebar-link') == 3
+    assert 'settings-section-heading settings-sidebar-link' not in template
     assert template.count('data-bs-toggle="tab"') == 3
     assert all(label in template for label in ('Profile', 'Security', 'Account'))
 
@@ -40,7 +41,16 @@ def test_settings_shell_uses_shared_panels_and_independent_tab_navigation():
 
 def test_settings_content_headings_and_information_rows_share_contracts():
     template = _source('auth/settings.html')
-    assert template.count('<h2 class="settings-section-heading">') == 3
+    headings = re.findall(
+        r'<h2 class="settings-section-heading">\s*'
+        r"\{\{ icon\('([^']+)'\) \}\}<span>([^<]+)</span>\s*</h2>",
+        template,
+    )
+    assert headings == [
+        ('user-circle', 'Profile'),
+        ('shield-lock', 'Security'),
+        ('user-cog', 'Account'),
+    ]
     assert 'Sign-In Method' in template
     assert 'Email Verification Code' in template
     assert 'Update Email' in template

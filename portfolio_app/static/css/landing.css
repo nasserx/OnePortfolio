@@ -25,23 +25,8 @@
      Navigation
      ====================================================================== */
 
-  /* Fixed, not sticky: sticky stays in flow and would push the intro down by
-     the header's height, putting a band of flat colour above the section.
-
-     One appearance, always. This used to be two — invisible over the intro,
-     then a panel once `landing.js` saw the page scroll — and the invisible
-     half was the expensive one: it needed a scroll listener to leave, and it
-     left every control in the row carrying a second set of colours that
-     existed for the first eight pixels of scroll and nothing else. The panel
-     is what the row looked like for the rest of the page anyway.
-
-     Still translucent, so the page moves under it without separating this
-     public shell from the canonical product canvas.
-
-     No divider, at rest or after scrolling. The panel and the blur already
-     say where the header ends; a hairline under them draws a second edge in
-     the same place. It went with the two-state header and its state-specific
-     presentation rules. */
+  /* The fixed translucent header stays out of document flow and keeps one
+     appearance. Blur establishes its boundary without a second divider. */
   .lp-nav {
     position: fixed;
     top: 0;
@@ -193,22 +178,8 @@
      Product shot
      ====================================================================== */
 
-  /* Solid, and on the product's own surfaces. This was glass for a while,
-     tuned by measuring the quietest ink printed on it against a photograph
-     showing through. It reads better opaque: the preview is meant to be the
-     application, and an application does not have a mountain range behind
-     its numbers. There is no picture left to expose either way.
-
-     The dividend is that every colour on this card is now an ordinary
-     surface pairing: `tests/test_design_tokens_contrast.py` already checks
-     every text role against the canonical card and muted surfaces,
-     so the card needs no legibility rule of its own.
-
-     Flat as well as opaque: the border draws the card's edge, and an
-     elevation shadow under it drew a second one, softer and larger, in a
-     section whose whole background is a low-alpha gradient. Depth was worth
-     paying for when the card floated on a photograph and had to separate
-     from it. It sits on the page now, so it is drawn like the page. */
+  /* The preview composes the canonical opaque card surface. Its shared edge
+     is sufficient separation, so the Landing layout adds no elevation. */
   .lp-shot {
     overflow: hidden;
     animation: op-fade-up var(--dur-4) var(--ease-out) 120ms backwards;
@@ -237,12 +208,7 @@
     letter-spacing: -0.03em;
   }
 
-  /* The pill gets its wash back. It was dropped because `--pos-soft` is a
-     green film under green type — harmless on an opaque surface, but on
-     glass a second veil pulling the background toward the ink, and it was
-     the binding constraint on every percent of picture behind this card.
-     On the canonical card surface the component keeps its own contrast,
-     so the component's own styling stands. */
+  /* The shared delta component owns its contrast on the canonical card. */
   .lp-shot__hero .delta {
     margin-top: var(--space-2);
   }
@@ -404,10 +370,8 @@
 
   /* ---- limits ---------------------------------------------------------- */
 
-  /* Same head as every other section, list underneath on the same 44rem
-     measure. It used to face its heading across a two-column gutter — the
-     one block reading sideways, and it broke the axis exactly where the
-     page makes its most direct claim. */
+  /* The list follows the shared centered section head on the same 44rem
+     measure, preserving the page's vertical reading axis. */
   .lp-limits__list {
     display: flex;
     flex-direction: column;

@@ -920,9 +920,7 @@
 
   .records-table td.actions-cell .row-actions { justify-content: flex-end; }
 
-  /* Dates and notes. These used to inherit the cell and carry Bootstrap's
-     `.text-muted` on top, which needed an `!important` of our own to beat
-     back; the table states the quiet step itself instead. */
+  /* Dates and notes use the table's canonical muted hierarchy directly. */
   .records-table tbody td small {
     font-size: inherit;
     color: var(--muted-foreground);

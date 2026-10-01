@@ -34,7 +34,8 @@ For exact formulas, see [docs/DOMAIN_AND_CALCULATIONS.md](docs/DOMAIN_AND_CALCUL
 - Overview totals, portfolio summaries, assets page, and Overview allocation charts based on recorded data.
 - Multi-user accounts with per-user data scoping.
 - Passwordless email-code login, registration, and account settings.
-- Responsive UI with light and dark themes using Bootstrap, Bootstrap Icons, and local design tokens.
+- Responsive UI with light and dark themes using the Nova design contract,
+  Geist typography, Tabler icons, and Bootstrap runtime behavior.
 
 ## Tech Stack
 
@@ -46,7 +47,7 @@ For exact formulas, see [docs/DOMAIN_AND_CALCULATIONS.md](docs/DOMAIN_AND_CALCUL
 - Flask-WTF CSRF support plus custom validation
 - Flask-Mail for email delivery
 - Flask-Limiter for auth rate limits
-- Bootstrap 5, Bootstrap Icons, vanilla JavaScript
+- Bootstrap 5 runtime, Tabler icons, Geist, vanilla JavaScript
 - pytest
 
 ## Quick Start

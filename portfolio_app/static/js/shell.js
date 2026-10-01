@@ -74,8 +74,7 @@
         writeStored(STORAGE.theme, next);
         ThemePreference.syncControls(next);
 
-        // CSS repaints itself, but anything drawn into a <canvas> has already
-        // baked in the old palette. Canvas owners listen for this and redraw.
+        // CSS repaints itself; canvas pixels require their owners to redraw.
         window.dispatchEvent(new CustomEvent('op:themechange', {
           detail: { theme: next }
         }));

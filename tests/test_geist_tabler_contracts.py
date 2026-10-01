@@ -105,5 +105,6 @@ def test_raw_svg_geometry_is_centralized():
             raw_svg_templates.append(path.relative_to(TEMPLATES).as_posix())
     assert sorted(raw_svg_templates) == [
         'components/icon_sprite.html',
+        'components/logo_mark.html',
         'macros/icons.html',
     ]

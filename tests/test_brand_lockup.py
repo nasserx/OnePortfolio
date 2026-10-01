@@ -1,19 +1,12 @@
-"""The OnePortfolio brand lockup: one size, everywhere it appears.
+"""The OnePortfolio brand lockup has one size everywhere it appears.
 
-The mark and the wordmark are one unit, and until recently they were sized in
-three places at once — `.brand` in `components.css` set the type, while every
-template that rendered the lockup passed its own `logo_size` to
-`components/logo_mark.html`. Nothing held those numbers together, so the
-marketing header and the app shell could drift apart a pixel at a time and no
-test would notice.
+`.brand` owns the mark size, wordmark typography, and gap. These checks keep
+page stylesheets and template call sites from creating divergent lockups.
 
-`.brand` owns all of it now. What is checked here is that it keeps owning it:
-one declaration per dimension, no page stylesheet quietly restating them, and
-no call site reaching past the class to size the mark itself.
-
-The standalone mark on the auth and error pages is deliberately *not* part of
-this. It appears without the wordmark, centred above a card, and is a
-different piece of furniture that happens to use the same image.
+The standalone mark on the auth and error pages appears without the wordmark,
+centred above a card, but deliberately inherits the same shared 20px mark size.
+That keeps every visible application use on one sizing and transparency
+contract.
 """
 
 import re
@@ -26,7 +19,6 @@ _PARTIAL = _TEMPLATES / 'components' / 'logo_mark.html'
 # Dimensions the lockup owns, and the value each is expected to resolve to.
 # Named rather than measured so a change here is a decision someone typed.
 _OWNED = {
-    '--brand-mark-size': '2rem',
     'font-size': 'var(--text-lg)',
     'font-weight': 'var(--weight-semibold)',
     'gap': 'var(--space-2)',
@@ -63,32 +55,12 @@ def test_the_lockup_declares_every_dimension_it_owns():
         )
 
 
-def test_the_mark_is_sized_by_the_class_not_by_its_call_sites():
-    """The rendered size comes from CSS, and the attribute agrees with it.
-
-    `logo_mark.html` still writes `width`/`height` attributes, because the
-    mark has to reserve its box before the stylesheet arrives — an image that
-    lays out at zero and then jumps is worse than one that is briefly the
-    wrong size. Those attributes are a fallback, not a second opinion, so the
-    partial's default has to be exactly what `--brand-mark-size` resolves to.
-    """
+def test_the_mark_is_sized_by_shared_css_not_by_its_call_sites():
     css = _components_css()
-
-    sized = _rule(css, '.brand .op-logo-mark')
-    assert sized.get('width') == 'var(--brand-mark-size)'
-    assert sized.get('height') == 'var(--brand-mark-size)'
-
-    declared = _rem_to_px(_rule(css, '.brand')['--brand-mark-size'])
-    default = re.search(
-        r'logo_size\|default\((\d+)\)', _PARTIAL.read_text(encoding='utf-8')
-    )
-    assert default is not None, 'logo_mark.html no longer defaults its size'
-
-    assert float(default.group(1)) == declared, (
-        f'logo_mark.html reserves {default.group(1)}px but --brand-mark-size '
-        f'renders at {declared:.0f}px. The attribute is what the browser lays '
-        f'out before CSS loads; if the two disagree the mark visibly jumps.'
-    )
+    shared = _rule(css, '.brand-logo')
+    assert shared['width'] == '1.25rem'
+    assert shared['height'] == '1.25rem'
+    assert 'logo_size' not in _PARTIAL.read_text(encoding='utf-8')
 
 
 def test_no_template_that_renders_the_lockup_sizes_the_mark_itself():
@@ -104,6 +76,19 @@ def test_no_template_that_renders_the_lockup_sizes_the_mark_itself():
         f'from `.brand`; passing `logo_size` beside it puts the number back '
         f'in the template where it cannot be kept in step.'
     )
+
+
+def test_shell_landing_and_auth_marks_share_the_compact_size():
+    css = _components_css()
+    shared = _rule(css, '.brand-logo')
+    assert shared['width'] == '1.25rem'
+    assert shared['height'] == '1.25rem'
+    assert '.auth-logo {' not in css
+
+    for template in _TEMPLATES.rglob('*.html'):
+        source = template.read_text(encoding='utf-8')
+        if "include 'components/logo_mark.html'" in source:
+            assert 'logo_size' not in source
 
 
 def test_no_page_stylesheet_restates_the_lockup():
@@ -131,7 +116,7 @@ def test_the_lockup_still_fits_the_rows_that_hold_it():
     be — a mark taller than its container silently grows the shell's header
     or the marketing bar, which is the regression a size bump invites.
     """
-    mark = _rem_to_px(_rule(_components_css(), '.brand')['--brand-mark-size'])
+    mark = _rem_to_px(_rule(_components_css(), '.brand-logo')['width'])
 
     rows = {
         'app.css': ('.sidenav__brand', 'height'),

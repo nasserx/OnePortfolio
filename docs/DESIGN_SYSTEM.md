@@ -409,19 +409,47 @@ adds `role="img"` and `aria-label`. Icons within already named controls
 remain decorative. Bootstrap Icons and its font stylesheet are no longer part
 of the application.
 
-The visible OnePortfolio mark is neutral, with near-black and near-white SVG
-variants selected by theme. The fallback favicon and installed raster icons use
-a mid-neutral mark that retains at least 4.5:1 contrast against black and white;
-installed-platform icons do not claim dynamic theme switching. Theme-colour
-metadata follows the canonical page backgrounds.
+The OnePortfolio brand mark is a compact monochrome quarter-pie: one filled
+quarter-circle silhouette with a straight left edge, a straight bottom edge,
+and one top-left-to-bottom-right circular arc. Three four-unit corner easings
+prevent brittle points without introducing additional chart segments. The mark
+has no internal divisions, stroke, letter, financial symbol, gradient, shadow,
+or decorative colour. It is a brand asset, not a Tabler interface icon.
 
-Brand consumers are centralized for the next brand refresh:
-`templates/components/logo_mark.html` owns the visible shell mark,
-`templates/components/favicon_links.html` owns document icon links, and
-`static/icons/favicon.svg` is the master asset consumed by
-`scripts/generate_app_icons.py`. A replacement master must preserve the script's
-geometry/mask and contrast validation contract or update that validator in the
-same dedicated brand change.
+`static/icons/favicon.svg` is the sole geometric source of truth. It contains
+one filled path in a 64-by-64 viewBox. The same silhouette is used for the
+primary application mark and every small-icon derivative. The generated light
+and dark SVG favicons are transparent bare-mark variants, and every 16, 32, and
+48px ICO frame is rasterized from the transparent light favicon. Apple-touch
+and Android installed-app outputs retain a separate neutral rounded-square
+composition because installed-platform icons cannot promise a suitable runtime
+surface or theme. `scripts/generate_app_icons.py` deterministically derives all
+of these outputs from the same path without browser automation or a third-party
+image dependency. Run the script after editing the master, then run it with
+`--validate-only` to verify geometry, transparency, contrast, dimensions,
+bounds, manifest references, cross-size consistency, and exact derivative
+provenance.
+
+`templates/components/logo_mark.html` remains the only visible-logo component,
+and `templates/components/favicon_links.html` remains the only document-icon
+link component. The generator derives the visible component's one inline path
+from the master SVG and fills it with `currentColor`, so it follows the
+canonical foreground in either theme without hand-maintained geometry in page
+templates. Its 20px square uses a viewBox cropped to the master mark's bounds,
+so the optical mark—not merely an invisible asset canvas—measures 20px. The
+visible application mark is transparent: it has no tile, background, border,
+shadow, or padding. SVG favicons and ICO frames follow the same transparent
+bare-mark rule. Their light and dark marks use near-black and near-white
+respectively, with at least 4.5:1 contrast against the canonical light and dark
+surfaces on which they are intended to appear. Only Apple-touch and Android
+installed-app compositions may use the neutral rounded-square surface.
+Installed icons do not claim dynamic theme switching, and theme-colour metadata
+continues to follow the canonical page backgrounds.
+
+Brand artwork must remain monochrome. It must never consume chart colours,
+financial semantic colours, or a separate brand hue. Future geometry changes
+must edit the master SVG and regenerate all derivatives rather than hand-edit
+the light, dark, raster, or ICO outputs.
 
 ### Modal and behavior ownership
 

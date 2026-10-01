@@ -1577,33 +1577,18 @@
     font-weight: var(--weight-semibold);
   }
 
-  .op-logo-mark {
+  .brand-logo {
     display: block;
     flex: none;
+    width: 1.25rem;
+    height: 1.25rem;
+    color: inherit;
   }
 
-  /* The brand lockup is shared by the app shell and the marketing page, so
-     it lives here rather than in either page stylesheet.
-
-     All three of its dimensions are owned right here — mark size, wordmark
-     size and weight, and the gap between them. The mark used to be sized by
-     a `logo_size` number written at each call site, which meant the lockup
-     was a template decision in two places and a stylesheet decision in a
-     third, and the marketing header and the app shell could drift apart
-     without anything noticing. `--brand-mark-size` is the one number now;
-     `components/logo_mark.html` defaults its `width`/`height` attributes to
-     the same value so the mark reserves its box before CSS arrives, and
-     `tests/test_brand_lockup.py` fails if the two ever disagree.
-
-     Sized to hold its own beside the primary CTA it sits next to in the
-     marketing header. That control is 38px tall with 13px medium type, so a
-     26px mark with 14px type read as a caption beside it; 32px with 16px
-     does not. Nothing about the header's own height depends on this — the
-     shell reserves 2.5rem for the row and the marketing bar 4rem, both of
-     which clear a 2rem mark with room to spare. */
+  /* One shared lockup owns mark size, wordmark type, and spacing across the
+     app shell and Landing. The 20px mark aligns with the 16px Geist wordmark
+     without affecting either header's independent row height. */
   .brand {
-    --brand-mark-size: 2rem;
-
     display: flex;
     align-items: center;
     gap: var(--space-2);
@@ -1615,11 +1600,6 @@
     white-space: nowrap;
   }
 
-  .brand .op-logo-mark {
-    width: var(--brand-mark-size);
-    height: var(--brand-mark-size);
-  }
-
   .brand:hover { color: var(--foreground); }
 
   .brand__word {
@@ -1627,23 +1607,5 @@
     white-space: nowrap;
     transition: opacity var(--dur-2) var(--ease-out);
   }
-
-  /* Brand assets ship as a light/dark monochrome pair. Both are in the DOM
-     and CSS hides the wrong one, so switching themes never flashes a
-     re-fetch and no JS is involved. Rule order matters here: the explicit
-     `data-theme` blocks must follow the media query, because they carry
-     identical specificity and source order is what breaks the tie. */
-  .brand-logo--dark { display: none; }
-  .brand-logo--light { display: block; }
-
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) .brand-logo--dark { display: block; }
-    :root:not([data-theme="light"]) .brand-logo--light { display: none; }
-  }
-
-  :root[data-theme="dark"] .brand-logo--dark { display: block; }
-  :root[data-theme="dark"] .brand-logo--light { display: none; }
-  :root[data-theme="light"] .brand-logo--dark { display: none; }
-  :root[data-theme="light"] .brand-logo--light { display: block; }
 
 }

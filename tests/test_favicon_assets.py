@@ -50,7 +50,7 @@ class _BrandLogoParser(HTMLParser):
     def handle_starttag(self, tag, attrs):
         values = dict(attrs)
         classes = (values.get("class") or "").split()
-        if tag == "img" and "brand-logo" in classes:
+        if tag == "svg" and "brand-logo" in classes:
             self.logos.append(values)
 
 
@@ -101,50 +101,45 @@ def test_favicon_declaration_order_selects_one_theme_variant():
     assert len({icon["href"] for icon in EXPECTED_ICONS}) == len(EXPECTED_ICONS)
 
 
-def test_brand_component_emits_both_theme_variants(app):
-    """The UI is theme-switchable at runtime, so a single baked-in artwork
-    choice can never be right. The component emits both variants and CSS
-    reveals the one matching the active theme."""
+def test_brand_component_uses_one_neutral_current_color_mark(app):
     with app.test_request_context("/"):
         logos = _brand_logos(render_template("components/logo_mark.html"))
 
     assert logos == [
         {
-            "src": "/static/icons/favicon-light.svg",
-            "width": "32",
-            "height": "32",
-            "class": "brand-logo brand-logo--light op-logo-mark",
-            "alt": "",
+            "class": "brand-logo",
+            "viewbox": "8 8 48 48",
+            "fill": "currentColor",
+            "focusable": "false",
             "aria-hidden": "true",
-            "decoding": "async",
-        },
-        {
-            "src": "/static/icons/favicon-dark.svg",
-            "width": "32",
-            "height": "32",
-            "class": "brand-logo brand-logo--dark op-logo-mark",
-            "alt": "",
-            "aria-hidden": "true",
-            "decoding": "async",
-        },
+        }
     ]
+    css = Path('portfolio_app/static/css/components.css').read_text(encoding='utf-8')
+    brand_rule = re.search(r'\.brand-logo\s*\{([^}]*)\}', css).group(1)
+    assert 'color: inherit' in brand_rule
+    assert not re.search(r'background|border|box-shadow|padding|mask', brand_rule)
 
 
-def test_brand_component_honours_size_and_class_overrides(app):
+def test_brand_component_honours_class_and_accessibility_overrides(app):
     with app.test_request_context("/"):
         logos = _brand_logos(render_template(
             "components/logo_mark.html",
-            logo_size=26,
-            logo_class="op-logo-mark auth-logo",
+            logo_class="auth-logo",
+            logo_decorative=False,
+            logo_alt="OnePortfolio",
         ))
 
-    assert [logo["width"] for logo in logos] == ["26", "26"]
-    assert [logo["height"] for logo in logos] == ["26", "26"]
-    for logo in logos:
-        assert logo["class"].endswith("op-logo-mark auth-logo")
+    assert logos == [{
+        'class': 'brand-logo auth-logo',
+        'viewbox': '8 8 48 48',
+        'fill': 'currentColor',
+        'focusable': 'false',
+        'role': 'img',
+        'aria-label': 'OnePortfolio',
+    }]
 
 
-def test_every_brand_surface_ships_both_variants(app):
+def test_every_brand_surface_uses_the_same_shared_mark(app):
     client = app.test_client()
     rendered = [
         client.get("/").get_data(as_text=True),
@@ -155,11 +150,8 @@ def test_every_brand_surface_ships_both_variants(app):
 
     for html in rendered:
         logos = _brand_logos(html)
-        assert logos
-        assert {logo["src"] for logo in logos} == {
-            "/static/icons/favicon-light.svg",
-            "/static/icons/favicon-dark.svg",
-        }
+        assert len(logos) == 1
+        assert logos[0]['class'].split()[0] == 'brand-logo'
 
     # Variant selection is a styling concern; no template may hard-code it.
     for name in ("base.html", "auth_base.html", "landing.html"):
@@ -176,7 +168,13 @@ def test_brand_assets_and_metadata_follow_neutral_theme_policy():
     }
     for name, colour in expected.items():
         source = (icon_root / name).read_text(encoding='utf-8')
-        assert f'<g fill="{colour}" mask="url(#logo-cutout)">' in source
+        assert f'data-brand-mark="oneportfolio-quarter-pie" fill="{colour}"' in source
+        assert 'viewBox="0 0 64 64"' in source
+        assert source.count('<path ') == 1
+        assert '<rect' not in source
+        assert 'data-brand-background' not in source
+        assert '<mask' not in source
+        assert '<image' not in source
         assert not re.search(r'#(?:6A55E8|5B45E8|9D88FF)', source, re.IGNORECASE)
 
     manifest = json.loads((icon_root / 'site.webmanifest').read_text(encoding='utf-8'))

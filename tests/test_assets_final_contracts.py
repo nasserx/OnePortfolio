@@ -200,4 +200,3 @@ def test_assets_scope_has_no_chart_palette_or_raw_component_colors():
     assert '--chart-' not in ASSETS
     assert 'bi-' not in ASSETS
     assert not re.search(r'(?<!&)#[0-9a-f]{3,8}\b|(?:oklch|rgba?)\(', ASSETS, re.I)
-

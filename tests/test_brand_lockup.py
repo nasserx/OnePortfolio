@@ -4,7 +4,7 @@
 page stylesheets and template call sites from creating divergent lockups.
 
 The standalone mark on the auth and error pages appears without the wordmark,
-centred above a card, but deliberately inherits the same shared 20px mark size.
+centred above a card, but deliberately inherits the same shared 18px mark size.
 That keeps every visible application use on one sizing and transparency
 contract.
 """
@@ -19,7 +19,7 @@ _PARTIAL = _TEMPLATES / 'components' / 'logo_mark.html'
 # Dimensions the lockup owns, and the value each is expected to resolve to.
 # Named rather than measured so a change here is a decision someone typed.
 _OWNED = {
-    'font-size': 'var(--text-lg)',
+    'font-size': 'var(--text-xl)',
     'font-weight': 'var(--weight-semibold)',
     'gap': 'var(--space-2)',
 }
@@ -58,8 +58,8 @@ def test_the_lockup_declares_every_dimension_it_owns():
 def test_the_mark_is_sized_by_shared_css_not_by_its_call_sites():
     css = _components_css()
     shared = _rule(css, '.brand-logo')
-    assert shared['width'] == '1.25rem'
-    assert shared['height'] == '1.25rem'
+    assert shared['width'] == '1.125rem'
+    assert shared['height'] == '1.125rem'
     assert 'logo_size' not in _PARTIAL.read_text(encoding='utf-8')
 
 

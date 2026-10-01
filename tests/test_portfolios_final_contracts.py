@@ -30,6 +30,8 @@ def test_page_header_action_and_empty_state_keep_shared_workflows():
     assert '<span>New Portfolio</span>' in TEMPLATE
     assert "empty_state('folder-plus', 'No Portfolios Yet'" in TEMPLATE
     assert '<span>Create Portfolio</span>' in TEMPLATE
+    assert 'placeholder="e.g., Stocks, Crypto, Technology"' in TEMPLATE
+    assert 'placeholder="e.g., Stocks, Gold, Crypto"' not in TEMPLATE
 
 
 def test_disclosures_keep_behavior_hooks_and_shared_surface_contracts():

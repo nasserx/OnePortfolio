@@ -3,6 +3,10 @@
 import re
 from pathlib import Path
 
+from portfolio_app import db
+from portfolio_app.models.user import User
+from tests._auth import authenticate_client
+
 
 ROOT = Path(__file__).resolve().parents[1]
 TEMPLATES = ROOT / 'portfolio_app' / 'templates'
@@ -79,13 +83,60 @@ def test_sprite_symbols_are_unique_and_every_reference_resolves():
         source = path.read_text(encoding='utf-8')
         references.update(re.findall(r"icon\('([a-z0-9-]+)'", source))
         references.update(re.findall(r"\('([a-z0-9-]+)', '[^']+',", source))
+        references.update(re.findall(
+            r"\('[^']+',\s*'([a-z0-9-]+)',\s*'[^']+'\)",
+            source,
+        ))
 
     shell = (STATIC / 'js' / 'shell.js').read_text(encoding='utf-8')
     references.update(re.findall(r"icon: '([a-z0-9-]+)'", shell))
     references.update(re.findall(r"create\('([a-z0-9-]+)'", (
         STATIC / 'js' / 'main.js'
     ).read_text(encoding='utf-8')))
-    assert references <= set(symbols)
+    assert references == set(symbols)
+
+
+def test_authenticated_sidebar_nav_icon_references_resolve_to_sprite_symbols(app):
+    with app.app_context():
+        user = User(
+            username='sidebar_icon_contract',
+            email='sidebar-icons@example.com',
+            is_verified=True,
+        )
+        db.session.add(user)
+        db.session.commit()
+        user_id = user.id
+
+    client = app.test_client()
+    authenticate_client(client, user_id)
+    response = client.get('/')
+    assert response.status_code == 200
+
+    html = response.get_data(as_text=True)
+    nav = re.search(r'<nav class="sidenav__nav">(.*?)</nav>', html, re.S)
+    assert nav
+
+    symbols = set(re.findall(
+        r'<symbol id="(op-icon-[a-z0-9-]+)"',
+        html,
+    ))
+    expected = {
+        'Overview': 'op-icon-dashboard',
+        'Portfolios': 'op-icon-wallet',
+        'Assets': 'op-icon-package',
+    }
+
+    for label, expected_symbol in expected.items():
+        link = re.search(
+            rf'<a\b[^>]*data-label="{label}"[^>]*>(.*?)</a>',
+            nav.group(1),
+            re.S,
+        )
+        assert link, f'missing rendered {label} sidebar item'
+        reference = re.search(r'<use href="#([^"]+)"></use>', link.group(1))
+        assert reference, f'missing rendered {label} icon reference'
+        assert reference.group(1) == expected_symbol
+        assert expected_symbol in symbols
 
 
 def test_dynamic_icons_use_the_same_sprite_name_contract():

@@ -1578,21 +1578,21 @@
   .brand-logo {
     display: block;
     flex: none;
-    width: 1.25rem;
-    height: 1.25rem;
+    width: 1.125rem;
+    height: 1.125rem;
     color: inherit;
   }
 
   /* One shared lockup owns mark size, wordmark type, and spacing across the
-     app shell and Landing. The 20px mark aligns with the 16px Geist wordmark
-     without affecting either header's independent row height. */
+     app shell and Landing. The 18px mark and 18px Geist wordmark remain
+     compact without affecting either header's independent row height. */
   .brand {
     display: flex;
     align-items: center;
     gap: var(--space-2);
     min-width: 0;
     color: var(--foreground);
-    font-size: var(--text-lg);
+    font-size: var(--text-xl);
     font-weight: var(--weight-semibold);
     letter-spacing: -0.02em;
     white-space: nowrap;

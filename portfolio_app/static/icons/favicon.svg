@@ -2,5 +2,5 @@
 <svg xmlns="http://www.w3.org/2000/svg"
      width="64" height="64" viewBox="0 0 64 64"
      preserveAspectRatio="xMidYMid meet">
-  <path data-brand-mark="oneportfolio-quarter-pie" fill="#757575" d="M12 8A44 44 0 0 1 56 52Q56 56 52 56H12Q8 56 8 52V12Q8 8 12 8Z"/>
+  <path data-brand-mark="oneportfolio-quarter-pie" fill="#757575" fill-rule="evenodd" d="M12 8A44 44 0 0 1 56 52Q56 56 52 56H12Q8 56 8 52V12Q8 8 12 8ZM20 18A26 26 0 0 1 46 44Q46 48 42 48H20Q16 48 16 44V22Q16 18 20 18Z"/>
 </svg>

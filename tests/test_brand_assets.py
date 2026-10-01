@@ -1,4 +1,4 @@
-"""Integrity contracts for the monochrome OnePortfolio quarter-pie assets."""
+"""Integrity contracts for the monochrome hollow quarter-pie brand assets."""
 
 from __future__ import annotations
 
@@ -45,7 +45,7 @@ def _logo_css_rules():
                 yield path, selectors.strip(), declarations
 
 
-def test_master_is_one_clean_quarter_pie_silhouette():
+def test_master_is_one_clean_hollow_quarter_pie_mark():
     source = (ICONS / 'favicon.svg').read_text(encoding='utf-8')
     root, paths, backgrounds = _svg_elements()
 
@@ -60,18 +60,25 @@ def test_master_is_one_clean_quarter_pie_silhouette():
     mark = paths[0]
     assert mark.attrib['data-brand-mark'] == 'oneportfolio-quarter-pie'
     assert mark.attrib['fill'] == GENERATOR.DEFAULT_SURFACE_ARTWORK
+    assert mark.attrib['fill-rule'] == 'evenodd'
     assert mark.attrib.get('stroke') is None
     assert len(list(root)) == 1
 
     path = mark.attrib['d']
     commands = re.findall(r'[A-Za-z]', path)
-    assert commands == ['M', 'A', 'Q', 'H', 'Q', 'V', 'Q', 'Z']
+    assert commands == [
+        'M', 'A', 'Q', 'H', 'Q', 'V', 'Q', 'Z',
+        'M', 'A', 'Q', 'H', 'Q', 'V', 'Q', 'Z',
+    ]
     assert re.search(r'A44 44 0 0 1', path)
-    assert path.count('A') == 1
-    assert path.count('Z') == 1
+    assert re.search(r'A26 26 0 0 1', path)
+    assert path.count('A') == 2
+    assert path.count('Z') == 2
     assert not re.search(r'[CST]', path)
 
-    contour = GENERATOR._path_contours(path)[0]
+    contours = GENERATOR._path_contours(path)
+    assert len(contours) == 2
+    contour = contours[0]
     xs = [point[0] for point in contour]
     ys = [point[1] for point in contour]
     assert min(xs) == 8
@@ -82,6 +89,14 @@ def test_master_is_one_clean_quarter_pie_silhouette():
     assert (8, 52) in contour
     assert (12, 56) in contour
     assert (52, 56) in contour
+
+    interior = contours[1]
+    interior_xs = [point[0] for point in interior]
+    interior_ys = [point[1] for point in interior]
+    assert min(interior_xs) == 16
+    assert max(interior_xs) == 46
+    assert min(interior_ys) == 18
+    assert max(interior_ys) == 48
 
     assert not re.search(
         r'<(?:image|mask|clipPath|filter|metadata)\b|base64|display\s*:\s*none',
@@ -99,6 +114,7 @@ def test_svg_favicon_variants_are_exact_transparent_derivatives_from_master():
         assert backgrounds == []
         assert marks[0].attrib['d'] == _svg_elements()[1][0].attrib['d']
         assert marks[0].attrib['fill'] == artwork
+        assert marks[0].attrib['fill-rule'] == 'evenodd'
         assert '<rect' not in source
         assert 'data-brand-background' not in source
         assert source == GENERATOR.svg_variant(master, artwork)
@@ -124,6 +140,14 @@ def test_raster_derivatives_are_deterministic_light_icon_compositions():
         assert all(margin > 0 for margin in result['margins'])
         assert all(margin > 0 for margin in result['mark_margins'])
         assert result['center_delta'] <= size * 0.08
+        probe = result['interior_probe'][2]
+        assert probe[:3] == GENERATOR._hex_rgb(GENERATOR.LIGHT_ICON_BACKGROUND)
+        assert probe[3] == 255
+        assert all(
+            pixel[:3] == GENERATOR._hex_rgb(GENERATOR.LIGHT_SURFACE_ARTWORK)
+            and pixel[3] == 255
+            for _x, _y, pixel in result['band_probes']
+        )
 
 
 def test_ico_frames_match_the_canonical_geometry_at_small_sizes(tmp_path):
@@ -144,6 +168,11 @@ def test_ico_frames_match_the_canonical_geometry_at_small_sizes(tmp_path):
         )
         assert result['opaque_background_rgb'] is None
         assert result['transparent_pixels'] > 0
+        assert result['interior_probe'][2][3] <= 32
+        assert all(
+            pixel[3] >= 192
+            for _x, _y, pixel in result['band_probes']
+        )
         assert result['mark_bbox_size'][0] >= size * 0.68
         assert result['mark_bbox_size'][1] >= size * 0.68
 
@@ -161,6 +190,11 @@ def test_reference_sizes_keep_the_arc_centered_and_clear(tmp_path):
         assert result['center_delta'] == 0
         assert len(set(result['mark_margins'])) == 1
         assert min(result['mark_margins']) >= max(2, size // 8)
+        assert result['interior_probe'][2][3] <= 32
+        assert all(
+            pixel[3] >= 192
+            for _x, _y, pixel in result['band_probes']
+        )
 
 
 def test_manifest_references_generated_assets_without_new_platform_claims():
@@ -204,7 +238,8 @@ def test_one_current_color_logo_component_owns_all_visible_marks():
     assert 'brand-logo' in component
     assert 'fill="currentColor"' in component
     assert 'viewBox="8 8 48 48"' in component
-    assert f'<path d="{master_path}"></path>' in component
+    assert 'fill-rule="evenodd"' in component
+    assert f'd="{master_path}"' in component
     assert 'color: inherit' in brand_rule
     assert not re.search(
         r'background|border|box-shadow|padding|mask',

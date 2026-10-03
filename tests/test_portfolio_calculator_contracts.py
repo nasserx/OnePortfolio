@@ -16,8 +16,9 @@ def _dec(value):
     return Decimal(str(value))
 
 
-def _tx(transaction_type, price, quantity, fees='0', date=None):
+def _tx(transaction_type, price, quantity, fees='0', date=None, transaction_id=0):
     return SimpleNamespace(
+        id=transaction_id,
         transaction_type=transaction_type,
         price=_dec(price),
         quantity=_dec(quantity),
@@ -145,9 +146,9 @@ def test_average_cost_full_liquidation_contract_from_list():
 def test_average_cost_multiple_buy_sell_sequence_contract_from_list():
     summary = PortfolioCalculator.get_symbol_transactions_summary_from_list([
         _tx('Buy', '10', '10'),
-        _tx('Sell', '12', '4', '1'),
-        _tx('Buy', '13', '4', '2'),
-        _tx('Sell', '11', '5', '0.5'),
+        _tx('Sell', '12', '4', '1', date=datetime(2024, 1, 2)),
+        _tx('Buy', '13', '4', '2', date=datetime(2024, 1, 3)),
+        _tx('Sell', '11', '5', '0.5', date=datetime(2024, 1, 4)),
     ])
 
     _assert_decimal(summary['total_quantity_held'], '5')

@@ -1,4 +1,4 @@
-from decimal import Decimal
+from decimal import Decimal, localcontext, ROUND_HALF_EVEN
 from types import SimpleNamespace
 
 from portfolio_app.calculators.financial_math import (
@@ -9,6 +9,7 @@ from portfolio_app.calculators.financial_math import (
     calculate_return,
     calculate_symbol_transaction_summary,
 )
+from tests._financial import assert_accounting_invariants
 
 
 def _dec(value):
@@ -451,3 +452,78 @@ def test_asset_return_all_zero_values():
     _assert_decimal(result['return_amount'], '0')
     _assert_decimal(result['return_percent'], '0')
     assert result['return_display'] == '—'
+
+
+def test_remaining_cost_pool_and_invariants_through_liquidation_and_rebuy():
+    transactions = [
+        _tx('Buy', '10', '2', '1'),
+        _tx('Buy', '12', '3', '1.5'),
+        _tx('Sell', '15', '2', '1'),
+        _tx('Buy', '20', '1'),
+        _tx('Sell', '16', '4', '1'),
+        _tx('Buy', '7', '2', '2'),
+    ]
+    # Quantity, remaining basis, unit cost, cumulative trading P&L.
+    expected = [
+        ('2', '21', '10.5', '0'),
+        ('5', '58.5', '11.7', '0'),
+        ('3', '35.1', '11.7', '5.6'),
+        ('4', '55.1', '13.775', '5.6'),
+        ('0', '0', '0', '13.5'),
+        ('2', '16', '8', '13.5'),
+    ]
+    funding, income = _dec('100'), _dec('2.5')
+    for end, state in enumerate(expected, start=1):
+        prefix = transactions[:end]
+        summary = calculate_symbol_transaction_summary(prefix)
+        assert tuple(summary[key] for key in (
+            'total_quantity_held', 'cost_basis', 'average_cost', 'realized_pnl',
+        )) == tuple(map(_dec, state)), f'after entry {end}'
+        cash = calculate_cash_balance(funding, prefix, income)
+        metrics = calculate_portfolio_metrics(
+            cash, summary['cost_basis'], summary['realized_pnl'], income, funding,
+        )
+        assert_accounting_invariants(
+            summary, cash=cash, net_funding=funding, income=income,
+            book_value=metrics['book_value'],
+        )
+    # Reopening uses only the new purchase pool; lifetime spend is not reset.
+    assert summary['total_buy_cost'] == _dec('94.5')
+    assert summary['realized_cost_basis'] == _dec('78.5')
+
+
+def test_known_repeating_average_full_liquidation_retains_tiny_basis_residual():
+    """Current defect, not a desired closure rule; no tolerance hides it.
+
+    The existing exact-zero test uses a terminating average (26). Here 5/3
+    rounds at the current 28-digit Decimal precision before the sale.
+    """
+    with localcontext() as context:
+        context.prec = 28
+        context.rounding = ROUND_HALF_EVEN
+        summary = calculate_symbol_transaction_summary([
+            _tx('Buy', '1', '1'),
+            _tx('Buy', '2', '2'),
+            _tx('Sell', '3', '3'),
+        ])
+    assert summary['total_quantity_held'] == _dec('0')
+    assert summary['average_cost'] == _dec('0')
+    assert summary['cost_basis'] == _dec('-1E-27')
+    assert _dec('0') < abs(summary['cost_basis']) < _dec('1E-26')
+    assert summary['realized_pnl'] == _dec('3.999999999999999999999999999')
+
+
+def test_pure_calculators_preserve_products_beyond_database_decimal_scale():
+    """Pure math retains digits that a Numeric(20,10) field cannot represent."""
+    transactions = [_tx('Buy', '0.1234567891', '0.0000000001', '0.00000000001')]
+    summary = calculate_symbol_transaction_summary(transactions)
+    assert summary['total_quantity_held'] == _dec('0.0000000001')
+    assert summary['cost_basis'] == _dec('0.00000000002234567891')
+    assert summary['average_cost'] == _dec('0.2234567891')
+    cash = calculate_cash_balance(_dec('1'), transactions, _dec('0'))
+    assert cash == _dec('0.99999999997765432109')
+    metrics = calculate_portfolio_metrics(cash, summary['cost_basis'], 0, 0, 1)
+    assert_accounting_invariants(
+        summary, cash=cash, net_funding=_dec('1'), income=_dec('0'),
+        book_value=metrics['book_value'],
+    )

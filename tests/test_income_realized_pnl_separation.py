@@ -85,10 +85,17 @@ def test_income_after_buy_changes_cash_book_value_and_return_not_realized_pnl_or
         )
 
         before, _ = PortfolioCalculator.get_portfolio_summary(user_id=uid)
+        quantity_before = PortfolioCalculator.get_quantity_held_for_symbol(
+            portfolio.id, 'MSFT', user_id=uid,
+        )
         svc.transaction_service.add_dividend(
             portfolio.id, 'MSFT', _dec('50'), datetime(2024, 1, 3),
         )
         after, _ = PortfolioCalculator.get_portfolio_summary(user_id=uid)
+        quantity_after = PortfolioCalculator.get_quantity_held_for_symbol(
+            portfolio.id, 'MSFT', user_id=uid,
+        )
+        assert quantity_before == quantity_after == _dec('5')
 
         before_item = before[0]
         after_item = after[0]

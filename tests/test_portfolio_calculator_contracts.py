@@ -170,13 +170,27 @@ def test_database_summary_uses_calendar_date_buy_first_and_id_ordering(app):
             portfolio, 'Sell', 'ORDER', '30', '2', '0', datetime(2024, 1, 2, 9, 0),
         )
         second_same_day_buy = _transaction(
-            portfolio, 'Buy', 'ORDER', '40', '1', '0', datetime(2024, 1, 2, 18, 0),
+            portfolio, 'Buy', 'ORDER', '40', '1', '0', datetime(2024, 1, 2, 12, 0),
         )
         earlier_buy = _transaction(
             portfolio, 'Buy', 'ORDER', '10', '1', '0', datetime(2024, 1, 1, 23, 0),
         )
 
         assert first_same_day_buy.id < same_day_sell.id < second_same_day_buy.id < earlier_buy.id
+
+        # Final aggregate basis alone cannot prove ordering between same-day
+        # buys. The later ID has an earlier clock time; replay output and
+        # intermediate averages pin ID order rather than intraday time order.
+        replayed = PortfolioCalculator.recalculate_all_averages_for_symbol(
+            portfolio.id, 'ORDER', user_id=user.id,
+        )
+        assert [row.id for row in replayed] == [
+            earlier_buy.id, first_same_day_buy.id,
+            second_same_day_buy.id, same_day_sell.id,
+        ]
+        assert earlier_buy.average_cost == _dec('10')
+        assert first_same_day_buy.average_cost == _dec('15')
+        assert second_same_day_buy.average_cost == _dec('70') / _dec('3')
 
         summary = PortfolioCalculator.get_symbol_transactions_summary(
             portfolio.id, 'ORDER', user_id=user.id,

@@ -1,7 +1,7 @@
 """Phase 1 characterization: current behavior, including named known defects.
 
-Defect tests assert the observed disagreement and the correct canonical result
-separately. A later intentional fix must update them; no xfail masks regressions.
+Remaining defect tests assert observed behavior without xfail markers. The
+Assets ordering characterization became a correctness regression in Phase 2.
 All persistence uses the existing isolated ``app`` fixture.
 """
 
@@ -17,9 +17,11 @@ from portfolio_app.calculators import PortfolioCalculator as PC
 from portfolio_app.models import Transaction
 from portfolio_app.models.user import User
 from portfolio_app.routes.transactions import _get_transactions_page_context
+from portfolio_app.routes.portfolios import _get_portfolios_page_context
 from portfolio_app.services.factory import Services
 from portfolio_app.utils.messages import MESSAGES
 from tests._financial import assert_accounting_invariants
+from tests._auth import authenticate_client
 
 
 D = Decimal
@@ -94,7 +96,7 @@ def test_btc_unfunded_buy_funding_sale_withdrawal_and_profit_redeposit(ledger):
     assert f'{sale.net_pnl_percent:+,.2f}%' == '+0.54%'
 
 
-def test_historical_insertion_replays_canonical_basis_and_stored_sale(ledger):
+def test_historical_insertion_agrees_across_calculators_pages_apis_and_stored_sale(ledger, app):
     _trade(ledger, 'Buy', '100', '1', 1)
     sale = _trade(ledger, 'Sell', '150', '1', 3)
     assert sale.net_pnl == D('50')
@@ -109,29 +111,65 @@ def test_historical_insertion_replays_canonical_basis_and_stored_sale(ledger):
     assert sale.average_cost == D('150')
     assert sale.net_pnl == D('0')
 
+    g._services = ledger.svc
+    assets = _get_transactions_page_context()['holdings'][0]['summary']
+    portfolio = _get_portfolios_page_context()['portfolio_details'][0]
+    overview, _ = ledger.svc.overview_service.get_portfolio_summary()
+    dashboard = ledger.svc.overview_service.get_portfolio_dashboard_totals()
+    performance = ledger.svc.overview_service.get_symbol_performance()[0]
+    assert assets == {**summary,
+        'return_amount': D('0'), 'return_percent': D('0'), 'return_display': '+0.00%',
+    }
+    for row in (portfolio, overview[0]):
+        assert row['positions'] == D('150')
+        assert row['realized_pnl'] == D('0')
+    assert dashboard['total_positions'] == D('150')
+    assert dashboard['realized_pnl'] == performance['realized_pnl'] == D('0')
+    assert performance['held_cost_basis'] == D('150')
 
-def test_known_assets_defect_replays_repository_order_unlike_overview(ledger, monkeypatch):
+    client = app.test_client()
+    authenticate_client(client, ledger.uid)
+    response = client.get('/api/portfolio-summary')
+    assert response.status_code == 200
+    api_row = response.get_json()['portfolio_summary'][0]
+    assert D(str(api_row['positions'])) == D('150')
+    assert D(str(api_row['realized_pnl'])) == D('0')
+    holdings = client.get('/api/holdings', query_string={'portfolio_id': ledger.pid, 'symbol': 'BTC'})
+    assert holdings.status_code == 200
+    assert D(holdings.get_json()['held_quantity']) == D('1')
+
+
+@pytest.mark.parametrize('reverse_display', [False, True])
+def test_assets_and_overview_agree_regardless_of_repository_or_display_order(
+    ledger, monkeypatch, reverse_display,
+):
     first = _trade(ledger, 'Buy', '100', '1', 1)
     sale = _trade(ledger, 'Sell', '150', '1', 3)
     historical = _trade(ledger, 'Buy', '200', '1', 2)
-    # An unordered SELECT makes no promise. Supply a permitted insertion-order
-    # result explicitly, so this defect test does not depend on SQLite's plan.
+    # Neither insertion order nor newest-first display order is accounting order.
+    supplied = [first, sale, historical]
+    if reverse_display:
+        supplied.sort(key=lambda row: row.date, reverse=True)
+    original_ids = [row.id for row in supplied]
+
     def insertion_order(portfolio_id):
         assert portfolio_id == ledger.pid
-        return [first, sale, historical]
+        return supplied
 
     monkeypatch.setattr(ledger.svc.transaction_repo, 'get_by_portfolio_id', insertion_order)
     g._services = ledger.svc
-    assets = _get_transactions_page_context()['holdings'][0]['summary']
+    holding = _get_transactions_page_context()['holdings'][0]
+    assets = holding['summary']
     overview, _ = ledger.svc.overview_service.get_portfolio_summary()
 
     assert overview[0]['positions'] == D('150')
     assert overview[0]['realized_pnl'] == D('0')
     assert assets['total_quantity_held'] == D('1')
-    assert assets['cost_basis'] == assets['average_cost'] == D('200')
-    assert assets['realized_pnl'] == D('50')
-    assert assets['realized_pnl'] != overview[0]['realized_pnl']
-    assert sale.net_pnl == D('0')  # Even the sale row disagrees with its asset header.
+    assert assets['cost_basis'] == assets['average_cost'] == D('150')
+    assert assets['realized_pnl'] == overview[0]['realized_pnl'] == D('0')
+    assert sale.net_pnl == D('0')
+    assert [row.id for row in supplied] == original_ids
+    assert [row.id for row in holding['transactions']] == list(reversed(original_ids))
 
 
 def test_persisted_ten_decimal_average_differs_from_fresh_replay(ledger):
@@ -225,3 +263,21 @@ def test_asset_price_and_average_display_precision_follows_recorded_prices(
     holding = _get_transactions_page_context()['holdings'][0]
     assert holding['price_decimal_places'] == price_places
     assert holding['avg_cost_decimal_places'] == average_places
+
+
+def test_quantity_walk_and_recalculation_preserve_buy_first_when_clock_times_disagree(ledger):
+    buy = ledger.svc.transaction_service.add_transaction(
+        portfolio_id=ledger.pid, transaction_type='Buy', symbol='BTC',
+        price=D('100'), quantity=D('1'), fees=D('0'), date=datetime(2024, 1, 1, 20),
+    )
+    # Accepted despite an earlier clock time: both effective dates are Jan 1.
+    sale = ledger.svc.transaction_service.add_transaction(
+        portfolio_id=ledger.pid, transaction_type='Sell', symbol='BTC',
+        price=D('150'), quantity=D('1'), fees=D('0'), date=datetime(2024, 1, 1, 8),
+    )
+    assert sale.net_pnl == D('50')
+    ledger.svc.transaction_service.update_transaction(buy.id, date=datetime(2024, 1, 1, 23))
+    replayed = PC.recalculate_all_averages_for_symbol(ledger.pid, 'BTC', user_id=ledger.uid)
+    assert [row.id for row in replayed] == [buy.id, sale.id]
+    assert sale.average_cost == D('100')
+    assert sale.net_pnl == D('50')

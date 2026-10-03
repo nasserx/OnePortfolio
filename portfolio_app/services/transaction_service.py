@@ -12,6 +12,9 @@ from portfolio_app.repositories.portfolio_repository import PortfolioRepository
 from portfolio_app.repositories.dividend_repository import DividendRepository
 from portfolio_app.calculators.portfolio_calculator import PortfolioCalculator
 from portfolio_app.calculators.transaction_manager import TransactionManager
+from portfolio_app.calculators.transaction_order import (
+    PENDING_TRANSACTION_ID, transaction_order_key,
+)
 from portfolio_app.utils.decimal_utils import ZERO
 from portfolio_app.utils.messages import MESSAGES
 
@@ -423,9 +426,8 @@ class TransactionService:
         it sorts after any same-date/same-type peer (matches the post-
         commit ordering it would have once auto-incremented).
 
-        Ordering matches the SQL ORDER BY in
-        :meth:`PortfolioCalculator.recalculate_all_averages_for_symbol`:
-        ``func.date(date) ASC, buy_first ASC, id ASC``.
+        Ordering uses the same canonical key as summaries and persisted
+        average-cost replay: calendar date, Buy before Sell, then ID.
 
         The query is scoped by the repo's user_id so a forged portfolio_id
         from another user simulates an empty existing-row set rather than
@@ -442,8 +444,7 @@ class TransactionService:
         rows = query.all()
 
         walk = [
-            (r.date, 0 if r.transaction_type == 'Buy' else 1, r.id,
-             r.transaction_type, Decimal(str(r.quantity)))
+            (r.date, r.id, r.transaction_type, Decimal(str(r.quantity)))
             for r in rows
         ]
 
@@ -451,21 +452,15 @@ class TransactionService:
             # New rows have no id yet — slot them after any existing
             # same-date/same-type peer so the simulation matches what
             # ``recalculate_all_averages_for_symbol`` will do post-commit.
-            sort_id = edit_id if edit_id is not None else 2**63
+            sort_id = edit_id if edit_id is not None else PENDING_TRANSACTION_ID
             walk.append((
                 proposed_date,
-                0 if proposed_type == 'Buy' else 1,
                 sort_id,
                 proposed_type,
                 proposed_quantity,
             ))
 
-        def _key(item):
-            d = item[0]
-            d_only = d.date() if d is not None else datetime.min.date()
-            return (d_only, item[1], item[2])
-
-        walk.sort(key=_key)
+        walk.sort(key=lambda item: transaction_order_key(item[0], item[2], item[1]))
 
         # Identify the proposed row (if present) so we can distinguish two
         # very different dip causes:
@@ -475,12 +470,12 @@ class TransactionService:
         #     change/delete leaves that Sell uncovered (a much clearer
         #     message: "a later Sell depends on this Buy")
         if proposed_type is not None:
-            proposed_id = edit_id if edit_id is not None else 2**63
+            proposed_id = edit_id if edit_id is not None else PENDING_TRANSACTION_ID
         else:
             proposed_id = None  # delete, or old-stream check after symbol change
 
         running = Decimal('0')
-        for _date, _b, tid, ttype, qty in walk:
+        for _date, tid, ttype, qty in walk:
             if ttype == 'Buy':
                 running += qty
             else:

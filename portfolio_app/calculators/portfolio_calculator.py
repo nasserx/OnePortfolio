@@ -1,7 +1,8 @@
 """Portfolio calculator for financial calculations."""
 
 from decimal import Decimal
-from sqlalchemy import case, func
+from sqlalchemy import func
+from portfolio_app.calculators.transaction_order import order_transactions
 from portfolio_app import db
 from portfolio_app.calculators.financial_math import (
     calculate_asset_return,
@@ -489,23 +490,19 @@ class PortfolioCalculator:
     def get_symbol_transactions_summary(portfolio_id, symbol, *, user_id=None):
         """Get aggregated transaction summary for a specific symbol."""
         symbol = PortfolioCalculator.normalize_symbol(symbol)
-        buy_first = case((Transaction.transaction_type == 'Buy', 0), else_=1)
         query = Transaction.query.filter_by(portfolio_id=portfolio_id, symbol=symbol)
         query = PortfolioCalculator._scope_to_user(query, Transaction, user_id)
-        transactions = (
-            query.order_by(func.date(Transaction.date).asc(), buy_first, Transaction.id.asc())
-            .all()
-        )
-        return PortfolioCalculator.get_symbol_transactions_summary_from_list(transactions)
+        return PortfolioCalculator.get_symbol_transactions_summary_from_list(query.all())
 
     @staticmethod
     def get_symbol_transactions_summary_from_list(transactions):
-        """Get aggregated summary from a pre-sorted list of transactions.
+        """Get a canonical summary regardless of retrieval or display order.
 
-        Uses average-cost method: each sell realizes P&L based on the
-        weighted-average cost of the remaining position at time of sale.
+        Records carry date, transaction_type and id. Enforce accounting order
+        here before calling the ordered-input pure average-cost calculation.
+        The caller's list is not mutated.
         """
-        return calculate_symbol_transaction_summary(transactions)
+        return calculate_symbol_transaction_summary(order_transactions(transactions))
 
     # ------------------------------------------------------------------
     # Recalculation (after add/edit/delete transaction)
@@ -517,13 +514,9 @@ class PortfolioCalculator:
         (portfolio, symbol) pair. The caller is responsible for committing.
         """
         symbol = PortfolioCalculator.normalize_symbol(symbol)
-        buy_first = case((Transaction.transaction_type == 'Buy', 0), else_=1)
         query = Transaction.query.filter_by(portfolio_id=portfolio_id, symbol=symbol)
         query = PortfolioCalculator._scope_to_user(query, Transaction, user_id)
-        transactions = (
-            query.order_by(func.date(Transaction.date).asc(), buy_first, Transaction.id.asc())
-            .all()
-        )
+        transactions = order_transactions(query.all())
 
         running_quantity = ZERO
         running_cost = ZERO

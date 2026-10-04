@@ -33,8 +33,9 @@ def index() -> str:
         return render_template('landing.html')
 
     svc = get_services()
-    portfolio_summary, total_value = svc.overview_service.get_portfolio_summary()
-    totals = svc.overview_service.get_portfolio_dashboard_totals()
+    snapshot = svc.overview_service.get_financial_snapshot()
+    portfolio_summary, total_value = snapshot.as_portfolio_summary()
+    totals = dict(snapshot.totals)
 
     return render_template(
         'index.html',

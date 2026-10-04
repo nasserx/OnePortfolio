@@ -15,7 +15,7 @@ from portfolio_app.calculators.transaction_manager import TransactionManager
 from portfolio_app.calculators.transaction_order import (
     PENDING_TRANSACTION_ID, transaction_order_key,
 )
-from portfolio_app.utils.decimal_utils import ZERO
+from portfolio_app.utils.decimal_utils import ZERO, parse_financial_decimal
 from portfolio_app.utils.messages import MESSAGES
 
 
@@ -51,6 +51,7 @@ class TransactionService:
         date: Optional[Any] = None
     ) -> Transaction:
         """Add a new transaction."""
+        price, quantity, fees = map(parse_financial_decimal, (price, quantity, fees))
         if not self.portfolio_repo.get_by_id(portfolio_id):
             raise ValueError(MESSAGES['PORTFOLIO_NOT_FOUND'])
 
@@ -116,6 +117,10 @@ class TransactionService:
         date: Optional[Any] = None
     ) -> Transaction:
         """Update an existing transaction."""
+        price, quantity, fees = (
+            parse_financial_decimal(value) if value is not None else None
+            for value in (price, quantity, fees)
+        )
         transaction = self.transaction_repo.get_by_id(transaction_id)
         if not transaction:
             raise ValueError(MESSAGES['TRANSACTION_NOT_FOUND'])
@@ -124,6 +129,22 @@ class TransactionService:
             raise ValueError(MESSAGES['TRANSACTION_NOT_FOUND'])
 
         if self._has_no_changes(transaction, price, quantity, fees, notes, symbol, date):
+            return transaction
+
+        # A metadata-only edit must not replay stored derivatives through the
+        # SQLite precision boundary. Within-day time changes do not change the
+        # canonical calendar-date accounting order either.
+        same_accounting_date = date is None or (
+            transaction.date is not None and date.date() == transaction.date.date()
+        )
+        if same_accounting_date and self._has_no_changes(
+            transaction, price, quantity, fees, None, symbol, None,
+        ):
+            if notes is not None:
+                transaction.notes = notes
+            if date is not None:
+                transaction.date = date
+            self.transaction_repo.commit()
             return transaction
 
         # Validate post-mutation invariants BEFORE applying the change.
@@ -498,6 +519,7 @@ class TransactionService:
         notes: str = '',
     ) -> Dividend:
         """Add a new dividend income record."""
+        amount = parse_financial_decimal(amount)
         portfolio = self.portfolio_repo.get_by_id(portfolio_id)
         if not portfolio:
             raise ValueError(MESSAGES['PORTFOLIO_NOT_FOUND'])
@@ -525,6 +547,8 @@ class TransactionService:
         notes: Optional[str] = None,
     ) -> Dividend:
         """Update an existing dividend."""
+        if amount is not None:
+            amount = parse_financial_decimal(amount)
         dividend = self.dividend_repo.get_by_id(dividend_id)
         if not dividend or not self.portfolio_repo.get_by_id(dividend.portfolio_id):
             raise ValueError(MESSAGES['DIVIDEND_NOT_FOUND'])

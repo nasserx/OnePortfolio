@@ -174,6 +174,9 @@ def create_app(config_class=Config):
         return redirect(safe_referrer or url_for("dashboard.index"))
 
     # Template filters
+    from portfolio_app.utils.decimal_utils import decimal_text, withdrawal_max_text
+    app.jinja_env.filters['decimal_text'] = decimal_text
+    app.jinja_env.filters['withdrawal_max_text'] = withdrawal_max_text
     app.jinja_env.filters['fmt_decimal'] = fmt_decimal
     app.jinja_env.filters['fmt_display_decimal'] = fmt_display_decimal
     app.jinja_env.filters['fmt_display_money'] = fmt_display_money
@@ -185,7 +188,7 @@ def create_app(config_class=Config):
 
     # Static-asset cache buster. Bumped by hand when CSS/JS ships, so every
     # template can use `v=ASSET_VERSION` instead of carrying its own literal.
-    ASSET_VERSION = '20260815-6'
+    ASSET_VERSION = '20261004-precision'
 
     def _get_csp_nonce():
         """Return the single cryptographically random nonce for this request."""

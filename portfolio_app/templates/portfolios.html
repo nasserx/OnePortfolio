@@ -89,7 +89,7 @@
                         <button type="button" class="dropdown-item js-withdraw-funds-btn"
                                 data-portfolio-id="{{ item.portfolio.id }}"
                                 data-name="{{ item.portfolio.name|e }}"
-                                data-withdrawable-cash-input="{{ item.withdrawable_cash|fmt_money }}">
+                                data-withdrawable-cash-input="{{ item.withdrawable_cash|withdrawal_max_text }}">
                             {{ icon('arrow-up-circle') }}
                             <span>Withdraw</span>
                         </button>
@@ -152,7 +152,7 @@
                                                     data-event='{{ {
                                                         "id": event.id,
                                                         "type": event.event_type,
-                                                        "amount": ("%.2f"|format(event.amount_delta|abs)),
+                                                        "amount": (event.amount_delta|abs|decimal_text),
                                                         "notes": (event.notes or ""),
                                                         "date": event.date_short
                                                     }|tojson|e }}'>

@@ -3,6 +3,7 @@
 from decimal import Decimal, InvalidOperation
 from typing import Optional, Tuple
 from portfolio_app.utils.messages import MESSAGES
+from portfolio_app.utils.decimal_utils import parse_financial_decimal
 
 
 def parse_decimal_field(
@@ -20,9 +21,8 @@ def parse_decimal_field(
     v = (value or '').strip()
     if v == '':
         return (None, None) if allow_blank else (None, MESSAGES['FIELD_REQUIRED'])
-    v = v.replace(',', '')
     try:
-        return Decimal(v), None
+        return parse_financial_decimal(v), None
     except (InvalidOperation, ValueError, TypeError):
         return None, MESSAGES['INVALID_NUMBER']
 

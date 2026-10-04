@@ -3,7 +3,7 @@ const AppConfig = {
     errorDismissDelay: 6000,    // 6 seconds for error messages
     validation: {
         symbolPattern: /^[A-Z0-9][A-Z0-9._\-]{0,19}$/,
-        numberPattern: /^[-+]?\d+(?:\.\d+)?(?:[eE][-+]?\d+)?$/,
+        numberPattern: /^[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?$/,
         datePattern: /^\d{4}-\d{2}-\d{2}$/
     }
 };
@@ -11,20 +11,12 @@ const AppConfig = {
 
 const Utils = {
     sanitizeDecimalInput(value) {
-        const raw = String(value || '');
-        let output = '';
-        let dotSeen = false;
-
-        for (const char of raw) {
-            if (char >= '0' && char <= '9') {
-                output += char;
-            } else if (char === '.' && !dotSeen) {
-                output += char;
-                dotSeen = true;
-            }
-        }
-
-        return output;
+        const raw = String(value || '').trim();
+        // Never turn invalid text (e.g. -1, 1x2, or 1,5) into another amount.
+        // Remove only valid thousands grouping; the server validates again.
+        const grouped = /^[+-]?\d{1,3}(?:,\d{3})+(?:\.\d*)?(?:[eE][+-]?\d+)?$/;
+        const text = grouped.test(raw) ? raw.replace(/,/g, '') : raw;
+        return this.toPlainDecimalString(text);
     },
 
     normalizeSymbol(raw) {
@@ -75,13 +67,14 @@ const Utils = {
     toPlainDecimalString(numStr) {
         if (!numStr || typeof numStr !== 'string') return numStr;
         if (!/[eE]/.test(numStr)) return numStr;
+        if (!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)[eE][+-]?\d+$/.test(numStr)) return numStr;
 
         const parts = numStr.toLowerCase().split('e');
         if (parts.length !== 2) return numStr;
 
         let coefficient = parts[0];
         const exponent = parseInt(parts[1], 10);
-        if (!Number.isFinite(exponent)) return numStr;
+        if (!Number.isSafeInteger(exponent) || Math.abs(exponent) > 10000) return numStr;
 
         let sign = '';
         if (coefficient.startsWith('-')) {
@@ -98,25 +91,19 @@ const Utils = {
         const fracPart = coeffParts[1] || '';
 
         const intPartNormalized = intPart.replace(/^0+(?=\d)/, '');
-        const digits = (intPartNormalized + fracPart).replace(/^0+(?=\d)/, '') || '0';
+        // Leading fractional zeros determine the decimal point position.
+        const digits = intPartNormalized + fracPart;
 
         const decimalIndex = intPartNormalized.length;
         const newIndex = decimalIndex + exponent;
 
-        if (exponent >= 0) {
-            if (newIndex >= digits.length) {
-                return sign + digits.padEnd(newIndex, '0');
-            }
-            const left = digits.slice(0, newIndex) || '0';
-            const right = digits.slice(newIndex);
-            return sign + left + (right ? ('.' + right) : '');
-        }
-
         if (newIndex <= 0) {
             return sign + '0.' + '0'.repeat(-newIndex) + digits;
         }
-
-        return sign + digits.slice(0, newIndex) + '.' + digits.slice(newIndex);
+        const left = (newIndex >= digits.length
+            ? digits.padEnd(newIndex, '0') : digits.slice(0, newIndex)).replace(/^0+(?=\d)/, '');
+        const right = digits.slice(newIndex);
+        return sign + left + (right ? '.' + right : '');
     },
 
     findFieldContainer(element) {

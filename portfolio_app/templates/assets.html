@@ -198,9 +198,9 @@
                                                         "portfolioId": transaction.portfolio_id,
                                                         "type": transaction.transaction_type,
                                                         "symbol": (transaction.symbol or ""),
-                                                        "price": ("%.10f"|format(transaction.price)),
-                                                        "quantity": ("%.10f"|format(transaction.quantity)),
-                                                        "fees": ("%.10f"|format(transaction.fees)),
+                                                        "price": (transaction.price|decimal_text),
+                                                        "quantity": (transaction.quantity|decimal_text),
+                                                        "fees": (transaction.fees|decimal_text),
                                                         "notes": (transaction.notes or ""),
                                                         "dateShort": transaction.date_short
                                                     }|tojson|e }}'>
@@ -243,7 +243,7 @@
                                             {% call action_menu('Actions for income entry for ' ~ item.symbol ~ ' on ' ~ div.date_short, small=true) %}
                                             <li>
                                                 <button type="button" class="dropdown-item js-edit-dividend-btn"
-                                                        data-div='{{ {"id": div.id, "portfolioId": div.portfolio_id, "amount": ("%.10f"|format(div.amount)), "dateShort": div.date_short, "notes": (div.notes or "")}|tojson|e }}'>
+                                                        data-div='{{ {"id": div.id, "portfolioId": div.portfolio_id, "amount": (div.amount|decimal_text), "dateShort": div.date_short, "notes": (div.notes or "")}|tojson|e }}'>
                                                     {{ icon('edit') }}
                                                     <span>Edit</span>
                                                 </button>
@@ -1199,8 +1199,7 @@ function editTransaction(id, portfolioId, type, symbol, price, quantity, fees, n
         if (!s) return '';
         // Handle scientific notation (e.g. "0E-10" from Python Decimal for zero values).
         if (/[Ee]/.test(s)) {
-            const n = parseFloat(s);
-            if (!isNaN(n)) s = n.toFixed(10);
+            s = Utils.toPlainDecimalString(s);
         }
         if (!/^[-+]?\d*(?:\.\d+)?$/.test(s)) return s;
         if (!s.includes('.')) return s;
@@ -1519,7 +1518,7 @@ function openEditDividendModal(id, amount, dateShort, notes) {
         if (v == null) return '';
         let s = String(v).trim();
         if (!s) return '';
-        if (/[Ee]/.test(s)) { const n = parseFloat(s); if (!isNaN(n)) s = n.toFixed(10); }
+        if (/[Ee]/.test(s)) s = Utils.toPlainDecimalString(s);
         if (!/^[-+]?\d*(?:\.\d+)?$/.test(s)) return s;
         if (!s.includes('.')) return s;
         const out = s.replace(/(?:\.0+|(?<=\.\d*?)0+)$/, '');

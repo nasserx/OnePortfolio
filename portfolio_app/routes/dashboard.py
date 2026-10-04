@@ -3,7 +3,7 @@
 import logging
 from flask import Blueprint, render_template, jsonify, request, Response
 from flask_login import login_required, current_user
-from decimal import Decimal
+from portfolio_app.utils.decimal_utils import decimal_json, decimal_text
 from portfolio_app.services import get_services
 from portfolio_app.calculators import PortfolioCalculator
 from portfolio_app.calculators.allocation_charts import build_allocation_chart_data
@@ -13,17 +13,6 @@ logger = logging.getLogger(__name__)
 
 # Create blueprint
 dashboard_bp = Blueprint('dashboard', __name__)
-
-
-def _jsonify_decimals(value):
-    """Convert Decimal values to float for JSON serialization."""
-    if isinstance(value, Decimal):
-        return float(value)
-    if isinstance(value, dict):
-        return {k: _jsonify_decimals(v) for k, v in value.items()}
-    if isinstance(value, (list, tuple)):
-        return [_jsonify_decimals(v) for v in value]
-    return value
 
 
 @dashboard_bp.route('/')
@@ -53,7 +42,7 @@ def api_portfolio_summary() -> Response:
     svc = get_services()
     portfolio_summary, total_value = svc.overview_service.get_portfolio_summary()
 
-    return jsonify(_jsonify_decimals({
+    return jsonify(decimal_json({
         'portfolio_summary': portfolio_summary,
         'total_value': total_value
     }))
@@ -90,7 +79,7 @@ def api_holdings() -> Response:
             portfolio_id, symbol, user_id=svc.portfolio_repo.user_id,
         )
 
-        held_qty_str = str(held_qty)
+        held_qty_str = decimal_text(held_qty)
 
         if '.' in held_qty_str:
             held_qty_str = held_qty_str.rstrip('0').rstrip('.')

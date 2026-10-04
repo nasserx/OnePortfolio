@@ -43,14 +43,10 @@ def apply_asset_summary_return(summary, income=ZERO):
 
 
 def sum_income_details(dividends):
-    """Preserve the Assets Decimal row-sum projection pending precision work.
-
-    This is deliberately distinct from SQL SUM inputs used in reporting. Keeping
-    the distinction here prevents routes from silently redefining income precision.
-    """
+    """Canonical income grouping from persisted Decimal rows in ID order."""
     totals = {}
     for dividend in dividends:
-        symbol = (dividend.symbol or '').upper()
+        symbol = (dividend.symbol or '').strip().upper()
         if symbol:
             totals[symbol] = totals.get(symbol, ZERO) + to_decimal(dividend.amount)
     return totals
@@ -63,11 +59,11 @@ class AssetFinancialSnapshot:
     income: Decimal
     returns: Mapping[str, Union[Decimal, str]]
 
-    def as_assets_summary(self, *, detail_income=None):
+    def as_assets_summary(self):
         """Fresh mutable template adapter; never mutate the underlying snapshot."""
         return apply_asset_summary_return(
             dict(self.transactions),
-            self.income if detail_income is None else detail_income,
+            self.income,
         )
 
     def as_performance_row(self, portfolio_id, portfolio_name):
@@ -131,7 +127,7 @@ class PortfolioFinancialSnapshot:
     cash_balance: Decimal
     income: Decimal
     metrics: Mapping[str, Union[Decimal, str]]
-    legacy_income_details: Mapping[str, Decimal]
+    income_by_symbol: Mapping[str, Decimal]
 
     @property
     def withdrawals(self):
@@ -168,10 +164,10 @@ class PortfolioFinancialSnapshot:
 
 def build_portfolio_snapshot(*, portfolio_id, name, assets, funding_inflows,
                              net_contributions, cash_transactions, income,
-                             legacy_income_details):
+                             income_by_symbol):
     summary = aggregate_transaction_summaries(tuple(assets.values()))
     # Keep the existing sequential cash calculation (not a reassociated
-    # N - total_buys + total_sales expression) during the precision freeze.
+    # N - total_buys + total_sales expression); do not change cash policy.
     cash = calculate_cash_balance(net_contributions, cash_transactions, income)
     metrics = calculate_portfolio_metrics(
         cash, summary['cost_basis'], summary['realized_pnl'], income, funding_inflows,
@@ -179,7 +175,7 @@ def build_portfolio_snapshot(*, portfolio_id, name, assets, funding_inflows,
     return PortfolioFinancialSnapshot(
         portfolio_id, name, _readonly(assets), _readonly(summary),
         funding_inflows, net_contributions, cash, income, _readonly(metrics),
-        _readonly(legacy_income_details),
+        _readonly(income_by_symbol),
     )
 
 

@@ -106,9 +106,7 @@ def _get_transactions_page_context(portfolio_filter=''):
             price_decimal_places = max(0, min(int(price_decimal_places), 10))
 
             avg_cost_decimal_places = max(2, price_decimal_places)
-            summary = snapshot.asset(sym_norm).as_assets_summary(
-                detail_income=snapshot.legacy_income_details.get(sym_norm, ZERO),
-            )
+            summary = snapshot.asset(sym_norm).as_assets_summary()
 
             html_group_id = safe_html_id(portfolio.id, sym_norm)
             tracked = tracked_by_ticker.get(sym_norm)
@@ -129,7 +127,7 @@ def _get_transactions_page_context(portfolio_filter=''):
     dividend_totals = {
         (pid, symbol): income
         for pid, snapshot in snapshots.items()
-        for symbol, income in snapshot.legacy_income_details.items()
+        for symbol, income in snapshot.income_by_symbol.items()
     }
     for div in svc.dividend_repo.get_by_portfolio_ids(visible_portfolio_ids):
         sym = (div.symbol or '').upper()

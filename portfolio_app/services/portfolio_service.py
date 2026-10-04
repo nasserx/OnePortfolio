@@ -7,7 +7,7 @@ from portfolio_app.models.portfolio_event import PortfolioEvent
 from portfolio_app.repositories.portfolio_repository import PortfolioRepository
 from portfolio_app.repositories.portfolio_event_repository import PortfolioEventRepository
 from portfolio_app.utils.constants import EventType
-from portfolio_app.utils.decimal_utils import ZERO
+from portfolio_app.utils.decimal_utils import ZERO, parse_financial_decimal
 from portfolio_app.utils.messages import MESSAGES
 from portfolio_app.calculators.portfolio_calculator import PortfolioCalculator
 
@@ -66,6 +66,7 @@ class PortfolioService:
 
     def deposit_funds(self, portfolio_id: int, amount_delta: Decimal, notes: Optional[str] = None, date: Optional[Any] = None) -> Portfolio:
         """Deposit funds into a portfolio."""
+        amount_delta = parse_financial_decimal(amount_delta)
         portfolio = self._require_portfolio(portfolio_id)
         self._create_event(portfolio_id, EventType.DEPOSIT, amount_delta, notes, date)
         self.portfolio_repo.commit()
@@ -73,6 +74,7 @@ class PortfolioService:
 
     def withdraw_funds(self, portfolio_id: int, amount_delta: Decimal, notes: Optional[str] = None, date: Optional[Any] = None) -> Portfolio:
         """Withdraw funds from a portfolio (amount_delta is positive)."""
+        amount_delta = parse_financial_decimal(amount_delta)
         portfolio = self._require_portfolio(portfolio_id)
         available_cash = PortfolioCalculator.get_available_cash_for_portfolio(
             portfolio_id, user_id=self.portfolio_repo.user_id,
@@ -95,6 +97,7 @@ class PortfolioService:
         spent on Buys). The create path (``deposit_funds``/``withdraw_funds``)
         already enforces this; the edit path needs the same guard.
         """
+        amount_delta = parse_financial_decimal(amount_delta)
         event = self._require_event(event_id)
         self._require_portfolio(event.portfolio_id)
 

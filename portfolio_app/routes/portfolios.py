@@ -14,6 +14,7 @@ from portfolio_app.forms import (
     PortfolioEventDeleteForm,
 )
 from portfolio_app.calculators.portfolio_calculator import PortfolioCalculator
+from portfolio_app.utils.decimal_utils import withdrawal_max_text
 from portfolio_app.utils import (
     get_error_message, get_first_form_error, MESSAGES,
     is_ajax_request, json_response, field_error_response,
@@ -66,7 +67,7 @@ def _portfolio_modal_data(portfolio_id):
         'portfolio_id': portfolio.id,
         'name': portfolio.name,
         'withdrawable_cash': withdrawable_cash_display,
-        'withdrawable_cash_input': withdrawable_cash_display,
+        'withdrawable_cash_input': withdrawal_max_text(withdrawable_cash),
     }
 
 

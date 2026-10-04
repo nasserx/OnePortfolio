@@ -60,11 +60,18 @@ def calculate_symbol_transaction_summary(transactions):
             realized_proceeds += proceeds
 
             avg_cost = safe_divide(running_cost, running_quantity)
-            realized_pnl += (price - avg_cost) * quantity - fees
-            realized_cost_basis += avg_cost * quantity
+            # A valid closing sale releases the entire pool, not a rounded
+            # average multiplied back up. Never clamp a still-open position.
+            closes_position = running_quantity > ZERO and quantity == running_quantity
+            released_cost = running_cost if closes_position else avg_cost * quantity
+            realized_pnl += (
+                proceeds - released_cost if closes_position
+                else (price - avg_cost) * quantity - fees
+            )
+            realized_cost_basis += released_cost
 
             running_quantity -= quantity
-            running_cost -= avg_cost * quantity
+            running_cost -= released_cost
 
     return {
         'total_buy_cost': total_buy_cost,

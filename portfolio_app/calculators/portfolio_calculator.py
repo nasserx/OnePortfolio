@@ -5,9 +5,7 @@ The separate write-side replay below retains stored transaction-row semantics.
 """
 
 from decimal import Decimal
-from sqlalchemy import func
 from portfolio_app.calculators.transaction_order import order_transactions
-from portfolio_app import db
 from portfolio_app.calculators.financial_math import (
     calculate_cash_balance,
     calculate_quantity_held,
@@ -89,15 +87,14 @@ class PortfolioCalculator:
         Withdrawals are excluded so this represents gross capital ever allocated.
         """
         query = (
-            db.session.query(func.sum(PortfolioEvent.amount_delta))
+            PortfolioEvent.query.with_entities(PortfolioEvent.amount_delta)
             .filter(
                 PortfolioEvent.portfolio_id == portfolio_id,
                 PortfolioEvent.event_type.in_(['Initial', 'Deposit']),
             )
         )
         query = PortfolioCalculator._scope_to_user(query, PortfolioEvent, user_id)
-        result = query.scalar()
-        return _to_decimal(result) if result is not None else ZERO
+        return sum((_to_decimal(row.amount_delta) for row in query.order_by(PortfolioEvent.id).all()), ZERO)
 
     @staticmethod
     def get_net_deposits_for_portfolio(portfolio_id, *, user_id=None) -> Decimal:
@@ -109,12 +106,11 @@ class PortfolioCalculator:
         value could drift if the events log was edited outside the service.
         """
         query = (
-            db.session.query(func.sum(PortfolioEvent.amount_delta))
+            PortfolioEvent.query.with_entities(PortfolioEvent.amount_delta)
             .filter(PortfolioEvent.portfolio_id == portfolio_id)
         )
         query = PortfolioCalculator._scope_to_user(query, PortfolioEvent, user_id)
-        result = query.scalar()
-        return _to_decimal(result) if result is not None else ZERO
+        return sum((_to_decimal(row.amount_delta) for row in query.order_by(PortfolioEvent.id).all()), ZERO)
 
     @staticmethod
     def get_total_capital_for_portfolio(portfolio_id, *, user_id=None) -> Decimal:
@@ -129,12 +125,12 @@ class PortfolioCalculator:
 
     @staticmethod
     def _cash_transactions(portfolio_id, *, user_id=None, exclude_transaction_id=None):
-        """Retain the existing cash accumulation order during precision freeze."""
+        """Cash and replay reads share deterministic canonical ordering."""
         query = Transaction.query.filter_by(portfolio_id=portfolio_id)
         query = PortfolioCalculator._scope_to_user(query, Transaction, user_id)
         if exclude_transaction_id is not None:
             query = query.filter(Transaction.id != exclude_transaction_id)
-        return query.order_by(Transaction.date.asc()).all()
+        return order_transactions(query.all())
 
     @staticmethod
     def get_available_cash_for_portfolio(portfolio_id, *, user_id=None, exclude_transaction_id=None) -> Decimal:
@@ -151,8 +147,8 @@ class PortfolioCalculator:
     def get_portfolio_snapshot(portfolio_id, *, user_id=None):
         """Load scoped inputs once per financial view; never persist or cache results.
 
-        SQL funding/income reductions deliberately retain their existing database
-        precision. Aggregate trading values always come from fresh canonical
+        Funding/income sum individually loaded Decimal column values, never SQL
+        floating-point reductions. Trading values always come from fresh canonical
         replay, never Transaction.average_cost or Transaction.net_amount.
         """
         query = Portfolio.query.filter_by(id=portfolio_id)
@@ -160,17 +156,7 @@ class PortfolioCalculator:
             query = query.filter_by(user_id=user_id)
         portfolio = query.first()
 
-        dividends = Dividend.query.filter_by(portfolio_id=portfolio_id)
-        dividends = PortfolioCalculator._scope_to_user(dividends, Dividend, user_id)
-        income_by_symbol = {
-            PortfolioCalculator.normalize_symbol(row.symbol): _to_decimal(row.total)
-            for row in dividends.with_entities(
-                Dividend.symbol, func.sum(Dividend.amount).label('total'),
-            ).group_by(Dividend.symbol).all()
-        }
-        # Detail income remains a compatibility projection pending the precision
-        # phase: SQL SUM and sum(loaded Numeric rows) are not always identical.
-        detail_income = sum_income_details(dividends.order_by(Dividend.date.desc()).all())
+        income_by_symbol = PortfolioCalculator._income_by_symbol(portfolio_id, user_id=user_id)
 
         sym_query = Transaction.query.with_entities(Transaction.symbol).filter_by(portfolio_id=portfolio_id)
         sym_query = PortfolioCalculator._scope_to_user(sym_query, Transaction, user_id)
@@ -196,8 +182,8 @@ class PortfolioCalculator:
             funding_inflows=PortfolioCalculator.get_total_deposits_for_portfolio(portfolio_id, user_id=user_id),
             net_contributions=PortfolioCalculator.get_net_deposits_for_portfolio(portfolio_id, user_id=user_id),
             cash_transactions=PortfolioCalculator._cash_transactions(portfolio_id, user_id=user_id),
-            income=PortfolioCalculator.get_dividend_total_for_portfolio(portfolio_id, user_id=user_id),
-            legacy_income_details=detail_income,
+            income=sum(income_by_symbol.values(), ZERO),
+            income_by_symbol=income_by_symbol,
         )
 
     @staticmethod
@@ -246,11 +232,9 @@ class PortfolioCalculator:
         query = Transaction.query.filter_by(portfolio_id=portfolio_id, symbol=symbol)
         query = PortfolioCalculator._scope_to_user(query, Transaction, user_id)
         if income is None:
-            dividend_query = Dividend.query.with_entities(func.sum(Dividend.amount)).filter_by(
-                portfolio_id=portfolio_id, symbol=symbol,
-            )
-            dividend_query = PortfolioCalculator._scope_to_user(dividend_query, Dividend, user_id)
-            income = _to_decimal(dividend_query.scalar() or ZERO)
+            income = PortfolioCalculator._income_by_symbol(
+                portfolio_id, user_id=user_id,
+            ).get(symbol, ZERO)
         return build_asset_snapshot(symbol, query.all(), income)
 
     @staticmethod
@@ -267,14 +251,18 @@ class PortfolioCalculator:
     @staticmethod
     def get_dividend_total_for_portfolio(portfolio_id, *, user_id=None) -> Decimal:
         """Return the sum of dividend income for a portfolio."""
-        query = (
-            Dividend.query
-            .with_entities(func.sum(Dividend.amount))
-            .filter(Dividend.portfolio_id == portfolio_id)
+        return sum(PortfolioCalculator._income_by_symbol(portfolio_id, user_id=user_id).values(), ZERO)
+
+    @staticmethod
+    def _income_by_symbol(portfolio_id, *, user_id=None):
+        # Column reads bypass unexpired ORM attributes that may still contain
+        # pre-storage precision. The scale-converted persisted values are the
+        # no-schema phase's deterministic accounting inputs.
+        query = Dividend.query.with_entities(Dividend.symbol, Dividend.amount).filter_by(
+            portfolio_id=portfolio_id,
         )
         query = PortfolioCalculator._scope_to_user(query, Dividend, user_id)
-        result = query.scalar()
-        return _to_decimal(result) if result else ZERO
+        return sum_income_details(query.order_by(Dividend.id).all())
 
     # ------------------------------------------------------------------
     # Recalculation (after add/edit/delete transaction)
@@ -311,5 +299,7 @@ class PortfolioCalculator:
                 transaction.average_cost = avg_cost
                 running_quantity -= sell_qty
                 running_cost     -= avg_cost * sell_qty
+                if running_quantity == ZERO:
+                    running_cost = ZERO
 
         return transactions

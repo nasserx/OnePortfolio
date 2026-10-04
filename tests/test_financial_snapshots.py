@@ -190,7 +190,7 @@ def test_new_snapshot_entry_points_retain_user_scoping_and_empty_state(ledger):
     denied = PC.get_portfolio_snapshot(ledger.pid, user_id=ledger.uid + 1)
     assert denied.name == ''
     assert not denied.assets
-    assert not denied.legacy_income_details
+    assert not denied.income_by_symbol
     assert denied.cash_balance == denied.net_contributions == denied.income == D('0')
     asset = PC.get_asset_snapshot(ledger.pid, 'BTC', user_id=ledger.uid + 1)
     assert asset.transactions['total_quantity_held'] == asset.income == D('0')
@@ -208,7 +208,7 @@ def test_snapshots_are_detached_read_only_values_and_adapters_are_copies(ledger)
     with pytest.raises(FrozenInstanceError):
         portfolio.cash_balance = D('99')
     for mapping in (snapshot.totals, portfolio.assets, portfolio.transactions,
-                    portfolio.metrics, portfolio.legacy_income_details,
+                    portfolio.metrics, portfolio.income_by_symbol,
                     asset.transactions, asset.returns):
         with pytest.raises(TypeError):
             mapping['tamper'] = D('99')
@@ -278,8 +278,8 @@ def test_composed_overview_replays_each_asset_only_once(ledger, app, monkeypatch
     assert all(len(ids) == 1 for ids in calls)
 
 
-def test_sqlite_income_sum_and_assets_row_sum_remain_explicit_precision_projections(ledger):
-    """Environment characterization only: no income precision fix in Phase 3."""
+def test_sqlite_income_uses_same_loaded_decimal_rows_for_every_projection(ledger, app):
+    """Storage is still SQLite; Phase 4 consistently sums converted row values."""
     assert db.engine.dialect.name == 'sqlite'
     for _ in range(2):
         ledger.svc.transaction_service.add_dividend(
@@ -287,14 +287,13 @@ def test_sqlite_income_sum_and_assets_row_sum_remain_explicit_precision_projecti
         )
     db.session.expunge_all()
     snapshot = PC.get_portfolio_snapshot(ledger.pid, user_id=ledger.uid)
-    assert snapshot.income == snapshot.asset('BTC').income == D('0.0000000001')
-    assert snapshot.legacy_income_details['BTC'] == D('0.0000000002')
-    assert snapshot.asset('BTC').as_assets_summary(
-        detail_income=snapshot.legacy_income_details['BTC'],
-    )['return_amount'] == D('0.0000000002')
+    assert snapshot.income == snapshot.asset('BTC').income == D('0.0000000002')
+    assert snapshot.income_by_symbol['BTC'] == D('0.0000000002')
+    assert snapshot.asset('BTC').as_assets_summary()['return_amount'] == D('0.0000000002')
+    _assert_consumers(ledger, app)
 
 
-def test_pure_snapshot_composition_preserves_full_liquidation_decimal_residual():
+def test_pure_snapshot_composition_closes_full_liquidation_exactly():
     transactions = [
         SimpleNamespace(id=i, date=datetime(2024, 1, i), transaction_type=kind,
                         price=D(price), quantity=D(qty), fees=D('0'))
@@ -309,9 +308,9 @@ def test_pure_snapshot_composition_preserves_full_liquidation_decimal_residual()
         portfolio = build_portfolio_snapshot(
             portfolio_id=1, name='Pure', assets={'BTC': asset},
             funding_inflows=D('0'), net_contributions=D('0'),
-            cash_transactions=transactions, income=D('0'), legacy_income_details={},
+            cash_transactions=transactions, income=D('0'), income_by_symbol={},
         )
         global_state = build_global_snapshot([portfolio])
     assert asset.transactions['total_quantity_held'] == D('0')
-    assert asset.transactions['cost_basis'] == portfolio.transactions['cost_basis'] == D('-1E-27')
-    assert asset.transactions['realized_pnl'] == global_state.totals['realized_pnl'] == D('3.999999999999999999999999999')
+    assert asset.transactions['cost_basis'] == portfolio.transactions['cost_basis'] == D('0')
+    assert asset.transactions['realized_pnl'] == global_state.totals['realized_pnl'] == D('4')

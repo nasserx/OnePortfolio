@@ -3,6 +3,7 @@
 from datetime import datetime, timezone
 from sqlalchemy import Numeric, CheckConstraint
 from portfolio_app import db
+from portfolio_app.utils.decimal_utils import decimal_text
 
 
 class Dividend(db.Model):
@@ -48,7 +49,7 @@ class Dividend(db.Model):
             'symbol':         self.symbol or '',
             'portfolio_name': self.portfolio.name if self.portfolio else '',
             'type':           'Dividend',
-            'amount':         float(self.amount),
+            'amount':         decimal_text(self.amount),
             'date':           self.date_full,
             'date_short':     self.date.strftime('%b %d, %Y') if self.date else '',
             'notes':          self.notes or '',

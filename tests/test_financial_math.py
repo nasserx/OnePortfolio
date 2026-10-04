@@ -492,12 +492,8 @@ def test_remaining_cost_pool_and_invariants_through_liquidation_and_rebuy():
     assert summary['realized_cost_basis'] == _dec('78.5')
 
 
-def test_known_repeating_average_full_liquidation_retains_tiny_basis_residual():
-    """Current defect, not a desired closure rule; no tolerance hides it.
-
-    The existing exact-zero test uses a terminating average (26). Here 5/3
-    rounds at the current 28-digit Decimal precision before the sale.
-    """
+def test_repeating_average_full_liquidation_releases_exact_remaining_pool():
+    """Phase 4 closes the 5/3 pool exactly, without an epsilon tolerance."""
     with localcontext() as context:
         context.prec = 28
         context.rounding = ROUND_HALF_EVEN
@@ -508,9 +504,9 @@ def test_known_repeating_average_full_liquidation_retains_tiny_basis_residual():
         ])
     assert summary['total_quantity_held'] == _dec('0')
     assert summary['average_cost'] == _dec('0')
-    assert summary['cost_basis'] == _dec('-1E-27')
-    assert _dec('0') < abs(summary['cost_basis']) < _dec('1E-26')
-    assert summary['realized_pnl'] == _dec('3.999999999999999999999999999')
+    assert summary['cost_basis'] == _dec('0')
+    assert summary['realized_cost_basis'] == _dec('5')
+    assert summary['realized_pnl'] == _dec('4')
 
 
 def test_pure_calculators_preserve_products_beyond_database_decimal_scale():

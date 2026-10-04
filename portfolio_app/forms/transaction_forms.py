@@ -151,18 +151,9 @@ class DividendAddForm(BaseForm):
         ):
             self.cleaned_data['symbol'] = symbol
 
-        amount_str = (self.data.get('amount') or '').strip()
-        if not amount_str:
-            self.errors['amount'] = MESSAGES['FIELD_REQUIRED']
-        else:
-            try:
-                amount = Decimal(amount_str.replace(',', '.'))
-                if amount <= 0:
-                    self.errors['amount'] = MESSAGES['INVALID_AMOUNT']
-                else:
-                    self.cleaned_data['amount'] = amount
-            except Exception:
-                self.errors['amount'] = MESSAGES['INVALID_NUMBER']
+        amount = self._validate_decimal('amount', allow_zero=False)
+        if amount is not None:
+            self.cleaned_data['amount'] = amount
 
         notes = self._get_string('notes', default='')
         if self._validate_max_length('notes', notes, NOTES_MAX_LENGTH, MESSAGES['NOTES_TOO_LONG']):
@@ -186,18 +177,9 @@ class DividendEditForm(BaseForm):
     def validate(self) -> bool:
         self.cleaned_data['dividend_id'] = self.dividend_id
 
-        amount_str = (self.data.get('edit_amount') or '').strip()
-        if not amount_str:
-            self.errors['edit_amount'] = MESSAGES['FIELD_REQUIRED']
-        else:
-            try:
-                amount = Decimal(amount_str.replace(',', '.'))
-                if amount <= 0:
-                    self.errors['edit_amount'] = MESSAGES['INVALID_AMOUNT']
-                else:
-                    self.cleaned_data['amount'] = amount
-            except Exception:
-                self.errors['edit_amount'] = MESSAGES['INVALID_NUMBER']
+        amount = self._validate_decimal('edit_amount', allow_zero=False)
+        if amount is not None:
+            self.cleaned_data['amount'] = amount
 
         notes = self._get_string('edit_notes', default=None)
         if notes is not None:

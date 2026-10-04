@@ -1,9 +1,9 @@
-# Canonical financial reads (Phase 3)
+# Canonical financial reads (Phases 3–4)
 
 ## Boundary and data flow
 
 `PortfolioCalculator` remains the database-facing facade. It loads user-scoped
-records and the existing SQL funding/income reductions. It composes the pure
+records and sums individually loaded Decimal funding/income values. It composes the pure
 builders in `financial_snapshots.py`, which use `financial_math.py` and the
 Phase 2 `transaction_order.py` helper. No database dependencies were added to
 the pure modules.
@@ -38,7 +38,7 @@ once. A snapshot is an in-memory read model, not a new database isolation policy
 | `financial_math.py` | Authoritative pure trade replay, cash, scoped returns, book value | Unchanged arithmetic foundation |
 | `portfolio_calculator.py` summary / dashboard / realized performance / transaction summaries | Repeated symbol replays and independent aggregate assembly | Load snapshots; adapt the same replay results |
 | `routes/portfolios.py` | Duplicate book value, earnings, percentage and undefined-return arithmetic | Consume portfolio snapshot metrics |
-| `routes/transactions.py` | Duplicate asset earnings/percentage and dividend row sums | Consume asset snapshots and explicit detail-income projection |
+| `routes/transactions.py` | Duplicate asset earnings/percentage and dividend row sums | Consume asset snapshots and canonical income-by-symbol totals |
 | `routes/dashboard.py` | Consumer; separate summary and totals reads | One composed snapshot for Overview; same facade for summary API |
 | `/api/holdings` | Lightweight quantity calculation and string serialization | Retained: sequence-independent quantity, tested against snapshot quantity |
 | `Transaction.net_pnl` / `net_pnl_percent` | Stored-average transaction-row projection | Deliberately retained, not aggregate truth |
@@ -62,7 +62,7 @@ to `total_capital`; `cash_balance` maps to `cash`, `withdrawable_cash`, or globa
 `total_cash`. Existing summary keys (`cost_basis`, `positions`, `total_buy_cost`,
 `total_sell_cost`, `return_amount`, etc.) are intentionally unchanged. This is
 not the later terminology rename. UI labels, tooltips, templates, and number
-formatters did not change.
+formatters retain their visible semantics. Phase 4 changes action payloads only.
 
 ## Preserved policies and deliberate precision seams
 
@@ -81,21 +81,38 @@ formatters did not change.
 - Undefined return remains numeric zero plus a dash for reporting, and `None`
   plus a dash in the Assets template adapter. Sell-row undefined return remains
   `None` in the unchanged model property.
-- SQL funding and portfolio/symbol income sums are unchanged. **Assets income
-  retains its prior Decimal sum of loaded rows**, now explicitly named
-  `legacy_income_details`. This can differ from SQL SUM at precision boundaries:
-  two SQLite inputs of `0.00000000006` produce SQL total `0.0000000001`, but
-  loaded ten-decimal rows sum to `0.0000000002`. The Assets adapter preserves the
-  latter in income/return; reporting preserves the former. A regression test
-  documents this remaining precision projection rather than concealing it.
-  Reconciling it is deferred, not claimed complete by this architecture change.
+- Phase 4 removes SQL monetary SUMs and the separate `legacy_income_details`
+  override. Every income consumer uses `income_by_symbol`, built from Decimal
+  column reads in ID order, grouped by normalized symbol. Portfolio income sums
+  those groups in their first-seen order; standalone asset reads use the same
+  groups. Column reads avoid stale, unexpired ORM attributes containing values
+  assigned before storage conversion. Funding sums individually loaded signed
+  deltas in ID order (gross deposits filter Initial/Deposit before summing).
+  These reads remain user-scoped and perform no explicit writes.
+- Intentional precision correction: two SQLite income inputs `0.00000000006`
+  load as two `0.0000000001` rows. All income/cash/return projections now use
+  `0.0000000002`, rather than reporting `0.0000000001` while Assets reported
+  `0.0000000002`. Likewise two funding inputs `0.006` load as two `0.01` rows;
+  gross/net funding is now `0.02`, not the SQL-reduced `0.01`. These are explicit
+  environment/schema regressions, not promises that subscale inputs persist exactly.
 - Summary total book value remains sum of portfolio book values; dashboard
   total remains sum of cash plus sum of basis. Their Decimal association order
-  is preserved, including potential extreme-precision differences. Tiny residual
-  cost pools after repeating-average liquidation are not clamped.
-- JSON summary serialization remains float-based; holdings remains a string.
-  Existing formatters, grouping, signs, percentages, dash behavior, and tones
-  remain unchanged.
+  is preserved, including potential extreme-precision differences.
+- Phase 4 closing-sale precision rule: if a positive position's entire remaining
+  quantity is sold, release the actual remaining cost pool, calculate the closing
+  P&L as net proceeds minus that pool, and leave basis/average exactly zero.
+  For the 5/3 example, basis changes from `-1E-27` to `0`, released basis from
+  `5.000000000000000000000000001` to `5`, and realized P&L from
+  `3.999999999999999999999999999` to `4`. This is not epsilon clamping: nonzero
+  quantities retain even arbitrarily small pools. Write-side replay clears its
+  pool on exact zero quantity too, so a new buy cannot inherit the residue.
+- JSON summary Decimal fields now use exact fixed-point strings; IDs remain
+  numbers, text stays text, and None remains null. Holdings stays a string and
+  now expands scientific notation before the Sell Max input receives it.
+  No production caller of `/api/portfolio-summary` or `Dividend.to_dict` was found
+  in the repository; regression callers support/assert the exact-text contract.
+  Out-of-repository clients must consume these monetary fields as decimal text.
+  Chart data remains a separate, presentation-only numeric contract.
 
 ## Stored derivatives and remaining risks
 
@@ -106,13 +123,71 @@ recalculated/persisted and displayed/serialized on transaction rows. Neither
 field is read as an input to aggregate snapshot calculations. Write-side replay
 is intentionally not unified with aggregate replay in this phase.
 
-Consequently stored rows can still disagree with fresh aggregate replay. SQL
-income versus row-sum income, SQL Numeric conversion, Decimal residuals, JSON
-float conversion, and legacy malformed/non-normalized records remain future
+Phase 4 exempts metadata-only edits from that replay: when price, quantity, fees,
+symbol and effective calendar date are unchanged, save notes (and any same-day
+time edit) without rewriting derived values. Otherwise a notes-only save can
+change the stored average when recomputation uses already-rounded SQLite inputs.
+Actual financial/date-order edits still follow the existing validation/replay.
+
+Consequently stored rows can still disagree with fresh aggregate replay. SQLite
+Numeric conversion, finite Decimal-context rounding on open positions, and
+legacy malformed/non-normalized records remain future
 reconciliation concerns. The optional unscoped calculator mode remains an
 explicit internal convention; application consumers pass user IDs. Database
 reads retain normal SQLAlchemy session behavior and do not introduce writes or
 a new concurrency/isolation guarantee. There is no new cache-invalidation risk.
 
-No schema, migration, income-type, transfer, return-policy, or precision change
-is part of Phase 3.
+No schema, migration, income-type, transfer, or return-policy change is part of
+either phase. **SQLite NUMERIC exact persistence is not solved.** Stored prices,
+quantities, fees, income, funding, averages and net amounts can still round or
+lose digits in SQLAlchemy/SQLite conversions. A notes-only edit preserves the
+loaded financial values; it cannot recover digits already lost on initial save.
+
+## Phase 4: calculation, action and display precision
+
+- Calculation: existing Decimal context (normally 28 significant digits), moving
+  average and scoped return denominators remain. No global context change, epsilon
+  tolerances, market values, or new income policy. Cash accumulation uses the
+  shared canonical trade order, not an implicit same-date database order.
+- Action: `parse_financial_decimal` is the form/service input authority. Dot is
+  the decimal separator; commas must be correctly grouped thousands. Leading/
+  trailing whitespace, signs, `.5`, `1.`, and scientific notation are accepted.
+  Internal whitespace, malformed commas (`1,5`), underscores, invalid/blank text,
+  NaN/sNaN and infinities are rejected. Form wrappers retain required/optional
+  blank and positive/nonnegative policies. Services also validate before mutations
+  or comparisons, including callers bypassing forms. Python float/bool action
+  inputs are rejected; use Decimal, integer or exact text instead.
+- Action serialization: `decimal_text` uses Decimal fixed-point formatting
+  without a float or quantization. Trade, income and funding edit attributes use
+  it before JSON encoding. JS dialog population trims only fractional trailing
+  zeros; scientific notation expansion uses string operations. Invalid input is
+  no longer sanitized into a different amount (e.g. `-1` into `1`).
+- Withdrawal Max: `withdrawal_max_text` floors positive raw cash to executable
+  cents using ROUND_DOWN, returning `0.00` for nonpositive cash. `1.005` and
+  `1.009` produce `1.00`; `1.019` produces `1.01`. Page actions and error-modal
+  payloads use the same helper. The service still authoritatively checks cash.
+- Display: existing Python/JS formatters and money/percentage/quantity macros
+  are unchanged, including ROUND_HALF_UP, commas, M/B/T, signs, tones and dashes.
+  Preview totals never submit as accounting values; raw form fields do.
+
+### Float/conversion inventory
+
+| Path | Classification | Disposition |
+| --- | --- | --- |
+| Trade/income edit `%.10f`, funding edit `%.2f` | Unsafe action round trip | Exact `decimal_text` attributes |
+| Edit-dialog `parseFloat` / `toFixed` fallback | Unsafe action round trip | Exact string expansion |
+| Withdrawal Max using formatted cash | Unsafe action rounding | Raw cash floored to cents |
+| Input sanitizer / scientific-notation helper | Unsafe textual numeric reinterpretation | Preserve invalid input; exact string normalization |
+| Metadata-only trade edit replay | Avoidable re-entry through stored-value precision | Save metadata without recalculating financial fields |
+| Summary API Decimal-to-float, Dividend `to_dict.amount` | Lossy reporting serialization | Exact strings; complete in-repository consumer search |
+| Transaction `to_dict` decimal strings | Exact reporting serialization | Retained |
+| Holdings numeric enable check | Client convenience only; original exact string submitted | Retained; API guarantees fixed-point input |
+| JS `parseNumberStrict`, dividend positivity checks | Client validation only | Retained; server parser authoritative |
+| Buy/sell preview `parseFloat` and `Utils.formatMoney` | Presentation only | Retained; calculated total is not a submitted field |
+| Allocation chart float adapters and Decimal reconstruction of chart totals | Presentation only | Retained; never used by snapshots or actions |
+| `display_formatters.js`, chart tooltip `Number`, shell countup | Presentation only | Retained |
+| Landing demo `Number`, icon scripts, colour/layout tests | Demo/nonfinancial | Retained |
+
+Regression commands: `python -B -m pytest -p no:cacheprovider -q` and
+`node tests/precision_boundaries.js`. The latter executes the production JS
+normalizer and edit-population functions without launching an app or browser.

@@ -106,7 +106,8 @@ def _get_transactions_page_context(portfolio_filter=''):
             price_decimal_places = max(0, min(int(price_decimal_places), 10))
 
             avg_cost_decimal_places = max(2, price_decimal_places)
-            summary = snapshot.asset(sym_norm).as_assets_summary()
+            asset = snapshot.asset(sym_norm)
+            summary = asset.as_assets_summary()
 
             html_group_id = safe_html_id(portfolio.id, sym_norm)
             tracked = tracked_by_ticker.get(sym_norm)
@@ -115,6 +116,7 @@ def _get_transactions_page_context(portfolio_filter=''):
                 'symbol': sym_norm,
                 'html_group_id': html_group_id,
                 'transactions': transactions_desc,
+                'transaction_projections': asset.transaction_projections,
                 'summary': summary,
                 'price_decimal_places': price_decimal_places,
                 'avg_cost_decimal_places': avg_cost_decimal_places,

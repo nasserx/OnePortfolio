@@ -172,13 +172,14 @@
                                     <td class="records-cell records-cell--number">{{ money(transaction.price, decimals=item.price_decimal_places) }}</td>
                                     <td class="records-cell records-cell--number">{{ quantity(transaction.quantity) }}</td>
                                     <td class="records-cell records-cell--number"><span class="num num--flat" title="{{ transaction.fees|fmt_decimal }}">{{ transaction.fees|fmt_display_decimal }}</span></td>
-                                    <td class="records-cell records-cell--number">{{ money(transaction.net_amount) }}</td>
+                                    {% set financial = item.transaction_projections[transaction.id] %}
+                                    <td class="records-cell records-cell--number">{{ money(financial.cash_amount) }}</td>
                                     {% if transaction.transaction_type == 'Sell' %}
                                         <td class="records-cell records-cell--number">
-                                            {{ money(transaction.net_pnl, tone='sign', signed=true) }}
+                                            {{ money(financial.realized_trading_pnl, tone='sign', signed=true) }}
                                         </td>
                                         <td class="records-cell records-cell--number">
-                                            {{ percent(transaction.net_pnl_percent) }}
+                                            {{ percent(financial.trade_return_percent) }}
                                         </td>
                                     {% else %}
                                         <td class="records-cell records-cell--number"><span class="num num--flat">—</span></td>

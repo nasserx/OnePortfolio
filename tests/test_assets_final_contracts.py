@@ -83,8 +83,8 @@ def test_transaction_and_income_rows_share_financial_table_contract():
     assert '>Total Amount</th>' in ASSETS
     assert '{{ record_type(transaction.transaction_type) }}' in ASSETS
     assert "{{ record_type('Income') }}" in ASSETS
-    assert 'money(transaction.net_amount)' in ASSETS
-    assert "money(transaction.net_pnl, tone='sign', signed=true)" in ASSETS
+    assert 'money(financial.cash_amount)' in ASSETS
+    assert "money(financial.realized_trading_pnl, tone='sign', signed=true)" in ASSETS
     assert "money(div.amount, tone='income')" in ASSETS
     assert 'class="small records-cell' not in ASSETS
     assert 'table-light' not in ASSETS

@@ -17,7 +17,7 @@ from portfolio_app.calculators.financial_snapshots import (
 from portfolio_app.routes.portfolios import _get_portfolios_page_context
 from portfolio_app.routes.transactions import _get_transactions_page_context
 from tests._auth import authenticate_client
-from tests._financial import assert_accounting_invariants
+from tests._financial import assert_accounting_invariants, transaction_projection
 from tests.test_financial_baseline import ledger, _trade
 
 
@@ -113,7 +113,7 @@ def test_btc_every_stage_agrees_across_snapshot_pages_and_apis(ledger, app):
     snapshot = _assert_consumers(ledger, app)
     assert snapshot.totals['total_cash'] == snapshot.totals['total_value'] == D('3')
     assert snapshot.totals['return_percent'] == D('3') / D('558') * D('100')
-    assert sale.net_pnl_percent == D('3') / D('555') * D('100')
+    assert transaction_projection(sale).trade_return_percent == D('3') / D('555') * D('100')
 
 
 @pytest.mark.parametrize('sold, quantity, basis, pnl, cash, book', [
@@ -242,7 +242,7 @@ def test_snapshot_reads_ignore_stored_derivatives_and_do_not_write(ledger):
     assert snapshot.totals['total_cash'] == D('-80')
     db.session.refresh(sale)
     assert sale.average_cost == sale.net_amount == D('999')
-    assert sale.net_pnl == D('-879')  # Explicit remaining stored-row projection.
+    assert transaction_projection(sale).realized_trading_pnl == D('20')  # Corrupt legacy fields have no authority.
 
 
 def test_new_reads_reflect_edits_and_deletions_without_mutating_prior_snapshot(ledger):
@@ -263,14 +263,14 @@ def test_composed_overview_replays_each_asset_only_once(ledger, app, monkeypatch
 
     _trade(ledger, 'Buy', '100', '1', 1, symbol='BTC')
     _trade(ledger, 'Buy', '200', '1', 1, symbol='ETH')
-    original = engine.calculate_symbol_transaction_summary
+    original = engine.replay_symbol_transactions
     calls = []
 
     def counted(records):
         calls.append([row.id for row in records])
         return original(records)
 
-    monkeypatch.setattr(engine, 'calculate_symbol_transaction_summary', counted)
+    monkeypatch.setattr(engine, 'replay_symbol_transactions', counted)
     client = app.test_client()
     authenticate_client(client, ledger.uid)
     assert client.get('/').status_code == 200

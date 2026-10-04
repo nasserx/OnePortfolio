@@ -8,6 +8,14 @@ rounding residuals are characterized separately, without weakening these checks.
 from decimal import Decimal
 
 
+def transaction_projection(transaction):
+    """Test convenience only; production consumers reuse a batch snapshot."""
+    from portfolio_app.calculators import PortfolioCalculator
+    return PortfolioCalculator.get_asset_snapshot(
+        transaction.portfolio_id, transaction.symbol,
+    ).transaction_projections[transaction.id]
+
+
 def assert_accounting_invariants(summary, *, cash, net_funding, income, book_value):
     values = [cash, net_funding, income, book_value]
     values.extend(summary[key] for key in (

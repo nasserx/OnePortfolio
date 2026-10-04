@@ -52,6 +52,7 @@ class TransactionService:
     ) -> Transaction:
         """Add a new transaction."""
         price, quantity, fees = map(parse_financial_decimal, (price, quantity, fees))
+        self._validate_trade_values(price, quantity, fees)
         if not self.portfolio_repo.get_by_id(portfolio_id):
             raise ValueError(MESSAGES['PORTFOLIO_NOT_FOUND'])
 
@@ -99,10 +100,6 @@ class TransactionService:
         self.transaction_repo.add(transaction)
         self.transaction_repo.flush()
 
-        PortfolioCalculator.recalculate_all_averages_for_symbol(
-            portfolio_id, symbol, user_id=self.portfolio_repo.user_id,
-        )
-
         self.transaction_repo.commit()
         return transaction
 
@@ -131,9 +128,7 @@ class TransactionService:
         if self._has_no_changes(transaction, price, quantity, fees, notes, symbol, date):
             return transaction
 
-        # A metadata-only edit must not replay stored derivatives through the
-        # SQLite precision boundary. Within-day time changes do not change the
-        # canonical calendar-date accounting order either.
+        # Metadata-only changes do not alter canonical accounting order.
         same_accounting_date = date is None or (
             transaction.date is not None and date.date() == transaction.date.date()
         )
@@ -146,6 +141,12 @@ class TransactionService:
                 transaction.date = date
             self.transaction_repo.commit()
             return transaction
+
+        self._validate_trade_values(
+            price if price is not None else transaction.price,
+            quantity if quantity is not None else transaction.quantity,
+            fees if fees is not None else transaction.fees,
+        )
 
         # Validate post-mutation invariants BEFORE applying the change.
         # Mirrors the Sell-path checks from add_transaction (fees ≤ gross
@@ -189,9 +190,6 @@ class TransactionService:
             error_message=cash_msg,
         )
 
-        old_symbol = transaction.symbol
-        portfolio_id = transaction.portfolio_id
-
         TransactionManager.update_transaction(
             transaction,
             price=price,
@@ -203,13 +201,6 @@ class TransactionService:
         )
 
         self.transaction_repo.flush()
-
-        uid = self.portfolio_repo.user_id
-        if symbol and old_symbol != transaction.symbol:
-            PortfolioCalculator.recalculate_all_averages_for_symbol(portfolio_id, old_symbol, user_id=uid)
-            PortfolioCalculator.recalculate_all_averages_for_symbol(portfolio_id, transaction.symbol, user_id=uid)
-        else:
-            PortfolioCalculator.recalculate_all_averages_for_symbol(portfolio_id, transaction.symbol, user_id=uid)
 
         self.transaction_repo.commit()
         return transaction
@@ -252,10 +243,6 @@ class TransactionService:
 
         self.transaction_repo.delete(transaction)
         self.transaction_repo.flush()
-
-        PortfolioCalculator.recalculate_all_averages_for_symbol(
-            portfolio_id, symbol, user_id=self.portfolio_repo.user_id,
-        )
 
         self.transaction_repo.commit()
         return portfolio_id
@@ -331,6 +318,14 @@ class TransactionService:
         return -(gross + fees)
 
     @staticmethod
+    def _validate_trade_values(price, quantity, fees):
+        # Former numeric CHECK policies now live at the Decimal service boundary.
+        if price <= ZERO or quantity <= ZERO:
+            raise ValidationError(MESSAGES['VALUE_POSITIVE'])
+        if fees < ZERO:
+            raise ValidationError(MESSAGES['VALUE_NON_NEGATIVE'])
+
+    @staticmethod
     def _proposed_cash_effect(transaction_type, price, quantity, fees):
         """Same as :meth:`_cash_effect` but for a hypothetical row before
         it is persisted (used by update_transaction to compute the delta
@@ -383,9 +378,8 @@ class TransactionService:
         Mirrors the Sell-path checks performed in :meth:`add_transaction`
         (fees ≤ gross and quantity ≤ currently-held, both raising
         :class:`ValidationError` with the same canonical messages), and
-        additionally simulates the chronological recomputation that
-        :meth:`PortfolioCalculator.recalculate_all_averages_for_symbol`
-        performs — rejecting any edit that would drive the running
+        additionally simulates canonical chronological replay,
+        rejecting any edit that would drive the running
         quantity below zero at any point in the timeline.
         """
         new_price    = Decimal(str(price))    if price    is not None else Decimal(str(transaction.price))
@@ -472,7 +466,7 @@ class TransactionService:
         if proposed_type is not None:
             # New rows have no id yet — slot them after any existing
             # same-date/same-type peer so the simulation matches what
-            # ``recalculate_all_averages_for_symbol`` will do post-commit.
+            # canonical financial replay will do after persistence.
             sort_id = edit_id if edit_id is not None else PENDING_TRANSACTION_ID
             walk.append((
                 proposed_date,
@@ -520,6 +514,8 @@ class TransactionService:
     ) -> Dividend:
         """Add a new dividend income record."""
         amount = parse_financial_decimal(amount)
+        if amount <= ZERO:
+            raise ValidationError(MESSAGES['INVALID_AMOUNT'])
         portfolio = self.portfolio_repo.get_by_id(portfolio_id)
         if not portfolio:
             raise ValueError(MESSAGES['PORTFOLIO_NOT_FOUND'])
@@ -549,6 +545,8 @@ class TransactionService:
         """Update an existing dividend."""
         if amount is not None:
             amount = parse_financial_decimal(amount)
+            if amount <= ZERO:
+                raise ValidationError(MESSAGES['INVALID_AMOUNT'])
         dividend = self.dividend_repo.get_by_id(dividend_id)
         if not dividend or not self.portfolio_repo.get_by_id(dividend.portfolio_id):
             raise ValueError(MESSAGES['DIVIDEND_NOT_FOUND'])

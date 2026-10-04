@@ -83,12 +83,10 @@ def test_transaction_calculations(app):
         svc.portfolio_service.deposit_funds(comm.id, _dec(25000))
         t1 = Transaction(portfolio_id=comm.id, transaction_type='Buy',
                          date=datetime(2026, 1, 10), symbol='XAU',
-                         price=2000, quantity=1.5, fees=50)
-        t1.calculate_net_amount()
+                         price=2000, quantity=_dec('1.5'), fees=50)
         t2 = Transaction(portfolio_id=comm.id, transaction_type='Buy',
                          date=datetime(2026, 1, 15), symbol='XAU',
-                         price=2050, quantity=1.0, fees=30)
-        t2.calculate_net_amount()
+                         price=2050, quantity=_dec('1.0'), fees=30)
 
         # --- Stocks: AAPL (2 buys) + MSFT (1 buy) ---
         stocks = svc.portfolio_service.create_portfolio('Stocks', user_id=uid)
@@ -96,15 +94,12 @@ def test_transaction_calculations(app):
         t3 = Transaction(portfolio_id=stocks.id, transaction_type='Buy',
                          date=datetime(2026, 1, 8), symbol='AAPL',
                          price=100, quantity=50, fees=25)
-        t3.calculate_net_amount()
         t4 = Transaction(portfolio_id=stocks.id, transaction_type='Buy',
                          date=datetime(2026, 1, 12), symbol='AAPL',
                          price=105, quantity=30, fees=15)
-        t4.calculate_net_amount()
         t5 = Transaction(portfolio_id=stocks.id, transaction_type='Buy',
                          date=datetime(2026, 1, 9), symbol='MSFT',
                          price=200, quantity=10, fees=10)
-        t5.calculate_net_amount()
 
         # --- ETFs: ETHA (buy, partial sell, buy again) ---
         etfs = svc.portfolio_service.create_portfolio('ETFs', user_id=uid)
@@ -112,23 +107,14 @@ def test_transaction_calculations(app):
         e1 = Transaction(portfolio_id=etfs.id, transaction_type='Buy',
                          date=datetime(2026, 1, 1), symbol='ETHA',
                          price=10, quantity=10, fees=0)
-        e1.calculate_net_amount()
         e2 = Transaction(portfolio_id=etfs.id, transaction_type='Sell',
                          date=datetime(2026, 1, 2), symbol='ETHA',
                          price=12, quantity=5, fees=1)
-        e2.calculate_net_amount()
         e3 = Transaction(portfolio_id=etfs.id, transaction_type='Buy',
                          date=datetime(2026, 1, 3), symbol='ETHA',
                          price=10, quantity=5, fees=0)
-        e3.calculate_net_amount()
 
         db.session.add_all([t1, t2, t3, t4, t5, e1, e2, e3])
-        db.session.commit()
-
-        PortfolioCalculator.recalculate_all_averages_for_symbol(comm.id, 'XAU')
-        PortfolioCalculator.recalculate_all_averages_for_symbol(stocks.id, 'AAPL')
-        PortfolioCalculator.recalculate_all_averages_for_symbol(stocks.id, 'MSFT')
-        PortfolioCalculator.recalculate_all_averages_for_symbol(etfs.id, 'ETHA')
         db.session.commit()
 
         print("\n" + "=" * 60)
@@ -239,14 +225,10 @@ def test_fund_events(app):
         buy = Transaction(portfolio_id=fund_c.id, transaction_type='Buy',
                           date=datetime(2026, 1, 1), symbol='AAPL',
                           price=1, quantity=5000, fees=1)
-        buy.calculate_net_amount()
         sell = Transaction(portfolio_id=fund_c.id, transaction_type='Sell',
                            date=datetime(2026, 1, 2), symbol='AAPL',
                            price=2, quantity=2500, fees=1)
-        sell.calculate_net_amount()
         db.session.add_all([buy, sell])
-        db.session.commit()
-        PortfolioCalculator.recalculate_all_averages_for_symbol(fund_c.id, 'AAPL')
         db.session.commit()
 
         tf_c = PortfolioCalculator.get_total_deposits_for_portfolio(fund_c.id)
@@ -335,14 +317,10 @@ def test_category_summary(app):
         buy = Transaction(portfolio_id=fund.id, transaction_type='Buy',
                           date=datetime(2026, 1, 1), symbol='AAPL',
                           price=1, quantity=5000, fees=1)
-        buy.calculate_net_amount()
         sell = Transaction(portfolio_id=fund.id, transaction_type='Sell',
                            date=datetime(2026, 1, 2), symbol='AAPL',
                            price=2, quantity=2500, fees=1)
-        sell.calculate_net_amount()
         db.session.add_all([buy, sell])
-        db.session.commit()
-        PortfolioCalculator.recalculate_all_averages_for_symbol(fund.id, 'AAPL')
         db.session.commit()
 
         summary, _ = PortfolioCalculator.get_portfolio_summary(user_id=uid)
@@ -395,14 +373,10 @@ def test_dashboard_totals(app):
         buy = Transaction(portfolio_id=fb.id, transaction_type='Buy',
                           date=datetime(2026, 1, 1), symbol='AAPL',
                           price=100, quantity=10, fees=10)
-        buy.calculate_net_amount()
         sell = Transaction(portfolio_id=fb.id, transaction_type='Sell',
                            date=datetime(2026, 1, 2), symbol='AAPL',
                            price=120, quantity=5, fees=5)
-        sell.calculate_net_amount()
         db.session.add_all([buy, sell])
-        db.session.commit()
-        PortfolioCalculator.recalculate_all_averages_for_symbol(fb.id, 'AAPL')
         db.session.commit()
 
         totals = PortfolioCalculator.get_portfolio_dashboard_totals(user_id=uid)
@@ -590,11 +564,9 @@ def test_symbol_performance(app):
         b1 = Transaction(portfolio_id=trading.id, transaction_type='Buy',
                          date=datetime(2026, 1, 1), symbol='AAPL',
                          price=100, quantity=10, fees=0)
-        b1.calculate_net_amount()
         s1 = Transaction(portfolio_id=trading.id, transaction_type='Sell',
                          date=datetime(2026, 1, 5), symbol='AAPL',
                          price=120, quantity=5, fees=0)
-        s1.calculate_net_amount()
 
         # AAPL in Long-term: same ticker, different portfolio and ROI.
         # buy 100@10, sell 10@11 → realized P&L = 10, total buy cost = 1000.
@@ -602,24 +574,17 @@ def test_symbol_performance(app):
         b1_lt = Transaction(portfolio_id=long_term.id, transaction_type='Buy',
                             date=datetime(2026, 1, 1), symbol='AAPL',
                             price=10, quantity=100, fees=0)
-        b1_lt.calculate_net_amount()
         s1_lt = Transaction(portfolio_id=long_term.id, transaction_type='Sell',
                             date=datetime(2026, 1, 6), symbol='AAPL',
                             price=11, quantity=10, fees=0)
-        s1_lt.calculate_net_amount()
 
         # MSFT in Long-term: buy 10@200, no sell → trading P&L = 0, but
         # one dividend of 75 → total P&L = 75, total buy cost = 2000 → ROI = 3.75%
         b2 = Transaction(portfolio_id=long_term.id, transaction_type='Buy',
                          date=datetime(2026, 1, 2), symbol='MSFT',
                          price=200, quantity=10, fees=0)
-        b2.calculate_net_amount()
 
         db.session.add_all([b1, s1, b1_lt, s1_lt, b2])
-        db.session.commit()
-        PortfolioCalculator.recalculate_all_averages_for_symbol(trading.id, 'AAPL')
-        PortfolioCalculator.recalculate_all_averages_for_symbol(long_term.id, 'AAPL')
-        PortfolioCalculator.recalculate_all_averages_for_symbol(long_term.id, 'MSFT')
         db.session.commit()
 
         svc1.transaction_service.add_dividend(long_term.id, 'MSFT', _dec('75'),
@@ -634,14 +599,10 @@ def test_symbol_performance(app):
         bb = Transaction(portfolio_id=bob_p.id, transaction_type='Buy',
                          date=datetime(2026, 1, 1), symbol='NVDA',
                          price=50, quantity=10, fees=0)
-        bb.calculate_net_amount()
         bs = Transaction(portfolio_id=bob_p.id, transaction_type='Sell',
                          date=datetime(2026, 1, 4), symbol='NVDA',
                          price=60, quantity=10, fees=0)
-        bs.calculate_net_amount()
         db.session.add_all([bb, bs])
-        db.session.commit()
-        PortfolioCalculator.recalculate_all_averages_for_symbol(bob_p.id, 'NVDA')
         db.session.commit()
 
         print("\n" + "=" * 60)

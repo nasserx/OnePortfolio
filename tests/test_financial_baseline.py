@@ -74,7 +74,7 @@ def test_btc_unfunded_buy_funding_sale_withdrawal_and_profit_redeposit(ledger):
 
     sale = _trade(ledger, 'Sell', '186000', '0.003', 3)
     after_sale = _assert_btc_state(ledger, ('558', '555', '0', '0', '3', '0', '558'))
-    assert sale.net_amount == D('558')
+    assert transaction_projection(sale).cash_amount == D('558')
     trade_return = D('3') / D('555') * D('100')
     assert transaction_projection(sale).trade_return_percent == trade_return
     assert after_sale['return_percent'] == trade_return
@@ -96,7 +96,7 @@ def test_btc_unfunded_buy_funding_sale_withdrawal_and_profit_redeposit(ledger):
     assert f'{transaction_projection(sale).trade_return_percent:+,.2f}%' == '+0.54%'
 
 
-def test_historical_insertion_agrees_across_calculators_pages_apis_and_stored_sale(ledger, app):
+def test_historical_insertion_agrees_across_calculators_pages_apis_and_sale_projection(ledger, app):
     _trade(ledger, 'Buy', '100', '1', 1)
     sale = _trade(ledger, 'Sell', '150', '1', 3)
     assert transaction_projection(sale).realized_trading_pnl == D('50')
@@ -108,7 +108,7 @@ def test_historical_insertion_agrees_across_calculators_pages_apis_and_stored_sa
     assert summary['average_cost'] == D('150')
     assert summary['realized_pnl'] == D('0')
     db.session.refresh(sale)
-    assert sale.average_cost == D('150')
+    assert transaction_projection(sale).applicable_average_unit_cost == D('150')
     assert transaction_projection(sale).realized_trading_pnl == D('0')
 
     g._services = ledger.svc
@@ -184,10 +184,9 @@ def test_canonical_row_ignores_persisted_ten_decimal_average(ledger):
         db.session.expunge_all()
         persisted = db.session.get(Transaction, sale_id)
         fresh = PC.get_symbol_transactions_summary(ledger.pid, 'BTC', user_id=ledger.uid)
-        assert persisted.average_cost == D('1.6666666667')
         # Historical precision discrepancy is retained as explicit test-only
         # evidence. No production model property may use this formula anymore.
-        legacy_pnl = (persisted.price - persisted.average_cost) * persisted.quantity - persisted.fees
+        legacy_pnl = (persisted.price - D('1.6666666667')) * persisted.quantity - persisted.fees
         assert legacy_pnl == D('1.3333333333')
         assert fresh['realized_cost_basis'] == D('5') / D('3')
         assert fresh['realized_pnl'] == D('1.333333333333333333333333333')
@@ -236,14 +235,10 @@ def test_current_return_bases_and_unused_deposit_dilution(ledger):
 
 @pytest.mark.parametrize('quantity, persisted_quantity', [
     ('0.0000000001', '0.0000000001'),
-    ('0.00000000001', '0'),
+    ('0.00000000001', '0.00000000001'),
 ])
-def test_sqlite_numeric_quantity_scale_characterization(ledger, quantity, persisted_quantity):
-    """SQLite/SQLAlchemy environment characterization, not a portable SQL claim.
-
-    SQLite accepts a positive sub-scale value, but Numeric(20,10) conversion on
-    reload can expose zero. Pure-calculator precision is tested separately.
-    """
+def test_exact_quantity_persistence_has_no_legacy_scale_rounding(ledger, quantity, persisted_quantity):
+    """Accepted subscale quantities now survive SQLite persistence exactly."""
     assert db.engine.dialect.name == 'sqlite'
     row = _trade(ledger, 'Buy', '1', quantity, 1)
     row_id = row.id
@@ -281,7 +276,7 @@ def test_quantity_walk_and_recalculation_preserve_buy_first_when_clock_times_dis
     )
     assert transaction_projection(sale).realized_trading_pnl == D('50')
     ledger.svc.transaction_service.update_transaction(buy.id, date=datetime(2024, 1, 1, 23))
-    replayed = PC.recalculate_all_averages_for_symbol(ledger.pid, 'BTC', user_id=ledger.uid)
-    assert [row.id for row in replayed] == [buy.id, sale.id]
-    assert sale.average_cost == D('100')
+    replayed = PC.get_asset_snapshot(ledger.pid, 'BTC', user_id=ledger.uid).transaction_projections
+    assert list(replayed) == [buy.id, sale.id]
+    assert replayed[sale.id].applicable_average_unit_cost == D('100')
     assert transaction_projection(sale).realized_trading_pnl == D('50')

@@ -1,7 +1,7 @@
 """Database-facing financial façade and legacy response adapters.
 
 Aggregate reads compose immutable snapshots using the pure financial engine.
-The separate write-side replay below only maintains legacy compatibility columns.
+All derived transaction values are read projections; mutations persist raw facts.
 """
 
 from decimal import Decimal
@@ -15,7 +15,7 @@ from portfolio_app.calculators.financial_snapshots import (
     sum_income_details,
 )
 from portfolio_app.models import Portfolio, Transaction, PortfolioEvent, Dividend
-from portfolio_app.utils.decimal_utils import ZERO, to_decimal as _to_decimal, safe_divide as _safe_divide
+from portfolio_app.utils.decimal_utils import ZERO, to_decimal as _to_decimal
 
 # Realized P&L is computed on demand from the transactions table. There is
 # intentionally no snapshot table — a single source of truth eliminates the
@@ -149,7 +149,7 @@ class PortfolioCalculator:
 
         Funding/income sum individually loaded Decimal column values, never SQL
         floating-point reductions. Trading values always come from fresh canonical
-        replay, never Transaction.average_cost or Transaction.net_amount.
+        replay, never persisted derivatives (removed in schema 36).
         """
         query = Portfolio.query.filter_by(id=portfolio_id)
         if user_id is not None:
@@ -263,45 +263,3 @@ class PortfolioCalculator:
         )
         query = PortfolioCalculator._scope_to_user(query, Dividend, user_id)
         return sum_income_details(query.order_by(Dividend.id).all())
-
-    # ------------------------------------------------------------------
-    # Recalculation (after add/edit/delete transaction)
-    # ------------------------------------------------------------------
-
-    @staticmethod
-    def recalculate_all_averages_for_symbol(portfolio_id, symbol, *, user_id=None):
-        """Maintain legacy average_cost/net_amount columns for compatibility.
-
-        No financial consumer reads these values. Canonical read projections
-        come from raw replay instead. The caller is responsible for committing.
-        """
-        symbol = PortfolioCalculator.normalize_symbol(symbol)
-        query = Transaction.query.filter_by(portfolio_id=portfolio_id, symbol=symbol)
-        query = PortfolioCalculator._scope_to_user(query, Transaction, user_id)
-        transactions = order_transactions(query.all())
-
-        running_quantity = ZERO
-        running_cost = ZERO
-
-        for transaction in transactions:
-            transaction.calculate_net_amount()
-
-            if transaction.transaction_type == 'Buy':
-                cost = (
-                    _to_decimal(transaction.price) * _to_decimal(transaction.quantity)
-                    + _to_decimal(transaction.fees)
-                )
-                running_cost += cost
-                running_quantity += _to_decimal(transaction.quantity)
-                transaction.average_cost = _safe_divide(running_cost, running_quantity)
-
-            elif transaction.transaction_type == 'Sell':
-                sell_qty = _to_decimal(transaction.quantity)
-                avg_cost = _safe_divide(running_cost, running_quantity)
-                transaction.average_cost = avg_cost
-                running_quantity -= sell_qty
-                running_cost     -= avg_cost * sell_qty
-                if running_quantity == ZERO:
-                    running_cost = ZERO
-
-        return transactions

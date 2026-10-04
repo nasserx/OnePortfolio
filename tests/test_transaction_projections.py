@@ -11,7 +11,6 @@ from types import SimpleNamespace
 import pytest
 from flask import g
 from sqlalchemy import event
-from sqlalchemy.orm import defer
 
 from portfolio_app import db
 from portfolio_app.calculators import PortfolioCalculator as PC
@@ -152,20 +151,16 @@ def _html_trade_row(html, transaction_id):
                 if f'data-tx-id="{transaction_id}"' in row)
 
 
-@pytest.mark.parametrize('corrupted', ['average_cost', 'net_amount', 'both'])
-def test_corrupt_legacy_columns_cannot_change_replay_display_or_serialization(ledger, app, corrupted):
+def test_raw_only_rows_drive_replay_display_and_serialization(ledger, app):
     buy = _trade(ledger, 'Buy', '100', '2', 1, fees='2')
     sale = _trade(ledger, 'Sell', '120', '1', 2, fees='1')
     client = app.test_client()
     authenticate_client(client, ledger.uid)
     before = PC.get_portfolio_snapshot(ledger.pid, user_id=ledger.uid)
     html_before = client.get('/transactions/').get_data(as_text=True)
-    for record in (buy, sale):
-        if corrupted in ('average_cost', 'both'):
-            record.average_cost = D('999')
-        if corrupted in ('net_amount', 'both'):
-            record.net_amount = D('888')
-    db.session.commit()
+    assert not hasattr(Transaction, 'average_cost')
+    assert not hasattr(Transaction, 'net_amount')
+    db.session.expire_all()
     after = PC.get_portfolio_snapshot(ledger.pid, user_id=ledger.uid)
     assert after == before
     projection = after.asset('BTC').transaction_projections[sale.id]
@@ -185,22 +180,14 @@ def test_corrupt_legacy_columns_cannot_change_replay_display_or_serialization(le
     assert '119.00' in sale_text and '+18.00' in sale_text and '+17.82%' in sale_text
     api = client.get('/api/portfolio-summary').get_json()['portfolio_summary'][0]
     assert D(api['realized_pnl']) == D('18') and D(api['cash']) == D('-83')
-    # Reads must neither trust nor silently repair the corrupt compatibility data.
-    db.session.refresh(sale)
-    if corrupted in ('average_cost', 'both'):
-        assert sale.average_cost == D('999')
-    if corrupted in ('net_amount', 'both'):
-        assert sale.net_amount == D('888')
 
 
-def test_replay_and_serializer_work_with_legacy_columns_unreadable_and_no_queries(ledger):
+def test_replay_and_serializer_work_without_derived_columns_or_queries(ledger):
     _trade(ledger, 'Buy', '1', '1', 1)
     _trade(ledger, 'Buy', '2', '2', 2)
     _trade(ledger, 'Sell', '3', '1', 3)
     db.session.expunge_all()
-    records = Transaction.query.options(
-        defer(Transaction.average_cost, raiseload=True), defer(Transaction.net_amount, raiseload=True),
-    ).order_by(Transaction.id).all()
+    records = Transaction.query.order_by(Transaction.id).all()
     statements = []
 
     def record_sql(connection, cursor, statement, parameters, context, executemany):

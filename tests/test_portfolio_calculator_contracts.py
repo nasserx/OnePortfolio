@@ -64,7 +64,6 @@ def _transaction(portfolio, transaction_type, symbol, price, quantity, fees, dat
         fees=_dec(fees),
         date=date,
     )
-    row.calculate_net_amount()
     db.session.add(row)
     db.session.commit()
     return row
@@ -182,16 +181,16 @@ def test_database_summary_uses_calendar_date_buy_first_and_id_ordering(app):
         # Final aggregate basis alone cannot prove ordering between same-day
         # buys. The later ID has an earlier clock time; replay output and
         # intermediate averages pin ID order rather than intraday time order.
-        replayed = PortfolioCalculator.recalculate_all_averages_for_symbol(
+        replayed = PortfolioCalculator.get_asset_snapshot(
             portfolio.id, 'ORDER', user_id=user.id,
-        )
-        assert [row.id for row in replayed] == [
+        ).transaction_projections
+        assert list(replayed) == [
             earlier_buy.id, first_same_day_buy.id,
             second_same_day_buy.id, same_day_sell.id,
         ]
-        assert earlier_buy.average_cost == _dec('10')
-        assert first_same_day_buy.average_cost == _dec('15')
-        assert second_same_day_buy.average_cost == _dec('70') / _dec('3')
+        assert replayed[earlier_buy.id].applicable_average_unit_cost == _dec('10')
+        assert replayed[first_same_day_buy.id].applicable_average_unit_cost == _dec('15')
+        assert replayed[second_same_day_buy.id].applicable_average_unit_cost == _dec('70') / _dec('3')
 
         summary = PortfolioCalculator.get_symbol_transactions_summary(
             portfolio.id, 'ORDER', user_id=user.id,

@@ -389,7 +389,7 @@ def portfolios_event_edit(event_id):
         amount = data['amount_delta']
         event_type = event.event_type
         if event_type == 'Withdrawal':
-            amount = -amount
+            amount = amount.copy_negate()
         svc.portfolio_service.update_portfolio_event(
             event_id=data['event_id'],
             amount_delta=amount,

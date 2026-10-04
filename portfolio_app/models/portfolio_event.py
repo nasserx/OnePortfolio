@@ -1,8 +1,9 @@
 """PortfolioEvent model for cash events (deposits/withdrawals/initial)."""
 
 from datetime import datetime, timezone
-from sqlalchemy import Numeric, Index
+from sqlalchemy import CheckConstraint, Index
 from portfolio_app import db
+from portfolio_app.utils.exact_decimal import ExactDecimalText
 
 
 class PortfolioEvent(db.Model):
@@ -21,12 +22,13 @@ class PortfolioEvent(db.Model):
     event_type = db.Column(db.String(20), nullable=False)
 
     # Signed delta: positive for deposits/initial, negative for withdrawals
-    amount_delta = db.Column(Numeric(15, 2), nullable=False, default=0)
+    amount_delta = db.Column(ExactDecimalText(), nullable=False, default=0, server_default='0')
 
     date = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     notes = db.Column(db.Text, nullable=True)
 
     __table_args__ = (
+        CheckConstraint("typeof(amount_delta) = 'text'", name='check_amount_delta_text'),
         Index('ix_portfolio_event_portfolio_date', portfolio_id, date),
     )
 

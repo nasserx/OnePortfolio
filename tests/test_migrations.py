@@ -286,7 +286,7 @@ def test_fresh_database_startup_creates_schema_and_sets_user_version(tmp_path):
 def test_fresh_schema_uses_database_cascades_for_all_ownership_foreign_keys(tmp_path):
     app = create_app(_config_for(tmp_path / 'fresh-cascades.sqlite'))
 
-    assert TARGET_SCHEMA_VERSION == 35
+    assert TARGET_SCHEMA_VERSION == 36
     assert _foreign_key_contract(app, 'portfolio') == (
         ('user_id', 'user', 'id', 'NO ACTION', 'CASCADE'),
     )
@@ -321,14 +321,14 @@ def test_version_33_no_action_schema_upgrades_to_fresh_fk_parity_and_preserves_d
         51, 41, 'Preserved Portfolio',
     )
     assert _table_rows(upgraded_app, 'transaction')[0][:7] == (
-        61, 51, 'Buy', 'AAPL', 100, 2, 1,
+        61, 51, 'Buy', 'AAPL', '100', '2', '1',
     )
     assert _table_rows(upgraded_app, 'symbol')[0][:3] == (62, 51, 'AAPL')
     assert _table_rows(upgraded_app, 'dividend')[0][:5] == (
-        63, 51, 'AAPL', 25, '2026-01-05 00:00:00',
+        63, 51, 'AAPL', '25', '2026-01-05 00:00:00',
     )
     assert _table_rows(upgraded_app, 'portfolio_event')[0][:5] == (
-        64, 51, 'Deposit', 1000, '2026-01-02 00:00:00',
+        64, 51, 'Deposit', '1000', '2026-01-02 00:00:00',
     )
     with upgraded_app.app_context():
         assert db.session.execute(text('PRAGMA foreign_key_check')).fetchall() == []
@@ -831,7 +831,7 @@ def test_migration_removes_legacy_admin_column_and_preserves_user_graph(tmp_path
 def test_migration_hardens_otp_columns_and_invalidates_legacy_state(tmp_path):
     import sqlite3
 
-    assert TARGET_SCHEMA_VERSION == 35
+    assert TARGET_SCHEMA_VERSION == 36
     upgraded_path = tmp_path / 'legacy-otp-upgrade.sqlite'
     con = sqlite3.connect(upgraded_path)
     try:

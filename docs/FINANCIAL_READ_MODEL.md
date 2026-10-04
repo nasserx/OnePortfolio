@@ -42,7 +42,7 @@ once. A snapshot is an in-memory read model, not a new database isolation policy
 | `routes/dashboard.py` | Consumer; separate summary and totals reads | One composed snapshot for Overview; same facade for summary API |
 | `/api/holdings` | Lightweight quantity calculation and string serialization | Retained: sequence-independent quantity, tested against snapshot quantity |
 | `Transaction.net_pnl` / `net_pnl_percent` | Stored-average transaction-row projection | Removed in the transaction-projection phase; canonical replay supplies row P&L/return |
-| `Transaction.calculate_net_amount`, `TransactionManager`, average recalculation | Write-side derived fields | Deliberately retained |
+| `Transaction.calculate_net_amount`, `TransactionManager`, average recalculation | Write-side derived fields | Compatibility retained through Phase 5; removed in Phase 6 |
 | Portfolio/Transaction services | Validation walks, proposed cash deltas, fees versus proceeds | Retained validation, not reporting calculations |
 | Forms | Input validation and normalization | Unchanged |
 | `allocation_charts.py` | Positive-value filtering, Top-N/Other percentages and chart serialization | Retained presentation calculation over canonical portfolio rows |
@@ -80,7 +80,7 @@ formatters retain their visible semantics. Phase 4 changes action payloads only.
   are not a new financial policy.
 - Undefined return remains numeric zero plus a dash for reporting, and `None`
   plus a dash in the Assets template adapter. Sell-row undefined return remains
-  `None` in the unchanged model property.
+  `None` in the canonical transaction projection.
 - Phase 4 removes SQL monetary SUMs and the separate `legacy_income_details`
   override. Every income consumer uses `income_by_symbol`, built from Decimal
   column reads in ID order, grouped by normalized symbol. Portfolio income sums
@@ -89,12 +89,13 @@ formatters retain their visible semantics. Phase 4 changes action payloads only.
   assigned before storage conversion. Funding sums individually loaded signed
   deltas in ID order (gross deposits filter Initial/Deposit before summing).
   These reads remain user-scoped and perform no explicit writes.
-- Intentional precision correction: two SQLite income inputs `0.00000000006`
+- Historical Phase 4 correction (before schema 36): two SQLite income inputs `0.00000000006`
   load as two `0.0000000001` rows. All income/cash/return projections now use
   `0.0000000002`, rather than reporting `0.0000000001` while Assets reported
   `0.0000000002`. Likewise two funding inputs `0.006` load as two `0.01` rows;
   gross/net funding is now `0.02`, not the SQL-reduced `0.01`. These are explicit
-  environment/schema regressions, not promises that subscale inputs persist exactly.
+  legacy environment/schema results. Schema 36 preserves those observed values
+  on upgrade; new inputs persist exactly, totaling `0.00000000012` and `0.012`.
 - Summary total book value remains sum of portfolio book values; dashboard
   total remains sum of cash plus sum of basis. Their Decimal association order
   is preserved, including potential extreme-precision differences.
@@ -104,8 +105,8 @@ formatters retain their visible semantics. Phase 4 changes action payloads only.
   For the 5/3 example, basis changes from `-1E-27` to `0`, released basis from
   `5.000000000000000000000000001` to `5`, and realized P&L from
   `3.999999999999999999999999999` to `4`. This is not epsilon clamping: nonzero
-  quantities retain even arbitrarily small pools. Write-side replay clears its
-  pool on exact zero quantity too, so a new buy cannot inherit the residue.
+  quantities retain even arbitrarily small pools. New buys after closure start
+  with the exact zero pool; no write-side projection replay remains.
 - JSON summary Decimal fields now use exact fixed-point strings; IDs remain
   numbers, text stays text, and None remains null. Holdings stays a string and
   now expands scientific notation before the Sell Max input receives it.
@@ -114,34 +115,46 @@ formatters retain their visible semantics. Phase 4 changes action payloads only.
   Out-of-repository clients must consume these monetary fields as decimal text.
   Chart data remains a separate, presentation-only numeric contract.
 
-## Stored derivatives and remaining risks
+## Exact storage and remaining risks (Phase 6)
 
-`Transaction.average_cost` and `Transaction.net_amount` remain physically present
-and are still written for compatibility. **Neither column is a financial source
-of truth, including transaction-row display and serialization.** Canonical replay
-now supplies those results. The write-side compatibility calculation remains
-separate; removing it and the columns belongs to the storage migration.
+Schema 36 removes `Transaction.average_cost` and `Transaction.net_amount`, their
+defaults/check constraint, and all compatibility writers. Canonical replay still
+supplies every derived financial result. TransactionManager persists raw facts;
+TransactionService retains cash/fee/quantity-walk validation but no longer writes
+historical projections. Metadata-only edits still preserve raw fields.
 
-Phase 4 exempts metadata-only edits from that replay: when price, quantity, fees,
-symbol and effective calendar date are unchanged, save notes (and any same-day
-time edit) without rewriting derived values. Otherwise a notes-only save can
-change the stored average when recomputation uses already-rounded SQLite inputs.
-Actual financial/date-order edits still follow the existing validation/replay.
+`ExactDecimalText` stores transaction price/quantity/fees, Dividend amount and
+PortfolioEvent amount_delta as SQLite TEXT, exposing Decimal to Python. Its
+conversion is context-independent fixed-point text, with fractional trailing
+zeros removed and all numerical zeros represented as `0`. No float input,
+non-finite value, fixed storage scale, or database rounding is permitted. Decimal,
+integer and exact input text are supported; malformed/noncanonical stored text
+fails closed on read. Existing form/service domain rules remain authoritative.
+Funding inputs are not newly limited to cents; Max remains a cent-floor action.
+Withdrawal sign changes use `copy_negate()` so even >28-digit raw amounts are
+not rounded before persistence.
 
-Consequently legacy column values can still disagree with canonical replay, but
-that disagreement no longer determines displayed/serialized financial results. SQLite
-Numeric conversion, finite Decimal-context rounding on open positions, and
-legacy malformed/non-normalized records remain future
-reconciliation concerns. The optional unscoped calculator mode remains an
-explicit internal convention; application consumers pass user IDs. Database
-reads retain normal SQLAlchemy session behavior and do not introduce writes or
-a new concurrency/isolation guarantee. There is no new cache-invalidation risk.
+Migration 36 uses the historical Numeric result processor **once** to obtain the
+old application's observed Decimal, then binds canonical strings to TEXT. It
+cannot recover previously lost digits. See [migration safety](MIGRATIONS.md).
+No financial SQL SUM/AVG, numeric coercion, comparison or ordering over these
+TEXT values is used by production accounting. Python Decimal reads/aggregation
+remain canonical. IDs/counts/dates/booleans and all display formatting are unchanged.
 
-No schema, migration, income-type, transfer, or return-policy change is part of
-these phases. **SQLite NUMERIC exact persistence is not solved.** Stored prices,
-quantities, fees, income, funding, averages and net amounts can still round or
-lose digits in SQLAlchemy/SQLite conversions. A notes-only edit preserves the
-loaded financial values; it cannot recover digits already lost on initial save.
+Exact persistence is not unlimited calculation precision. The established
+Decimal arithmetic context (normally 28 significant digits) remains unchanged;
+the new boundary test demonstrates rounding when a >28-digit raw price is
+multiplied by one. Persistence accepts and preserves that price exactly. Raising
+the replay context would alter existing repeating-average P&L/returns and requires
+its own reconciled calculation-policy change; no global context is set here.
+This is an explicit remaining risk for extreme magnitudes/precision, including
+validation arithmetic and differently associated aggregate reductions.
+
+Legacy malformed/non-normalized records remain reconciliation concerns. Optional
+unscoped calculator calls remain an internal convention; application consumers
+pass user IDs. Reads retain SQLAlchemy session semantics, with no new cache or
+concurrency/isolation guarantee. Direct SQL writers must use canonical strings:
+SQLite TEXT affinity alone cannot enforce the full Decimal grammar or sign policy.
 
 ## Canonical transaction-projection phase
 
@@ -203,26 +216,25 @@ Snapshots remain point-in-time values: callers must obtain a fresh snapshot afte
 financial edits. Passing an old projection alongside newer records is not a live
 recalculation API. No persistent cache or new isolation/concurrency policy exists.
 
-### Remaining stored-field reads and writes
+### Stored-field disposition after Phase 6
 
 | Field/path | Classification | Status |
 | --- | --- | --- |
-| `Transaction.average_cost` column | Legacy persisted derived data | Retained physically; ORM may hydrate it, but no production financial consumer reads it |
-| `PortfolioCalculator.recalculate_all_averages_for_symbol` | Legacy derived write | Assigns post-buy/pre-sale averages from raw history |
-| `Transaction.net_amount` column | Legacy persisted derived data | Retained physically; no production financial display/serialization/calculation reads it |
-| `Transaction.calculate_net_amount` | Legacy derived write | Assigns raw gross +/- fees; called by TransactionManager create/update and compatibility replay |
-| TransactionService add / financial update / delete | Compatibility-write orchestration | Invokes existing recalculation; metadata-only bypass remains |
-| Model column defaults and net_amount check constraint | Schema compatibility | Unchanged; not used to calculate financial truth |
+| `Transaction.average_cost` column | Legacy persisted derived data | Removed; no active read/write |
+| `PortfolioCalculator.recalculate_all_averages_for_symbol` | Legacy derived write | Removed |
+| `Transaction.net_amount` column | Legacy persisted derived data | Removed; no active read/write |
+| `Transaction.calculate_net_amount` | Legacy derived write | Removed |
+| TransactionService add / financial update / delete | Raw mutation and validation | No compatibility replay; validation walks retained |
+| Model derivative defaults and net_amount check constraint | Obsolete schema | Removed atomically |
 | Assets row financial cells | Display | Canonical projection; raw edit payloads unchanged |
 | Transaction serializer legacy keys | Serialization adapter | Canonical projection only; explicit context required |
 | Summary `average_cost`, `realized_pnl`, `realized_cost_basis`, `total_sell_cost` | Canonical calculation/aggregation | Fresh replay values, not model-column reads |
-| Tests inspecting stored values/corruption | Test-only | Retained for compatibility, precision and independence evidence |
+| Tests inspecting stored values/corruption | Test-only | Corrupt derivatives now belong to pre-migration fixtures; final-schema tests assert absence |
 | Existing migrations/rebuild SQL | Migration/history | Preserved unchanged; can copy legacy columns, not a live reporting path |
 
-`transaction.average_cost` and `transaction.net_amount` are the exact safe
-financial-dependency candidates for removal in the next migration. That migration
-must retire compatibility assignments, model mappings/defaults and the associated
-net_amount constraint atomically. No columns are dropped or migrated here.
+Legacy serialized keys `net_amount` and `average_cost` remain canonical projection
+adapters, not persisted fields. Historical migration code still references the old
+columns when upgrading older schemas; it is not an active application write path.
 
 Regression coverage includes permutations and same-day ties, fees, partial/multiple
 sales, full liquidation, historical insertion, exact row/aggregate reconciliation,

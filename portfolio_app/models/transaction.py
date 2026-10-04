@@ -1,10 +1,10 @@
 """Transaction model for buy/sell operations."""
 
 from datetime import datetime, timezone
-from decimal import Decimal
-from sqlalchemy import Numeric, CheckConstraint
+from sqlalchemy import CheckConstraint
 from portfolio_app import db
 from portfolio_app.utils.decimal_utils import decimal_text
+from portfolio_app.utils.exact_decimal import ExactDecimalText
 
 
 class Transaction(db.Model):
@@ -20,14 +20,9 @@ class Transaction(db.Model):
     )
     transaction_type = db.Column(db.String(10), nullable=False)  # 'Buy' or 'Sell'
     symbol = db.Column(db.String(20), nullable=True)
-    # Higher precision to support crypto-style pricing (e.g. 0.0002344)
-    price = db.Column(Numeric(20, 10), nullable=False)
-    quantity = db.Column(Numeric(20, 10), nullable=False)
-    fees = db.Column(Numeric(20, 10), nullable=False, default=0)
-    # Legacy compatibility projections only. Never read for financial reporting.
-    # Buy: gross + fees  |  Sell: gross - fees
-    net_amount = db.Column(Numeric(20, 10), nullable=False, default=0)
-    average_cost = db.Column(Numeric(20, 10), nullable=False, default=0)
+    price = db.Column(ExactDecimalText(), nullable=False)
+    quantity = db.Column(ExactDecimalText(), nullable=False)
+    fees = db.Column(ExactDecimalText(), nullable=False, default=0, server_default='0')
     date = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     notes = db.Column(db.Text, nullable=True)
 
@@ -44,27 +39,10 @@ class Transaction(db.Model):
         return self.date.strftime('%Y-%m-%d %H:%M')
 
     __table_args__ = (
-        CheckConstraint('price > 0', name='check_price_positive'),
-        CheckConstraint('quantity > 0', name='check_quantity_positive'),
-        CheckConstraint('fees >= 0', name='check_fees_non_negative'),
-        CheckConstraint('net_amount >= 0', name='check_net_amount_non_negative'),
+        CheckConstraint("typeof(price) = 'text'", name='check_price_text'),
+        CheckConstraint("typeof(quantity) = 'text'", name='check_quantity_text'),
+        CheckConstraint("typeof(fees) = 'text'", name='check_fees_text'),
     )
-
-    def calculate_net_amount(self):
-        """Write legacy net_amount for schema compatibility, not reporting.
-
-        Buy:  net_amount = (price × quantity) + fees
-        Sell: net_amount = (price × quantity) - fees
-        """
-        price = Decimal(str(self.price))
-        quantity = Decimal(str(self.quantity))
-        fees = Decimal(str(self.fees))
-        gross = price * quantity
-
-        if self.transaction_type == 'Sell':
-            self.net_amount = gross - fees
-        else:  # Buy
-            self.net_amount = gross + fees
 
     def to_dict(self, *, projection, portfolio_name):
         """Serialize with explicit canonical history context, never legacy fields.

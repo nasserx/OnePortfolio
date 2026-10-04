@@ -220,12 +220,9 @@ def test_snapshots_are_detached_read_only_values_and_adapters_are_copies(ledger)
     assert asset.transactions['total_quantity_held'] == D('1')
 
 
-def test_snapshot_reads_ignore_stored_derivatives_and_do_not_write(ledger):
+def test_snapshot_reads_raw_facts_and_does_not_write(ledger):
     _trade(ledger, 'Buy', '100', '2', 1)
     sale = _trade(ledger, 'Sell', '120', '1', 2)
-    sale.average_cost = D('999')
-    sale.net_amount = D('999')
-    db.session.commit()
     statements = []
 
     def record(connection, cursor, statement, parameters, context, executemany):
@@ -241,8 +238,7 @@ def test_snapshot_reads_ignore_stored_derivatives_and_do_not_write(ledger):
     assert snapshot.totals['realized_pnl'] == D('20')
     assert snapshot.totals['total_cash'] == D('-80')
     db.session.refresh(sale)
-    assert sale.average_cost == sale.net_amount == D('999')
-    assert transaction_projection(sale).realized_trading_pnl == D('20')  # Corrupt legacy fields have no authority.
+    assert transaction_projection(sale).realized_trading_pnl == D('20')
 
 
 def test_new_reads_reflect_edits_and_deletions_without_mutating_prior_snapshot(ledger):
@@ -279,7 +275,7 @@ def test_composed_overview_replays_each_asset_only_once(ledger, app, monkeypatch
 
 
 def test_sqlite_income_uses_same_loaded_decimal_rows_for_every_projection(ledger, app):
-    """Storage is still SQLite; Phase 4 consistently sums converted row values."""
+    """Every consumer sums exact persisted Decimals, never SQLite SUM."""
     assert db.engine.dialect.name == 'sqlite'
     for _ in range(2):
         ledger.svc.transaction_service.add_dividend(
@@ -287,9 +283,9 @@ def test_sqlite_income_uses_same_loaded_decimal_rows_for_every_projection(ledger
         )
     db.session.expunge_all()
     snapshot = PC.get_portfolio_snapshot(ledger.pid, user_id=ledger.uid)
-    assert snapshot.income == snapshot.asset('BTC').income == D('0.0000000002')
-    assert snapshot.income_by_symbol['BTC'] == D('0.0000000002')
-    assert snapshot.asset('BTC').as_assets_summary()['return_amount'] == D('0.0000000002')
+    assert snapshot.income == snapshot.asset('BTC').income == D('0.00000000012')
+    assert snapshot.income_by_symbol['BTC'] == D('0.00000000012')
+    assert snapshot.asset('BTC').as_assets_summary()['return_amount'] == D('0.00000000012')
     _assert_consumers(ledger, app)
 
 

@@ -104,15 +104,26 @@ from `calculators/financial_snapshots.py`. `PortfolioCalculator` loads scoped
 inputs; the snapshot builders compose the existing pure arithmetic and canonical
 ordering helper. Routes consume snapshot adapters instead of defining financial
 formulas. See [Canonical financial reads](FINANCIAL_READ_MODEL.md) for the
-duplication map, legacy adapters, and remaining storage precision limitations.
+duplication map, legacy adapters, exact storage and remaining calculation limits.
 
 One `replay_symbol_transactions` call now produces both aggregate state and
 immutable per-transaction financial projections. Asset snapshots expose those
 projections by transaction ID; Assets uses them independently of presentation
-order. Stored `Transaction.average_cost` and `net_amount` are compatibility writes
-only, not reporting inputs. Context-free model P&L properties are removed;
+order. Schema 36 removes stored `Transaction.average_cost` and `net_amount`
+and their compatibility writers. Context-free model P&L properties are removed;
 transaction serialization requires an explicit canonical projection and portfolio
 name, with no hidden history/relationship queries. Raw edit inputs remain separate.
+
+Financial persistence uses `utils/exact_decimal.py::ExactDecimalText`: finite
+Decimal -> canonical ordinary decimal TEXT -> Decimal, without binary float or
+scale quantization. It covers transaction price/quantity/fees, Dividend amount,
+and PortfolioEvent amount_delta. Numeric sign CHECKs move to service validation;
+NOT NULL, TEXT storage checks and ownership foreign keys remain in SQLite.
+Services preserve quantity walks and cash validation without writing derived
+history. Financial aggregation stays in Python, never SQL arithmetic on TEXT.
+Calculation precision remains the established Decimal context (normally 28
+digits), distinct from exact persistence and unchanged visible formatting.
+See [schema 36 conversion and rollback](MIGRATIONS.md#schema-36-exact-decimal-storage).
 
 ## Forms
 

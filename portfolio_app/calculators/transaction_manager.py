@@ -9,7 +9,7 @@ class TransactionManager:
 
     @staticmethod
     def create_transaction(portfolio_id, transaction_type, price, quantity, fees, notes='', symbol=None, date=None):
-        """Create a new transaction and update calculations"""
+        """Create raw transaction facts; projections are calculated on read."""
         symbol = PortfolioCalculator.normalize_symbol(symbol)
         transaction = Transaction(
             portfolio_id=portfolio_id,
@@ -23,12 +23,11 @@ class TransactionManager:
         if date is not None:
             transaction.date = date
 
-        transaction.calculate_net_amount()
         return transaction
 
     @staticmethod
     def update_transaction(transaction, price=None, quantity=None, fees=None, notes=None, symbol=None, date=None):
-        """Update a transaction and recalculate"""
+        """Update raw transaction facts without writing derived history."""
         if price is not None:
             transaction.price = price
         if quantity is not None:
@@ -42,5 +41,4 @@ class TransactionManager:
         if date is not None:
             transaction.date = date
 
-        transaction.calculate_net_amount()
         return transaction

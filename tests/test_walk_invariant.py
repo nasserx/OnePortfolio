@@ -48,16 +48,12 @@ def _seed_buy_then_sell(svc, portfolio_id, *, buy_qty=10, sell_qty=5):
         date=datetime(2026, 1, 1), symbol='AAPL',
         price=100, quantity=buy_qty, fees=0,
     )
-    buy.calculate_net_amount()
     sell = Transaction(
         portfolio_id=portfolio_id, transaction_type='Sell',
         date=datetime(2026, 1, 5), symbol='AAPL',
         price=120, quantity=sell_qty, fees=0,
     )
-    sell.calculate_net_amount()
     db.session.add_all([buy, sell])
-    db.session.commit()
-    PortfolioCalculator.recalculate_all_averages_for_symbol(portfolio_id, 'AAPL')
     db.session.commit()
     return buy, sell
 
@@ -129,7 +125,6 @@ def test_add_sell_exceeding_holdings_keeps_insufficient_quantity_message(app):
             date=datetime(2026, 1, 1), symbol='AAPL',
             price=100, quantity=10, fees=0,
         )
-        buy.calculate_net_amount()
         db.session.add(buy)
         db.session.commit()
 

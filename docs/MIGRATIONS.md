@@ -113,6 +113,65 @@ table. Legacy password reset/lockout columns and OAuth identity rows are
 preserved but have no production runtime caller, providing a bounded rollback
 window before a later separately approved destructive cleanup.
 
+## Schema 36: exact Decimal storage
+
+The forward `_migrate_exact_decimal_storage` step uses the existing startup
+schema lock/runner. A current schema-35 database goes directly to this step;
+older versions first use the unchanged historical migration sequence. Fresh
+databases receive the final models via `db.create_all()` under the same lock.
+
+| Table/column | Previous physical type | Schema 36 |
+| --- | --- | --- |
+| transaction.price, quantity, fees | NUMERIC(20,10) | TEXT, ExactDecimalText |
+| dividend.amount | NUMERIC(20,10) | TEXT, ExactDecimalText |
+| portfolio_event.amount_delta | NUMERIC(15,2) | TEXT, ExactDecimalText |
+| transaction.average_cost, net_amount | NUMERIC(20,10) | Removed |
+
+Canonical representation is ordinary decimal notation, no fractional trailing
+zeros, with every numerical zero stored as `0`. `1234567890.1234567890` stores
+as `1234567890.123456789`; `1E-11` stores as `0.00000000001`. Conversion does not
+use Decimal.normalize(), quantize(), or float. Reads expose finite Decimal;
+float binding and malformed/noncanonical stored text are rejected.
+
+For existing records, a typed SQLAlchemy SELECT uses the **old** Numeric reader
+(scale 10 for trades/income, 2 for funding). That matches the former application's
+observed Decimal. SQLite may already return a binary REAL to that legacy decoder;
+the migration neither adds a float conversion nor casts REAL to TEXT. It then
+converts the observed Decimal directly to canonical text, checks Decimal equality,
+and inserts strings into replacement tables. Original input digits already lost
+cannot be reconstructed. For example, legacy funding `0.006` observed as `0.01`
+stays `0.01`; a newly accepted `0.006` is now stored/read as exactly `0.006`.
+
+All three rebuilds plus `user_version=36` run under one explicit `BEGIN IMMEDIATE`.
+Failure rolls back this entire forward step. Historical earlier revisions retain
+their original per-step commits, so an upgrade starting before 35 is not claimed
+to be one atomic transaction. The runner restores FK enforcement after success
+or failure. IDs, row metadata, foreign keys/cascades, explicit indexes/triggers,
+and AUTOINCREMENT high-water marks are preserved; row counts and foreign keys
+are checked before commit. Unexpected columns, custom CHECK/UNIQUE constraints,
+foreign keys or derivative-dependent indexes/triggers stop for manual review.
+
+The old numeric positivity CHECKs would be misleading over TEXT. They are removed
+and replaced by `typeof(column)='text'` plus existing NOT NULL. Trade price/quantity
+positivity, fee nonnegativity and income positivity are enforced by forms/services;
+sale-fee/quantity/cash guards remain. Funding sign policy is unchanged. The type
+enforces finite exact representation, not business sign rules. Raw SQL bypasses
+the parser and must not be treated as a supported financial write boundary.
+
+No financial SQL SUM/AVG, numeric ordering, comparison, or CAST-to-REAL is used on
+these columns. Canonical loaders sum individual Decimal values in Python. Exact
+storage is independent of unchanged 28-digit calculation and UI display precision.
+
+Validation uses only disposable databases. `tests/test_exact_decimal_storage.py`
+compares legacy-decoded raw rows, every canonical asset/row/portfolio/global
+snapshot and return before/after upgrade, including BTC and corrupted derivatives;
+also tests physical TEXT, high precision, final schema, rollback and FK cascades.
+Before production deployment, back up the database and reconcile a disposable
+copy. This change does not migrate the developer's working `portfolio.db`.
+Rollback to older application code requires restoring a schema-35 backup, not
+running the old Numeric models against schema 36. A down-migration would be lossy
+for newly accepted precision and is deliberately not provided.
+
 ## Required Validation
 
 Run:

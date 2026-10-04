@@ -122,11 +122,11 @@ def test_exact_decimal_text_preserves_digits_without_context_rounding(app):
 def test_actual_template_action_payloads_do_not_float_format(ledger, app):
     _trade(ledger, 'Buy', '1', '1', 1)
     value = D('1234567890.1234567890')
-    # Transient display records deliberately bypass SQLite: this tests the
-    # application boundary, not a claim of exact NUMERIC persistence.
+    # Transient records isolate the template boundary. Exact database
+    # persistence has separate round-trip coverage.
     row = Transaction(id=99, portfolio_id=ledger.pid, transaction_type='Buy',
                       symbol='BTC', price=value, quantity=value, fees=value,
-                      net_amount=D('1'), date=datetime(2024, 1, 1))
+                      date=datetime(2024, 1, 1))
     dividend = Dividend(id=99, portfolio_id=ledger.pid, symbol='BTC', amount=value,
                         date=datetime(2024, 1, 1))
     with app.test_request_context():
@@ -160,7 +160,6 @@ def test_nonfinancial_trade_edit_preserves_loaded_financial_values(ledger, app, 
     db.session.expunge_all()
     before = db.session.get(Transaction, row_id)
     expected = tuple(getattr(before, field) for field in ('price', 'quantity', 'fees'))
-    stored_derived = (before.net_amount, before.average_cost)
     client = app.test_client()
     authenticate_client(client, ledger.uid)
     payload = _payloads(client.get('/transactions/').get_data(as_text=True), 'data-tx')[0]
@@ -176,8 +175,6 @@ def test_nonfinancial_trade_edit_preserves_loaded_financial_values(ledger, app, 
     assert tuple(getattr(after, field) for field in ('price', 'quantity', 'fees')) == expected
     assert after.notes == data['edit_notes']
     assert after.date.strftime('%Y-%m-%d') == data['edit_date']
-    if edit == 'notes':
-        assert (after.net_amount, after.average_cost) == stored_derived
 
 
 @pytest.mark.parametrize('cash, expected', [
@@ -219,18 +216,17 @@ def test_summary_json_preserves_high_precision_snapshot_values_and_types(ledger,
     assert held['held_quantity'] == '0.0000000001'
 
 
-def test_funding_sums_loaded_scale_values_not_sql_sum(ledger, app):
+def test_funding_sums_exact_loaded_values_not_sql_sum(ledger, app):
     assert db.engine.dialect.name == 'sqlite'
     for _ in range(2):
         ledger.svc.portfolio_service.deposit_funds(ledger.pid, D('0.006'))
-    # Explicit environment/schema characterization. Each loaded row is 0.01;
-    # reducing raw SQLite values first formerly produced 0.01, not 0.02.
+    # New records retain accepted sub-cent inputs, without NUMERIC scale loss.
     db.session.expunge_all()
     rows = PortfolioEvent.query.all()
-    assert [row.amount_delta for row in rows] == [D('0.01'), D('0.01')]
-    assert PC.get_total_deposits_for_portfolio(ledger.pid) == D('0.02')
-    assert PC.get_net_deposits_for_portfolio(ledger.pid) == D('0.02')
-    assert _assert_consumers(ledger, app).totals['total_cash'] == D('0.02')
+    assert [row.amount_delta for row in rows] == [D('0.006'), D('0.006')]
+    assert PC.get_total_deposits_for_portfolio(ledger.pid) == D('0.012')
+    assert PC.get_net_deposits_for_portfolio(ledger.pid) == D('0.012')
+    assert _assert_consumers(ledger, app).totals['total_cash'] == D('0.012')
 
 
 def test_nonzero_position_keeps_tiny_cost_pool():
@@ -243,14 +239,13 @@ def test_nonzero_position_keeps_tiny_cost_pool():
     assert summary['average_cost'] == D('1E-20')
 
 
-def test_stored_replay_new_buy_after_repeating_average_closure_has_clean_pool(ledger):
+def test_canonical_replay_new_buy_after_repeating_average_closure_has_clean_pool(ledger):
     _trade(ledger, 'Buy', '1', '1', 1)
     _trade(ledger, 'Buy', '2', '2', 2)
     _trade(ledger, 'Sell', '3', '3', 3)
     _trade(ledger, 'Buy', '0.1', '1', 4)
-    replay = PC.recalculate_all_averages_for_symbol(ledger.pid, 'BTC')
-    assert replay[-1].average_cost == D('0.1')
     fresh = PC.get_asset_snapshot(ledger.pid, 'BTC')
+    assert list(fresh.transaction_projections.values())[-1].applicable_average_unit_cost == D('0.1')
     assert fresh.transactions['cost_basis'] == D('0.1')
     assert fresh.transactions['realized_pnl'] == D('4')
 
@@ -263,13 +258,10 @@ def test_notes_only_edit_with_calendar_date_payload_does_not_replay(ledger, app,
     row_id = row.id
     db.session.expunge_all()
     before = db.session.get(Transaction, row_id)
-    fields = ('price', 'quantity', 'fees', 'net_amount', 'average_cost')
+    fields = ('price', 'quantity', 'fees')
     expected = tuple(getattr(before, field) for field in fields)
 
-    def forbidden(*args, **kwargs):
-        pytest.fail('Metadata-only edit must not recalculate stored derivatives')
-
-    monkeypatch.setattr(PC, 'recalculate_all_averages_for_symbol', forbidden)
+    assert not hasattr(PC, 'recalculate_all_averages_for_symbol')
     client = app.test_client()
     authenticate_client(client, ledger.uid)
     payload = _payloads(client.get('/transactions/').get_data(as_text=True), 'data-tx')[0]

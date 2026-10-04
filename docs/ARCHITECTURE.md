@@ -99,6 +99,14 @@ The user-facing term is Income even though the model is still named `Dividend`.
 
 Calculators should use `Decimal` for financial math and should not introduce cached financial totals without a clear invalidation strategy.
 
+Aggregate consumers now use immutable asset, portfolio, and global snapshots
+from `calculators/financial_snapshots.py`. `PortfolioCalculator` loads scoped
+inputs; the snapshot builders compose the existing pure arithmetic and canonical
+ordering helper. Routes consume snapshot adapters instead of defining financial
+formulas. See [Canonical financial reads](FINANCIAL_READ_MODEL.md) for the
+duplication map, legacy adapters, and deliberately retained precision/row-result
+projections.
+
 ## Forms
 
 Forms live in `portfolio_app/forms/`. They validate request payloads for auth, portfolios, capital entries, assets, asset entries, and income. They also normalize common inputs before service code receives them.

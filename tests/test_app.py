@@ -15,7 +15,7 @@ from portfolio_app import create_app, db
 from portfolio_app.models import Transaction, PortfolioEvent
 from portfolio_app.models.user import User
 from portfolio_app.calculators import PortfolioCalculator
-from portfolio_app.routes.transactions import _apply_summary_roi
+from portfolio_app.calculators.financial_snapshots import apply_asset_summary_return as _apply_summary_roi
 from portfolio_app.services.factory import Services
 from portfolio_app.utils.messages import MESSAGES
 from tests._auth import authenticate_client

@@ -14,7 +14,6 @@ from portfolio_app.forms import (
     PortfolioEventDeleteForm,
 )
 from portfolio_app.calculators.portfolio_calculator import PortfolioCalculator
-from portfolio_app.utils.decimal_utils import ZERO
 from portfolio_app.utils import (
     get_error_message, get_first_form_error, MESSAGES,
     is_ajax_request, json_response, field_error_response,
@@ -35,37 +34,16 @@ def _get_portfolios_page_context():
     for portfolio in portfolios:
         events = svc.portfolio_event_repo.get_by_portfolio_id(portfolio.id)
 
-        cash = PortfolioCalculator.get_available_cash_for_portfolio(portfolio.id, user_id=uid)
-        tx_summary = PortfolioCalculator.get_portfolio_transactions_summary(portfolio.id, user_id=uid)
-        positions = tx_summary['cost_basis']
-        book_value = cash + positions
-
-        total_capital = PortfolioCalculator.get_total_capital_for_portfolio(portfolio.id, user_id=uid)
-        total_deposits = PortfolioCalculator.get_total_deposits_for_portfolio(portfolio.id, user_id=uid)
-
-        realized_perf = PortfolioCalculator.get_realized_performance_for_portfolio(portfolio.id, user_id=uid)
-        realized_pnl = realized_perf['realized_pnl']
-        total_income = realized_perf['total_income']
-        return_amount = realized_pnl + total_income
-        if total_deposits != ZERO:
-            return_percent = (return_amount / total_deposits) * 100
-            return_display = f"{return_percent:+,.2f}%"
-        else:
-            return_percent = ZERO
-            return_display = '—'
-
+        snapshot = PortfolioCalculator.get_portfolio_snapshot(portfolio.id, user_id=uid)
         portfolio_details.append({
             'portfolio': portfolio,
             'events': events,
-            'total_capital': total_capital,
-            'withdrawable_cash': cash,
-            'positions': positions,
-            'book_value': book_value,
-            'realized_pnl': realized_pnl,
-            'total_income': total_income,
-            'return_amount': return_amount,
-            'return_percent': return_percent,
-            'return_display': return_display,
+            'total_capital': snapshot.net_contributions,
+            'withdrawable_cash': snapshot.cash_balance,
+            'positions': snapshot.transactions['cost_basis'],
+            'realized_pnl': snapshot.transactions['realized_pnl'],
+            'total_income': snapshot.income,
+            **snapshot.metrics,
         })
 
     return {

@@ -37,7 +37,7 @@ _DIV_EDIT_FIELD_MAP = {
     MESSAGES['CASH_ALREADY_SPENT']:  'edit_amount',
 }
 from portfolio_app.utils.constants import safe_html_id
-from portfolio_app.utils.decimal_utils import ZERO, safe_divide
+from portfolio_app.utils.decimal_utils import ZERO
 from config import Config
 
 logger = logging.getLogger(__name__)
@@ -58,26 +58,6 @@ def _decimal_places(value) -> int:
     return len(fractional)
 
 
-def _apply_summary_roi(summary, income=ZERO):
-    """Attach asset return fields using total buy cost as the base."""
-    realized_pnl = Decimal(str(summary.get('realized_pnl', 0) or 0))
-    total_income = Decimal(str(income or 0))
-    total_spent = Decimal(str(summary.get('total_buy_cost', 0) or 0))
-
-    if total_spent == ZERO:
-        summary['return_amount'] = realized_pnl + total_income
-        summary['return_percent'] = None
-        summary['return_display'] = '—'
-        return summary
-
-    return_amount = realized_pnl + total_income
-    return_percent = safe_divide(return_amount, total_spent) * Decimal('100')
-    summary['return_amount'] = return_amount
-    summary['return_percent'] = return_percent
-    summary['return_display'] = f"{return_percent:+,.2f}%"
-    return summary
-
-
 def _get_transactions_page_context(portfolio_filter=''):
     """Build context data for the transactions page."""
     svc = get_services()
@@ -85,11 +65,16 @@ def _get_transactions_page_context(portfolio_filter=''):
     portfolio_filter = (portfolio_filter or '').strip()
     portfolios = portfolio_repo.get_all()
     holdings = []
+    snapshots = {}
 
     for portfolio in portfolios:
         if portfolio_filter and portfolio.name != portfolio_filter:
             continue
 
+        snapshot = PortfolioCalculator.get_portfolio_snapshot(
+            portfolio.id, user_id=portfolio_repo.user_id,
+        )
+        snapshots[portfolio.id] = snapshot
         tracked_symbols = set()
         tracked_by_ticker = {}
 
@@ -121,7 +106,9 @@ def _get_transactions_page_context(portfolio_filter=''):
             price_decimal_places = max(0, min(int(price_decimal_places), 10))
 
             avg_cost_decimal_places = max(2, price_decimal_places)
-            summary = PortfolioCalculator.get_symbol_transactions_summary_from_list(transactions)
+            summary = snapshot.asset(sym_norm).as_assets_summary(
+                detail_income=snapshot.legacy_income_details.get(sym_norm, ZERO),
+            )
 
             html_group_id = safe_html_id(portfolio.id, sym_norm)
             tracked = tracked_by_ticker.get(sym_norm)
@@ -139,7 +126,11 @@ def _get_transactions_page_context(portfolio_filter=''):
     # Load dividends grouped by (portfolio_id, symbol) — single query for all portfolios
     visible_portfolio_ids = [p.id for p in portfolios if not portfolio_filter or p.name == portfolio_filter]
     dividends_by_symbol: dict = {}
-    dividend_totals: dict = {}
+    dividend_totals = {
+        (pid, symbol): income
+        for pid, snapshot in snapshots.items()
+        for symbol, income in snapshot.legacy_income_details.items()
+    }
     for div in svc.dividend_repo.get_by_portfolio_ids(visible_portfolio_ids):
         sym = (div.symbol or '').upper()
         if not sym:
@@ -147,11 +138,6 @@ def _get_transactions_page_context(portfolio_filter=''):
             continue
         key = (div.portfolio_id, sym)
         dividends_by_symbol.setdefault(key, []).append(div)
-        dividend_totals[key] = dividend_totals.get(key, ZERO) + Decimal(str(div.amount))
-
-    for item in holdings:
-        key = (item['portfolio'].id, item['symbol'])
-        _apply_summary_roi(item['summary'], dividend_totals.get(key, ZERO))
 
     return {
         'holdings': holdings,

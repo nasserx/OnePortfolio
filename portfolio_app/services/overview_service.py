@@ -14,10 +14,14 @@ class OverviewService:
         self._user_id = user_id
 
     def get_portfolio_summary(self) -> Tuple[List[Dict[str, Any]], Decimal]:
-        return PortfolioCalculator.get_portfolio_summary(user_id=self._user_id)
+        return self.get_financial_snapshot().as_portfolio_summary()
+
+    def get_financial_snapshot(self):
+        """One fresh read model for a composed dashboard response."""
+        return PortfolioCalculator.get_financial_snapshot(user_id=self._user_id)
 
     def get_portfolio_dashboard_totals(self) -> Dict[str, Any]:
-        return PortfolioCalculator.get_portfolio_dashboard_totals(user_id=self._user_id)
+        return dict(self.get_financial_snapshot().totals)
 
     def get_symbol_performance(self) -> List[Dict[str, Any]]:
         """Per-(portfolio, symbol) realized performance for charts/heatmaps."""

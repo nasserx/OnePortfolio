@@ -1,7 +1,7 @@
 """Database-facing financial façade and legacy response adapters.
 
 Aggregate reads compose immutable snapshots using the pure financial engine.
-The separate write-side replay below retains stored transaction-row semantics.
+The separate write-side replay below only maintains legacy compatibility columns.
 """
 
 from decimal import Decimal
@@ -270,8 +270,10 @@ class PortfolioCalculator:
 
     @staticmethod
     def recalculate_all_averages_for_symbol(portfolio_id, symbol, *, user_id=None):
-        """Recalculate average costs and net_amount for all transactions of a
-        (portfolio, symbol) pair. The caller is responsible for committing.
+        """Maintain legacy average_cost/net_amount columns for compatibility.
+
+        No financial consumer reads these values. Canonical read projections
+        come from raw replay instead. The caller is responsible for committing.
         """
         symbol = PortfolioCalculator.normalize_symbol(symbol)
         query = Transaction.query.filter_by(portfolio_id=portfolio_id, symbol=symbol)

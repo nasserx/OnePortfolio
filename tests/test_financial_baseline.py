@@ -20,7 +20,7 @@ from portfolio_app.routes.transactions import _get_transactions_page_context
 from portfolio_app.routes.portfolios import _get_portfolios_page_context
 from portfolio_app.services.factory import Services
 from portfolio_app.utils.messages import MESSAGES
-from tests._financial import assert_accounting_invariants
+from tests._financial import assert_accounting_invariants, transaction_projection
 from tests._auth import authenticate_client
 
 
@@ -76,7 +76,7 @@ def test_btc_unfunded_buy_funding_sale_withdrawal_and_profit_redeposit(ledger):
     after_sale = _assert_btc_state(ledger, ('558', '555', '0', '0', '3', '0', '558'))
     assert sale.net_amount == D('558')
     trade_return = D('3') / D('555') * D('100')
-    assert sale.net_pnl_percent == trade_return
+    assert transaction_projection(sale).trade_return_percent == trade_return
     assert after_sale['return_percent'] == trade_return
 
     maximum = PC.get_available_cash_for_portfolio(ledger.pid, user_id=ledger.uid)
@@ -89,17 +89,17 @@ def test_btc_unfunded_buy_funding_sale_withdrawal_and_profit_redeposit(ledger):
     final = _assert_btc_state(ledger, ('3', '0', '0', '0', '3', '0', '3'))
     assert final['total_contributed'] == D('558')
     assert final['return_percent'] == D('3') / D('558') * D('100')
-    assert sale.net_pnl_percent == trade_return
-    assert final['return_percent'] != sale.net_pnl_percent
+    assert transaction_projection(sale).trade_return_percent == trade_return
+    assert final['return_percent'] != transaction_projection(sale).trade_return_percent
     # The same rounded display must not conceal the distinct denominators.
     assert final['return_display'] == '+0.54%'
-    assert f'{sale.net_pnl_percent:+,.2f}%' == '+0.54%'
+    assert f'{transaction_projection(sale).trade_return_percent:+,.2f}%' == '+0.54%'
 
 
 def test_historical_insertion_agrees_across_calculators_pages_apis_and_stored_sale(ledger, app):
     _trade(ledger, 'Buy', '100', '1', 1)
     sale = _trade(ledger, 'Sell', '150', '1', 3)
-    assert sale.net_pnl == D('50')
+    assert transaction_projection(sale).realized_trading_pnl == D('50')
     _trade(ledger, 'Buy', '200', '1', 2)
 
     summary = PC.get_symbol_transactions_summary(ledger.pid, 'BTC', user_id=ledger.uid)
@@ -109,7 +109,7 @@ def test_historical_insertion_agrees_across_calculators_pages_apis_and_stored_sa
     assert summary['realized_pnl'] == D('0')
     db.session.refresh(sale)
     assert sale.average_cost == D('150')
-    assert sale.net_pnl == D('0')
+    assert transaction_projection(sale).realized_trading_pnl == D('0')
 
     g._services = ledger.svc
     assets = _get_transactions_page_context()['holdings'][0]['summary']
@@ -167,12 +167,12 @@ def test_assets_and_overview_agree_regardless_of_repository_or_display_order(
     assert assets['total_quantity_held'] == D('1')
     assert assets['cost_basis'] == assets['average_cost'] == D('150')
     assert assets['realized_pnl'] == overview[0]['realized_pnl'] == D('0')
-    assert sale.net_pnl == D('0')
+    assert transaction_projection(sale).realized_trading_pnl == D('0')
     assert [row.id for row in supplied] == original_ids
     assert [row.id for row in holding['transactions']] == list(reversed(original_ids))
 
 
-def test_persisted_ten_decimal_average_differs_from_fresh_replay(ledger):
+def test_canonical_row_ignores_persisted_ten_decimal_average(ledger):
     with localcontext() as context:
         context.prec = 28
         context.rounding = ROUND_HALF_EVEN
@@ -185,10 +185,14 @@ def test_persisted_ten_decimal_average_differs_from_fresh_replay(ledger):
         persisted = db.session.get(Transaction, sale_id)
         fresh = PC.get_symbol_transactions_summary(ledger.pid, 'BTC', user_id=ledger.uid)
         assert persisted.average_cost == D('1.6666666667')
-        assert persisted.net_pnl == D('1.3333333333')
+        # Historical precision discrepancy is retained as explicit test-only
+        # evidence. No production model property may use this formula anymore.
+        legacy_pnl = (persisted.price - persisted.average_cost) * persisted.quantity - persisted.fees
+        assert legacy_pnl == D('1.3333333333')
         assert fresh['realized_cost_basis'] == D('5') / D('3')
         assert fresh['realized_pnl'] == D('1.333333333333333333333333333')
-        assert D('0') < fresh['realized_pnl'] - persisted.net_pnl < D('1E-10')
+        assert D('0') < fresh['realized_pnl'] - legacy_pnl < D('1E-10')
+        assert transaction_projection(persisted).realized_trading_pnl == fresh['realized_pnl']
 
 
 def test_current_unfunded_buy_acceptance_but_cost_increasing_edit_is_rejected(ledger):
@@ -212,7 +216,7 @@ def test_current_return_bases_and_unused_deposit_dilution(ledger):
     ledger.svc.transaction_service.add_dividend(ledger.pid, 'BTC', D('75'), datetime(2024, 1, 4))
     before = PC.get_portfolio_dashboard_totals(user_id=ledger.uid)
     asset_before = ledger.svc.overview_service.get_symbol_performance()[0]
-    trade_return = sale.net_pnl_percent
+    trade_return = transaction_projection(sale).trade_return_percent
     assert trade_return == D('100') / D('500') * D('100') == D('20')
     assert asset_before['return_percent'] == D('175') / D('1000') * D('100') == D('17.5')
     assert before['return_percent'] == D('175') / D('2000') * D('100') == D('8.75')
@@ -227,7 +231,7 @@ def test_current_return_bases_and_unused_deposit_dilution(ledger):
     for key in ('realized_pnl', 'total_income', 'total_positions', 'return_amount'):
         assert after[key] == before[key]
     assert asset_after == asset_before
-    assert sale.net_pnl_percent == trade_return
+    assert transaction_projection(sale).trade_return_percent == trade_return
 
 
 @pytest.mark.parametrize('quantity, persisted_quantity', [
@@ -275,9 +279,9 @@ def test_quantity_walk_and_recalculation_preserve_buy_first_when_clock_times_dis
         portfolio_id=ledger.pid, transaction_type='Sell', symbol='BTC',
         price=D('150'), quantity=D('1'), fees=D('0'), date=datetime(2024, 1, 1, 8),
     )
-    assert sale.net_pnl == D('50')
+    assert transaction_projection(sale).realized_trading_pnl == D('50')
     ledger.svc.transaction_service.update_transaction(buy.id, date=datetime(2024, 1, 1, 23))
     replayed = PC.recalculate_all_averages_for_symbol(ledger.pid, 'BTC', user_id=ledger.uid)
     assert [row.id for row in replayed] == [buy.id, sale.id]
     assert sale.average_cost == D('100')
-    assert sale.net_pnl == D('50')
+    assert transaction_projection(sale).realized_trading_pnl == D('50')

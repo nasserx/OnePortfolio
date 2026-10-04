@@ -19,6 +19,7 @@ from portfolio_app.calculators.financial_snapshots import apply_asset_summary_re
 from portfolio_app.services.factory import Services
 from portfolio_app.utils.messages import MESSAGES
 from tests._auth import authenticate_client
+from tests._financial import transaction_projection
 from datetime import datetime
 from decimal import Decimal
 from config import Config
@@ -151,10 +152,10 @@ def test_transaction_calculations(app):
         # ETHA: buy 10@10, sell 5@12 (-1 fee), buy 5@10
         etha = PortfolioCalculator.get_symbol_transactions_summary(etfs.id, 'ETHA')
         _assert('ETHA realized P&L', 9.0, etha['realized_pnl'])   # (12-10)*5 - 1 fee
-        _assert('ETHA sell row Net P&L', 9.0, e2.net_pnl)
-        _assert('ETHA sell row Net P&L %', 18.0, e2.net_pnl_percent)
-        assert e1.net_pnl is None
-        assert e1.net_pnl_percent is None
+        _assert('ETHA sell row Net P&L', 9.0, transaction_projection(e2).realized_trading_pnl)
+        _assert('ETHA sell row Net P&L %', 18.0, transaction_projection(e2).trade_return_percent)
+        assert transaction_projection(e1).realized_trading_pnl is None
+        assert transaction_projection(e1).trade_return_percent is None
         _apply_summary_roi(etha)
         _assert('ETHA transaction summary return uses Total Spent', 6.0, etha['return_percent'])
         # Buy 10@10 → sell 5 (remaining cost=50) → buy 5@10 → total=100/10 = 10.0

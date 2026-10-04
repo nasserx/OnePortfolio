@@ -14,7 +14,8 @@ from portfolio_app.calculators.financial_math import (
     calculate_asset_return,
     calculate_cash_balance,
     calculate_portfolio_metrics,
-    calculate_symbol_transaction_summary,
+    replay_symbol_transactions,
+    TransactionFinancialProjection,
 )
 from portfolio_app.calculators.transaction_order import order_transactions
 from portfolio_app.utils.decimal_utils import ZERO, to_decimal
@@ -58,6 +59,7 @@ class AssetFinancialSnapshot:
     transactions: Mapping[str, Union[Decimal, int]]
     income: Decimal
     returns: Mapping[str, Union[Decimal, str]]
+    transaction_projections: Mapping[int, TransactionFinancialProjection]
 
     def as_assets_summary(self):
         """Fresh mutable template adapter; never mutate the underlying snapshot."""
@@ -84,11 +86,13 @@ class AssetFinancialSnapshot:
 
 def build_asset_snapshot(symbol, transactions, income=ZERO):
     """One canonical ordered replay per asset, independent of retrieval order."""
-    summary = calculate_symbol_transaction_summary(order_transactions(transactions))
+    replay = replay_symbol_transactions(order_transactions(transactions))
+    summary = replay.summary
     income = to_decimal(income)
     return AssetFinancialSnapshot(
         symbol, _readonly(summary), income,
         _readonly(calculate_asset_return(summary['realized_pnl'], income, summary['total_buy_cost'])),
+        _readonly({row.transaction_id: row for row in replay.projections if row.transaction_id is not None}),
     )
 
 

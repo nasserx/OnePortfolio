@@ -13,6 +13,7 @@ from flask import g, render_template, render_template_string
 from portfolio_app import db
 from portfolio_app.calculators import PortfolioCalculator as PC
 from portfolio_app.calculators.financial_math import calculate_symbol_transaction_summary
+from portfolio_app.calculators.financial_snapshots import build_asset_snapshot
 from portfolio_app.forms.transaction_forms import (
     TransactionAddForm, TransactionEditForm, DividendAddForm, DividendEditForm,
 )
@@ -132,6 +133,7 @@ def test_actual_template_action_payloads_do_not_float_format(ledger, app):
         g.services = ledger.svc
         context = _get_transactions_page_context()
         context['holdings'][0]['transactions'] = [row]
+        context['holdings'][0]['transaction_projections'] = build_asset_snapshot('BTC', [row]).transaction_projections
         context['dividends_by_symbol'] = {(ledger.pid, 'BTC'): [dividend]}
         html = render_template('assets.html', **context)
         payload = _payloads(html, 'data-tx')[0]

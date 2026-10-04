@@ -1,4 +1,4 @@
-# Canonical financial reads (Phases 3–4)
+# Canonical financial reads and transaction projections
 
 ## Boundary and data flow
 
@@ -41,7 +41,7 @@ once. A snapshot is an in-memory read model, not a new database isolation policy
 | `routes/transactions.py` | Duplicate asset earnings/percentage and dividend row sums | Consume asset snapshots and canonical income-by-symbol totals |
 | `routes/dashboard.py` | Consumer; separate summary and totals reads | One composed snapshot for Overview; same facade for summary API |
 | `/api/holdings` | Lightweight quantity calculation and string serialization | Retained: sequence-independent quantity, tested against snapshot quantity |
-| `Transaction.net_pnl` / `net_pnl_percent` | Stored-average transaction-row projection | Deliberately retained, not aggregate truth |
+| `Transaction.net_pnl` / `net_pnl_percent` | Stored-average transaction-row projection | Removed in the transaction-projection phase; canonical replay supplies row P&L/return |
 | `Transaction.calculate_net_amount`, `TransactionManager`, average recalculation | Write-side derived fields | Deliberately retained |
 | Portfolio/Transaction services | Validation walks, proposed cash deltas, fees versus proceeds | Retained validation, not reporting calculations |
 | Forms | Input validation and normalization | Unchanged |
@@ -116,12 +116,11 @@ formatters retain their visible semantics. Phase 4 changes action payloads only.
 
 ## Stored derivatives and remaining risks
 
-`Transaction.average_cost` is still recalculated and persisted after mutations.
-The transaction table's Sell-row P&L/return continues to use that stored average,
-including ten-decimal storage rounding. `Transaction.net_amount` is still
-recalculated/persisted and displayed/serialized on transaction rows. Neither
-field is read as an input to aggregate snapshot calculations. Write-side replay
-is intentionally not unified with aggregate replay in this phase.
+`Transaction.average_cost` and `Transaction.net_amount` remain physically present
+and are still written for compatibility. **Neither column is a financial source
+of truth, including transaction-row display and serialization.** Canonical replay
+now supplies those results. The write-side compatibility calculation remains
+separate; removing it and the columns belongs to the storage migration.
 
 Phase 4 exempts metadata-only edits from that replay: when price, quantity, fees,
 symbol and effective calendar date are unchanged, save notes (and any same-day
@@ -129,7 +128,8 @@ time edit) without rewriting derived values. Otherwise a notes-only save can
 change the stored average when recomputation uses already-rounded SQLite inputs.
 Actual financial/date-order edits still follow the existing validation/replay.
 
-Consequently stored rows can still disagree with fresh aggregate replay. SQLite
+Consequently legacy column values can still disagree with canonical replay, but
+that disagreement no longer determines displayed/serialized financial results. SQLite
 Numeric conversion, finite Decimal-context rounding on open positions, and
 legacy malformed/non-normalized records remain future
 reconciliation concerns. The optional unscoped calculator mode remains an
@@ -138,10 +138,97 @@ reads retain normal SQLAlchemy session behavior and do not introduce writes or
 a new concurrency/isolation guarantee. There is no new cache-invalidation risk.
 
 No schema, migration, income-type, transfer, or return-policy change is part of
-either phase. **SQLite NUMERIC exact persistence is not solved.** Stored prices,
+these phases. **SQLite NUMERIC exact persistence is not solved.** Stored prices,
 quantities, fees, income, funding, averages and net amounts can still round or
 lose digits in SQLAlchemy/SQLite conversions. A notes-only edit preserves the
 loaded financial values; it cannot recover digits already lost on initial save.
+
+## Canonical transaction-projection phase
+
+### Authority and one-replay architecture
+
+Authoritative trade facts are portfolio, symbol, type, price, quantity, fee and
+effective date/order (calendar date, Buy before Sell, database ID). Funding and
+Dividend raw records remain authoritative for their respective cash flows.
+
+`replay_symbol_transactions` in `financial_math.py` consumes one already-ordered
+symbol history and returns a frozen `AssetReplayResult` containing a read-only
+summary and a tuple of frozen `TransactionFinancialProjection` values. The
+existing `calculate_symbol_transaction_summary` is just a dictionary adapter over
+that replay, not another implementation. `build_asset_snapshot` applies the
+shared ordering helper once, then exposes the same replay's aggregates and an
+immutable `transaction_projections` map keyed by persisted transaction ID.
+Unsaved/id-less pure records remain represented in the replay tuple, not the ID map.
+
+Each projection contains gross amount, fee, purchase cost, net sale proceeds,
+signed cash effect, applicable average unit cost, released basis, realized trading
+P&L, trade return, and post-transaction quantity/basis/average. For Buys, the
+applicable average is the post-buy average and trading P&L/return are None. For
+Sells, it is the pre-sale average; zero released basis produces a None return.
+`cash_amount` adapts purchase cost or net sale proceeds to the existing Total
+Amount display. It does not read the stored `net_amount` column.
+
+The sale P&L stored in each projection is the **same Decimal contribution** added
+to aggregate realized P&L. Partial sales retain the previous operation order
+`(price - average) * quantity - fee`; closing sales retain Phase 4's exact-pool
+release and `net proceeds - remaining pool`. Row return is that canonical sale
+P&L divided by canonical released basis times 100. No ten-decimal stored-average
+rounding is reintroduced, and no aggregate formulas or Return policies change.
+
+For buys 1 @ 1 and 2 @ 2 followed by selling 1 @ 3, the old stored average
+`1.6666666667` gave row P&L `1.3333333333`. Canonical row and aggregate P&L now
+both equal `1.333333333333333333333333333` in the approved 28-digit context.
+The BTC sale gives proceeds 558, released basis 555, P&L 3, and return
+`3 / 555 * 100`; subsequent funding does not change that row projection.
+
+### Consumers and serialization
+
+Assets obtains the projection map from the same asset snapshot as its summary.
+Its rows select the projection by ID. Raw ORM rows remain the source of editable
+price/quantity/fee, notes and date payloads. Presentation still reverses the
+repository list independently of ascending accounting order; no row-level replay
+or history query is introduced.
+
+The context-free `Transaction.net_pnl` and `net_pnl_percent` properties are
+removed. A standalone row cannot infer historical basis. `Transaction.to_dict`
+requires keyword arguments `projection` and `portfolio_name`, checking that the
+projection's transaction/portfolio IDs match. It does not query a relationship
+or replay history. Legacy JSON keys `net_amount`, `average_cost`, `net_pnl` and
+`net_pnl_percent` now adapt canonical values, serialized as exact Decimal text
+(or None). Raw editable fields remain raw exact text. No existing production
+caller of this serializer was found; its explicit-context contract is regression
+tested, including with both legacy columns configured to raise on access.
+
+Snapshots remain point-in-time values: callers must obtain a fresh snapshot after
+financial edits. Passing an old projection alongside newer records is not a live
+recalculation API. No persistent cache or new isolation/concurrency policy exists.
+
+### Remaining stored-field reads and writes
+
+| Field/path | Classification | Status |
+| --- | --- | --- |
+| `Transaction.average_cost` column | Legacy persisted derived data | Retained physically; ORM may hydrate it, but no production financial consumer reads it |
+| `PortfolioCalculator.recalculate_all_averages_for_symbol` | Legacy derived write | Assigns post-buy/pre-sale averages from raw history |
+| `Transaction.net_amount` column | Legacy persisted derived data | Retained physically; no production financial display/serialization/calculation reads it |
+| `Transaction.calculate_net_amount` | Legacy derived write | Assigns raw gross +/- fees; called by TransactionManager create/update and compatibility replay |
+| TransactionService add / financial update / delete | Compatibility-write orchestration | Invokes existing recalculation; metadata-only bypass remains |
+| Model column defaults and net_amount check constraint | Schema compatibility | Unchanged; not used to calculate financial truth |
+| Assets row financial cells | Display | Canonical projection; raw edit payloads unchanged |
+| Transaction serializer legacy keys | Serialization adapter | Canonical projection only; explicit context required |
+| Summary `average_cost`, `realized_pnl`, `realized_cost_basis`, `total_sell_cost` | Canonical calculation/aggregation | Fresh replay values, not model-column reads |
+| Tests inspecting stored values/corruption | Test-only | Retained for compatibility, precision and independence evidence |
+| Existing migrations/rebuild SQL | Migration/history | Preserved unchanged; can copy legacy columns, not a live reporting path |
+
+`transaction.average_cost` and `transaction.net_amount` are the exact safe
+financial-dependency candidates for removal in the next migration. That migration
+must retire compatibility assignments, model mappings/defaults and the associated
+net_amount constraint atomically. No columns are dropped or migrated here.
+
+Regression coverage includes permutations and same-day ties, fees, partial/multiple
+sales, full liquidation, historical insertion, exact row/aggregate reconciliation,
+BTC, corrupted legacy fields, read-only results, exact JSON text, and constant query
+count / one replay per asset as the displayed row count grows. Existing formatting,
+return denominators, cash and edit-roundtrip tests remain in force.
 
 ## Phase 4: calculation, action and display precision
 

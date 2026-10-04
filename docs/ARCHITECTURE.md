@@ -104,8 +104,15 @@ from `calculators/financial_snapshots.py`. `PortfolioCalculator` loads scoped
 inputs; the snapshot builders compose the existing pure arithmetic and canonical
 ordering helper. Routes consume snapshot adapters instead of defining financial
 formulas. See [Canonical financial reads](FINANCIAL_READ_MODEL.md) for the
-duplication map, legacy adapters, and deliberately retained precision/row-result
-projections.
+duplication map, legacy adapters, and remaining storage precision limitations.
+
+One `replay_symbol_transactions` call now produces both aggregate state and
+immutable per-transaction financial projections. Asset snapshots expose those
+projections by transaction ID; Assets uses them independently of presentation
+order. Stored `Transaction.average_cost` and `net_amount` are compatibility writes
+only, not reporting inputs. Context-free model P&L properties are removed;
+transaction serialization requires an explicit canonical projection and portfolio
+name, with no hidden history/relationship queries. Raw edit inputs remain separate.
 
 ## Forms
 

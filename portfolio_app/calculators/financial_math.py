@@ -12,7 +12,7 @@ from typing import Mapping, Optional, Tuple, Union
 
 from portfolio_app.utils.decimal_utils import ZERO, to_decimal
 from portfolio_app.utils.financial_arithmetic import (
-    FinancialArithmetic, exact_add, exact_subtract, exact_multiply,
+    FinancialArithmetic, exact_add, exact_subtract, exact_multiply, financial_percent,
 )
 
 
@@ -40,6 +40,11 @@ class TransactionFinancialProjection:
     post_quantity: Decimal
     post_cost_basis: Decimal
     post_average_unit_cost: Decimal
+
+    @property
+    def realized_trading_return(self):
+        """Canonical percentage; trade_return_percent is the legacy row name."""
+        return self.trade_return_percent
 
     @property
     def cash_amount(self):
@@ -133,10 +138,7 @@ def replay_symbol_transactions(transactions):
             sale_pnl = exact_subtract(proceeds, released_cost)
             realized_pnl = exact_add(realized_pnl, sale_pnl)
             realized_cost_basis = exact_add(realized_cost_basis, released_cost)
-            trade_return = (
-                arithmetic.percent(sale_pnl, released_cost)
-                if released_cost != ZERO else None
-            )
+            trade_return = calculate_realized_trading_return(sale_pnl, released_cost)
 
             running_quantity = exact_subtract(running_quantity, quantity)
             running_cost = exact_subtract(running_cost, released_cost)
@@ -176,49 +178,52 @@ def replay_symbol_transactions(transactions):
     return AssetReplayResult(MappingProxyType(summary), tuple(projections))
 
 
-def calculate_return(realized_pnl, total_income, base):
-    """Calculate return amount, percentage, and display text."""
-    realized_pnl = to_decimal(realized_pnl)
-    total_income = to_decimal(total_income)
-    base = to_decimal(base)
+def calculate_realized_trading_return(realized_trading_pnl, released_cost_basis):
+    """One percentage at every scope; sum P&L and released basis before calling.
 
-    return_amount = exact_add(realized_pnl, total_income)
-    if base == ZERO:
-        return_percent = ZERO
+    Dividend Income, funding and open basis are deliberately not inputs.
+    Use the Phase 7 direct-operand division policy identically at every scope.
+    """
+    pnl, basis = map(to_decimal, (realized_trading_pnl, released_cost_basis))
+    return financial_percent(pnl, basis) if basis != ZERO else None
+
+
+def calculate_realized_earnings_metrics(realized_trading_pnl, dividend_income, released_cost_basis):
+    """Separate monetary realized earnings from the trading-only percentage."""
+    pnl, income, basis = map(to_decimal, (realized_trading_pnl, dividend_income, released_cost_basis))
+    trading_return = calculate_realized_trading_return(pnl, basis)
+    if trading_return is None:
         return_display = '—'
     else:
-        arithmetic = FinancialArithmetic.for_values((return_amount, base))
-        return_percent = arithmetic.percent(return_amount, base.copy_abs())
+        arithmetic = FinancialArithmetic.for_values((pnl, basis))
         # Preserve the existing half-even two-decimal legacy display independently
         # of ambient rounding. UI ROUND_HALF_UP formatters remain separate.
         with arithmetic.local_context():
-            return_display = f"{return_percent:+,.2f}%"
+            return_display = f"{trading_return:+,.2f}%"
 
     return {
-        'return_amount': return_amount,
-        'return_percent': return_percent,
+        'realized_trading_pnl': pnl,
+        'released_cost_basis': basis,
+        'dividend_income': income,
+        'total_realized_earnings': exact_add(pnl, income),
+        'realized_trading_return': trading_return,
+        # Legacy UI/JSON adapters. None is undefined; Decimal zero is genuine 0%.
+        'return_percent': trading_return,
         'return_display': return_display,
     }
 
 
-def calculate_portfolio_metrics(total_cash, positions, realized_pnl, total_income, return_base):
+def calculate_portfolio_metrics(total_cash, positions, realized_pnl, dividend_income, released_cost_basis):
     """Calculate portfolio-level book value and return metrics."""
     total_cash = to_decimal(total_cash)
     positions = to_decimal(positions)
     book_value = exact_add(total_cash, positions)
-    return_result = calculate_return(realized_pnl, total_income, return_base)
+    return_result = calculate_realized_earnings_metrics(realized_pnl, dividend_income, released_cost_basis)
 
     return {
         'book_value': book_value,
-        'return_amount': return_result['return_amount'],
-        'return_percent': return_result['return_percent'],
-        'return_display': return_result['return_display'],
+        **return_result,
     }
-
-
-def calculate_asset_return(realized_pnl, total_income, total_buy_cost):
-    """Calculate asset-level return metrics."""
-    return calculate_return(realized_pnl, total_income, total_buy_cost)
 
 
 def calculate_cash_balance(total_capital, transactions, total_income):

@@ -44,7 +44,7 @@ def _assert_consumers(ledger, app):
         details_row = details[portfolio.portfolio_id]
         assert details_row['withdrawable_cash'] == row['cash']
         for key in ('total_capital', 'positions', 'book_value', 'realized_pnl',
-                    'total_income', 'return_amount', 'return_percent', 'return_display'):
+                    'total_income', 'total_realized_earnings', 'return_percent', 'return_display'):
             assert details_row[key] == row[key]
         assert_accounting_invariants(
             portfolio.transactions, cash=portfolio.cash_balance,
@@ -60,12 +60,12 @@ def _assert_consumers(ledger, app):
                 summary = holding['summary']
                 for key, value in asset.transactions.items():
                     assert summary[key] == value
-                assert summary['return_amount'] == perf['return_amount']
-                if asset.transactions['total_buy_cost']:
+                assert summary['total_realized_earnings'] == perf['total_realized_earnings']
+                if asset.transactions['realized_cost_basis']:
                     assert summary['return_percent'] == perf['return_percent']
                 else:
                     assert summary['return_percent'] is None
-                    assert perf['return_percent'] == D('0')
+                    assert perf['return_percent'] is None
                 assert summary['return_display'] == perf['return_display']
                 assert context['dividend_totals'].get((portfolio.portfolio_id, symbol), D('0')) == asset.income
 
@@ -78,7 +78,7 @@ def _assert_consumers(ledger, app):
     assert len(payload['portfolio_summary']) == len(rows)
     for actual, expected in zip(payload['portfolio_summary'], rows):
         for key in ('cash', 'total_capital', 'total_contributed', 'positions',
-                    'cost_basis', 'realized_pnl', 'total_income', 'return_amount', 'book_value'):
+                    'cost_basis', 'realized_pnl', 'total_income', 'total_realized_earnings', 'book_value'):
             assert D(str(actual[key])) == expected[key]
         assert actual['return_display'] == expected['return_display']
         portfolio = next(p for p in snapshot.portfolios if p.portfolio_id == actual['id'])
@@ -113,7 +113,7 @@ def test_btc_every_stage_agrees_across_snapshot_pages_and_apis(ledger, app):
     ledger.svc.portfolio_service.deposit_funds(ledger.pid, D('3'))
     snapshot = _assert_consumers(ledger, app)
     assert snapshot.totals['total_cash'] == snapshot.totals['total_value'] == D('3')
-    assert snapshot.totals['return_percent'] == expected_percent('3', '558')
+    assert snapshot.totals['return_percent'] == expected_percent('3', '555')
     assert transaction_projection(sale).trade_return_percent == expected_percent('3', '555')
 
 
@@ -136,7 +136,7 @@ def test_partial_and_full_sale_with_fees_income_and_multiple_buys(
     assert asset.transactions['realized_pnl'] == D(pnl)
     assert snapshot.totals['total_cash'] == D(cash)
     assert snapshot.totals['total_value'] == D(book)
-    assert asset.returns['return_percent'] == expected_percent(D(pnl) + D('2.4'), '58.5')
+    assert asset.returns['return_percent'] == expected_percent(D(pnl), asset.transactions['realized_cost_basis'])
 
 
 def test_multi_portfolio_same_symbol_separate_pools_and_unused_deposit_return(ledger, app):
@@ -150,23 +150,23 @@ def test_multi_portfolio_same_symbol_separate_pools_and_unused_deposit_return(le
     before = _assert_consumers(ledger, app)
     assert before.totals['total_positions'] == D('500')
     assert before.totals['realized_pnl'] == D('20')
-    assert before.totals['return_percent'] == D('2')
+    assert before.totals['return_percent'] == expected_percent('20', '300')
     assert before.portfolios[1].cash_balance == D('-220')
-    assert before.portfolios[1].metrics['return_display'] == '—'
+    assert before.portfolios[1].metrics['return_display'] == '-10.00%'
     ledger.svc.portfolio_service.deposit_funds(second.id, D('3000'))
     after = _assert_consumers(ledger, app)
-    assert after.totals['return_percent'] == D('0.5')
+    assert after.totals['return_percent'] == before.totals['return_percent']
     for previous, current in zip(before.portfolios, after.portfolios):
         assert previous.asset('BTC') == current.asset('BTC')
 
 
-def test_income_only_undefined_returns_remain_scope_specific(ledger, app):
+def test_dividend_only_return_is_undefined_at_every_scope(ledger, app):
     ledger.svc.transaction_service.add_symbol(ledger.pid, 'BTC')
     ledger.svc.transaction_service.add_dividend(ledger.pid, 'BTC', D('12.34'), datetime(2024, 1, 1))
     snapshot = _assert_consumers(ledger, app)
     portfolio = snapshot.portfolios[0]
     assert portfolio.cash_balance == portfolio.metrics['book_value'] == D('12.34')
-    assert portfolio.metrics['return_percent'] == D('0')
+    assert portfolio.metrics['return_percent'] is None
     assert portfolio.metrics['return_display'] == '—'
     assert portfolio.asset('BTC').as_assets_summary()['return_percent'] is None
     assert portfolio.transactions['realized_pnl'] == portfolio.transactions['cost_basis'] == D('0')
@@ -197,7 +197,7 @@ def test_new_snapshot_entry_points_retain_user_scoping_and_empty_state(ledger):
     assert asset.transactions['total_quantity_held'] == asset.income == D('0')
     empty = PC.get_financial_snapshot(ledger.uid + 1)
     assert empty.as_portfolio_summary() == ([], D('0'))
-    assert empty.totals['return_percent'] == D('0')
+    assert empty.totals['return_percent'] is None
     assert empty.totals['return_display'] == '—'
 
 
@@ -286,7 +286,7 @@ def test_sqlite_income_uses_same_loaded_decimal_rows_for_every_projection(ledger
     snapshot = PC.get_portfolio_snapshot(ledger.pid, user_id=ledger.uid)
     assert snapshot.income == snapshot.asset('BTC').income == D('0.00000000012')
     assert snapshot.income_by_symbol['BTC'] == D('0.00000000012')
-    assert snapshot.asset('BTC').as_assets_summary()['return_amount'] == D('0.00000000012')
+    assert snapshot.asset('BTC').as_assets_summary()['total_realized_earnings'] == D('0.00000000012')
     _assert_consumers(ledger, app)
 
 

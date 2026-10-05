@@ -60,7 +60,7 @@ def test_asset_disclosures_preserve_metrics_formatters_and_neutral_identity():
         ("metric('Quantity')", 'quantity(item.summary.total_quantity_held)'),
         ("metric('Average Cost')", 'money(item.summary.average_cost'),
         ("metric('Realized P&L')", "money(item.summary.realized_pnl, tone='sign', signed=true)"),
-        ("metric('Realized Return')", 'percent(item.summary.return_percent'),
+        ("metric('Realized Trading Return',", 'percent(item.summary.return_percent'),
         ("metric('Income')", "money(symbol_dividend_total, tone='income', signed=true)"),
     )
     positions = []
@@ -140,7 +140,7 @@ def test_asset_dialogs_keep_forms_fields_and_transaction_semantics():
 def test_assets_copy_and_empty_state_follow_scoped_title_case():
     for label in (
         'All Portfolios', 'Search Asset', 'Add Asset', 'Add Entry',
-        'Add Income', 'Average Cost', 'Realized Return', 'Total Amount',
+        'Add Income', 'Average Cost', 'Realized Trading Return', 'Total Amount',
         'Total Spent', 'Total Received', 'Notes (Optional)',
         'Price (Per Unit)', 'No Assets Yet', 'Create Portfolio First',
         'Save Changes',

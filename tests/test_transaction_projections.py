@@ -125,7 +125,9 @@ def test_repeating_average_row_is_exact_aggregate_contribution(quantity, pnl, ba
         sale = asset.transaction_projections[3]
         assert sale.realized_trading_pnl == asset.transactions['realized_pnl'] == D(pnl)
         assert sale.post_cost_basis == D(basis)
-        assert sale.trade_return_percent == expected_percent(pnl, sale.released_cost_basis)
+        from portfolio_app.utils.financial_arithmetic import division_precision
+        precision = division_precision((D(pnl), sale.released_cost_basis))
+        assert sale.trade_return_percent == expected_percent(pnl, sale.released_cost_basis, precision=precision)
         _assert_projection_totals(asset)
 
 
@@ -145,7 +147,7 @@ def test_btc_projection_is_reconciled_through_funding_withdrawal_and_redeposit(l
     after = PC.get_portfolio_snapshot(ledger.pid, user_id=ledger.uid)
     assert after.asset('BTC').transaction_projections[sale.id] == row
     assert after.cash_balance == after.metrics['book_value'] == D('3')
-    assert after.metrics['return_percent'] == expected_percent('3', '558')
+    assert after.metrics['return_percent'] == expected_percent('3', '555')
 
 
 def _html_trade_row(html, transaction_id):

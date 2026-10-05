@@ -80,7 +80,8 @@ Pending email-change claims are bounded by their verification-code lifetime.
 Expired or incomplete pending-email state is non-reserving and is cleared when
 an account workflow encounters it, so it cannot indefinitely hold an address.
 
-The user-facing term is Income even though the model is still named `Dividend`.
+The user-facing term remains Income; economically these records are investment
+dividends/distributions, not generic cash income. The `Dividend` model is unchanged.
 
 ## Calculators
 
@@ -92,12 +93,20 @@ The user-facing term is Income even though the model is still named `Dividend`.
 - book value
 - realized P&L
 - total income
-- return amount and return percent
+- total realized earnings (money) and realized trading return (percentage)
 - asset-level summaries
 
 `portfolio_app/calculators/financial_math.py` contains pure deterministic financial calculations, including Average Cost Method transaction-list math and return percentage/display math. It has no Flask, SQLAlchemy, repository, service, or model dependency.
 
 Calculators should use `Decimal` for financial math and should not introduce cached financial totals without a clear invalidation strategy.
+
+Phase 8 uses one `calculate_realized_trading_return(pnl, released_basis)` function
+for sale, asset, portfolio and global views. It divides summed trading P&L by
+summed released basis, never averages percentages. Dividend Income, funding and
+open basis are not inputs. `calculate_realized_earnings_metrics` separately
+exposes monetary `total_realized_earnings = realized_trading_pnl + dividend_income`.
+Zero basis is `None`/JSON null/dash, distinct from a break-even sale's Decimal zero.
+These are realized trading measures, not total performance, TWR, MWR or XIRR.
 
 Aggregate consumers now use immutable asset, portfolio, and global snapshots
 from `calculators/financial_snapshots.py`. `PortfolioCalculator` loads scoped

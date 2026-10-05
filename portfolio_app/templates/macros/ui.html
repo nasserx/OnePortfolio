@@ -106,9 +106,9 @@
   row's <button>, which only accepts phrasing content. The block layout
   comes from CSS instead.
 #}
-{%- macro metric(label) -%}
+{%- macro metric(label, hint=none) -%}
   <span class="metric">
-    <span class="metric__label">{{ label }}</span>
+    <span class="metric__label"{% if hint %} title="{{ hint }}"{% endif %}>{{ label }}</span>
     <span class="metric__value">{{ caller() }}</span>
   </span>
 {%- endmacro -%}

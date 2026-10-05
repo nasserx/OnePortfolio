@@ -10,7 +10,7 @@ It does not fetch live prices, calculate market value, calculate unrealized P&L,
 - **Capital entries**: deposits and withdrawals.
 - **Assets**: symbols tracked inside a portfolio.
 - **Asset entries**: buy and sell records with price, quantity, fees, date, and notes.
-- **Income**: income records attributed to an asset symbol.
+- **Income**: dividend/distribution income attributed to an asset symbol.
 
 ## Current Terminology
 
@@ -18,9 +18,13 @@ It does not fetch live prices, calculate market value, calculate unrealized P&L,
 - **TOTAL CASH** = available cash.
 - **POSITIONS** = recorded cost basis of current positions.
 - **BOOK VALUE** = total cash + recorded cost basis of current positions.
-- **TOTAL INCOME** = income records.
+- **TOTAL INCOME** = dividend/distribution income records.
 - **REALIZED P&L** = profit or loss from completed sales using the Average Cost Method and sell fees.
-- **RETURN** includes realized P&L plus income.
+- **REALIZED TRADING RETURN** = realized trading P&L / released cost basis × 100; undefined when released basis is zero.
+- **TOTAL REALIZED EARNINGS** = realized trading P&L + Dividend Income (money, not a percentage).
+
+Realized Trading Return excludes Dividend Income, funding flows and open position
+basis. It is not total portfolio performance; TWR, MWR and XIRR are not implemented.
 
 For exact formulas, see [docs/DOMAIN_AND_CALCULATIONS.md](docs/DOMAIN_AND_CALCULATIONS.md).
 

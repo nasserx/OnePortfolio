@@ -88,10 +88,10 @@ def test_btc_unfunded_buy_funding_sale_withdrawal_and_profit_redeposit(ledger):
     ledger.svc.portfolio_service.deposit_funds(ledger.pid, D('3'), date=datetime(2024, 1, 5))
     final = _assert_btc_state(ledger, ('3', '0', '0', '0', '3', '0', '3'))
     assert final['total_contributed'] == D('558')
-    assert final['return_percent'] == expected_percent('3', '558')
+    assert final['return_percent'] == expected_percent('3', '555')
     assert transaction_projection(sale).trade_return_percent == trade_return
-    assert final['return_percent'] != transaction_projection(sale).trade_return_percent
-    # The same rounded display must not conceal the distinct denominators.
+    assert final['return_percent'] == transaction_projection(sale).trade_return_percent
+    # Funding no longer changes the denominator at any scope.
     assert final['return_display'] == '+0.54%'
     assert f'{transaction_projection(sale).trade_return_percent:+,.2f}%' == '+0.54%'
 
@@ -118,7 +118,9 @@ def test_historical_insertion_agrees_across_calculators_pages_apis_and_sale_proj
     dashboard = ledger.svc.overview_service.get_portfolio_dashboard_totals()
     performance = ledger.svc.overview_service.get_symbol_performance()[0]
     assert assets == {**summary,
-        'return_amount': D('0'), 'return_percent': D('0'), 'return_display': '+0.00%',
+        'total_realized_earnings': D('0'), 'return_percent': D('0'), 'return_display': '+0.00%',
+        'realized_trading_pnl': D('0'), 'released_cost_basis': D('150'),
+        'dividend_income': D('0'), 'realized_trading_return': D('0'),
     }
     for row in (portfolio, overview[0]):
         assert row['positions'] == D('150')
@@ -208,7 +210,7 @@ def test_current_unfunded_buy_acceptance_but_cost_increasing_edit_is_rejected(le
     assert PC.get_available_cash_for_portfolio(ledger.pid) == D('0')
 
 
-def test_current_return_bases_and_unused_deposit_dilution(ledger):
+def test_realized_return_excludes_dividends_and_unused_deposit_no_longer_dilutes(ledger):
     ledger.svc.portfolio_service.deposit_funds(ledger.pid, D('2000'), date=datetime(2024, 1, 1))
     _trade(ledger, 'Buy', '100', '10', 2)
     sale = _trade(ledger, 'Sell', '120', '5', 3)
@@ -217,17 +219,18 @@ def test_current_return_bases_and_unused_deposit_dilution(ledger):
     asset_before = ledger.svc.overview_service.get_symbol_performance()[0]
     trade_return = transaction_projection(sale).trade_return_percent
     assert trade_return == D('100') / D('500') * D('100') == D('20')
-    assert asset_before['return_percent'] == D('175') / D('1000') * D('100') == D('17.5')
-    assert before['return_percent'] == D('175') / D('2000') * D('100') == D('8.75')
+    assert asset_before['return_percent'] == trade_return == D('20')
+    assert before['return_percent'] == trade_return
+    assert before['total_realized_earnings'] == D('175')
 
     ledger.svc.portfolio_service.deposit_funds(ledger.pid, D('2000'), date=datetime(2024, 1, 5))
     after = PC.get_portfolio_dashboard_totals(user_id=ledger.uid)
     portfolios, _ = ledger.svc.overview_service.get_portfolio_summary()
     asset_after = ledger.svc.overview_service.get_symbol_performance()[0]
-    assert after['return_percent'] == D('175') / D('4000') * D('100') == D('4.375')
+    assert after['return_percent'] == before['return_percent'] == D('20')
     assert portfolios[0]['return_percent'] == after['return_percent']
     assert after['total_cash'] - before['total_cash'] == D('2000')
-    for key in ('realized_pnl', 'total_income', 'total_positions', 'return_amount'):
+    for key in ('realized_pnl', 'total_income', 'total_positions', 'total_realized_earnings'):
         assert after[key] == before[key]
     assert asset_after == asset_before
     assert transaction_projection(sale).trade_return_percent == trade_return

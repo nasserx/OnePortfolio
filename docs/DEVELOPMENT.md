@@ -81,11 +81,15 @@ git status --short
 For behavior changes, manually exercise the affected page or route. For financial behavior, verify:
 
 - Realized P&L remains limited to completed sales.
-- Income remains separate.
+- Income records represent investment dividends/distributions and remain separate from trading P&L.
 - Total Cash includes income.
 - Book Value is Total Cash plus the recorded cost basis of current positions.
 - Positions do not change because of income.
-- Return includes realized P&L plus income.
+- Realized Trading Return is trading P&L / released cost basis × 100 at every scope.
+- Aggregate P&L and released basis first; never average percentages.
+- Funding, open positions and Dividend Income do not dilute or increase trading return.
+- Total Realized Earnings includes trading P&L plus Dividend Income as a money amount only.
+- No sales means undefined return (dash), not zero return. A break-even sale gives genuine 0%.
 
 For UI changes, check desktop and narrow viewports and confirm text does not overlap or overflow.
 

@@ -99,7 +99,7 @@
 
                 <p class="lp-lede">
                     Record capital, asset activity, and income yourself — then read back
-                    cash, book value, realized P&amp;L, and return in one place. No live
+                    cash, book value, realized P&amp;L, and realized trading return in one place. No live
                     prices, no broker connections, no market noise.
                 </p>
 
@@ -125,7 +125,7 @@
                     <div class="lp-shot__hero">
                         <span class="lp-shot__label">Book Value</span>
                         <span class="lp-shot__value num" data-landing-metric="bookValue"></span>
-                        <span class="delta delta--pos">
+                        <span class="delta delta--pos" title="Realized Trading Return = Realized Trading P&amp;L ÷ Released Cost Basis × 100">
                             {{ icon('arrow-up-right') }}
                             <span data-landing-metric="returnPercent"></span>
                         </span>
@@ -203,8 +203,8 @@
             <ol class="lp-steps">
                 {% set steps = [
                     ('Create Your Portfolios', 'Group your holdings however you actually think about them — by asset class, by broker, or by strategy.'),
-                    ('Record as You Go', 'Deposits and withdrawals, buys and sells, dividends and other income. Each entry stays explicit and editable.'),
-                    ('Read the Results', 'Cash, book value, realized P&L, income, and return — per asset, per portfolio, and across everything.')
+                    ('Record as You Go', 'Deposits and withdrawals, buys and sells, dividend distributions. Each entry stays explicit and editable.'),
+                    ('Read the Results', 'Cash, book value, realized P&L, income, and realized trading return — per asset, per portfolio, and across everything.')
                 ] %}
                 {% for title, body in steps %}
                 <li class="lp-step" data-reveal style="--reveal-index:{{ loop.index0 }}">

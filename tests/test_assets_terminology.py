@@ -106,7 +106,7 @@ def test_assets_page_uses_asset_terminology_and_total_buy_cost(app):
     for label in (
         'Assets', 'Add Asset', 'Entries',
         'Total Spent', 'Quantity', 'Average Cost',
-        'Realized P&L', 'Realized Return', 'Income', 'Fee',
+        'Realized P&L', 'Realized Trading Return', 'Income', 'Fee',
             'Total Amount', 'Return',
     ):
         assert label in text
@@ -122,9 +122,8 @@ def test_assets_page_uses_asset_terminology_and_total_buy_cost(app):
         assert old_label not in text
     assert 'Search symbol...' not in html
 
-    # Realized return is computed against total buy cost (17.50%), not
-    # against the remaining cost basis (10.00%).
-    assert re.search(r'Realized P&L\s+\+100\.00\s+Realized Return\s+\+17\.50%', text)
+    # Trading P&L 100 / released basis 500; Dividend Income 75 is excluded.
+    assert re.search(r'Realized P&L\s+\+100\.00\s+Realized Trading Return\s+\+20\.00%', text)
     assert not re.search(r'Realized P&L\s+\+100\.00\s+\+10\.00%', text)
     assert '1,000.00' in text
     assert '500.00' not in text
@@ -149,7 +148,7 @@ def test_asset_entry_and_income_financial_behavior_is_unchanged(app):
         assert tx_summary['cost_basis'] == _dec('500.0000000000')
         assert performance['total_income'] == _dec('75.0000000000')
         assert performance['realized_pnl'] == _dec('100.0000000000')
-        assert performance['return_amount'] == _dec('175.0000000000')
+        assert performance['total_realized_earnings'] == _dec('175.0000000000')
         assert 'total_dividends' not in performance
         assert 'return_numerator' not in performance
         assert cash == _dec('4675.0000000000')

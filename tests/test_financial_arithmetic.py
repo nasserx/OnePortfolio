@@ -12,7 +12,7 @@ from portfolio_app import db
 from portfolio_app.calculators import PortfolioCalculator as PC
 from portfolio_app.calculators.financial_math import (
     calculate_cash_balance, calculate_portfolio_metrics, calculate_quantity_held,
-    calculate_return,
+    calculate_realized_earnings_metrics as calculate_return,
 )
 from portfolio_app.calculators.financial_snapshots import build_asset_snapshot
 from portfolio_app.services.transaction_service import ValidationError
@@ -188,7 +188,10 @@ def test_high_precision_db_to_replay_fees_cash_basis_and_partial_then_full_sale(
     assert row.applicable_average_unit_cost == row.released_cost_basis == expected_average
     assert row.net_sale_proceeds == REFERENCE.subtract(sale_price, FEE)
     assert row.realized_trading_pnl == REFERENCE.subtract(row.net_sale_proceeds, row.released_cost_basis)
-    assert row.trade_return_percent == expected_percent(row.realized_trading_pnl, row.released_cost_basis, precision=111)
+    # Return is now a shared direct-operand projection, independent of scope.
+    from portfolio_app.utils.financial_arithmetic import division_precision
+    precision = division_precision((row.realized_trading_pnl, row.released_cost_basis))
+    assert row.trade_return_percent == expected_percent(row.realized_trading_pnl, row.released_cost_basis, precision=precision)
     assert_accounting_invariants(partial.transactions, cash=partial.cash_balance,
                                  net_funding=D('0'), income=D('0'), book_value=partial.metrics['book_value'])
     remaining = D('2.000000000000000000000000000001')

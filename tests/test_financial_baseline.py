@@ -20,7 +20,7 @@ from portfolio_app.routes.transactions import _get_transactions_page_context
 from portfolio_app.routes.portfolios import _get_portfolios_page_context
 from portfolio_app.services.factory import Services
 from portfolio_app.utils.messages import MESSAGES
-from tests._financial import assert_accounting_invariants, transaction_projection
+from tests._financial import assert_accounting_invariants, transaction_projection, expected_percent, expected_ratio
 from tests._auth import authenticate_client
 
 
@@ -75,7 +75,7 @@ def test_btc_unfunded_buy_funding_sale_withdrawal_and_profit_redeposit(ledger):
     sale = _trade(ledger, 'Sell', '186000', '0.003', 3)
     after_sale = _assert_btc_state(ledger, ('558', '555', '0', '0', '3', '0', '558'))
     assert transaction_projection(sale).cash_amount == D('558')
-    trade_return = D('3') / D('555') * D('100')
+    trade_return = expected_percent('3', '555')
     assert transaction_projection(sale).trade_return_percent == trade_return
     assert after_sale['return_percent'] == trade_return
 
@@ -88,7 +88,7 @@ def test_btc_unfunded_buy_funding_sale_withdrawal_and_profit_redeposit(ledger):
     ledger.svc.portfolio_service.deposit_funds(ledger.pid, D('3'), date=datetime(2024, 1, 5))
     final = _assert_btc_state(ledger, ('3', '0', '0', '0', '3', '0', '3'))
     assert final['total_contributed'] == D('558')
-    assert final['return_percent'] == D('3') / D('558') * D('100')
+    assert final['return_percent'] == expected_percent('3', '558')
     assert transaction_projection(sale).trade_return_percent == trade_return
     assert final['return_percent'] != transaction_projection(sale).trade_return_percent
     # The same rounded display must not conceal the distinct denominators.
@@ -188,8 +188,8 @@ def test_canonical_row_ignores_persisted_ten_decimal_average(ledger):
         # evidence. No production model property may use this formula anymore.
         legacy_pnl = (persisted.price - D('1.6666666667')) * persisted.quantity - persisted.fees
         assert legacy_pnl == D('1.3333333333')
-        assert fresh['realized_cost_basis'] == D('5') / D('3')
-        assert fresh['realized_pnl'] == D('1.333333333333333333333333333')
+        assert fresh['realized_cost_basis'] == expected_ratio('5', '3')
+        assert fresh['realized_pnl'] == D('1.' + '3' * 55)
         assert D('0') < fresh['realized_pnl'] - legacy_pnl < D('1E-10')
         assert transaction_projection(persisted).realized_trading_pnl == fresh['realized_pnl']
 

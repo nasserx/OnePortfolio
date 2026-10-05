@@ -10,7 +10,10 @@ from decimal import Decimal
 from types import MappingProxyType
 from typing import Mapping, Optional, Tuple, Union
 
-from portfolio_app.utils.decimal_utils import ZERO, safe_divide, to_decimal
+from portfolio_app.utils.decimal_utils import ZERO, to_decimal
+from portfolio_app.utils.financial_arithmetic import (
+    FinancialArithmetic, exact_add, exact_subtract, exact_multiply,
+)
 
 
 @dataclass(frozen=True)
@@ -57,9 +60,9 @@ def calculate_quantity_held(transactions):
     for transaction in transactions:
         quantity = to_decimal(transaction.quantity)
         if transaction.transaction_type == 'Buy':
-            quantity_held += quantity
+            quantity_held = exact_add(quantity_held, quantity)
         elif transaction.transaction_type == 'Sell':
-            quantity_held -= quantity
+            quantity_held = exact_subtract(quantity_held, quantity)
 
     return quantity_held
 
@@ -73,9 +76,14 @@ def replay_symbol_transactions(transactions):
     """Replay one already-canonically-ordered symbol history once.
 
     Produce aggregates and the exact individual contributions used to accumulate
-    them. Keep the existing Decimal operation order, including partial-sale P&L.
+    them. Finite operations are exact; divisions share one raw-input budget.
     Canonical sorting remains at the shared snapshot boundary.
     """
+    transactions = tuple(transactions)
+    arithmetic = FinancialArithmetic.for_values(
+        value for transaction in transactions
+        for value in (transaction.price, transaction.quantity, transaction.fees)
+    )
     total_buy_cost = ZERO
     total_buy_fees = ZERO
     total_buy_quantity = ZERO
@@ -94,45 +102,44 @@ def replay_symbol_transactions(transactions):
         price = to_decimal(transaction.price)
         quantity = to_decimal(transaction.quantity)
         fees = to_decimal(transaction.fees)
-        gross = price * quantity
+        gross = exact_multiply(price, quantity)
         cost = proceeds = released_cost = ZERO
         sale_pnl = trade_return = None
 
         if transaction.transaction_type == 'Buy':
-            cost = gross + fees
-            total_buy_cost += cost
-            total_buy_fees += fees
-            total_buy_quantity += quantity
-            running_cost += cost
-            running_quantity += quantity
-            avg_cost = safe_divide(running_cost, running_quantity)
-            cash_effect = -cost
+            cost = exact_add(gross, fees)
+            total_buy_cost = exact_add(total_buy_cost, cost)
+            total_buy_fees = exact_add(total_buy_fees, fees)
+            total_buy_quantity = exact_add(total_buy_quantity, quantity)
+            running_cost = exact_add(running_cost, cost)
+            running_quantity = exact_add(running_quantity, quantity)
+            avg_cost = arithmetic.divide(running_cost, running_quantity)
+            cash_effect = cost.copy_negate()
 
         elif transaction.transaction_type == 'Sell':
-            proceeds = gross - fees
-            total_sell_cost += proceeds
-            total_sell_fees += fees
-            total_sell_quantity += quantity
-            realized_proceeds += proceeds
+            proceeds = exact_subtract(gross, fees)
+            total_sell_cost = exact_add(total_sell_cost, proceeds)
+            total_sell_fees = exact_add(total_sell_fees, fees)
+            total_sell_quantity = exact_add(total_sell_quantity, quantity)
+            realized_proceeds = exact_add(realized_proceeds, proceeds)
 
-            avg_cost = safe_divide(running_cost, running_quantity)
+            avg_cost = arithmetic.divide(running_cost, running_quantity)
             # A valid closing sale releases the entire pool, not a rounded
             # average multiplied back up. Never clamp a still-open position.
             closes_position = running_quantity > ZERO and quantity == running_quantity
-            released_cost = running_cost if closes_position else avg_cost * quantity
-            sale_pnl = (
-                proceeds - released_cost if closes_position
-                else (price - avg_cost) * quantity - fees
-            )
-            realized_pnl += sale_pnl
-            realized_cost_basis += released_cost
+            released_cost = running_cost if closes_position else exact_multiply(avg_cost, quantity)
+            # Use the very same released component as the pool. This is the
+            # algebraically identical P&L formula without independent rounding.
+            sale_pnl = exact_subtract(proceeds, released_cost)
+            realized_pnl = exact_add(realized_pnl, sale_pnl)
+            realized_cost_basis = exact_add(realized_cost_basis, released_cost)
             trade_return = (
-                sale_pnl / released_cost * Decimal('100')
+                arithmetic.percent(sale_pnl, released_cost)
                 if released_cost != ZERO else None
             )
 
-            running_quantity -= quantity
-            running_cost -= released_cost
+            running_quantity = exact_subtract(running_quantity, quantity)
+            running_cost = exact_subtract(running_cost, released_cost)
             cash_effect = proceeds
         else:
             # Preserve summary handling of unsupported historical types. Such
@@ -148,7 +155,7 @@ def replay_symbol_transactions(transactions):
             applicable_average_unit_cost=avg_cost, released_cost_basis=released_cost,
             realized_trading_pnl=sale_pnl, trade_return_percent=trade_return,
             post_quantity=running_quantity, post_cost_basis=running_cost,
-            post_average_unit_cost=safe_divide(running_cost, running_quantity),
+            post_average_unit_cost=arithmetic.divide(running_cost, running_quantity),
         ))
 
     summary = {
@@ -159,7 +166,7 @@ def replay_symbol_transactions(transactions):
         'total_sell_fees': total_sell_fees,
         'total_sell_quantity': total_sell_quantity,
         'total_quantity_held': running_quantity,
-        'average_cost': safe_divide(running_cost, running_quantity),
+        'average_cost': arithmetic.divide(running_cost, running_quantity),
         'transaction_count': len(transactions),
         'realized_pnl': realized_pnl,
         'realized_cost_basis': realized_cost_basis,
@@ -175,13 +182,17 @@ def calculate_return(realized_pnl, total_income, base):
     total_income = to_decimal(total_income)
     base = to_decimal(base)
 
-    return_amount = realized_pnl + total_income
+    return_amount = exact_add(realized_pnl, total_income)
     if base == ZERO:
         return_percent = ZERO
         return_display = '—'
     else:
-        return_percent = (return_amount / abs(base)) * Decimal('100')
-        return_display = f"{return_percent:+,.2f}%"
+        arithmetic = FinancialArithmetic.for_values((return_amount, base))
+        return_percent = arithmetic.percent(return_amount, base.copy_abs())
+        # Preserve the existing half-even two-decimal legacy display independently
+        # of ambient rounding. UI ROUND_HALF_UP formatters remain separate.
+        with arithmetic.local_context():
+            return_display = f"{return_percent:+,.2f}%"
 
     return {
         'return_amount': return_amount,
@@ -194,7 +205,7 @@ def calculate_portfolio_metrics(total_cash, positions, realized_pnl, total_incom
     """Calculate portfolio-level book value and return metrics."""
     total_cash = to_decimal(total_cash)
     positions = to_decimal(positions)
-    book_value = total_cash + positions
+    book_value = exact_add(total_cash, positions)
     return_result = calculate_return(realized_pnl, total_income, return_base)
 
     return {
@@ -218,12 +229,12 @@ def calculate_cash_balance(total_capital, transactions, total_income):
         price = to_decimal(transaction.price)
         quantity = to_decimal(transaction.quantity)
         fees = to_decimal(transaction.fees)
-        gross = price * quantity
+        gross = exact_multiply(price, quantity)
 
         if transaction.transaction_type == 'Buy':
-            cash -= gross + fees
+            cash = exact_subtract(cash, exact_add(gross, fees))
         elif transaction.transaction_type == 'Sell':
-            cash += gross - fees
+            cash = exact_add(cash, exact_subtract(gross, fees))
 
-    cash += to_decimal(total_income)
+    cash = exact_add(cash, total_income)
     return cash

@@ -61,4 +61,5 @@ def decimal_json(value):
 
 def safe_divide(numerator: Decimal, denominator: Decimal, default: Decimal = ZERO) -> Decimal:
     """Divide numerator by denominator, returning default if denominator is zero."""
-    return numerator / denominator if denominator else default
+    from portfolio_app.utils.financial_arithmetic import financial_divide
+    return financial_divide(numerator, denominator, default)

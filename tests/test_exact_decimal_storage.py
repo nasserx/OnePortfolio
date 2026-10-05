@@ -89,10 +89,8 @@ def test_orm_rejects_float_before_sql_persistence(ledger):
     assert Transaction.query.count() == 0
 
 
-def test_storage_precision_is_independent_of_existing_calculation_context(ledger):
-    # Persistence is exact even above the existing 28-digit calculation budget.
-    # This explicitly records the remaining arithmetic boundary, not a promise
-    # of unlimited-precision portfolio calculations or a new rounding policy.
+def test_exact_persisted_value_is_preserved_by_calculation_above_28_digits(ledger):
+    # Phase 7 converts the former ambient-context loss into a correctness contract.
     price = D('123456789012345678901234567890.123456789')
     row = _trade(ledger, 'Buy', str(price), '1', 1)
     db.session.refresh(row)
@@ -100,8 +98,8 @@ def test_storage_precision_is_independent_of_existing_calculation_context(ledger
         context.prec = 28
         assert row.price == price
         replay = replay_symbol_transactions([row])
-        assert replay.projections[0].gross_amount == D('1.234567890123456789012345679E+29')
-        assert replay.projections[0].gross_amount != price
+        assert replay.projections[0].gross_amount == price
+        assert replay.summary['cost_basis'] == price
         assert context.prec == 28
 
 

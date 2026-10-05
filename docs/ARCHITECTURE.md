@@ -121,8 +121,22 @@ and PortfolioEvent amount_delta. Numeric sign CHECKs move to service validation;
 NOT NULL, TEXT storage checks and ownership foreign keys remain in SQLite.
 Services preserve quantity walks and cash validation without writing derived
 history. Financial aggregation stays in Python, never SQL arithmetic on TEXT.
-Calculation precision remains the established Decimal context (normally 28
-digits), distinct from exact persistence and unchanged visible formatting.
+Calculation uses `utils/financial_arithmetic.py`, not the ambient Decimal context:
+finite sums/differences/products are exact in operand-sized private contexts,
+and each symbol replay fixes one deterministic half-even division budget from
+all raw operands. Division precision is `max(28, 2*S + C) + 28`, where `S` is
+the significant decimal-position span (including units) and `C` the operand-count
+carry digits. The minimum 56 digits retains the former 28-digit resolution plus
+28 guard digits; the dynamic term covers raw product widths and larger inputs.
+No process-wide context is changed. Snapshot aggregation and mutation validation
+share exact finite helpers; services do not silently round holdings/cash checks.
+
+Three independent contracts now apply: **persistence** stores exact raw decimal
+TEXT without a fixed scale; **calculation** preserves finite operations exactly
+and rounds divisions under the documented local policy; **display** keeps all
+existing visible precision/rounding/formatters. Recurring expansions remain
+approximate, and extreme input spans remain bounded by platform/resources.
+See [Phase 7 precision policy](FINANCIAL_READ_MODEL.md#phase-7-three-independent-precision-layers).
 See [schema 36 conversion and rollback](MIGRATIONS.md#schema-36-exact-decimal-storage).
 
 ## Forms
@@ -138,7 +152,7 @@ Typical asset-entry creation:
 3. Route calls `TransactionService`.
 4. Service checks ownership, cash, quantity, chronology, and business rules.
 5. Repository/model changes are written.
-6. Calculator recomputes average costs where needed.
+6. Subsequent reads replay raw facts into financial projections; no derived history is written.
 7. Route returns JSON or redirects.
 
 Overview reads records through scoped services/repositories, then calls calculator helpers to build totals, portfolio summaries, and allocation chart data.

@@ -19,6 +19,10 @@ from portfolio_app.calculators.financial_math import (
 )
 from portfolio_app.calculators.transaction_order import order_transactions
 from portfolio_app.utils.decimal_utils import ZERO, to_decimal
+from portfolio_app.utils.financial_arithmetic import (
+    exact_add, exact_subtract, exact_multiply, exact_sum, financial_divide,
+    financial_percent,
+)
 
 
 def _readonly(values):
@@ -49,7 +53,7 @@ def sum_income_details(dividends):
     for dividend in dividends:
         symbol = (dividend.symbol or '').strip().upper()
         if symbol:
-            totals[symbol] = totals.get(symbol, ZERO) + to_decimal(dividend.amount)
+            totals[symbol] = exact_add(totals.get(symbol, ZERO), dividend.amount)
     return totals
 
 
@@ -107,16 +111,18 @@ def aggregate_transaction_summaries(assets):
     totals['transaction_count'] = 0
     for asset in assets:
         for key in totals:
-            totals[key] += asset.transactions[key]
-    # Preserve the legacy cross-symbol weighted average, including its Decimal
-    # operation order. It is not a market price or a new economic metric.
+            if key == 'transaction_count':
+                totals[key] += asset.transactions[key]
+            else:
+                totals[key] = exact_add(totals[key], asset.transactions[key])
+    # Preserve the legacy cross-symbol weighted-average semantic concept.
     average = ZERO
     if totals['total_quantity_held'] > ZERO:
-        weighted_cost = sum((
-            a.transactions['average_cost'] * a.transactions['total_quantity_held']
+        weighted_cost = exact_sum(
+            exact_multiply(a.transactions['average_cost'], a.transactions['total_quantity_held'])
             for a in assets
-        ), ZERO)
-        average = weighted_cost / totals['total_quantity_held']
+        )
+        average = financial_divide(weighted_cost, totals['total_quantity_held'])
     return {**totals, 'average_cost': average}
 
 
@@ -135,7 +141,7 @@ class PortfolioFinancialSnapshot:
 
     @property
     def withdrawals(self):
-        return self.funding_inflows - self.net_contributions
+        return exact_subtract(self.funding_inflows, self.net_contributions)
 
     def asset(self, symbol):
         if symbol in self.assets:
@@ -194,7 +200,7 @@ class GlobalFinancialSnapshot:
         for portfolio in self.portfolios:
             row = portfolio.as_portfolio_row()
             row['allocation'] = (
-                row['book_value'] / abs(self.total_book_value) * 100
+                financial_percent(row['book_value'], self.total_book_value.copy_abs())
                 if self.total_book_value != ZERO else ZERO
             )
             rows.append(row)
@@ -214,12 +220,12 @@ class GlobalFinancialSnapshot:
 def build_global_snapshot(portfolios):
     portfolios = tuple(portfolios)
     totals = {
-        'total_contributed': sum((p.funding_inflows for p in portfolios), ZERO),
-        'total_capital': sum((p.net_contributions for p in portfolios), ZERO),
-        'total_cash': sum((p.cash_balance for p in portfolios), ZERO),
-        'total_positions': sum((p.transactions['cost_basis'] for p in portfolios), ZERO),
-        'realized_pnl': sum((p.transactions['realized_pnl'] for p in portfolios), ZERO),
-        'total_income': sum((p.income for p in portfolios), ZERO),
+        'total_contributed': exact_sum(p.funding_inflows for p in portfolios),
+        'total_capital': exact_sum(p.net_contributions for p in portfolios),
+        'total_cash': exact_sum(p.cash_balance for p in portfolios),
+        'total_positions': exact_sum(p.transactions['cost_basis'] for p in portfolios),
+        'realized_pnl': exact_sum(p.transactions['realized_pnl'] for p in portfolios),
+        'total_income': exact_sum(p.income for p in portfolios),
     }
     metrics = calculate_portfolio_metrics(
         totals['total_cash'], totals['total_positions'], totals['realized_pnl'],
@@ -227,7 +233,5 @@ def build_global_snapshot(portfolios):
     )
     totals.update(metrics)
     totals['total_value'] = totals.pop('book_value')
-    # Existing summary and dashboard have distinct Decimal association orders.
-    # Do not silently reassociate them in an architectural refactor.
-    total_book_value = sum((p.metrics['book_value'] for p in portfolios), ZERO)
+    total_book_value = exact_sum(p.metrics['book_value'] for p in portfolios)
     return GlobalFinancialSnapshot(portfolios, _readonly(totals), total_book_value)

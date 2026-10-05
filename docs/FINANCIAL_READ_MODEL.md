@@ -97,8 +97,8 @@ formatters retain their visible semantics. Phase 4 changes action payloads only.
   legacy environment/schema results. Schema 36 preserves those observed values
   on upgrade; new inputs persist exactly, totaling `0.00000000012` and `0.012`.
 - Summary total book value remains sum of portfolio book values; dashboard
-  total remains sum of cash plus sum of basis. Their Decimal association order
-  is preserved, including potential extreme-precision differences.
+  total remains sum of cash plus sum of basis. Phase 7 makes both finite sums
+  exact, eliminating association-dependent precision differences.
 - Phase 4 closing-sale precision rule: if a positive position's entire remaining
   quantity is sold, release the actual remaining cost pool, calculate the closing
   P&L as net proceeds minus that pool, and leave basis/average exactly zero.
@@ -141,14 +141,11 @@ No financial SQL SUM/AVG, numeric coercion, comparison or ordering over these
 TEXT values is used by production accounting. Python Decimal reads/aggregation
 remain canonical. IDs/counts/dates/booleans and all display formatting are unchanged.
 
-Exact persistence is not unlimited calculation precision. The established
-Decimal arithmetic context (normally 28 significant digits) remains unchanged;
-the new boundary test demonstrates rounding when a >28-digit raw price is
-multiplied by one. Persistence accepts and preserves that price exactly. Raising
-the replay context would alter existing repeating-average P&L/returns and requires
-its own reconciled calculation-policy change; no global context is set here.
-This is an explicit remaining risk for extreme magnitudes/precision, including
-validation arithmetic and differently associated aggregate reductions.
+Phase 6 deliberately retained the ambient 28-digit arithmetic boundary while
+making persistence exact. Phase 7 converts its price-times-one characterization
+to a correctness test and protects calculation/validation/aggregation with the
+explicit policy below. Exact persistence still does not imply infinite-precision
+division; no global context is changed.
 
 Legacy malformed/non-normalized records remain reconciliation concerns. Optional
 unscoped calculator calls remain an internal convention; application consumers
@@ -182,15 +179,17 @@ Sells, it is the pre-sale average; zero released basis produces a None return.
 Amount display. It does not read the stored `net_amount` column.
 
 The sale P&L stored in each projection is the **same Decimal contribution** added
-to aggregate realized P&L. Partial sales retain the previous operation order
-`(price - average) * quantity - fee`; closing sales retain Phase 4's exact-pool
-release and `net proceeds - remaining pool`. Row return is that canonical sale
+to aggregate realized P&L. Phase 7 calculates partial P&L as `net proceeds - released
+basis`, algebraically identical to `(price - average) * quantity - fee` but using
+the exact same finite component as the remaining pool. Closing sales retain
+Phase 4's exact-pool release. Row return is that canonical sale
 P&L divided by canonical released basis times 100. No ten-decimal stored-average
 rounding is reintroduced, and no aggregate formulas or Return policies change.
 
 For buys 1 @ 1 and 2 @ 2 followed by selling 1 @ 3, the old stored average
-`1.6666666667` gave row P&L `1.3333333333`. Canonical row and aggregate P&L now
-both equal `1.333333333333333333333333333` in the approved 28-digit context.
+`1.6666666667` gave row P&L `1.3333333333`. Phase 5 unified canonical row and
+aggregate P&L at `1.333333333333333333333333333`. Phase 7 refines that shared
+result to `1.` followed by 55 threes under the explicit division policy.
 The BTC sale gives proceeds 558, released basis 555, P&L 3, and return
 `3 / 555 * 100`; subsequent funding does not change that row projection.
 
@@ -244,10 +243,10 @@ return denominators, cash and edit-roundtrip tests remain in force.
 
 ## Phase 4: calculation, action and display precision
 
-- Calculation: existing Decimal context (normally 28 significant digits), moving
-  average and scoped return denominators remain. No global context change, epsilon
-  tolerances, market values, or new income policy. Cash accumulation uses the
-  shared canonical trade order, not an implicit same-date database order.
+- Calculation: Phase 7 replaces the former ambient 28-digit context with the
+  explicit policy below. Moving average and scoped return denominators remain.
+  No global context change, epsilon tolerances, market values, or new income
+  policy. Cash accumulation uses the shared canonical trade order.
 - Action: `parse_financial_decimal` is the form/service input authority. Dot is
   the decimal separator; commas must be correctly grouped thousands. Leading/
   trailing whitespace, signs, `.5`, `1.`, and scientific notation are accepted.
@@ -290,3 +289,108 @@ return denominators, cash and edit-roundtrip tests remain in force.
 Regression commands: `python -B -m pytest -p no:cacheprovider -q` and
 `node tests/precision_boundaries.js`. The latter executes the production JS
 normalizer and edit-population functions without launching an app or browser.
+
+## Phase 7: three independent precision layers
+
+1. **Persistence precision:** schema 36's `ExactDecimalText` stores finite raw
+   Decimals as canonical ordinary decimal TEXT. It has no significant-digit or
+   fixed-scale ceiling. Parsers/services retain their sign and finite-value
+   validation; this phase adds no user-facing precision restriction, migration,
+   or storage conversion. Digits lost before schema 36 cannot be reconstructed.
+2. **Calculation precision:** `utils/financial_arithmetic.py` supplies exact
+   finite arithmetic and a deterministic division policy. No arithmetic relies
+   on the calling thread's Decimal context.
+3. **Display precision:** existing formatters, templates, JS and CSS are unchanged.
+   ROUND_HALF_UP money formatting, precision rules, compact notation, signs and
+   undefined dashes remain separate. Exact JSON/action strings expose the actual
+   higher-precision results; actions never parse rounded display text.
+
+### Exact finite operations
+
+`exact_sum`, `exact_add`, `exact_subtract`, and `exact_multiply` use private
+`decimal.Context` objects sized to hold the entire finite result. Sum capacity is
+`max(adjusted exponent) - min(coefficient exponent) + 1 + digits(nonzero count)`;
+the final term allows carries. Product capacity is the sum of the operands'
+coefficient digit counts. Subtraction/sign reversal uses `copy_negate`, not
+ambient unary minus. `Inexact` is trapped: these operations may not silently
+discard digits. Zero-only sums return Decimal zero.
+
+Operand-sized exact-operation contexts are capacity bounds, **not different
+rounding budgets**. They never round a financial result. This distinction avoids
+mixing approximate operations at arbitrary precisions within a replay.
+
+### One division budget per symbol replay
+
+For raw operand collection `V` (price, quantity, fees of every ordered row):
+
+- Ignore numerical zeros for span calculation; ignore trailing coefficient zeros.
+- `H = max(0, max(adjusted exponent + 1))`.
+- `L = min(0, min(exponent after removing trailing coefficient zeros))`.
+- `S = H - L`, the span of decimal positions, including the units boundary.
+- `C = digits(max(1, len(V)))`, carry allowance for the number of operands.
+- **Division precision `P = max(28, 2*S + C) + 28`.**
+
+The old 28-digit working resolution is a floor, with a further 28 guard digits:
+small-input recurring divisions therefore have 56 significant digits. Doubling
+the raw span covers price-times-quantity width; `C` accounts for accumulation;
+the guard margin retains another full former working precision for recurring
+averages. This is an explicit approximation policy, not a proof of unlimited
+relative accuracy after arbitrary cancellation. High-precision or widely
+separated inputs scale `P` instead of being truncated to a fixed 56 digits.
+
+One immutable `FinancialArithmetic` instance fixes `P` for **all** divisions in
+that symbol replay: pre-sale/post-buy averages, post-step/final averages, and
+sale returns. Exact finite operations preserve their outputs without further
+rounding. Standalone scoped returns and cross-asset weighted-average adapters
+derive their own budget by the same rule from their direct operands. They do
+not repeat a symbol replay. Percentages divide first, then multiply by 100
+exactly, preserving the current formula order.
+
+Every division uses **ROUND_HALF_EVEN**, deliberately independent of display
+ROUND_HALF_UP. Context precision, rounding, exponent bounds, traps and flags are
+constructed explicitly; no `getcontext().prec` mutation occurs. The exponent
+range uses Python Decimal's platform bounds. Decimal context methods perform
+arithmetic directly; the legacy `return_display` string uses an explicit local
+context to preserve its existing half-even formatting under any caller context.
+
+### Reconciliation and intentional precision differences
+
+Partial-sale released basis remains rounded canonical average times sold
+quantity, now multiplied exactly. P&L is net proceeds minus that **same** released
+component, algebraically equivalent to `(price-average)*quantity-fees` without
+independent finite rounding. Pool subtraction and row/aggregate accumulation are
+exact. All six accounting identities therefore reconcile exactly using the
+finite canonical components, including recurring-average histories. Closing a
+valid exact-zero quantity releases the entire remaining pool; nonzero quantities
+are never epsilon-clamped. Row and aggregate results share one replay.
+
+For basis 5 / quantity 3, the canonical average is `1.` followed by 54 sixes and
+a seven (56 significant digits). Selling one at 3 releases that basis, realizes
+`1.` followed by 55 threes, and leaves `3.` followed by 55 threes. Selling the
+remaining two releases the remaining pool exactly; cumulative P&L is 4 and
+quantity/basis/average are zero. The former 28-digit tail is intentionally
+replaced, not used as an expected tolerance.
+
+Funding, income, held quantity, cash, book value, portfolio/global rollups,
+withdrawals, fee checks, cash mutation deltas and chronological validation walks
+use the same exact finite helpers. Allocation percentages use the division
+policy before existing presentation-only float chart adapters. No arithmetic
+was added to routes. Return numerators/denominators, negative-cash policy and
+canonical ordering are unchanged.
+
+### Limits and test evidence
+
+Recurring division is approximate; terminating division also observes `P` if
+its expansion needs more digits. Guards cannot guarantee arbitrary relative
+accuracy under cancellation. Adding records can increase a replay's budget and
+refine previously calculated low-order digits. Snapshots remain read-time views.
+Extreme exponent spans or record counts require corresponding memory/CPU, and
+Python Decimal's platform limits still apply; this is not unlimited arithmetic
+or a new input resource-limit policy. Unsupported sizes fail rather than being
+silently clamped. Existing display-only formatters retain their own limits.
+
+Tests compare exact finite operations against independent rational arithmetic,
+exercise >28-digit database-to-replay facts, recurring partial/full sales and all
+accounting identities, and run canonical snapshots under ambient precisions
+3/9/28/90 with altered rounding, exponent bounds and Inexact/Rounded traps.
+Results are identical and ambient settings/flags are unchanged.

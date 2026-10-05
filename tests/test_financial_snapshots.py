@@ -3,6 +3,7 @@
 from dataclasses import FrozenInstanceError
 from datetime import datetime
 from decimal import Decimal, localcontext, ROUND_HALF_EVEN
+from tests._financial import expected_percent
 from types import SimpleNamespace
 
 import pytest
@@ -112,8 +113,8 @@ def test_btc_every_stage_agrees_across_snapshot_pages_and_apis(ledger, app):
     ledger.svc.portfolio_service.deposit_funds(ledger.pid, D('3'))
     snapshot = _assert_consumers(ledger, app)
     assert snapshot.totals['total_cash'] == snapshot.totals['total_value'] == D('3')
-    assert snapshot.totals['return_percent'] == D('3') / D('558') * D('100')
-    assert transaction_projection(sale).trade_return_percent == D('3') / D('555') * D('100')
+    assert snapshot.totals['return_percent'] == expected_percent('3', '558')
+    assert transaction_projection(sale).trade_return_percent == expected_percent('3', '555')
 
 
 @pytest.mark.parametrize('sold, quantity, basis, pnl, cash, book', [
@@ -135,7 +136,7 @@ def test_partial_and_full_sale_with_fees_income_and_multiple_buys(
     assert asset.transactions['realized_pnl'] == D(pnl)
     assert snapshot.totals['total_cash'] == D(cash)
     assert snapshot.totals['total_value'] == D(book)
-    assert asset.returns['return_percent'] == (D(pnl) + D('2.4')) / D('58.5') * D('100')
+    assert asset.returns['return_percent'] == expected_percent(D(pnl) + D('2.4'), '58.5')
 
 
 def test_multi_portfolio_same_symbol_separate_pools_and_unused_deposit_return(ledger, app):

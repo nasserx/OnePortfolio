@@ -9,7 +9,7 @@ from portfolio_app.calculators.financial_math import (
     calculate_return,
     calculate_symbol_transaction_summary,
 )
-from tests._financial import assert_accounting_invariants
+from tests._financial import assert_accounting_invariants, expected_percent
 
 
 def _dec(value):
@@ -146,7 +146,7 @@ def test_return_includes_income():
     result = calculate_return(_dec('36'), _dec('25'), _dec('1500'))
 
     _assert_decimal(result['return_amount'], '61')
-    assert result['return_percent'] == _dec('61') / _dec('1500') * _dec('100')
+    assert result['return_percent'] == expected_percent('61', '1500')
     assert result['return_display'] == '+4.07%'
 
 
@@ -339,7 +339,7 @@ def test_portfolio_metrics_combines_realized_pnl_and_income():
     _assert_metric_decimals(result)
     _assert_decimal(result['book_value'], '1361')
     _assert_decimal(result['return_amount'], '61')
-    assert result['return_percent'] == _dec('61') / _dec('1500') * _dec('100')
+    assert result['return_percent'] == expected_percent('61', '1500')
     assert result['return_display'] == '+4.07%'
 
 
@@ -414,7 +414,7 @@ def test_asset_return_combines_realized_pnl_and_income():
 
     _assert_return_decimals(result)
     _assert_decimal(result['return_amount'], '61')
-    assert result['return_percent'] == _dec('61') / _dec('505') * _dec('100')
+    assert result['return_percent'] == expected_percent('61', '505')
     assert result['return_display'] == '+12.08%'
 
 

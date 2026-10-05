@@ -3,7 +3,8 @@
 from decimal import Decimal
 from typing import Any, Dict, List
 
-from portfolio_app.utils.decimal_utils import ZERO, safe_divide
+from portfolio_app.utils.decimal_utils import ZERO
+from portfolio_app.utils.financial_arithmetic import exact_sum, financial_percent
 
 # A doughnut stops being readable well before it runs out of distinguishable
 # colours: past four slices the small ones become unlabelable slivers. The
@@ -19,7 +20,7 @@ def _allocation_rows(portfolio_summary: List[Dict[str, Any]]) -> List[Dict[str, 
         p for p in portfolio_summary
         if Decimal(str(p['book_value'])) > ZERO
     ]
-    total_book_value = sum((Decimal(str(p['book_value'])) for p in meaningful), ZERO)
+    total_book_value = exact_sum(p['book_value'] for p in meaningful)
     ranked = sorted(
         meaningful,
         key=lambda p: Decimal(str(p['book_value'])),
@@ -31,16 +32,13 @@ def _allocation_rows(portfolio_summary: List[Dict[str, Any]]) -> List[Dict[str, 
         other_book_value = ZERO
     else:
         selected = ranked[:ALLOCATION_TOP_N]
-        other_book_value = sum(
-            (Decimal(str(p['book_value'])) for p in ranked[ALLOCATION_TOP_N:]),
-            ZERO,
-        )
+        other_book_value = exact_sum(p['book_value'] for p in ranked[ALLOCATION_TOP_N:])
 
     rows = []
     for portfolio in selected:
         book_value = Decimal(str(portfolio['book_value']))
         allocation = (
-            safe_divide(book_value, abs(total_book_value)) * Decimal('100')
+            financial_percent(book_value, total_book_value.copy_abs())
             if total_book_value != ZERO else ZERO
         )
         rows.append({
@@ -51,7 +49,7 @@ def _allocation_rows(portfolio_summary: List[Dict[str, Any]]) -> List[Dict[str, 
 
     if other_book_value != ZERO or len(ranked) > ALLOCATION_TOP_N:
         allocation = (
-            safe_divide(other_book_value, abs(total_book_value)) * Decimal('100')
+            financial_percent(other_book_value, total_book_value.copy_abs())
             if total_book_value != ZERO else ZERO
         )
         rows.append({
@@ -69,10 +67,7 @@ def _capital_allocation_rows(portfolio_summary: List[Dict[str, Any]]) -> List[Di
         p for p in portfolio_summary
         if Decimal(str(p.get('total_capital', ZERO))) > ZERO
     ]
-    total_capital = sum(
-        (Decimal(str(p.get('total_capital', ZERO))) for p in meaningful),
-        ZERO,
-    )
+    total_capital = exact_sum(p.get('total_capital', ZERO) for p in meaningful)
     ranked = sorted(
         meaningful,
         key=lambda p: Decimal(str(p.get('total_capital', ZERO))),
@@ -84,16 +79,13 @@ def _capital_allocation_rows(portfolio_summary: List[Dict[str, Any]]) -> List[Di
         other_capital = ZERO
     else:
         selected = ranked[:ALLOCATION_TOP_N]
-        other_capital = sum(
-            (Decimal(str(p.get('total_capital', ZERO))) for p in ranked[ALLOCATION_TOP_N:]),
-            ZERO,
-        )
+        other_capital = exact_sum(p.get('total_capital', ZERO) for p in ranked[ALLOCATION_TOP_N:])
 
     rows = []
     for portfolio in selected:
         capital = Decimal(str(portfolio.get('total_capital', ZERO)))
         allocation = (
-            safe_divide(capital, total_capital) * Decimal('100')
+            financial_percent(capital, total_capital)
             if total_capital != ZERO else ZERO
         )
         rows.append({
@@ -104,7 +96,7 @@ def _capital_allocation_rows(portfolio_summary: List[Dict[str, Any]]) -> List[Di
 
     if other_capital != ZERO or len(ranked) > ALLOCATION_TOP_N:
         allocation = (
-            safe_divide(other_capital, total_capital) * Decimal('100')
+            financial_percent(other_capital, total_capital)
             if total_capital != ZERO else ZERO
         )
         rows.append({
@@ -126,14 +118,14 @@ def build_allocation_chart_data(portfolio_summary: List[Dict[str, Any]]) -> Dict
             'categories':  [r['name'] for r in allocation_rows],
             'allocations': [r['allocation'] for r in allocation_rows],
             'values':      [r['book_value'] for r in allocation_rows],
-            'total':       float(sum((Decimal(str(r['book_value'])) for r in allocation_rows), ZERO)),
+            'total':       float(exact_sum(r['book_value'] for r in allocation_rows)),
             'grouped':     len([p for p in portfolio_summary if Decimal(str(p['book_value'])) > ZERO]) > ALLOCATION_TOP_N,
         },
         'capital_chart': {
             'categories':  [r['name'] for r in capital_rows],
             'allocations': [r['allocation'] for r in capital_rows],
             'values':      [r['capital'] for r in capital_rows],
-            'total':       float(sum((Decimal(str(r['capital'])) for r in capital_rows), ZERO)),
+            'total':       float(exact_sum(r['capital'] for r in capital_rows)),
             'grouped':     len([p for p in portfolio_summary if Decimal(str(p.get('total_capital', ZERO))) > ZERO]) > ALLOCATION_TOP_N,
         },
     }

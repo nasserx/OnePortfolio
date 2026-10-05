@@ -21,6 +21,8 @@ from portfolio_app.routes.transactions import _get_transactions_page_context
 from portfolio_app.utils.decimal_utils import decimal_text
 from tests._auth import authenticate_client
 from tests.test_financial_baseline import ledger, _trade
+from tests._financial import expected_percent
+from portfolio_app.utils.financial_arithmetic import exact_sum
 
 
 def _row(identifier, kind, price, quantity='1', fee='0', day=None, hour=0):
@@ -35,11 +37,11 @@ def _assert_projection_totals(asset):
     projections = tuple(asset.transaction_projections.values())
     sales = [row for row in projections if row.transaction_type == 'Sell']
     summary = asset.transactions
-    assert sum((row.realized_trading_pnl for row in sales), D('0')) == summary['realized_pnl']
-    assert sum((row.released_cost_basis for row in sales), D('0')) == summary['realized_cost_basis']
-    assert sum((row.net_sale_proceeds for row in sales), D('0')) == summary['realized_proceeds']
+    assert exact_sum(row.realized_trading_pnl for row in sales) == summary['realized_pnl']
+    assert exact_sum(row.released_cost_basis for row in sales) == summary['realized_cost_basis']
+    assert exact_sum(row.net_sale_proceeds for row in sales) == summary['realized_proceeds']
     assert summary['realized_proceeds'] == summary['total_sell_cost']
-    assert sum((row.purchase_cost for row in projections), D('0')) == summary['total_buy_cost']
+    assert exact_sum(row.purchase_cost for row in projections) == summary['total_buy_cost']
     if projections:
         assert projections[-1].post_quantity == summary['total_quantity_held']
         assert projections[-1].post_cost_basis == summary['cost_basis']
@@ -88,7 +90,7 @@ def test_buy_partial_sale_and_final_sale_projections_include_fees_and_pools():
             partial.realized_trading_pnl, partial.post_quantity, partial.post_cost_basis) == (
         D('30'), D('29'), D('23.4'), D('5.6'), D('3'), D('35.1'),
     )
-    assert partial.trade_return_percent == D('5.6') / D('23.4') * D('100')
+    assert partial.trade_return_percent == expected_percent('5.6', '23.4')
     assert partial.applicable_average_unit_cost == D('11.7')
     assert final.cash_amount == final.cash_effect == final.net_sale_proceeds == D('41.1')
     assert final.realized_trading_pnl == D('6')
@@ -110,7 +112,7 @@ def test_repeated_sales_with_intervening_buy_reconcile_each_contribution():
 
 
 @pytest.mark.parametrize('quantity, pnl, basis', [
-    ('1', '1.333333333333333333333333333', '3.333333333333333333333333333'),
+    ('1', '1.' + '3' * 55, '3.' + '3' * 55),
     ('3', '4', '0'),
 ])
 def test_repeating_average_row_is_exact_aggregate_contribution(quantity, pnl, basis):
@@ -123,7 +125,7 @@ def test_repeating_average_row_is_exact_aggregate_contribution(quantity, pnl, ba
         sale = asset.transaction_projections[3]
         assert sale.realized_trading_pnl == asset.transactions['realized_pnl'] == D(pnl)
         assert sale.post_cost_basis == D(basis)
-        assert sale.trade_return_percent == D(pnl) / sale.released_cost_basis * D('100')
+        assert sale.trade_return_percent == expected_percent(pnl, sale.released_cost_basis)
         _assert_projection_totals(asset)
 
 
@@ -136,14 +138,14 @@ def test_btc_projection_is_reconciled_through_funding_withdrawal_and_redeposit(l
     assert row.net_sale_proceeds == row.cash_amount == row.cash_effect == D('558')
     assert row.released_cost_basis == D('555')
     assert row.realized_trading_pnl == before.transactions['realized_pnl'] == D('3')
-    assert row.trade_return_percent == D('3') / D('555') * D('100')
+    assert row.trade_return_percent == expected_percent('3', '555')
     assert row.post_quantity == row.post_cost_basis == row.post_average_unit_cost == D('0')
     ledger.svc.portfolio_service.withdraw_funds(ledger.pid, D('558'))
     ledger.svc.portfolio_service.deposit_funds(ledger.pid, D('3'))
     after = PC.get_portfolio_snapshot(ledger.pid, user_id=ledger.uid)
     assert after.asset('BTC').transaction_projections[sale.id] == row
     assert after.cash_balance == after.metrics['book_value'] == D('3')
-    assert after.metrics['return_percent'] == D('3') / D('558') * D('100')
+    assert after.metrics['return_percent'] == expected_percent('3', '558')
 
 
 def _html_trade_row(html, transaction_id):
@@ -166,7 +168,7 @@ def test_raw_only_rows_drive_replay_display_and_serialization(ledger, app):
     projection = after.asset('BTC').transaction_projections[sale.id]
     assert projection.realized_trading_pnl == after.transactions['realized_pnl'] == D('18')
     assert projection.released_cost_basis == D('101')
-    assert projection.trade_return_percent == D('18') / D('101') * D('100')
+    assert projection.trade_return_percent == expected_percent('18', '101')
     assert after.cash_balance == D('-83')
     serialized = sale.to_dict(projection=projection, portfolio_name=after.name)
     assert D(serialized['net_amount']) == D('119')
@@ -202,8 +204,8 @@ def test_replay_and_serializer_work_without_derived_columns_or_queries(ledger):
         event.remove(db.engine, 'before_cursor_execute', record_sql)
     assert statements == []
     assert payloads[0]['net_pnl'] is payloads[0]['net_pnl_percent'] is None
-    assert payloads[-1]['net_pnl'] == '1.333333333333333333333333333'
-    assert payloads[-1]['average_cost'] == '1.666666666666666666666666667'
+    assert payloads[-1]['net_pnl'] == '1.' + '3' * 55
+    assert payloads[-1]['average_cost'] == '1.' + '6' * 54 + '7'
     assert isinstance(payloads[-1]['id'], int)
 
 

@@ -16,6 +16,7 @@ from portfolio_app.calculators.transaction_order import (
     PENDING_TRANSACTION_ID, transaction_order_key,
 )
 from portfolio_app.utils.decimal_utils import ZERO, parse_financial_decimal
+from portfolio_app.utils.financial_arithmetic import exact_add, exact_subtract, exact_multiply, exact_sum
 from portfolio_app.utils.messages import MESSAGES
 
 
@@ -57,7 +58,7 @@ class TransactionService:
             raise ValueError(MESSAGES['PORTFOLIO_NOT_FOUND'])
 
         if transaction_type == 'Sell':
-            gross = Decimal(str(price)) * Decimal(str(quantity))
+            gross = exact_multiply(price, quantity)
             if Decimal(str(fees)) > gross:
                 raise ValidationError(MESSAGES['FEES_EXCEED_PROCEEDS'])
             held = PortfolioCalculator.get_quantity_held_for_symbol(
@@ -186,7 +187,7 @@ class TransactionService:
         )
         self._assert_cash_after_delta(
             transaction.portfolio_id,
-            new_effect - old_effect,
+            exact_subtract(new_effect, old_effect),
             error_message=cash_msg,
         )
 
@@ -237,7 +238,7 @@ class TransactionService:
         # cash, so this check is a no-op for Buys.)
         self._assert_cash_after_delta(
             portfolio_id,
-            -self._cash_effect(transaction),
+            self._cash_effect(transaction).copy_negate(),
             error_message=MESSAGES['CASH_ALREADY_SPENT'],
         )
 
@@ -281,10 +282,8 @@ class TransactionService:
         # Treat removal as one prospective financial mutation. Reversing
         # matching Buy/Sell cash effects and removing matching income must
         # not leave the portfolio with negative available cash.
-        cash_delta = sum((-self._cash_effect(tx) for tx in transactions), ZERO)
-        cash_delta -= sum(
-            (Decimal(str(dividend.amount)) for dividend in dividends), ZERO,
-        )
+        cash_delta = exact_sum(self._cash_effect(tx).copy_negate() for tx in transactions)
+        cash_delta = exact_subtract(cash_delta, exact_sum(dividend.amount for dividend in dividends))
         self._assert_cash_after_delta(
             portfolio_id,
             cash_delta,
@@ -312,10 +311,10 @@ class TransactionService:
         price = Decimal(str(transaction.price))
         quantity = Decimal(str(transaction.quantity))
         fees = Decimal(str(transaction.fees))
-        gross = price * quantity
+        gross = exact_multiply(price, quantity)
         if transaction.transaction_type == 'Sell':
-            return gross - fees
-        return -(gross + fees)
+            return exact_subtract(gross, fees)
+        return exact_add(gross, fees).copy_negate()
 
     @staticmethod
     def _validate_trade_values(price, quantity, fees):
@@ -330,11 +329,11 @@ class TransactionService:
         """Same as :meth:`_cash_effect` but for a hypothetical row before
         it is persisted (used by update_transaction to compute the delta
         between the old and new shape)."""
-        gross = Decimal(str(price)) * Decimal(str(quantity))
+        gross = exact_multiply(price, quantity)
         f = Decimal(str(fees))
         if transaction_type == 'Sell':
-            return gross - f
-        return -(gross + f)
+            return exact_subtract(gross, f)
+        return exact_add(gross, f).copy_negate()
 
     def _assert_cash_after_delta(self, portfolio_id, delta_change, *, error_message=None):
         """Reject the in-progress mutation if it would push available cash
@@ -353,7 +352,7 @@ class TransactionService:
         current_cash = PortfolioCalculator.get_available_cash_for_portfolio(
             portfolio_id, user_id=self.portfolio_repo.user_id,
         )
-        if current_cash + delta_change < ZERO:
+        if exact_add(current_cash, delta_change) < ZERO:
             raise ValueError(error_message or MESSAGES['INSUFFICIENT_AMOUNT'])
 
     def _has_no_changes(self, transaction, price, quantity, fees, notes, symbol, date):
@@ -394,7 +393,7 @@ class TransactionService:
 
         # Sell-path checks — same exceptions and messages as add_transaction.
         if transaction.transaction_type == 'Sell':
-            gross = new_price * new_quantity
+            gross = exact_multiply(new_price, new_quantity)
             if new_fees > gross:
                 raise ValidationError(MESSAGES['FEES_EXCEED_PROCEEDS'])
             held = PortfolioCalculator.get_quantity_held_for_symbol(
@@ -492,9 +491,9 @@ class TransactionService:
         running = Decimal('0')
         for _date, tid, ttype, qty in walk:
             if ttype == 'Buy':
-                running += qty
+                running = exact_add(running, qty)
             else:
-                running -= qty
+                running = exact_subtract(running, qty)
                 if running < 0:
                     if proposed_id is not None and tid == proposed_id:
                         raise ValidationError(MESSAGES['INSUFFICIENT_QUANTITY'])
@@ -554,7 +553,7 @@ class TransactionService:
         # Lowering the amount reduces available cash; reject if the user
         # has already spent the difference on Buys or withdrawn it.
         if amount is not None:
-            delta = Decimal(str(amount)) - Decimal(str(dividend.amount))
+            delta = exact_subtract(amount, dividend.amount)
             self._assert_cash_after_delta(
                 dividend.portfolio_id, delta,
                 error_message=MESSAGES['CASH_ALREADY_SPENT'],
@@ -578,7 +577,7 @@ class TransactionService:
         # If a Buy or Withdrawal already consumed that money, refuse the
         # delete rather than letting available cash go negative.
         self._assert_cash_after_delta(
-            dividend.portfolio_id, -Decimal(str(dividend.amount)),
+            dividend.portfolio_id, Decimal(str(dividend.amount)).copy_negate(),
             error_message=MESSAGES['CASH_ALREADY_SPENT'],
         )
 

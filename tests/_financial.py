@@ -1,11 +1,25 @@
 """Exact reconciliation assertions for finite-decimal accounting examples.
 
-These identities describe the current cost-based model. They deliberately do
-not require nonnegative cash or choose a return denominator. Repeating-average
-rounding residuals are characterized separately, without weakening these checks.
+These identities describe the current cost-based model, including finite
+components derived from recurring averages. They deliberately do not require
+nonnegative cash or choose a return denominator. Assertions must not introduce
+ambient-context rounding while checking the engine's higher-precision values.
 """
 
-from decimal import Decimal
+from decimal import Context, Decimal, ROUND_HALF_EVEN
+from portfolio_app.utils.financial_arithmetic import exact_add, exact_subtract, exact_sum
+
+
+def expected_ratio(numerator, denominator, precision=56):
+    """Independent reference for the documented minimum division budget."""
+    return Context(prec=precision, rounding=ROUND_HALF_EVEN).divide(
+        Decimal(numerator), Decimal(denominator),
+    )
+
+
+def expected_percent(numerator, denominator, precision=56):
+    ratio = expected_ratio(numerator, denominator, precision)
+    return Context(prec=precision + 2, rounding=ROUND_HALF_EVEN).multiply(ratio, Decimal('100'))
 
 
 def transaction_projection(transaction):
@@ -24,18 +38,11 @@ def assert_accounting_invariants(summary, *, cash, net_funding, income, book_val
         'total_buy_quantity', 'total_sell_quantity',
     ))
     assert all(isinstance(value, Decimal) for value in values)
-    assert cash == (
-        net_funding - summary['total_buy_cost']
-        + summary['realized_proceeds'] + income
-    )
-    assert book_value == cash + summary['cost_basis']
-    assert book_value == net_funding + summary['realized_pnl'] + income
-    assert summary['total_quantity_held'] == (
-        summary['total_buy_quantity'] - summary['total_sell_quantity']
-    )
-    assert summary['total_buy_cost'] == (
-        summary['cost_basis'] + summary['realized_cost_basis']
-    )
-    assert summary['realized_proceeds'] == (
-        summary['realized_cost_basis'] + summary['realized_pnl']
-    )
+    assert cash == exact_sum((net_funding, summary['total_buy_cost'].copy_negate(),
+                              summary['realized_proceeds'], income))
+    assert book_value == exact_add(cash, summary['cost_basis'])
+    assert book_value == exact_sum((net_funding, summary['realized_pnl'], income))
+    assert summary['total_quantity_held'] == exact_subtract(
+        summary['total_buy_quantity'], summary['total_sell_quantity'])
+    assert summary['total_buy_cost'] == exact_add(summary['cost_basis'], summary['realized_cost_basis'])
+    assert summary['realized_proceeds'] == exact_add(summary['realized_cost_basis'], summary['realized_pnl'])

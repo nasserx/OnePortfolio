@@ -16,6 +16,7 @@ from portfolio_app.calculators.financial_snapshots import (
 )
 from portfolio_app.models import Portfolio, Transaction, PortfolioEvent, Dividend
 from portfolio_app.utils.decimal_utils import ZERO, to_decimal as _to_decimal
+from portfolio_app.utils.financial_arithmetic import exact_sum
 
 # Realized P&L is computed on demand from the transactions table. There is
 # intentionally no snapshot table — a single source of truth eliminates the
@@ -94,7 +95,7 @@ class PortfolioCalculator:
             )
         )
         query = PortfolioCalculator._scope_to_user(query, PortfolioEvent, user_id)
-        return sum((_to_decimal(row.amount_delta) for row in query.order_by(PortfolioEvent.id).all()), ZERO)
+        return exact_sum(row.amount_delta for row in query.order_by(PortfolioEvent.id).all())
 
     @staticmethod
     def get_net_deposits_for_portfolio(portfolio_id, *, user_id=None) -> Decimal:
@@ -110,7 +111,7 @@ class PortfolioCalculator:
             .filter(PortfolioEvent.portfolio_id == portfolio_id)
         )
         query = PortfolioCalculator._scope_to_user(query, PortfolioEvent, user_id)
-        return sum((_to_decimal(row.amount_delta) for row in query.order_by(PortfolioEvent.id).all()), ZERO)
+        return exact_sum(row.amount_delta for row in query.order_by(PortfolioEvent.id).all())
 
     @staticmethod
     def get_total_capital_for_portfolio(portfolio_id, *, user_id=None) -> Decimal:
@@ -182,7 +183,7 @@ class PortfolioCalculator:
             funding_inflows=PortfolioCalculator.get_total_deposits_for_portfolio(portfolio_id, user_id=user_id),
             net_contributions=PortfolioCalculator.get_net_deposits_for_portfolio(portfolio_id, user_id=user_id),
             cash_transactions=PortfolioCalculator._cash_transactions(portfolio_id, user_id=user_id),
-            income=sum(income_by_symbol.values(), ZERO),
+            income=exact_sum(income_by_symbol.values()),
             income_by_symbol=income_by_symbol,
         )
 
@@ -251,13 +252,11 @@ class PortfolioCalculator:
     @staticmethod
     def get_dividend_total_for_portfolio(portfolio_id, *, user_id=None) -> Decimal:
         """Return the sum of dividend income for a portfolio."""
-        return sum(PortfolioCalculator._income_by_symbol(portfolio_id, user_id=user_id).values(), ZERO)
+        return exact_sum(PortfolioCalculator._income_by_symbol(portfolio_id, user_id=user_id).values())
 
     @staticmethod
     def _income_by_symbol(portfolio_id, *, user_id=None):
-        # Column reads bypass unexpired ORM attributes that may still contain
-        # pre-storage precision. The scale-converted persisted values are the
-        # no-schema phase's deterministic accounting inputs.
+        # Aggregate exact persisted Decimal rows, never SQL numeric coercion.
         query = Dividend.query.with_entities(Dividend.symbol, Dividend.amount).filter_by(
             portfolio_id=portfolio_id,
         )

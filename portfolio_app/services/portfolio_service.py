@@ -1,6 +1,7 @@
 """Portfolio service for portfolio CRUD and cash-event business logic."""
 
 from decimal import Decimal
+from portfolio_app.utils.financial_arithmetic import exact_add, exact_subtract
 from typing import Optional, Any
 from portfolio_app.models.portfolio import Portfolio
 from portfolio_app.models.portfolio_event import PortfolioEvent
@@ -106,8 +107,8 @@ class PortfolioService:
         current_cash = PortfolioCalculator.get_available_cash_for_portfolio(
             event.portfolio_id, user_id=self.portfolio_repo.user_id,
         )
-        delta_change = Decimal(str(amount_delta)) - Decimal(str(event.amount_delta))
-        if current_cash + delta_change < ZERO:
+        delta_change = exact_subtract(amount_delta, event.amount_delta)
+        if exact_add(current_cash, delta_change) < ZERO:
             # Lowering a Deposit/Initial = clawback (money's been spent on
             # later transactions). Raising a Withdrawal = genuine
             # over-spend. The two scenarios call for different wording so
@@ -145,7 +146,7 @@ class PortfolioService:
         current_cash = PortfolioCalculator.get_available_cash_for_portfolio(
             portfolio_id, user_id=self.portfolio_repo.user_id,
         )
-        if current_cash - Decimal(str(event.amount_delta)) < ZERO:
+        if exact_subtract(current_cash, event.amount_delta) < ZERO:
             raise ValueError(MESSAGES['CASH_ALREADY_SPENT'])
 
         self.portfolio_event_repo.delete(event)

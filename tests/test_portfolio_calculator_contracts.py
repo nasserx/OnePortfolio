@@ -1,5 +1,7 @@
 from datetime import datetime
 from decimal import Decimal
+from tests._financial import expected_ratio, expected_percent
+from portfolio_app.utils.financial_arithmetic import exact_subtract, exact_multiply
 from types import SimpleNamespace
 
 from portfolio_app import db
@@ -190,18 +192,19 @@ def test_database_summary_uses_calendar_date_buy_first_and_id_ordering(app):
         ]
         assert replayed[earlier_buy.id].applicable_average_unit_cost == _dec('10')
         assert replayed[first_same_day_buy.id].applicable_average_unit_cost == _dec('15')
-        assert replayed[second_same_day_buy.id].applicable_average_unit_cost == _dec('70') / _dec('3')
+        assert replayed[second_same_day_buy.id].applicable_average_unit_cost == expected_ratio('70', '3')
 
         summary = PortfolioCalculator.get_symbol_transactions_summary(
             portfolio.id, 'ORDER', user_id=user.id,
         )
 
-        expected_average = _dec('70') / _dec('3')
-        expected_remaining_cost = _dec('70') - (expected_average * _dec('2'))
+        expected_average = expected_ratio('70', '3')
+        expected_release = exact_multiply(expected_average, _dec('2'))
+        expected_remaining_cost = exact_subtract(_dec('70'), expected_release)
         _assert_decimal(summary['total_buy_cost'], '70.0000000000')
         _assert_decimal(summary['total_buy_quantity'], '3.0000000000')
-        assert summary['realized_cost_basis'] == expected_average * _dec('2')
-        assert summary['realized_pnl'] == _dec('60') - (expected_average * _dec('2'))
+        assert summary['realized_cost_basis'] == expected_release
+        assert summary['realized_pnl'] == exact_subtract(_dec('60'), expected_release)
         assert summary['total_quantity_held'] == _dec('1.0000000000')
         assert summary['cost_basis'] == expected_remaining_cost
         assert summary['average_cost'] == expected_remaining_cost
@@ -236,7 +239,7 @@ def test_portfolio_capital_cash_positions_book_value_and_return_contracts(app):
         _assert_decimal(after['realized_pnl'], '36.0000000000')
         _assert_decimal(after['total_income'], '25.0000000000')
         _assert_decimal(after['return_amount'], '61.0000000000')
-        assert after['return_percent'] == _dec('61.0000000000') / _dec('1500.00') * _dec('100')
+        assert after['return_percent'] == expected_percent('61', '1500')
         assert after['return_display'] == '+4.07%'
 
 
@@ -258,7 +261,7 @@ def test_asset_return_income_and_zero_denominator_contracts(app):
         _assert_decimal(aapl['total_income'], '25.0000000000')
         _assert_decimal(aapl['return_amount'], '61.0000000000')
         _assert_decimal(aapl['total_buy_cost'], '505.0000000000')
-        assert aapl['return_percent'] == _dec('61.0000000000') / _dec('505.0000000000') * _dec('100')
+        assert aapl['return_percent'] == expected_percent('61', '505')
         assert aapl['return_display'] == '+12.08%'
 
         trsf = by_symbol['TRSF']
@@ -334,8 +337,8 @@ def test_multi_portfolio_aggregation_allocation_and_distinct_symbol_rows(app):
         _assert_decimal(dashboard['return_amount'], '60.0000000000')
         _assert_decimal(dashboard['total_value'], '3060.0000000000')
 
-        assert by_name['First']['allocation'] == _dec('1050.0000000000') / _dec('3060.0000000000') * _dec('100')
-        assert by_name['Second']['allocation'] == _dec('2010.0000000000') / _dec('3060.0000000000') * _dec('100')
+        assert by_name['First']['allocation'] == expected_percent('1050', '3060')
+        assert by_name['Second']['allocation'] == expected_percent('2010', '3060')
         allocation_rows = {row['name']: row for row in _allocation_rows(summary)}
         assert allocation_rows['First']['book_value'] == 1050.0
         assert allocation_rows['Second']['book_value'] == 2010.0

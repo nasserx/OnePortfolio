@@ -19,7 +19,7 @@ from portfolio_app.calculators.financial_snapshots import apply_asset_summary_re
 from portfolio_app.services.factory import Services
 from portfolio_app.utils.messages import MESSAGES
 from tests._auth import authenticate_client
-from tests._financial import transaction_projection
+from tests._financial import transaction_projection, expected_percent
 from datetime import datetime
 from decimal import Decimal
 from config import Config
@@ -143,7 +143,7 @@ def test_transaction_calculations(app):
         assert transaction_projection(e1).realized_trading_pnl is None
         assert transaction_projection(e1).trade_return_percent is None
         _apply_summary_roi(etha)
-        _assert('ETHA transaction summary return uses Total Spent', 6.0, etha['return_percent'])
+        assert etha['return_percent'] == _dec('18')  # Released basis 50, not lifetime purchases 150.
         # Buy 10@10 → sell 5 (remaining cost=50) → buy 5@10 → total=100/10 = 10.0
         _assert('ETHA average cost', 10.0, etha['average_cost'])
 
@@ -337,9 +337,8 @@ def test_category_summary(app):
         _assert('Book Value = cash + cost_basis', _dec('2500.50'), cat['book_value'])
         _assert('Realized P&L', _dec('2498.50'), cat['realized_pnl'])
 
-        # Overview ROI = net realized P&L / Total Contributed * 100.
-        expected_roi = _dec('2498.50') / _dec('11000') * 100
-        _assert('Return % (base=total contributed)', round(expected_roi, 2), cat['return_percent'])
+        # Funding is excluded; aggregate realized return uses released basis.
+        assert cat['return_percent'] == expected_percent('2498.50', '2500.50')
 
         print("  All category summary checks passed.")
 
@@ -393,8 +392,8 @@ def test_dashboard_totals(app):
 
         # Total Value = cash + invested = 26,585 + remaining cost basis 505
         _assert('Total Value', 27_090, totals['total_value'])
-        # Realized P&L = (120 - 101) * 5 - 5 = 90; Overview ROI = 90 / 32,000 * 100.
-        _assert('Dashboard return % (base=total contributed)', _dec('0.28'), totals['return_percent'])
+        # Realized P&L = (120 - 101) * 5 - 5 = 90; released basis = 505.
+        assert totals['return_percent'] == expected_percent('90', '505')
 
         print("  All dashboard totals checks passed.")
 
@@ -579,7 +578,7 @@ def test_symbol_performance(app):
                             price=11, quantity=10, fees=0)
 
         # MSFT in Long-term: buy 10@200, no sell → trading P&L = 0, but
-        # one dividend of 75 → total P&L = 75, total buy cost = 2000 → ROI = 3.75%
+        # one dividend of 75 gives earnings 75; without sales trading return is undefined.
         b2 = Transaction(portfolio_id=long_term.id, transaction_type='Buy',
                          date=datetime(2026, 1, 2), symbol='MSFT',
                          price=200, quantity=10, fees=0)
@@ -625,30 +624,30 @@ def test_symbol_performance(app):
         aapl = by_key[('Trading', 'AAPL')]
         _assert('AAPL trading P&L',         _dec('100'),  aapl['realized_pnl'])
         _assert('AAPL income',              _dec('0'),    aapl['total_income'])
-        _assert('AAPL return amount',       _dec('100'),  aapl['return_amount'])
+        _assert('AAPL return amount',       _dec('100'),  aapl['total_realized_earnings'])
         _assert('AAPL total buy cost',      _dec('1000'), aapl['total_buy_cost'])
         _assert('AAPL realized cost basis', _dec('500'),  aapl['realized_cost_basis'])
-        _assert('AAPL Return% uses total buy cost', _dec('10'), aapl['return_percent'])
+        assert aapl['return_percent'] == _dec('20')
 
         aapl_lt = by_key[('Long-term', 'AAPL')]
         _assert('Long-term AAPL trading P&L',         _dec('10'),  aapl_lt['realized_pnl'])
         _assert('Long-term AAPL total buy cost',      _dec('1000'), aapl_lt['total_buy_cost'])
         _assert('Long-term AAPL realized cost basis', _dec('100'), aapl_lt['realized_cost_basis'])
-        _assert('Long-term AAPL Return% uses total buy cost', _dec('1'), aapl_lt['return_percent'])
+        assert aapl_lt['return_percent'] == _dec('10')
 
-        # ── 7c: MSFT — dividend only, ROI uses total buy cost ──
+        # ── 7c: MSFT — dividend only, no released basis ──
         msft = by_key[('Long-term', 'MSFT')]
         _assert('MSFT trading P&L',        _dec('0'),    msft['realized_pnl'])
         _assert('MSFT income',             _dec('75'),   msft['total_income'])
-        _assert('MSFT return amount',      _dec('75'),   msft['return_amount'])
+        _assert('MSFT return amount',      _dec('75'),   msft['total_realized_earnings'])
         _assert('MSFT total buy cost',     _dec('2000'), msft['total_buy_cost'])
         _assert('MSFT held cost basis',    _dec('2000'), msft['held_cost_basis'])
-        _assert('MSFT return base',        _dec('2000'), msft['return_base'])
-        _assert('MSFT Return%',            _dec('3.75'), msft['return_percent'])
+        assert msft['return_base'] == _dec('0')
+        assert msft['return_percent'] is None
 
         # ── 7d: TRSF — dividend with no transactions (no cost basis at all) ──
         trsf = by_key[('Long-term', 'TRSF')]
-        _assert('TRSF return amount',      _dec('20'), trsf['return_amount'])
+        _assert('TRSF return amount',      _dec('20'), trsf['total_realized_earnings'])
         _assert('TRSF return_base',        _dec('0'),  trsf['return_base'])
         assert trsf['return_display'] == '—', f"Expected '—', got {trsf['return_display']!r}"
         print("  PASS  dividend-only with no cost basis displays '—'")
@@ -657,7 +656,7 @@ def test_symbol_performance(app):
         u2_rows = svc2.overview_service.get_symbol_performance()
         assert len(u2_rows) == 1, f"u2 should have 1 row, got {len(u2_rows)}"
         assert u2_rows[0]['symbol'] == 'NVDA'
-        _assert('NVDA return amount (u2)', _dec('100'), u2_rows[0]['return_amount'])
+        _assert('NVDA return amount (u2)', _dec('100'), u2_rows[0]['total_realized_earnings'])
 
         print("\n  All symbol performance checks passed.")
 

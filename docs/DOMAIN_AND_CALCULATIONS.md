@@ -34,7 +34,10 @@ For sells:
 
 ## Total Income
 
-Total Income is the sum of Income records only. It remains separate from Realized P&L everywhere.
+Current Income records represent cash dividend/distribution income from investments,
+regardless of payment schedule. They do not represent interest, staking, rewards,
+airdrops, or miscellaneous income. The `Dividend` model is unchanged.
+Dividend Income remains separate from Realized Trading P&L everywhere.
 
 ## Total Cash
 
@@ -52,18 +55,31 @@ Positions are the recorded cost basis of current asset quantities. Income does n
 
 Income affects Book Value through Total Cash.
 
-## Portfolio Return
+## Realized Trading Return — All Scopes
 
-`Portfolio Return = (Realized P&L + Total Income) / Gross Deposits * 100`
+`Realized Trading Return = Realized Trading P&L / Released Cost Basis * 100`
 
-The denominator is gross deposits: Initial and Deposit capital entries only. Withdrawals do not reduce this denominator.
+For an individual sale, use that sale's P&L and released basis. For an asset,
+portfolio, or global view, sum realized trading P&L and released basis first,
+then divide. Never average percentages. Buy fees are already capitalized in
+released basis; sell fees already reduce proceeds/P&L. Do not deduct them again.
 
-When gross deposits are zero, the internal numeric percentage remains zero where a number is required, and the display value is `—`.
+Dividend Income is excluded from the numerator. Deposits, withdrawals, historical
+purchase outflows and still-open cost basis are excluded from the denominator.
+Only the basis actually released by sales enters the denominator.
 
-## Asset Return
+Zero released basis means undefined (`None` internally, JSON `null`, display `—`).
+Zero P&L with positive released basis means a genuine zero percentage, displayed
+by the existing formatter as `0.00%`.
 
-`Asset Return = (Asset Realized P&L + Asset Income) / Total Buy Cost * 100`
+## Total Realized Earnings
 
-The denominator is total buy cost, including buy fees.
+`Total Realized Earnings = Realized Trading P&L + Dividend Income`
 
-When total buy cost is zero, the internal numeric percentage remains zero where a number is required, and the display value is `—`.
+This is a monetary measure, not a percentage. It reconciles as:
+
+`Book Value = Net Contributions + Total Realized Earnings`
+
+No Dividend Return or earnings/capital percentage is calculated. Realized Trading
+Return is not total portfolio performance: market prices, unrealized P&L, TWR,
+MWR and XIRR are not implemented.

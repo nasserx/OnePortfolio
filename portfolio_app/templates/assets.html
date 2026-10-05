@@ -91,7 +91,7 @@
                             {% call metric('Quantity') %}{{ quantity(item.summary.total_quantity_held) }}{% endcall %}
                             {% call metric('Average Cost') %}{{ money(item.summary.average_cost, decimals=item.avg_cost_decimal_places) }}{% endcall %}
                             {% call metric('Realized P&L') %}{{ money(item.summary.realized_pnl, tone='sign', signed=true) }}{% endcall %}
-                            {% call metric('Realized Return') %}{{ percent(item.summary.return_percent, item.summary.return_display) }}{% endcall %}
+                            {% call metric('Realized Trading Return', 'Realized Trading Return = Realized Trading P&L ÷ Released Cost Basis × 100. Excludes Dividend Income, funding flows, and open positions.') %}{{ percent(item.summary.return_percent, item.summary.return_display) }}{% endcall %}
                             {% call metric('Income') %}{{ money(symbol_dividend_total, tone='income', signed=true) }}{% endcall %}
                         </span>
                     </button>
@@ -157,7 +157,7 @@
                                     <th class="records-cell records-cell--number">Fee</th>
                                     <th class="records-cell records-cell--number">Total Amount</th>
                                     <th class="records-cell records-cell--number">Realized P&amp;L</th>
-                                    <th class="records-cell records-cell--number">Return</th>
+                                    <th class="records-cell records-cell--number" title="Realized Trading Return = Realized Trading P&amp;L ÷ Released Cost Basis × 100">Realized Trading Return</th>
                                     <th class="records-cell">Notes</th>
                                     <th class="records-cell records-cell--actions">Actions</th>
                                 </tr>

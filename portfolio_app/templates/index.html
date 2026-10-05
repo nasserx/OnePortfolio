@@ -27,7 +27,7 @@
 
             <p class="hero-figure__meta">
                 {% if totals.return_display == '—' %}
-                    <span class="delta delta--flat">No Return Yet</span>
+                    <span class="delta delta--flat">—</span>
                 {% else %}
                     <span class="delta {% if totals.return_percent > 0 %}delta--pos{% elif totals.return_percent < 0 %}delta--neg{% else %}delta--flat{% endif %}">
                         {% if totals.return_percent > 0 %}
@@ -42,7 +42,7 @@
                         {{ totals.return_percent|fmt_display_percent(signed=True) }}
                     </span>
                 {% endif %}
-                <span>Realized Return On Total Capital</span>
+                <span title="Realized Trading P&amp;L ÷ Released Cost Basis × 100. Excludes Dividend Income, funding flows, and open positions.">Realized Trading Return</span>
             </p>
 
             <div class="hero-figure__facts">
@@ -98,7 +98,7 @@
                 <div role="columnheader">Book Value</div>
                 <div role="columnheader">Income</div>
                 <div role="columnheader">Realized P&amp;L</div>
-                <div role="columnheader">Return</div>
+                <div role="columnheader" title="Realized Trading P&amp;L ÷ Released Cost Basis × 100">Realized Trading Return</div>
                 <div role="columnheader"><span class="visually-hidden">Actions</span></div>
             </div>
 
@@ -117,7 +117,7 @@
                 <div class="ledger__num" role="cell" data-label="Realized P&amp;L">
                     {{ money(item.realized_pnl, tone='sign', signed=true) }}
                 </div>
-                <div class="ledger__num" role="cell" data-label="Return">
+                <div class="ledger__num" role="cell" data-label="Realized Trading Return">
                     {{ percent(item.return_percent, item.return_display) }}
                 </div>
                 <div class="ledger__action" role="cell">

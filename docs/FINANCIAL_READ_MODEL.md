@@ -60,9 +60,10 @@ same asset builder and therefore the same ordering boundary.
 Internal `funding_inflows` maps to `total_contributed`; `net_contributions` maps
 to `total_capital`; `cash_balance` maps to `cash`, `withdrawable_cash`, or global
 `total_cash`. Existing summary keys (`cost_basis`, `positions`, `total_buy_cost`,
-`total_sell_cost`, `return_amount`, etc.) are intentionally unchanged. This is
-not the later terminology rename. UI labels, tooltips, templates, and number
-formatters retain their visible semantics. Phase 4 changes action payloads only.
+`total_sell_cost`, etc.) remain adapters. Phase 8 replaces the misleading monetary
+`return_amount` key with `total_realized_earnings`. Existing `return_percent` is
+an adapter for `realized_trading_return`; `return_base` is now released basis.
+Only Return-specific labels/help change; broad terminology and formatting do not.
 
 ## Preserved policies and deliberate precision seams
 
@@ -72,15 +73,11 @@ formatters retain their visible semantics. Phase 4 changes action payloads only.
 - Cash uses the same sequential `calculate_cash_balance` function for reporting
   and validation, including excluded-transaction validation reads. Negative cash
   remains possible. No new funding or withdrawal restrictions were added.
-- Portfolio/global return remains `(trading P&L + income) / gross deposits`;
-  asset return remains `(trading P&L + income) / historical purchase outflows`.
-  The shared existing function retains its absolute-denominator convention.
-  Valid purchase outflows/deposits are positive, so delegating the old route
-  formulas preserves their results. Unsupported negative purchase/deposit inputs
-  are not a new financial policy.
-- Undefined return remains numeric zero plus a dash for reporting, and `None`
-  plus a dash in the Assets template adapter. Sell-row undefined return remains
-  `None` in the canonical transaction projection.
+- Phase 8 Realized Trading Return is trading P&L divided by released cost basis
+  times 100 at every scope. Aggregate components first, never percentages.
+  Dividend Income is a separate earnings component, not a return numerator.
+- Undefined return is `None` plus a dash at every scope, serialized as JSON null.
+  Positive released basis with zero trading P&L produces genuine Decimal zero.
 - Phase 4 removes SQL monetary SUMs and the separate `legacy_income_details`
   override. Every income consumer uses `income_by_symbol`, built from Decimal
   column reads in ID order, grouped by normalized symbol. Portfolio income sums
@@ -90,7 +87,7 @@ formatters retain their visible semantics. Phase 4 changes action payloads only.
   deltas in ID order (gross deposits filter Initial/Deposit before summing).
   These reads remain user-scoped and perform no explicit writes.
 - Historical Phase 4 correction (before schema 36): two SQLite income inputs `0.00000000006`
-  load as two `0.0000000001` rows. All income/cash/return projections now use
+  load as two `0.0000000001` rows. All income/cash/earnings projections use
   `0.0000000002`, rather than reporting `0.0000000001` while Assets reported
   `0.0000000002`. Likewise two funding inputs `0.006` load as two `0.01` rows;
   gross/net funding is now `0.02`, not the SQL-reduced `0.01`. These are explicit
@@ -184,7 +181,7 @@ basis`, algebraically identical to `(price - average) * quantity - fee` but usin
 the exact same finite component as the remaining pool. Closing sales retain
 Phase 4's exact-pool release. Row return is that canonical sale
 P&L divided by canonical released basis times 100. No ten-decimal stored-average
-rounding is reintroduced, and no aggregate formulas or Return policies change.
+rounding is reintroduced. Phase 8 applies that same trading-only ratio to aggregates.
 
 For buys 1 @ 1 and 2 @ 2 followed by selling 1 @ 3, the old stored average
 `1.6666666667` gave row P&L `1.3333333333`. Phase 5 unified canonical row and
@@ -239,12 +236,13 @@ Regression coverage includes permutations and same-day ties, fees, partial/multi
 sales, full liquidation, historical insertion, exact row/aggregate reconciliation,
 BTC, corrupted legacy fields, read-only results, exact JSON text, and constant query
 count / one replay per asset as the displayed row count grows. Existing formatting,
-return denominators, cash and edit-roundtrip tests remain in force.
+cash and edit-roundtrip tests remain in force; Phase 8 replaces the old denominator
+characterizations with trading-return correctness tests.
 
 ## Phase 4: calculation, action and display precision
 
 - Calculation: Phase 7 replaces the former ambient 28-digit context with the
-  explicit policy below. Moving average and scoped return denominators remain.
+  explicit policy below. Moving average remains; Phase 8 unifies return denominators.
   No global context change, epsilon tolerances, market values, or new income
   policy. Cash accumulation uses the shared canonical trade order.
 - Action: `parse_financial_decimal` is the form/service input authority. Dot is
@@ -338,13 +336,13 @@ averages. This is an explicit approximation policy, not a proof of unlimited
 relative accuracy after arbitrary cancellation. High-precision or widely
 separated inputs scale `P` instead of being truncated to a fixed 56 digits.
 
-One immutable `FinancialArithmetic` instance fixes `P` for **all** divisions in
-that symbol replay: pre-sale/post-buy averages, post-step/final averages, and
-sale returns. Exact finite operations preserve their outputs without further
-rounding. Standalone scoped returns and cross-asset weighted-average adapters
-derive their own budget by the same rule from their direct operands. They do
-not repeat a symbol replay. Percentages divide first, then multiply by 100
-exactly, preserving the current formula order.
+One immutable `FinancialArithmetic` instance fixes `P` for all cost-pool replay
+divisions: pre-sale/post-buy averages and post-step/final averages. Exact finite
+operations preserve their outputs without further rounding. Phase 8 routes all
+Return projections, including individual sales, through the same direct-operand
+division policy. Cross-asset weighted-average adapters also retain their direct
+operand budget. No projection repeats a symbol replay. Percentages divide first,
+then multiply by 100 exactly. The Phase 7 precision rule itself is unchanged.
 
 Every division uses **ROUND_HALF_EVEN**, deliberately independent of display
 ROUND_HALF_UP. Context precision, rounding, exponent bounds, traps and flags are
@@ -375,8 +373,8 @@ Funding, income, held quantity, cash, book value, portfolio/global rollups,
 withdrawals, fee checks, cash mutation deltas and chronological validation walks
 use the same exact finite helpers. Allocation percentages use the division
 policy before existing presentation-only float chart adapters. No arithmetic
-was added to routes. Return numerators/denominators, negative-cash policy and
-canonical ordering are unchanged.
+was added to routes. Negative-cash policy and canonical ordering are unchanged;
+Phase 8 intentionally changes Return numerators/denominators as described below.
 
 ### Limits and test evidence
 
@@ -394,3 +392,84 @@ exercise >28-digit database-to-replay facts, recurring partial/full sales and al
 accounting identities, and run canonical snapshots under ambient precisions
 3/9/28/90 with altered rounding, exponent bounds and Inexact/Rounded traps.
 Results are identical and ambient settings/flags are unchanged.
+
+## Phase 8: Realized Trading Return and Dividend Income
+
+`Realized Trading Return = Realized Trading P&L / Released Cost Basis * 100`
+
+`Total Realized Earnings = Realized Trading P&L + Dividend Income`
+
+The second equation is monetary only. Income currently means cash investment
+dividends/distributions on any payment schedule, not interest, staking, rewards,
+airdrops, or miscellaneous receipts. No model, repository or table is renamed.
+No Dividend Return or earnings/capital percentage exists.
+
+`calculate_realized_trading_return` is the single percentage implementation for
+sale rows and asset/portfolio/global views. Aggregates sum canonical sale P&L and
+released basis before dividing. Neither percentages nor average unit costs are
+averaged to obtain a return. Partial sales release only their sold basis; buy
+fees are already in that basis and sell fees already reduce trading P&L.
+Deposits, withdrawals, Dividend Income and open purchases are not ratio inputs.
+
+`calculate_realized_earnings_metrics` exposes `realized_trading_pnl`,
+`released_cost_basis`, `realized_trading_return`, `dividend_income`, and
+`total_realized_earnings` in asset `.returns`, portfolio `.metrics` and global
+`.totals`. Asset/portfolio dataclasses also store `dividend_income`; `.income`
+remains a read-only legacy adapter. Transaction projections expose
+`.realized_trading_return`, with `.trade_return_percent` retained for existing
+row/serializer consumers. There is no stored return field.
+
+### Consumer/search disposition
+
+| Occurrence | Classification and current disposition |
+| --- | --- |
+| `financial_math.calculate_return`, `calculate_asset_return` | Obsolete earnings/purchase-or-deposit ratios removed, not retained as fallbacks |
+| Canonical sale replay | Calls the shared trading-return projection on its exact P&L/released-basis components |
+| Asset summary/Overview symbol reporting | Same asset snapshot metrics, released-basis denominator |
+| Portfolio summaries/details and Overview/global totals | Aggregate P&L/basis first; shared metrics helper |
+| `/api/portfolio-summary` | Canonical fields plus legacy `return_percent` adapter; Decimal strings or null |
+| Transaction `to_dict.net_pnl_percent` | Existing exact-string/null contract over canonical row return |
+| `/api/holdings` | Quantity-only; no Return calculation |
+| Allocation charts | Book-value/capital allocation percentages, not investment returns; unchanged |
+| `safe_divide` / precision helpers | Generic arithmetic, not an obsolete Return policy; unchanged |
+| `get_*performance` / `as_*performance*` method names | Legacy internal read adapters, not claims of whole-portfolio performance |
+| Overview/Assets templates | Return-only labels/title help corrected; no layout, formatter or broad terminology change |
+| Landing preview | Synthetic presentation-only example now uses released basis; not accounting authority |
+| Migrations | Historical schema conversion, no policy rewrite |
+| Python/JS `return` statements and auth/http performance references | Unrelated, unchanged |
+| Characterization tests/docs | Old policies explicitly superseded; funding/dividend dilution tests converted, not deleted |
+
+**API change:** monetary `return_amount` is replaced by `total_realized_earnings`.
+`return_percent` now means Realized Trading Return, not the former ratio.
+Undefined percentages are null, not a numeric-zero placeholder. Existing
+in-repository consumers/tests were reviewed and updated atomically. External
+clients must adopt these intentional policy/key changes; no versioned external
+client compatibility guarantee is introduced.
+
+Historically (through Phase 7), assets divided earnings including income by
+historical purchases and portfolio/global views divided those earnings by gross
+deposits. Those formulas are no longer executable production code. For BTC's
+sole sale, every scope now shows `3 / 555 * 100`; withdrawing 558 and depositing
+3 leaves the ratio unchanged, rather than switching the global denominator to
+558. Dividend Income 50 on a 10 profit / 100 basis history leaves Return at 10%
+and increases Total Realized Earnings to 60.
+
+Zero released basis is undefined even with Dividend Income or zero P&L. A
+break-even sale with positive released basis has genuine 0%. Negative basis is
+not valid accounting input; the pure ratio does not disguise it with `abs`.
+Existing UI formatters retain signs, decimal places, compact notation, tones
+and dash handling. Overview's formerly textual undefined placeholder now uses
+the same dash. No new earnings card or broad informational-icon pass is added.
+
+The Phase 7 precision algorithm, half-even rounding and cost-pool replay remain
+unchanged. Sale percentage projection now derives precision from the same P&L
+and released-basis operands as every other scope. This may refine a recurring
+sale percentage's low-order digits relative to its former replay-wide budget;
+it guarantees exact cross-scope agreement for identical components. Existing
+dynamic replay precision can still refine recurring P&L components when raw
+history changes; that inherited arithmetic limit is not a funding denominator.
+
+Realized Trading Return is not total portfolio performance. Market prices,
+market value, unrealized P&L, TWR, MWR, XIRR and benchmark comparisons remain
+unimplemented. Book Value, cash, Dividend accounting and negative-cash policy
+are unchanged. A whole-portfolio performance methodology needs separate approval.

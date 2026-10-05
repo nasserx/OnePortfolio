@@ -21,7 +21,8 @@
     ],
     cash: 6320,
     income: 2410,
-    realizedPnl: 3640
+    realizedPnl: 3640,
+    releasedCostBasis: 28000
   };
 
   var display = window.OnePortfolioDisplay;
@@ -50,7 +51,9 @@
     // Every figure in the preview is derived from SAMPLE, including the
     // headline return. Nothing is hand-typed into the template, so the
     // preview can never quietly contradict itself.
-    var returnPercent = capital > 0 ? (SAMPLE.realizedPnl / capital) * 100 : 0;
+    // Illustrative display-only data, never used by application accounting.
+    var returnPercent = SAMPLE.releasedCostBasis > 0
+      ? (SAMPLE.realizedPnl / SAMPLE.releasedCostBasis) * 100 : null;
 
     var values = {
       bookValue: display.money(total('bookValue'), false),

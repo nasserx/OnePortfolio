@@ -238,9 +238,9 @@ def test_portfolio_capital_cash_positions_book_value_and_return_contracts(app):
         _assert_decimal(before['realized_pnl'], '36.0000000000')
         _assert_decimal(after['realized_pnl'], '36.0000000000')
         _assert_decimal(after['total_income'], '25.0000000000')
-        _assert_decimal(after['return_amount'], '61.0000000000')
-        assert after['return_percent'] == expected_percent('61', '1500')
-        assert after['return_display'] == '+4.07%'
+        _assert_decimal(after['total_realized_earnings'], '61.0000000000')
+        assert after['return_percent'] == before['return_percent'] == expected_percent('36', '202')
+        assert after['return_display'] == '+17.82%'
 
 
 def test_asset_return_income_and_zero_denominator_contracts(app):
@@ -259,17 +259,17 @@ def test_asset_return_income_and_zero_denominator_contracts(app):
         aapl = by_symbol['AAPL']
         _assert_decimal(aapl['realized_pnl'], '36.0000000000')
         _assert_decimal(aapl['total_income'], '25.0000000000')
-        _assert_decimal(aapl['return_amount'], '61.0000000000')
+        _assert_decimal(aapl['total_realized_earnings'], '61.0000000000')
         _assert_decimal(aapl['total_buy_cost'], '505.0000000000')
-        assert aapl['return_percent'] == expected_percent('61', '505')
-        assert aapl['return_display'] == '+12.08%'
+        assert aapl['return_percent'] == expected_percent('36', '202')
+        assert aapl['return_display'] == '+17.82%'
 
         trsf = by_symbol['TRSF']
         _assert_decimal(trsf['realized_pnl'], '0')
         _assert_decimal(trsf['total_income'], '12.3400000000')
-        _assert_decimal(trsf['return_amount'], '12.3400000000')
+        _assert_decimal(trsf['total_realized_earnings'], '12.3400000000')
         _assert_decimal(trsf['return_base'], '0')
-        _assert_decimal(trsf['return_percent'], '0')
+        assert trsf['return_percent'] is None
         assert trsf['return_display'] == '—'
 
 
@@ -285,12 +285,12 @@ def test_negative_realized_pnl_and_return_display_contract(app):
         asset_row = PortfolioCalculator.get_user_symbol_performance(user.id)[0]
 
         _assert_decimal(summary[0]['realized_pnl'], '-11.0000000000')
-        _assert_decimal(summary[0]['return_amount'], '-11.0000000000')
-        assert summary[0]['return_percent'] == _dec('-1.100000000000')
-        assert summary[0]['return_display'] == '-1.10%'
+        _assert_decimal(summary[0]['total_realized_earnings'], '-11.0000000000')
+        assert summary[0]['return_percent'] == _dec('-22')
+        assert summary[0]['return_display'] == '-22.00%'
         _assert_decimal(asset_row['realized_pnl'], '-11.0000000000')
-        assert asset_row['return_percent'] == _dec('-11.000000000000')
-        assert asset_row['return_display'] == '-11.00%'
+        assert asset_row['return_percent'] == _dec('-22')
+        assert asset_row['return_display'] == '-22.00%'
 
 
 def test_multi_portfolio_aggregation_allocation_and_distinct_symbol_rows(app):
@@ -334,7 +334,7 @@ def test_multi_portfolio_aggregation_allocation_and_distinct_symbol_rows(app):
         _assert_decimal(dashboard['total_positions'], '1000.0000000000')
         _assert_decimal(dashboard['realized_pnl'], '20.0000000000')
         _assert_decimal(dashboard['total_income'], '40.0000000000')
-        _assert_decimal(dashboard['return_amount'], '60.0000000000')
+        _assert_decimal(dashboard['total_realized_earnings'], '60.0000000000')
         _assert_decimal(dashboard['total_value'], '3060.0000000000')
 
         assert by_name['First']['allocation'] == expected_percent('1050', '3060')

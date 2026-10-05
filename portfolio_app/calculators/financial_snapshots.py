@@ -11,7 +11,7 @@ from types import MappingProxyType
 from typing import Mapping, Tuple, Union
 
 from portfolio_app.calculators.financial_math import (
-    calculate_asset_return,
+    calculate_realized_earnings_metrics,
     calculate_cash_balance,
     calculate_portfolio_metrics,
     replay_symbol_transactions,
@@ -30,19 +30,12 @@ def _readonly(values):
 
 
 def apply_asset_summary_return(summary, income=ZERO):
-    """Legacy Assets adapter: undefined percentage is None, not numeric zero.
-
-    Valid purchase outflows are positive. Keep the shared return calculation and
-    only adapt the undefined value used by the existing template.
-    """
-    purchase_cost = to_decimal(summary.get('total_buy_cost', ZERO) or ZERO)
-    result = calculate_asset_return(
+    """Legacy Assets adapter over canonical trading return and Dividend earnings."""
+    result = calculate_realized_earnings_metrics(
         summary.get('realized_pnl', ZERO) or ZERO,
         income or ZERO,
-        purchase_cost,
+        summary.get('realized_cost_basis', ZERO) or ZERO,
     )
-    if purchase_cost == ZERO:
-        result['return_percent'] = None
     summary.update(result)
     return summary
 
@@ -61,16 +54,18 @@ def sum_income_details(dividends):
 class AssetFinancialSnapshot:
     symbol: str
     transactions: Mapping[str, Union[Decimal, int]]
-    income: Decimal
-    returns: Mapping[str, Union[Decimal, str]]
+    dividend_income: Decimal
+    returns: Mapping[str, Union[Decimal, str, None]]
     transaction_projections: Mapping[int, TransactionFinancialProjection]
+
+    @property
+    def income(self):
+        """Legacy adapter: current Income records mean Dividend Income only."""
+        return self.dividend_income
 
     def as_assets_summary(self):
         """Fresh mutable template adapter; never mutate the underlying snapshot."""
-        return apply_asset_summary_return(
-            dict(self.transactions),
-            self.income,
-        )
+        return {**self.transactions, **self.returns}
 
     def as_performance_row(self, portfolio_id, portfolio_name):
         summary = self.transactions
@@ -83,7 +78,7 @@ class AssetFinancialSnapshot:
             'total_buy_cost': summary['total_buy_cost'],
             'realized_cost_basis': summary['realized_cost_basis'],
             'held_cost_basis': summary['cost_basis'],
-            'return_base': summary['total_buy_cost'],
+            'return_base': summary['realized_cost_basis'],
             **self.returns,
         }
 
@@ -95,7 +90,7 @@ def build_asset_snapshot(symbol, transactions, income=ZERO):
     income = to_decimal(income)
     return AssetFinancialSnapshot(
         symbol, _readonly(summary), income,
-        _readonly(calculate_asset_return(summary['realized_pnl'], income, summary['total_buy_cost'])),
+        _readonly(calculate_realized_earnings_metrics(summary['realized_pnl'], income, summary['realized_cost_basis'])),
         _readonly({row.transaction_id: row for row in replay.projections if row.transaction_id is not None}),
     )
 
@@ -135,9 +130,14 @@ class PortfolioFinancialSnapshot:
     funding_inflows: Decimal
     net_contributions: Decimal
     cash_balance: Decimal
-    income: Decimal
-    metrics: Mapping[str, Union[Decimal, str]]
+    dividend_income: Decimal
+    metrics: Mapping[str, Union[Decimal, str, None]]
     income_by_symbol: Mapping[str, Decimal]
+
+    @property
+    def income(self):
+        """Legacy adapter for the unchanged UI Income vocabulary."""
+        return self.dividend_income
 
     @property
     def withdrawals(self):
@@ -168,7 +168,10 @@ class PortfolioFinancialSnapshot:
                 'realized_pnl', 'realized_cost_basis', 'realized_proceeds',
             )},
             'total_income': self.income,
-            'return_amount': self.metrics['return_amount'],
+            **{key: self.metrics[key] for key in (
+                'realized_trading_pnl', 'released_cost_basis', 'dividend_income',
+                'total_realized_earnings', 'realized_trading_return',
+            )},
         }
 
 
@@ -180,7 +183,7 @@ def build_portfolio_snapshot(*, portfolio_id, name, assets, funding_inflows,
     # N - total_buys + total_sales expression); do not change cash policy.
     cash = calculate_cash_balance(net_contributions, cash_transactions, income)
     metrics = calculate_portfolio_metrics(
-        cash, summary['cost_basis'], summary['realized_pnl'], income, funding_inflows,
+        cash, summary['cost_basis'], summary['realized_pnl'], income, summary['realized_cost_basis'],
     )
     return PortfolioFinancialSnapshot(
         portfolio_id, name, _readonly(assets), _readonly(summary),
@@ -192,7 +195,7 @@ def build_portfolio_snapshot(*, portfolio_id, name, assets, funding_inflows,
 @dataclass(frozen=True)
 class GlobalFinancialSnapshot:
     portfolios: Tuple[PortfolioFinancialSnapshot, ...]
-    totals: Mapping[str, Union[Decimal, str]]
+    totals: Mapping[str, Union[Decimal, str, None]]
     total_book_value: Decimal
 
     def as_portfolio_summary(self):
@@ -225,11 +228,12 @@ def build_global_snapshot(portfolios):
         'total_cash': exact_sum(p.cash_balance for p in portfolios),
         'total_positions': exact_sum(p.transactions['cost_basis'] for p in portfolios),
         'realized_pnl': exact_sum(p.transactions['realized_pnl'] for p in portfolios),
+        'released_cost_basis': exact_sum(p.transactions['realized_cost_basis'] for p in portfolios),
         'total_income': exact_sum(p.income for p in portfolios),
     }
     metrics = calculate_portfolio_metrics(
         totals['total_cash'], totals['total_positions'], totals['realized_pnl'],
-        totals['total_income'], totals['total_contributed'],
+        totals['total_income'], totals['released_cost_basis'],
     )
     totals.update(metrics)
     totals['total_value'] = totals.pop('book_value')

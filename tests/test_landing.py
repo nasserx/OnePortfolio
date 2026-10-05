@@ -302,8 +302,9 @@ def test_landing_sample_data_is_internally_consistent():
     assert "total('bookValue')" in script
     assert "total('capital')" in script
 
-    # The headline return is derived from realized P&L over total capital.
-    assert 'SAMPLE.realizedPnl / capital' in script
+    # The illustrative headline uses trading P&L / released basis, never capital.
+    assert 'SAMPLE.realizedPnl / SAMPLE.releasedCostBasis' in script
+    assert 'SAMPLE.realizedPnl / capital' not in script
     assert 'returnPercent' in script
 
     cash = _sample_number(script, 'cash')

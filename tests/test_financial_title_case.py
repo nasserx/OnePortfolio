@@ -58,7 +58,7 @@ def test_asset_short_financial_labels_use_title_case_source_copy():
         'Add Asset',
         'Total Spent',
         'Average Cost',
-        'Realized Return',
+        'Realized Trading Return',
         'Add Income',
         'Add Entry',
         'Total Amount',

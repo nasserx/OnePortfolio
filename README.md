@@ -1,40 +1,32 @@
 # OnePortfolio
 
-OnePortfolio is a Flask web app for manual portfolio record keeping. It tracks portfolios, capital entries, assets, buy/sell asset entries, and income records from data you enter yourself.
+OnePortfolio is a Flask web app for manual portfolio record keeping. It tracks portfolios, funding entries, assets, buy/sell asset entries, and Dividend Income records from data you enter yourself.
 
 It does not fetch live prices, calculate market value, calculate unrealized P&L, connect to brokers, or provide financial advice.
 
 ## What It Tracks
 
 - **Portfolios**: user-defined buckets such as Stocks, ETFs, Gold, or any other name.
-- **Capital entries**: deposits and withdrawals.
+- **Funding Entries**: deposits and withdrawals.
 - **Assets**: symbols tracked inside a portfolio.
 - **Asset entries**: buy and sell records with price, quantity, fees, date, and notes.
-- **Income**: dividend/distribution income attributed to an asset symbol.
+- **Dividend Income**: dividend/distribution income attributed to an asset symbol.
 
-## Current Terminology
+## Financial terminology
 
-- **TOTAL CAPITAL** = deposits - withdrawals.
-- **TOTAL CASH** = available cash.
-- **POSITIONS** = recorded cost basis of current positions.
-- **BOOK VALUE** = total cash + recorded cost basis of current positions.
-- **TOTAL INCOME** = dividend/distribution income records.
-- **REALIZED P&L** = profit or loss from completed sales using the Average Cost Method and sell fees.
-- **REALIZED TRADING RETURN** = realized trading P&L / released cost basis × 100; undefined when released basis is zero.
-- **TOTAL REALIZED EARNINGS** = realized trading P&L + Dividend Income (money, not a percentage).
-
-Realized Trading Return excludes Dividend Income, funding flows and open position
-basis. It is not total portfolio performance; TWR, MWR and XIRR are not implemented.
-
-For exact formulas, see [docs/DOMAIN_AND_CALCULATIONS.md](docs/DOMAIN_AND_CALCULATIONS.md).
+See the [canonical financial glossary](docs/DOMAIN_AND_CALCULATIONS.md) for all
+names and formulas. Book Value is cost-based. Realized Trading Return excludes
+Dividend Income, funding flows and open Position Cost Basis. Total Realized
+Earnings is monetary, not a percentage. No market performance, TWR, MWR or XIRR
+is implemented.
 
 ## Features
 
 - Manual multi-portfolio tracking.
-- Capital entry log with deposits and withdrawals.
+- Funding entry log with deposits and withdrawals.
 - Asset list with buy and sell entries.
 - Average Cost Method calculations for open positions and sells.
-- Separate income tracking.
+- Separate Dividend Income tracking.
 - Overview totals, portfolio summaries, assets page, and Overview allocation charts based on recorded data.
 - Multi-user accounts with per-user data scoping.
 - Passwordless email-code login, registration, and account settings.

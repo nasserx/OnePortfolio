@@ -23,6 +23,6 @@ class OverviewService:
     def get_portfolio_dashboard_totals(self) -> Dict[str, Any]:
         return dict(self.get_financial_snapshot().totals)
 
-    def get_symbol_performance(self) -> List[Dict[str, Any]]:
+    def get_symbol_financials(self) -> List[Dict[str, Any]]:
         """Per-(portfolio, symbol) realized performance for charts/heatmaps."""
-        return PortfolioCalculator.get_user_symbol_performance(user_id=self._user_id)
+        return PortfolioCalculator.get_user_symbol_financials(user_id=self._user_id)

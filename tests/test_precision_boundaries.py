@@ -199,7 +199,7 @@ def test_max_from_page_and_modal_is_accepted_by_service(ledger, app, cash):
         g.services = ledger.svc
         assert _portfolio_modal_data(ledger.pid)['withdrawable_cash_input'] == amount
     ledger.svc.portfolio_service.withdraw_funds(ledger.pid, D(amount))
-    assert PC.get_available_cash_for_portfolio(ledger.pid) == D(cash) - D(amount)
+    assert PC.get_cash_balance_for_portfolio(ledger.pid) == D(cash) - D(amount)
 
 
 def test_summary_json_preserves_high_precision_snapshot_values_and_types(ledger, app):
@@ -209,9 +209,9 @@ def test_summary_json_preserves_high_precision_snapshot_values_and_types(ledger,
     row = client.get('/api/portfolio-summary').get_json()['portfolio_summary'][0]
     snapshot = PC.get_portfolio_snapshot(ledger.pid)
     assert isinstance(row['id'], int)
-    assert isinstance(row['positions'], str)
-    assert row['positions'] == decimal_text(snapshot.transactions['cost_basis']) == '0.00000000001234567891'
-    assert D(row['cash']) == -D(row['positions'])
+    assert isinstance(row['position_cost_basis'], str)
+    assert row['position_cost_basis'] == decimal_text(snapshot.transactions['position_cost_basis']) == '0.00000000001234567891'
+    assert D(row['cash_balance']) == -D(row['position_cost_basis'])
     held = client.get('/api/holdings', query_string=dict(portfolio_id=ledger.pid, symbol='BTC')).get_json()
     assert held['held_quantity'] == '0.0000000001'
 
@@ -225,8 +225,8 @@ def test_funding_sums_exact_loaded_values_not_sql_sum(ledger, app):
     rows = PortfolioEvent.query.all()
     assert [row.amount_delta for row in rows] == [D('0.006'), D('0.006')]
     assert PC.get_total_deposits_for_portfolio(ledger.pid) == D('0.012')
-    assert PC.get_net_deposits_for_portfolio(ledger.pid) == D('0.012')
-    assert _assert_consumers(ledger, app).totals['total_cash'] == D('0.012')
+    assert PC.get_net_contributions_for_portfolio(ledger.pid) == D('0.012')
+    assert _assert_consumers(ledger, app).totals['cash_balance'] == D('0.012')
 
 
 def test_nonzero_position_keeps_tiny_cost_pool():
@@ -235,8 +235,8 @@ def test_nonzero_position_keeps_tiny_cost_pool():
         SimpleNamespace(transaction_type='Sell', price=D('1E-20'), quantity=D('1E-10'), fees=D('0')),
     ])
     assert summary['total_quantity_held'] == D('1E-10')
-    assert summary['cost_basis'] == D('1E-30')
-    assert summary['average_cost'] == D('1E-20')
+    assert summary['position_cost_basis'] == D('1E-30')
+    assert summary['average_unit_cost'] == D('1E-20')
 
 
 def test_canonical_replay_new_buy_after_repeating_average_closure_has_clean_pool(ledger):
@@ -246,8 +246,8 @@ def test_canonical_replay_new_buy_after_repeating_average_closure_has_clean_pool
     _trade(ledger, 'Buy', '0.1', '1', 4)
     fresh = PC.get_asset_snapshot(ledger.pid, 'BTC')
     assert list(fresh.transaction_projections.values())[-1].applicable_average_unit_cost == D('0.1')
-    assert fresh.transactions['cost_basis'] == D('0.1')
-    assert fresh.transactions['realized_pnl'] == D('4')
+    assert fresh.transactions['position_cost_basis'] == D('0.1')
+    assert fresh.transactions['realized_trading_pnl'] == D('4')
 
 
 def test_notes_only_edit_with_calendar_date_payload_does_not_replay(ledger, app, monkeypatch):

@@ -55,17 +55,17 @@ def test_sell_profit_without_income_keeps_income_zero_and_return_uses_trading_pr
         svc, portfolio = _portfolio_with_deposit(uid)
         _add_buy_sell(svc, portfolio.id)
 
-        perf = PortfolioCalculator.get_realized_performance_for_portfolio(
+        perf = PortfolioCalculator.get_realized_earnings_for_portfolio(
             portfolio.id, user_id=uid,
         )
         summary, _ = PortfolioCalculator.get_portfolio_summary(user_id=uid)
 
-        assert perf['realized_pnl'] == _dec('100.0000000000')
-        assert perf['total_income'] == _dec('0')
-        assert summary[0]['realized_pnl'] == _dec('100.0000000000')
-        assert summary[0]['total_income'] == _dec('0')
+        assert perf['realized_trading_pnl'] == _dec('100.0000000000')
+        assert perf['dividend_income'] == _dec('0')
+        assert summary[0]['realized_trading_pnl'] == _dec('100.0000000000')
+        assert summary[0]['dividend_income'] == _dec('0')
         assert summary[0]['total_realized_earnings'] == _dec('100.0000000000')
-        assert summary[0]['return_display'] == '+20.00%'
+        assert summary[0]['trading_return_display'] == '+20.00%'
         assert 'total_realized_pnl' not in summary[0]
         assert 'realized_roi_percent' not in summary[0]
 
@@ -99,18 +99,18 @@ def test_dividend_after_buy_changes_cash_book_value_earnings_not_trading_return_
 
         before_item = before[0]
         after_item = after[0]
-        assert before_item['realized_pnl'] == after_item['realized_pnl'] == _dec('0')
-        assert before_item['positions'] == after_item['positions'] == _dec('500.0000000000')
-        assert before_item['total_income'] == _dec('0')
-        assert after_item['total_income'] == _dec('50.0000000000')
-        assert before_item['cash'] == _dec('500.0000000000')
-        assert after_item['cash'] == _dec('550.0000000000')
+        assert before_item['realized_trading_pnl'] == after_item['realized_trading_pnl'] == _dec('0')
+        assert before_item['position_cost_basis'] == after_item['position_cost_basis'] == _dec('500.0000000000')
+        assert before_item['dividend_income'] == _dec('0')
+        assert after_item['dividend_income'] == _dec('50.0000000000')
+        assert before_item['cash_balance'] == _dec('500.0000000000')
+        assert after_item['cash_balance'] == _dec('550.0000000000')
         assert before_item['book_value'] == _dec('1000.0000000000')
         assert after_item['book_value'] == _dec('1050.0000000000')
         assert before_item['total_realized_earnings'] == _dec('0')
         assert after_item['total_realized_earnings'] == _dec('50.0000000000')
-        assert before_item['return_percent'] is after_item['return_percent'] is None
-        assert before_item['return_display'] == after_item['return_display'] == '—'
+        assert before_item['realized_trading_return'] is after_item['realized_trading_return'] is None
+        assert before_item['trading_return_display'] == after_item['trading_return_display'] == '—'
 
 
 def test_sell_profit_plus_dividend_earnings_include_both_but_return_excludes_dividend(app):
@@ -122,18 +122,18 @@ def test_sell_profit_plus_dividend_earnings_include_both_but_return_excludes_div
             portfolio.id, 'AAPL', _dec('75'), datetime(2024, 1, 4),
         )
 
-        perf = PortfolioCalculator.get_realized_performance_for_portfolio(
+        perf = PortfolioCalculator.get_realized_earnings_for_portfolio(
             portfolio.id, user_id=uid,
         )
         summary, _ = PortfolioCalculator.get_portfolio_summary(user_id=uid)
 
-        assert perf['realized_pnl'] == _dec('100.0000000000')
-        assert perf['total_income'] == _dec('75.0000000000')
+        assert perf['realized_trading_pnl'] == _dec('100.0000000000')
+        assert perf['dividend_income'] == _dec('75.0000000000')
         assert perf['total_realized_earnings'] == _dec('175.0000000000')
-        assert summary[0]['realized_pnl'] == _dec('100.0000000000')
-        assert summary[0]['total_income'] == _dec('75.0000000000')
+        assert summary[0]['realized_trading_pnl'] == _dec('100.0000000000')
+        assert summary[0]['dividend_income'] == _dec('75.0000000000')
         assert summary[0]['total_realized_earnings'] == _dec('175.0000000000')
-        assert summary[0]['return_display'] == '+20.00%'
+        assert summary[0]['trading_return_display'] == '+20.00%'
 
 
 def test_asset_trading_pnl_and_return_exclude_dividend_income(app):
@@ -145,13 +145,13 @@ def test_asset_trading_pnl_and_return_exclude_dividend_income(app):
             portfolio.id, 'AAPL', _dec('75'), datetime(2024, 1, 4),
         )
 
-        rows = svc.overview_service.get_symbol_performance()
+        rows = svc.overview_service.get_symbol_financials()
         row = next(item for item in rows if item['symbol'] == 'AAPL')
 
-        assert row['realized_pnl'] == _dec('100.0000000000')
-        assert row['total_income'] == _dec('75.0000000000')
+        assert row['realized_trading_pnl'] == _dec('100.0000000000')
+        assert row['dividend_income'] == _dec('75.0000000000')
         assert row['total_realized_earnings'] == _dec('175.0000000000')
-        assert row['return_display'] == '+20.00%'
+        assert row['trading_return_display'] == '+20.00%'
         assert 'total_realized_pnl' not in row
         assert 'dividend_total' not in row
 
@@ -164,15 +164,15 @@ def test_income_only_symbol_has_zero_realized_pnl_and_no_return_base(app):
             portfolio.id, 'TRSF', _dec('20'), datetime(2024, 1, 4),
         )
 
-        rows = svc.overview_service.get_symbol_performance()
+        rows = svc.overview_service.get_symbol_financials()
         row = next(item for item in rows if item['symbol'] == 'TRSF')
 
-        assert row['realized_pnl'] == _dec('0')
-        assert row['total_income'] == _dec('20.0000000000')
+        assert row['realized_trading_pnl'] == _dec('0')
+        assert row['dividend_income'] == _dec('20.0000000000')
         assert row['total_realized_earnings'] == _dec('20.0000000000')
-        assert row['return_base'] == _dec('0')
-        assert row['return_percent'] is None
-        assert row['return_display'] == '—'
+        assert row['released_cost_basis'] == _dec('0')
+        assert row['realized_trading_return'] is None
+        assert row['trading_return_display'] == '—'
 
 
 def test_updating_deleting_dividend_changes_cash_book_value_earnings_not_trading_return(app):
@@ -199,15 +199,15 @@ def test_updating_deleting_dividend_changes_cash_book_value_earnings_not_trading
         svc.transaction_service.delete_dividend(dividend.id)
         deleted, _ = PortfolioCalculator.get_portfolio_summary(user_id=uid)
 
-        assert [row[0]['realized_pnl'] for row in (added, updated, deleted)] == [
+        assert [row[0]['realized_trading_pnl'] for row in (added, updated, deleted)] == [
             _dec('0'), _dec('0'), _dec('0'),
         ]
-        assert [row[0]['positions'] for row in (added, updated, deleted)] == [
+        assert [row[0]['position_cost_basis'] for row in (added, updated, deleted)] == [
             _dec('500.0000000000'),
             _dec('500.0000000000'),
             _dec('500.0000000000'),
         ]
-        assert [row[0]['cash'] for row in (added, updated, deleted)] == [
+        assert [row[0]['cash_balance'] for row in (added, updated, deleted)] == [
             _dec('600.0000000000'),
             _dec('650.0000000000'),
             _dec('500.0000000000'),
@@ -222,6 +222,6 @@ def test_updating_deleting_dividend_changes_cash_book_value_earnings_not_trading
             _dec('150.0000000000'),
             _dec('0'),
         ]
-        assert [row[0]['return_display'] for row in (added, updated, deleted)] == [
+        assert [row[0]['trading_return_display'] for row in (added, updated, deleted)] == [
             '—', '—', '—',
         ]

@@ -32,15 +32,15 @@ def test_overview_keeps_the_approved_information_hierarchy():
 
 def test_book_value_and_supporting_metric_contracts_are_preserved():
     assert 'Book Value' in TEMPLATE
-    assert 'totals.total_value|fmt_display_money' in TEMPLATE
-    assert 'totals.return_percent|fmt_display_percent(signed=True)' in TEMPLATE
+    assert 'totals.book_value|fmt_display_money' in TEMPLATE
+    assert 'totals.realized_trading_return|fmt_display_percent(signed=True)' in TEMPLATE
 
     labels = re.findall(r"call fact\('([^']+)'", TEMPLATE)
-    assert labels == ['Total Capital', 'Total Cash', 'Total Income', 'Realized P&L']
-    assert "money(totals.total_capital)" in TEMPLATE
-    assert "money(totals.total_cash)" in TEMPLATE
-    assert "money(totals.total_income, tone='income', signed=true)" in TEMPLATE
-    assert "money(totals.realized_pnl, tone='sign', signed=true)" in TEMPLATE
+    assert labels == ['Net Contributions', 'Cash', 'Dividends', 'Realized P&L']
+    assert "money(totals.net_contributions)" in TEMPLATE
+    assert "money(totals.cash_balance)" in TEMPLATE
+    assert "money(totals.dividend_income, tone='income', signed=true)" in TEMPLATE
+    assert "money(totals.realized_trading_pnl, tone='sign', signed=true)" in TEMPLATE
     assert 'class="fact supporting-item"' in MACROS
 
     item = _rule(COMPONENTS, '.supporting-item')
@@ -72,7 +72,7 @@ def test_chart_switcher_is_the_shared_neutral_segmented_control():
     assert 'class="segmented" role="tablist"' in TEMPLATE
     assert TEMPLATE.count('class="segmented__option"') == 2
     assert 'By Book Value' in TEMPLATE
-    assert 'By Capital' in TEMPLATE
+    assert 'By Net Contributions' in TEMPLATE
 
     track = _rule(COMPONENTS, '.segmented')
     option = _rule(COMPONENTS, '.segmented__option')
@@ -127,7 +127,7 @@ def test_empty_state_workflow_and_title_case_copy_are_preserved():
     assert "empty_state('folder-plus', 'No Portfolios Yet'" in TEMPLATE
     assert "url_for('portfolios.portfolios_list')" in TEMPLATE
     assert '<span>Create Portfolio</span>' in TEMPLATE
-    assert "? 'Total Capital' : 'Book Value'" in CHART
+    assert "? 'Net Contributions' : 'Book Value'" in CHART
 
     for legacy in (
         'Book value', 'Total capital', 'Total cash', 'Total income',

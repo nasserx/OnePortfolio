@@ -56,12 +56,12 @@ def test_asset_disclosures_preserve_metrics_formatters_and_neutral_identity():
 
     expected = (
         ("metric('Entries')", 'item.summary.transaction_count + symbol_dividends|length'),
-        ("metric('Total Spent')", 'money(item.summary.total_buy_cost)'),
+        ("metric('Purchase Cost')", 'money(item.summary.total_purchase_cost)'),
         ("metric('Quantity')", 'quantity(item.summary.total_quantity_held)'),
-        ("metric('Average Cost')", 'money(item.summary.average_cost'),
-        ("metric('Realized P&L')", "money(item.summary.realized_pnl, tone='sign', signed=true)"),
-        ("metric('Realized Trading Return',", 'percent(item.summary.return_percent'),
-        ("metric('Income')", "money(symbol_dividend_total, tone='income', signed=true)"),
+        ("metric('Avg. Cost')", 'money(item.summary.average_unit_cost'),
+        ("metric('Realized P&L')", "money(item.summary.realized_trading_pnl, tone='sign', signed=true)"),
+        ("metric('Realized Return')", 'percent(item.summary.realized_trading_return'),
+        ("metric('Dividends')", "money(symbol_dividend_total, tone='income', signed=true)"),
     )
     positions = []
     for label, formatter in expected:
@@ -81,9 +81,14 @@ def test_transaction_and_income_rows_share_financial_table_contract():
     assert 'table records-table records-table--asset-entries' in ASSETS
     assert 'Entries for {{ item.symbol }} in {{ item.portfolio.name }}' in ASSETS
     assert '>Total Amount</th>' in ASSETS
+    # Transaction context permits the short header; summary wording stays explicit.
+    assert '<th class="records-cell records-cell--number">Return</th>' in ASSETS
+    assert '>Realized Return</th>' not in ASSETS
+    assert "metric('Realized Return')" in ASSETS
+    assert 'percent(financial.realized_trading_return)' in ASSETS
     assert '{{ record_type(transaction.transaction_type) }}' in ASSETS
-    assert "{{ record_type('Income') }}" in ASSETS
-    assert 'money(financial.cash_amount)' in ASSETS
+    assert "{{ record_type('Dividends') }}" in ASSETS
+    assert 'money(financial.transaction_amount)' in ASSETS
     assert "money(financial.realized_trading_pnl, tone='sign', signed=true)" in ASSETS
     assert "money(div.amount, tone='income')" in ASSETS
     assert 'class="small records-cell' not in ASSETS
@@ -98,9 +103,9 @@ def test_transaction_and_income_rows_share_financial_table_contract():
 def test_asset_actions_use_short_remove_controls_and_explicit_dialog_titles():
     assert ASSETS.count('<span>Remove</span>') == 3
     assert ASSETS.count("{{ icon('trash') }}Remove") == 3
-    for forbidden in ('Remove Asset</span>', 'Remove Entry</span>', 'Remove Income</span>'):
+    for forbidden in ('Remove Asset</span>', 'Remove Entry</span>', 'Remove Dividends</span>'):
         assert forbidden not in ASSETS
-    for title in ('Remove Asset Entry', 'Remove Asset', 'Remove Income'):
+    for title in ('Remove Asset Entry', 'Remove Asset', 'Remove Dividends'):
         assert title in ASSETS
     assert ASSETS.count('dropdown-item--danger') == 3
     assert ASSETS.count('class="btn btn-danger"') == 3
@@ -134,14 +139,14 @@ def test_asset_dialogs_keep_forms_fields_and_transaction_semantics():
     assert 'id="total_cost_preview" class="tx-preview" aria-live="polite"' in ASSETS
     assert 'id="edit_total_cost_preview" class="tx-preview" aria-live="polite"' in ASSETS
     assert "const total = isSell ? (gross - fees) : (gross + fees);" in MAIN_JS
-    assert "const label = isSell ? 'Total Received:' : 'Total Spent:';" in MAIN_JS
+    assert "const label = isSell ? 'Total Received:' : 'Purchase Cost:';" in MAIN_JS
 
 
 def test_assets_copy_and_empty_state_follow_scoped_title_case():
     for label in (
         'All Portfolios', 'Search Asset', 'Add Asset', 'Add Entry',
-        'Add Income', 'Average Cost', 'Realized Trading Return', 'Total Amount',
-        'Total Spent', 'Total Received', 'Notes (Optional)',
+        'Add Dividends', 'Avg. Cost', 'Realized Return', 'Total Amount',
+        'Purchase Cost', 'Total Received', 'Notes (Optional)',
         'Price (Per Unit)', 'No Assets Yet', 'Create Portfolio First',
         'Save Changes',
     ):

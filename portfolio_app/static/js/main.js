@@ -608,7 +608,7 @@ class TransactionFormHandler {
         }
 
         const formatted = Utils.formatMoney(total);
-        const label = isSell ? 'Total Received:' : 'Total Spent:';
+        const label = isSell ? 'Total Received:' : 'Purchase Cost:';
         this.preview.innerHTML = `<span class="tx-preview__label">${label}</span>`
             + `<span class="tx-preview__value">${formatted}</span>`;
     }
@@ -1020,7 +1020,7 @@ class FormValidatorsInitializer {
             { ...ValidationRules.date, selector: '#edit_date' }
         ]);
 
-        // Standalone Add Income modal (separate from addTransactionModal).
+        // Standalone Add Dividends modal (separate from addTransactionModal).
         // Without this, the amount field had no client-side rule and zero
         // entries only got caught at the server with a different message.
         this.initValidator('form[action$="/dividends/add"]', [

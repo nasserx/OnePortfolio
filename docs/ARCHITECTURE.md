@@ -71,28 +71,28 @@ Models live in `portfolio_app/models/`:
 - `AuthChallenge`: purpose-bound authentication-code digest, expiry, attempt, and atomic-consumption state.
 - `OAuthIdentity`: inert rollback data for a former external provider link; no tokens or secrets.
 - `Portfolio`: user-owned portfolio bucket.
-- `PortfolioEvent`: capital entries.
+- `PortfolioEvent`: funding entries.
 - `Symbol`: tracked asset symbol per portfolio.
 - `Transaction`: buy/sell asset entries.
-- `Dividend`: current model name for income records.
+- `Dividend`: investment cash dividend/distribution records.
 
 Pending email-change claims are bounded by their verification-code lifetime.
 Expired or incomplete pending-email state is non-reserving and is cleared when
 an account workflow encounters it, so it cannot indefinitely hold an address.
 
-The user-facing term remains Income; economically these records are investment
-dividends/distributions, not generic cash income. The `Dividend` model is unchanged.
+The user-facing term is Dividend Income. The `Dividend` model remains accurate
+for investment cash dividends/distributions, not generic income.
 
 ## Calculators
 
 `portfolio_app/calculators/portfolio_calculator.py` is the database-facing calculator facade. It derives totals from source records:
 
-- total capital
-- total cash
-- positions
+- Net Contributions
+- Cash Balance
+- Position Cost Basis
 - book value
-- realized P&L
-- total income
+- Realized Trading P&L
+- Dividend Income
 - total realized earnings (money) and realized trading return (percentage)
 - asset-level summaries
 
@@ -113,7 +113,7 @@ from `calculators/financial_snapshots.py`. `PortfolioCalculator` loads scoped
 inputs; the snapshot builders compose the existing pure arithmetic and canonical
 ordering helper. Routes consume snapshot adapters instead of defining financial
 formulas. See [Canonical financial reads](FINANCIAL_READ_MODEL.md) for the
-duplication map, legacy adapters, exact storage and remaining calculation limits.
+canonical API contracts, exact storage and remaining calculation limits.
 
 One `replay_symbol_transactions` call now produces both aggregate state and
 immutable per-transaction financial projections. Asset snapshots expose those
@@ -145,12 +145,12 @@ TEXT without a fixed scale; **calculation** preserves finite operations exactly
 and rounds divisions under the documented local policy; **display** keeps all
 existing visible precision/rounding/formatters. Recurring expansions remain
 approximate, and extreme input spans remain bounded by platform/resources.
-See [Phase 7 precision policy](FINANCIAL_READ_MODEL.md#phase-7-three-independent-precision-layers).
+See [Calculation precision](FINANCIAL_READ_MODEL.md#phase-7-three-independent-precision-layers).
 See [schema 36 conversion and rollback](MIGRATIONS.md#schema-36-exact-decimal-storage).
 
 ## Forms
 
-Forms live in `portfolio_app/forms/`. They validate request payloads for auth, portfolios, capital entries, assets, asset entries, and income. They also normalize common inputs before service code receives them.
+Forms live in `portfolio_app/forms/`. They validate request payloads for auth, portfolios, funding entries, assets, asset entries, and Dividend Income. They also normalize common inputs before service code receives them.
 
 ## Main Data Flow
 
@@ -192,10 +192,10 @@ See [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md) for UI constraints.
 - `portfolio_app/migrations.py`: SQLite schema migration runner and migration steps.
 - `config.py`: environment-driven configuration.
 - `portfolio_app/services/factory.py`: per-request services container.
-- `portfolio_app/services/transaction_service.py`: asset entries, income, symbols, chronology, and cash/quantity rules.
-- `portfolio_app/services/portfolio_service.py`: portfolios and capital entries.
+- `portfolio_app/services/transaction_service.py`: asset entries, Dividend Income, symbols, chronology, and cash/quantity rules.
+- `portfolio_app/services/portfolio_service.py`: portfolios and funding entries.
 - `portfolio_app/calculators/portfolio_calculator.py`: database-backed financial aggregation.
-- `portfolio_app/calculators/allocation_charts.py`: Overview allocation chart data for By Book Value and By Capital.
+- `portfolio_app/calculators/allocation_charts.py`: Overview allocation chart data for By Book Value and By Net Contributions.
 - `portfolio_app/calculators/financial_math.py`: pure financial math.
 - `portfolio_app/routes/`: HTTP endpoints.
 - `tests/`: regression and behavior tests.
@@ -204,6 +204,21 @@ See [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md) for UI constraints.
 
 - `portfolio_app/__init__.py` is large because it still contains app wiring, extension setup, error handlers, security headers, and blueprint registration.
 - `PortfolioCalculator` is large because it owns portfolio, asset, cash, and return calculations.
-- `TransactionService` is large because it coordinates asset entries, income, symbols, validations, and recalculation.
+- `TransactionService` is large because it coordinates asset entries, Dividend Income, symbols, validations, and recalculation.
 
 Safe future work should define boundaries first, add tests around existing behavior, then move one responsibility at a time. Avoid broad rewrites that mix behavior changes with file movement.
+
+## Final financial vocabulary and presentation
+
+All active financial read-model/JSON keys use the canonical names in
+[the glossary](DOMAIN_AND_CALCULATIONS.md). Temporary capital/cash/return aliases
+were removed in Phase 9; the complete API rename map is in
+[Financial reads](FINANCIAL_READ_MODEL.md#phase-9-api-and-identifier-changes).
+Dividend and PortfolioEvent remain valid persistence models. No schema change.
+Overview remains a compact four-fact layout with no earnings card; Portfolios
+removes its duplicated Book Value summary. The glossary defines concise display
+labels separately from precise internal/API identifiers. Only Overview's Book Value,
+Net Contributions, Realized P&L and Realized Return have hover/focus info dots.
+Assets and Portfolios retain their original disclosure controls without help icons.
+Formatting functions and color roles remain
+unchanged. No financial policy or arithmetic precision change accompanies renaming.

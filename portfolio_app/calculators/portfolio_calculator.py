@@ -12,7 +12,7 @@ from portfolio_app.calculators.financial_math import (
 )
 from portfolio_app.calculators.financial_snapshots import (
     build_asset_snapshot, build_portfolio_snapshot, build_global_snapshot,
-    sum_income_details,
+    sum_dividend_income_details,
 )
 from portfolio_app.models import Portfolio, Transaction, PortfolioEvent, Dividend
 from portfolio_app.utils.decimal_utils import ZERO, to_decimal as _to_decimal
@@ -85,7 +85,7 @@ class PortfolioCalculator:
     def get_total_deposits_for_portfolio(portfolio_id, *, user_id=None) -> Decimal:
         """Total deposits = sum of Initial + Deposit events only.
 
-        Withdrawals are excluded so this represents gross capital ever allocated.
+        Withdrawals are excluded: this is gross deposits, not Net Contributions.
         """
         query = (
             PortfolioEvent.query.with_entities(PortfolioEvent.amount_delta)
@@ -98,8 +98,8 @@ class PortfolioCalculator:
         return exact_sum(row.amount_delta for row in query.order_by(PortfolioEvent.id).all())
 
     @staticmethod
-    def get_net_deposits_for_portfolio(portfolio_id, *, user_id=None) -> Decimal:
-        """Net deposits = signed sum of all PortfolioEvent rows.
+    def get_net_contributions_for_portfolio(portfolio_id, *, user_id=None) -> Decimal:
+        """Net Contributions = signed sum of all Funding Entries.
 
         ``amount_delta`` is positive for Initial/Deposit and negative for
         Withdrawal, so a plain SUM gives ``deposits − withdrawals``. This
@@ -114,17 +114,6 @@ class PortfolioCalculator:
         return exact_sum(row.amount_delta for row in query.order_by(PortfolioEvent.id).all())
 
     @staticmethod
-    def get_total_capital_for_portfolio(portfolio_id, *, user_id=None) -> Decimal:
-        """Total capital = deposits minus withdrawals.
-
-        Portfolio capital entries are stored as signed event deltas in the
-        existing schema, so this is the same read path as net deposits.
-        """
-        return PortfolioCalculator.get_net_deposits_for_portfolio(
-            portfolio_id, user_id=user_id,
-        )
-
-    @staticmethod
     def _cash_transactions(portfolio_id, *, user_id=None, exclude_transaction_id=None):
         """Cash and replay reads share deterministic canonical ordering."""
         query = Transaction.query.filter_by(portfolio_id=portfolio_id)
@@ -134,10 +123,10 @@ class PortfolioCalculator:
         return order_transactions(query.all())
 
     @staticmethod
-    def get_available_cash_for_portfolio(portfolio_id, *, user_id=None, exclude_transaction_id=None) -> Decimal:
-        """Lightweight validation read, using the same pure cash function as snapshots."""
+    def get_cash_balance_for_portfolio(portfolio_id, *, user_id=None, exclude_transaction_id=None) -> Decimal:
+        """Lightweight validation read, using the same pure cash_balance function as snapshots."""
         return calculate_cash_balance(
-            PortfolioCalculator.get_net_deposits_for_portfolio(portfolio_id, user_id=user_id),
+            PortfolioCalculator.get_net_contributions_for_portfolio(portfolio_id, user_id=user_id),
             PortfolioCalculator._cash_transactions(
                 portfolio_id, user_id=user_id, exclude_transaction_id=exclude_transaction_id,
             ),
@@ -148,7 +137,7 @@ class PortfolioCalculator:
     def get_portfolio_snapshot(portfolio_id, *, user_id=None):
         """Load scoped inputs once per financial view; never persist or cache results.
 
-        Funding/income sum individually loaded Decimal column values, never SQL
+        Funding/dividend_income sum individually loaded Decimal column values, never SQL
         floating-point reductions. Trading values always come from fresh canonical
         replay, never persisted derivatives (removed in schema 36).
         """
@@ -157,7 +146,7 @@ class PortfolioCalculator:
             query = query.filter_by(user_id=user_id)
         portfolio = query.first()
 
-        income_by_symbol = PortfolioCalculator._income_by_symbol(portfolio_id, user_id=user_id)
+        dividend_income_by_symbol = PortfolioCalculator._dividend_income_by_symbol(portfolio_id, user_id=user_id)
 
         sym_query = Transaction.query.with_entities(Transaction.symbol).filter_by(portfolio_id=portfolio_id)
         sym_query = PortfolioCalculator._scope_to_user(sym_query, Transaction, user_id)
@@ -170,21 +159,21 @@ class PortfolioCalculator:
         for symbol in symbols:
             assets[symbol] = PortfolioCalculator.get_asset_snapshot(
                 portfolio_id, symbol, user_id=user_id,
-                income=income_by_symbol.get(symbol, ZERO),
+                dividend_income=dividend_income_by_symbol.get(symbol, ZERO),
             )
-        for symbol, income in income_by_symbol.items():
+        for symbol, dividend_income in dividend_income_by_symbol.items():
             if symbol not in assets:
-                assets[symbol] = build_asset_snapshot(symbol, [], income)
+                assets[symbol] = build_asset_snapshot(symbol, [], dividend_income)
 
         return build_portfolio_snapshot(
             portfolio_id=portfolio_id,
             name=portfolio.name if portfolio is not None else '',
             assets=assets,
-            funding_inflows=PortfolioCalculator.get_total_deposits_for_portfolio(portfolio_id, user_id=user_id),
-            net_contributions=PortfolioCalculator.get_net_deposits_for_portfolio(portfolio_id, user_id=user_id),
+            gross_deposits=PortfolioCalculator.get_total_deposits_for_portfolio(portfolio_id, user_id=user_id),
+            net_contributions=PortfolioCalculator.get_net_contributions_for_portfolio(portfolio_id, user_id=user_id),
             cash_transactions=PortfolioCalculator._cash_transactions(portfolio_id, user_id=user_id),
-            income=exact_sum(income_by_symbol.values()),
-            income_by_symbol=income_by_symbol,
+            dividend_income=exact_sum(dividend_income_by_symbol.values()),
+            dividend_income_by_symbol=dividend_income_by_symbol,
         )
 
     @staticmethod
@@ -207,36 +196,32 @@ class PortfolioCalculator:
         return dict(PortfolioCalculator.get_financial_snapshot(user_id).totals)
 
     @staticmethod
-    def get_realized_performance_for_portfolio(portfolio_id, *, user_id=None):
+    def get_realized_earnings_for_portfolio(portfolio_id, *, user_id=None):
         return PortfolioCalculator.get_portfolio_snapshot(
             portfolio_id, user_id=user_id,
-        ).as_realized_performance()
+        ).as_realized_earnings()
 
     @staticmethod
-    def get_user_symbol_performance(user_id):
+    def get_user_symbol_financials(user_id):
         if user_id is None:
             return []
-        return PortfolioCalculator.get_financial_snapshot(user_id).as_symbol_performance()
+        return PortfolioCalculator.get_financial_snapshot(user_id).as_symbol_financials()
 
     @staticmethod
     def get_portfolio_transactions_summary(portfolio_id, *, user_id=None):
         snapshot = PortfolioCalculator.get_portfolio_snapshot(portfolio_id, user_id=user_id)
-        # Preserve the historical public dictionary shape.
-        return {
-            key: value for key, value in snapshot.transactions.items()
-            if key not in ('realized_cost_basis', 'realized_proceeds')
-        }
+        return dict(snapshot.transactions)
 
     @staticmethod
-    def get_asset_snapshot(portfolio_id, symbol, *, user_id=None, income=None):
+    def get_asset_snapshot(portfolio_id, symbol, *, user_id=None, dividend_income=None):
         symbol = PortfolioCalculator.normalize_symbol(symbol)
         query = Transaction.query.filter_by(portfolio_id=portfolio_id, symbol=symbol)
         query = PortfolioCalculator._scope_to_user(query, Transaction, user_id)
-        if income is None:
-            income = PortfolioCalculator._income_by_symbol(
+        if dividend_income is None:
+            dividend_income = PortfolioCalculator._dividend_income_by_symbol(
                 portfolio_id, user_id=user_id,
             ).get(symbol, ZERO)
-        return build_asset_snapshot(symbol, query.all(), income)
+        return build_asset_snapshot(symbol, query.all(), dividend_income)
 
     @staticmethod
     def get_symbol_transactions_summary(portfolio_id, symbol, *, user_id=None):
@@ -251,14 +236,14 @@ class PortfolioCalculator:
 
     @staticmethod
     def get_dividend_total_for_portfolio(portfolio_id, *, user_id=None) -> Decimal:
-        """Return the sum of dividend income for a portfolio."""
-        return exact_sum(PortfolioCalculator._income_by_symbol(portfolio_id, user_id=user_id).values())
+        """Return Dividend Income for a portfolio."""
+        return exact_sum(PortfolioCalculator._dividend_income_by_symbol(portfolio_id, user_id=user_id).values())
 
     @staticmethod
-    def _income_by_symbol(portfolio_id, *, user_id=None):
+    def _dividend_income_by_symbol(portfolio_id, *, user_id=None):
         # Aggregate exact persisted Decimal rows, never SQL numeric coercion.
         query = Dividend.query.with_entities(Dividend.symbol, Dividend.amount).filter_by(
             portfolio_id=portfolio_id,
         )
         query = PortfolioCalculator._scope_to_user(query, Dividend, user_id)
-        return sum_income_details(query.order_by(Dividend.id).all())
+        return sum_dividend_income_details(query.order_by(Dividend.id).all())

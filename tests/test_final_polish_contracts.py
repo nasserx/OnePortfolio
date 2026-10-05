@@ -23,7 +23,7 @@ def _rule(source, selector):
 
 def test_calculated_transaction_summary_has_one_neutral_shared_contract():
     assert ASSETS.count('class="tx-preview" aria-live="polite"') == 2
-    assert "const label = isSell ? 'Total Received:' : 'Total Spent:';" in MAIN
+    assert "const label = isSell ? 'Total Received:' : 'Purchase Cost:';" in MAIN
     assert 'class="tx-preview__label"' in MAIN
     assert 'class="tx-preview__value"' in MAIN
 
@@ -62,7 +62,7 @@ def test_browser_display_formatter_is_shared_and_matches_preview_precision():
         assert 'window.OnePortfolioDisplay' in script
         assert 'new Intl.NumberFormat' not in script
 
-    assert "display.percentage(returnPercent, 2, true)" in LANDING
+    assert "display.percentage(realizedTradingReturn, 2, true)" in LANDING
     assert "display.percentage(shares[index], 1, false)" in LANDING
     assert "display.percentage(share, 1, false)" in OVERVIEW
 

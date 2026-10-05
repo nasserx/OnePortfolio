@@ -39,11 +39,11 @@ def _get_portfolios_page_context():
         portfolio_details.append({
             'portfolio': portfolio,
             'events': events,
-            'total_capital': snapshot.net_contributions,
-            'withdrawable_cash': snapshot.cash_balance,
-            'positions': snapshot.transactions['cost_basis'],
-            'realized_pnl': snapshot.transactions['realized_pnl'],
-            'total_income': snapshot.income,
+            'net_contributions': snapshot.net_contributions,
+            'cash_balance': snapshot.cash_balance,
+            'position_cost_basis': snapshot.transactions['position_cost_basis'],
+            'realized_trading_pnl': snapshot.transactions['realized_trading_pnl'],
+            'dividend_income': snapshot.dividend_income,
             **snapshot.metrics,
         })
 
@@ -59,7 +59,7 @@ def _portfolio_modal_data(portfolio_id):
     if not portfolio:
         return {'portfolio_id': portfolio_id}
 
-    withdrawable_cash = PortfolioCalculator.get_available_cash_for_portfolio(
+    withdrawable_cash = PortfolioCalculator.get_cash_balance_for_portfolio(
         portfolio.id, user_id=svc.portfolio_repo.user_id,
     )
     withdrawable_cash_display = f"{withdrawable_cash:,.2f}"

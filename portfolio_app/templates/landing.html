@@ -13,7 +13,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OnePortfolio — A clear record of every portfolio you manage</title>
-    <meta name="description" content="Track portfolios manually: capital, asset activity, income, and realized results from your own entries. No live prices, no broker connections, no market noise.">
+    <meta name="description" content="Track portfolios manually: net contributions, asset activity, income, and realized results from your own entries. No live prices, no broker connections, no market noise.">
 
     {% include 'components/favicon_links.html' %}
     <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
@@ -98,7 +98,7 @@
                 </h1>
 
                 <p class="lp-lede">
-                    Record capital, asset activity, and income yourself — then read back
+                    Record net contributions, asset activity, and dividend income yourself — then read back
                     cash, book value, realized P&amp;L, and realized trading return in one place. No live
                     prices, no broker connections, no market noise.
                 </p>
@@ -125,28 +125,28 @@
                     <div class="lp-shot__hero">
                         <span class="lp-shot__label">Book Value</span>
                         <span class="lp-shot__value num" data-landing-metric="bookValue"></span>
-                        <span class="delta delta--pos" title="Realized Trading Return = Realized Trading P&amp;L ÷ Released Cost Basis × 100">
+                        <span class="delta delta--pos" aria-label="Realized Return">
                             {{ icon('arrow-up-right') }}
-                            <span data-landing-metric="returnPercent"></span>
+                            <span data-landing-metric="realizedTradingReturn"></span>
                         </span>
                     </div>
 
                     <div class="lp-shot__facts">
                         <div class="fact supporting-item">
-                            <span class="fact__label supporting-item__label">Total Capital</span>
-                            <span class="fact__value supporting-item__value num" data-landing-metric="totalCapital"></span>
+                            <span class="fact__label supporting-item__label">Net Contributions</span>
+                            <span class="fact__value supporting-item__value num" data-landing-metric="netContributions"></span>
                         </div>
                         <div class="fact supporting-item">
-                            <span class="fact__label supporting-item__label">Total Cash</span>
-                            <span class="fact__value supporting-item__value num" data-landing-metric="totalCash"></span>
+                            <span class="fact__label supporting-item__label">Cash</span>
+                            <span class="fact__value supporting-item__value num" data-landing-metric="cashBalance"></span>
                         </div>
                         <div class="fact supporting-item">
-                            <span class="fact__label supporting-item__label">Total Income</span>
-                            <span class="fact__value supporting-item__value num num--income" data-landing-metric="totalIncome"></span>
+                            <span class="fact__label supporting-item__label">Dividends</span>
+                            <span class="fact__value supporting-item__value num num--income" data-landing-metric="dividendIncome"></span>
                         </div>
                         <div class="fact supporting-item">
                             <span class="fact__label supporting-item__label">Realized P&amp;L</span>
-                            <span class="fact__value supporting-item__value num num--pos" data-landing-metric="realizedPnl"></span>
+                            <span class="fact__value supporting-item__value num num--pos" data-landing-metric="realizedTradingPnl"></span>
                         </div>
                     </div>
 
@@ -175,8 +175,8 @@
                     ('notebook', 'Manual by Design',
                      'You decide what is recorded and when. Nothing is imported behind your back, and nothing appears that you did not enter.'),
                     ('wallet', 'Cash Stays Visible',
-                     'Deposits, withdrawals, buys, sells, and income all move the same cash balance — so the number always reconciles.'),
-                    ('calculator', 'Average Cost, Done Properly',
+                     'Deposits, withdrawals, buys, sells, and dividend income all move the same cash balance — so the number always reconciles.'),
+                    ('calculator', 'Avg. Cost, Done Properly',
                      'Realized P&L is computed from your transactions with the average-cost method, including fees on both sides.'),
                     ('chart-pie', 'Book Value, Not Guesswork',
                      'Cost basis and cash, with no market-value assumptions layered on top. What you see is what you put in.')
@@ -204,7 +204,7 @@
                 {% set steps = [
                     ('Create Your Portfolios', 'Group your holdings however you actually think about them — by asset class, by broker, or by strategy.'),
                     ('Record as You Go', 'Deposits and withdrawals, buys and sells, dividend distributions. Each entry stays explicit and editable.'),
-                    ('Read the Results', 'Cash, book value, realized P&L, income, and realized trading return — per asset, per portfolio, and across everything.')
+                    ('Read the Results', 'Cash, Book Value, Realized P&L, Dividends, and Realized Return — per asset, per portfolio, and across everything.')
                 ] %}
                 {% for title, body in steps %}
                 <li class="lp-step" data-reveal style="--reveal-index:{{ loop.index0 }}">

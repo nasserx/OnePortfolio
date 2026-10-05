@@ -37,15 +37,15 @@ def _assert_projection_totals(asset):
     projections = tuple(asset.transaction_projections.values())
     sales = [row for row in projections if row.transaction_type == 'Sell']
     summary = asset.transactions
-    assert exact_sum(row.realized_trading_pnl for row in sales) == summary['realized_pnl']
-    assert exact_sum(row.released_cost_basis for row in sales) == summary['realized_cost_basis']
-    assert exact_sum(row.net_sale_proceeds for row in sales) == summary['realized_proceeds']
-    assert summary['realized_proceeds'] == summary['total_sell_cost']
-    assert exact_sum(row.purchase_cost for row in projections) == summary['total_buy_cost']
+    assert exact_sum(row.realized_trading_pnl for row in sales) == summary['realized_trading_pnl']
+    assert exact_sum(row.released_cost_basis for row in sales) == summary['released_cost_basis']
+    assert exact_sum(row.net_sale_proceeds for row in sales) == summary['net_sale_proceeds']
+    assert summary['net_sale_proceeds'] == summary['net_sale_proceeds']
+    assert exact_sum(row.purchase_cost for row in projections) == summary['total_purchase_cost']
     if projections:
         assert projections[-1].post_quantity == summary['total_quantity_held']
-        assert projections[-1].post_cost_basis == summary['cost_basis']
-        assert projections[-1].post_average_unit_cost == summary['average_cost']
+        assert projections[-1].post_position_cost_basis == summary['position_cost_basis']
+        assert projections[-1].post_average_unit_cost == summary['average_unit_cost']
 
 
 def test_projections_are_deterministic_for_all_retrieval_orders_and_same_day_ties():
@@ -79,24 +79,24 @@ def test_buy_partial_sale_and_final_sale_projections_include_fees_and_pools():
     assert (first.gross_amount, first.fee, first.purchase_cost, first.cash_effect) == (
         D('20'), D('1'), D('21'), D('-21'),
     )
-    assert (first.post_quantity, first.post_cost_basis, first.post_average_unit_cost) == (
+    assert (first.post_quantity, first.post_position_cost_basis, first.post_average_unit_cost) == (
         D('2'), D('21'), D('10.5'),
     )
-    assert first.realized_trading_pnl is first.trade_return_percent is None
+    assert first.realized_trading_pnl is first.realized_trading_return is None
     assert first.applicable_average_unit_cost == first.post_average_unit_cost
-    assert second.post_cost_basis == D('58.5')
+    assert second.post_position_cost_basis == D('58.5')
     assert second.post_average_unit_cost == D('11.7')
     assert (partial.gross_amount, partial.net_sale_proceeds, partial.released_cost_basis,
-            partial.realized_trading_pnl, partial.post_quantity, partial.post_cost_basis) == (
+            partial.realized_trading_pnl, partial.post_quantity, partial.post_position_cost_basis) == (
         D('30'), D('29'), D('23.4'), D('5.6'), D('3'), D('35.1'),
     )
-    assert partial.trade_return_percent == expected_percent('5.6', '23.4')
+    assert partial.realized_trading_return == expected_percent('5.6', '23.4')
     assert partial.applicable_average_unit_cost == D('11.7')
-    assert final.cash_amount == final.cash_effect == final.net_sale_proceeds == D('41.1')
+    assert final.transaction_amount == final.cash_effect == final.net_sale_proceeds == D('41.1')
     assert final.realized_trading_pnl == D('6')
     assert final.released_cost_basis == D('35.1')
-    assert final.post_quantity == final.post_cost_basis == final.post_average_unit_cost == D('0')
-    assert asset.transactions['realized_pnl'] == D('11.6')
+    assert final.post_quantity == final.post_position_cost_basis == final.post_average_unit_cost == D('0')
+    assert asset.transactions['realized_trading_pnl'] == D('11.6')
     _assert_projection_totals(asset)
 
 
@@ -107,7 +107,7 @@ def test_repeated_sales_with_intervening_buy_reconcile_each_contribution():
     ])
     assert asset.transaction_projections[2].realized_trading_pnl == D('7')
     assert asset.transaction_projections[4].realized_trading_pnl == D('-2.5')
-    assert asset.transactions['realized_pnl'] == D('4.5')
+    assert asset.transactions['realized_trading_pnl'] == D('4.5')
     _assert_projection_totals(asset)
 
 
@@ -123,11 +123,11 @@ def test_repeating_average_row_is_exact_aggregate_contribution(quantity, pnl, ba
             _row(1, 'Buy', '1'), _row(2, 'Buy', '2', '2'), _row(3, 'Sell', '3', quantity),
         ])
         sale = asset.transaction_projections[3]
-        assert sale.realized_trading_pnl == asset.transactions['realized_pnl'] == D(pnl)
-        assert sale.post_cost_basis == D(basis)
+        assert sale.realized_trading_pnl == asset.transactions['realized_trading_pnl'] == D(pnl)
+        assert sale.post_position_cost_basis == D(basis)
         from portfolio_app.utils.financial_arithmetic import division_precision
         precision = division_precision((D(pnl), sale.released_cost_basis))
-        assert sale.trade_return_percent == expected_percent(pnl, sale.released_cost_basis, precision=precision)
+        assert sale.realized_trading_return == expected_percent(pnl, sale.released_cost_basis, precision=precision)
         _assert_projection_totals(asset)
 
 
@@ -137,17 +137,17 @@ def test_btc_projection_is_reconciled_through_funding_withdrawal_and_redeposit(l
     sale = _trade(ledger, 'Sell', '186000', '0.003', 3)
     before = PC.get_portfolio_snapshot(ledger.pid, user_id=ledger.uid)
     row = before.asset('BTC').transaction_projections[sale.id]
-    assert row.net_sale_proceeds == row.cash_amount == row.cash_effect == D('558')
+    assert row.net_sale_proceeds == row.transaction_amount == row.cash_effect == D('558')
     assert row.released_cost_basis == D('555')
-    assert row.realized_trading_pnl == before.transactions['realized_pnl'] == D('3')
-    assert row.trade_return_percent == expected_percent('3', '555')
-    assert row.post_quantity == row.post_cost_basis == row.post_average_unit_cost == D('0')
+    assert row.realized_trading_pnl == before.transactions['realized_trading_pnl'] == D('3')
+    assert row.realized_trading_return == expected_percent('3', '555')
+    assert row.post_quantity == row.post_position_cost_basis == row.post_average_unit_cost == D('0')
     ledger.svc.portfolio_service.withdraw_funds(ledger.pid, D('558'))
     ledger.svc.portfolio_service.deposit_funds(ledger.pid, D('3'))
     after = PC.get_portfolio_snapshot(ledger.pid, user_id=ledger.uid)
     assert after.asset('BTC').transaction_projections[sale.id] == row
     assert after.cash_balance == after.metrics['book_value'] == D('3')
-    assert after.metrics['return_percent'] == expected_percent('3', '555')
+    assert after.metrics['realized_trading_return'] == expected_percent('3', '555')
 
 
 def _html_trade_row(html, transaction_id):
@@ -168,22 +168,22 @@ def test_raw_only_rows_drive_replay_display_and_serialization(ledger, app):
     after = PC.get_portfolio_snapshot(ledger.pid, user_id=ledger.uid)
     assert after == before
     projection = after.asset('BTC').transaction_projections[sale.id]
-    assert projection.realized_trading_pnl == after.transactions['realized_pnl'] == D('18')
+    assert projection.realized_trading_pnl == after.transactions['realized_trading_pnl'] == D('18')
     assert projection.released_cost_basis == D('101')
-    assert projection.trade_return_percent == expected_percent('18', '101')
+    assert projection.realized_trading_return == expected_percent('18', '101')
     assert after.cash_balance == D('-83')
     serialized = sale.to_dict(projection=projection, portfolio_name=after.name)
-    assert D(serialized['net_amount']) == D('119')
-    assert D(serialized['average_cost']) == D('101')
-    assert D(serialized['net_pnl']) == D('18')
-    assert D(serialized['net_pnl_percent']) == projection.trade_return_percent
+    assert D(serialized['transaction_amount']) == D('119')
+    assert D(serialized['applicable_average_unit_cost']) == D('101')
+    assert D(serialized['realized_trading_pnl']) == D('18')
+    assert D(serialized['realized_trading_return']) == projection.realized_trading_return
     html_after = client.get('/transactions/').get_data(as_text=True)
     for record in (buy, sale):
         assert _html_trade_row(html_after, record.id) == _html_trade_row(html_before, record.id)
     sale_text = unescape(re.sub(r'<[^>]+>', ' ', _html_trade_row(html_after, sale.id)))
     assert '119.00' in sale_text and '+18.00' in sale_text and '+17.82%' in sale_text
     api = client.get('/api/portfolio-summary').get_json()['portfolio_summary'][0]
-    assert D(api['realized_pnl']) == D('18') and D(api['cash']) == D('-83')
+    assert D(api['realized_trading_pnl']) == D('18') and D(api['cash_balance']) == D('-83')
 
 
 def test_replay_and_serializer_work_without_derived_columns_or_queries(ledger):
@@ -205,9 +205,9 @@ def test_replay_and_serializer_work_without_derived_columns_or_queries(ledger):
     finally:
         event.remove(db.engine, 'before_cursor_execute', record_sql)
     assert statements == []
-    assert payloads[0]['net_pnl'] is payloads[0]['net_pnl_percent'] is None
-    assert payloads[-1]['net_pnl'] == '1.' + '3' * 55
-    assert payloads[-1]['average_cost'] == '1.' + '6' * 54 + '7'
+    assert payloads[0]['realized_trading_pnl'] is payloads[0]['realized_trading_return'] is None
+    assert payloads[-1]['realized_trading_pnl'] == '1.' + '3' * 55
+    assert payloads[-1]['applicable_average_unit_cost'] == '1.' + '6' * 54 + '7'
     assert isinstance(payloads[-1]['id'], int)
 
 
@@ -237,9 +237,9 @@ def test_historical_insertion_updates_canonical_rows_without_changing_display_or
     # Current presentation reverses repository order (insertion order here),
     # independently of effective-date replay. This phase does not redesign it.
     assert [row.id for row in holding['transactions']] == [historical.id, sale.id, buy.id]
-    assert rows[sale.id].post_cost_basis == rows[sale.id].applicable_average_unit_cost == D('150')
+    assert rows[sale.id].post_position_cost_basis == rows[sale.id].applicable_average_unit_cost == D('150')
     assert rows[sale.id].post_quantity == D('1')
-    assert rows[sale.id].realized_trading_pnl == holding['summary']['realized_pnl'] == D('0')
+    assert rows[sale.id].realized_trading_pnl == holding['summary']['realized_trading_pnl'] == D('0')
     assert old.realized_trading_pnl == D('50')  # Detached previous read remains stable.
 
 
@@ -281,8 +281,8 @@ def test_projection_values_are_immutable_and_preserve_subscale_raw_products():
     row = _row(1, 'Buy', '0.1234567891', '0.0000000001')
     asset = build_asset_snapshot('BTC', [row])
     projection = asset.transaction_projections[1]
-    assert projection.cash_amount == D('0.00000000001234567891')
-    assert decimal_text(projection.cash_amount) == '0.00000000001234567891'
+    assert projection.transaction_amount == D('0.00000000001234567891')
+    assert decimal_text(projection.transaction_amount) == '0.00000000001234567891'
     with pytest.raises(FrozenInstanceError):
         projection.cash_effect = D('9')
     with pytest.raises(TypeError):
@@ -298,5 +298,5 @@ def test_zero_sale_basis_keeps_undefined_return_without_trusting_stored_average(
         _row(1, 'Buy', '0'), _row(2, 'Sell', '1'),
     ])
     assert replay.projections[1].released_cost_basis == D('0')
-    assert replay.projections[1].trade_return_percent is None
-    assert replay.projections[1].realized_trading_pnl == replay.summary['realized_pnl'] == D('1')
+    assert replay.projections[1].realized_trading_return is None
+    assert replay.projections[1].realized_trading_pnl == replay.summary['realized_trading_pnl'] == D('1')

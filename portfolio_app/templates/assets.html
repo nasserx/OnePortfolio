@@ -85,16 +85,17 @@
                             <span class="badge badge--secondary">{{ item.portfolio.name }}</span>
                         </span>
 
+
                         <span class="disclosure__metrics disclosure__metrics--assets">
                             {% call metric('Entries') %}{{ item.summary.transaction_count + symbol_dividends|length }}{% endcall %}
-                            {% call metric('Total Spent') %}{{ money(item.summary.total_buy_cost) }}{% endcall %}
+                            {% call metric('Purchase Cost') %}{{ money(item.summary.total_purchase_cost) }}{% endcall %}
                             {% call metric('Quantity') %}{{ quantity(item.summary.total_quantity_held) }}{% endcall %}
-                            {% call metric('Average Cost') %}{{ money(item.summary.average_cost, decimals=item.avg_cost_decimal_places) }}{% endcall %}
-                            {% call metric('Realized P&L') %}{{ money(item.summary.realized_pnl, tone='sign', signed=true) }}{% endcall %}
-                            {% call metric('Realized Trading Return', 'Realized Trading Return = Realized Trading P&L ÷ Released Cost Basis × 100. Excludes Dividend Income, funding flows, and open positions.') %}{{ percent(item.summary.return_percent, item.summary.return_display) }}{% endcall %}
-                            {% call metric('Income') %}{{ money(symbol_dividend_total, tone='income', signed=true) }}{% endcall %}
+                            {% call metric('Avg. Cost') %}{{ money(item.summary.average_unit_cost, decimals=item.average_unit_cost_decimal_places) }}{% endcall %}
+                            {% call metric('Realized P&L') %}{{ money(item.summary.realized_trading_pnl, tone='sign', signed=true) }}{% endcall %}
+                            {% call metric('Realized Return') %}{{ percent(item.summary.realized_trading_return, item.summary.trading_return_display) }}{% endcall %}
+                            {% call metric('Dividends') %}{{ money(symbol_dividend_total, tone='income', signed=true) }}{% endcall %}
                         </span>
-                    </button>
+                </button>
 
                     <div class="disclosure__actions row-actions">
                         {% call action_menu('Actions for ' ~ item.symbol ~ ' in ' ~ item.portfolio.name) %}
@@ -112,7 +113,7 @@
                                 data-portfolio-id="{{ item.portfolio.id }}"
                                 data-symbol="{{ item.symbol|e }}">
                                 {{ icon('cash-banknote') }}
-                                <span>Add Income</span>
+                                <span>Add Dividends</span>
                             </button>
                         </li>
                         <li><hr class="dropdown-divider"></li>
@@ -122,7 +123,7 @@
                                 data-portfolio="{{ item.portfolio.name|e }}"
                                 data-symbol="{{ item.symbol|e }}"
                                 data-tx-count="{{ item.summary.transaction_count or 0 }}"
-                                data-income-count="{{ symbol_dividends|length }}">
+                                data-dividend-count="{{ symbol_dividends|length }}">
                                 {{ icon('trash') }}
                                 <span>Remove</span>
                             </button>
@@ -135,7 +136,7 @@
                     {% if item.transactions|length > 0 or show_dividend_rows %}
                     <div class="table-responsive">
                         <table class="table records-table records-table--asset-entries">
-                            <caption class="visually-hidden">Entries for {{ item.symbol }} in {{ item.portfolio.name }}</caption>
+                            <caption class="visually-hidden">Asset Entries for {{ item.symbol }} in {{ item.portfolio.name }}</caption>
                             <colgroup>
                                 <col class="records-col records-col--date">
                                 <col class="records-col records-col--type">
@@ -157,7 +158,7 @@
                                     <th class="records-cell records-cell--number">Fee</th>
                                     <th class="records-cell records-cell--number">Total Amount</th>
                                     <th class="records-cell records-cell--number">Realized P&amp;L</th>
-                                    <th class="records-cell records-cell--number" title="Realized Trading Return = Realized Trading P&amp;L ÷ Released Cost Basis × 100">Realized Trading Return</th>
+                                    <th class="records-cell records-cell--number">Return</th>
                                     <th class="records-cell">Notes</th>
                                     <th class="records-cell records-cell--actions">Actions</th>
                                 </tr>
@@ -173,13 +174,13 @@
                                     <td class="records-cell records-cell--number">{{ quantity(transaction.quantity) }}</td>
                                     <td class="records-cell records-cell--number"><span class="num num--flat" title="{{ transaction.fees|fmt_decimal }}">{{ transaction.fees|fmt_display_decimal }}</span></td>
                                     {% set financial = item.transaction_projections[transaction.id] %}
-                                    <td class="records-cell records-cell--number">{{ money(financial.cash_amount) }}</td>
+                                    <td class="records-cell records-cell--number">{{ money(financial.transaction_amount) }}</td>
                                     {% if transaction.transaction_type == 'Sell' %}
                                         <td class="records-cell records-cell--number">
                                             {{ money(financial.realized_trading_pnl, tone='sign', signed=true) }}
                                         </td>
                                         <td class="records-cell records-cell--number">
-                                            {{ percent(financial.trade_return_percent) }}
+                                            {{ percent(financial.realized_trading_return) }}
                                         </td>
                                     {% else %}
                                         <td class="records-cell records-cell--number"><span class="num num--flat">—</span></td>
@@ -227,7 +228,7 @@
                                 <tr>
                                     <td class="records-cell"><small>{{ div.date_short }}</small></td>
                                     <td class="records-cell">
-                                        {{ record_type('Income') }}
+                                        {{ record_type('Dividends') }}
                                     </td>
                                     <td class="records-cell records-cell--number"><span class="num num--flat">—</span></td>
                                     <td class="records-cell records-cell--number"><span class="num num--flat">—</span></td>
@@ -241,7 +242,7 @@
                                     </td>
                                     <td class="records-cell records-cell--actions actions-cell">
                                         <div class="row-actions">
-                                            {% call action_menu('Actions for income entry for ' ~ item.symbol ~ ' on ' ~ div.date_short, small=true) %}
+                                            {% call action_menu('Actions for dividend income entry for ' ~ item.symbol ~ ' on ' ~ div.date_short, small=true) %}
                                             <li>
                                                 <button type="button" class="dropdown-item js-edit-dividend-btn"
                                                         data-div='{{ {"id": div.id, "portfolioId": div.portfolio_id, "amount": (div.amount|decimal_text), "dateShort": div.date_short, "notes": (div.notes or "")}|tojson|e }}'>
@@ -267,7 +268,7 @@
                         </table>
                     </div>
                     <div class="pagination-bar" id="pgbar-{{ item.html_group_id }}"
-                         data-pagination-label="Entries for {{ item.symbol }}" hidden></div>
+                         data-pagination-label="Asset Entries for {{ item.symbol }}" hidden></div>
                     {% else %}
                     <p class="inline-empty">
                         <button type="button" class="btn btn-secondary btn-sm js-add-transaction-btn"
@@ -287,7 +288,7 @@
 
         {% else %}
         {% call empty_state('square-plus', 'No Assets Yet',
-            'Add an asset, then record manual buy, sell, and income activity.') %}
+            'Add an asset, then record manual buy, sell, and dividend income activity.') %}
             {% if portfolios|length > 0 %}
             <button type="button" class="btn btn-primary js-add-symbol-btn">
                 {{ icon('plus') }}
@@ -619,7 +620,7 @@
                     <p id="deleteTransactionDescription">{{ MESSAGES['CONFIRM_REMOVE_TRANSACTION'] }}</p>
                     <div class="alert alert-warning">
                         {{ icon('alert-triangle') }}
-                        This will recalculate average costs for this asset.
+                        This will recalculate average unit costs for this asset.
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -667,7 +668,7 @@
     </div>
 </div>
 
-<!-- Add Income Modal (standalone — opened from the $ button on each asset row) -->
+<!-- Add Dividends Modal (standalone — opened from the $ button on each asset row) -->
 <div class="modal fade" id="addDividendModal" tabindex="-1" aria-labelledby="addDividendModalTitle">
     {% set _div_add_errs = (form_errors.get('dividend_add', {}) if form_errors else {}) %}
     <div class="modal-dialog">
@@ -678,7 +679,7 @@
                 <input type="hidden" name="portfolio_id" id="add_div_portfolio_id">
                 <input type="hidden" name="div_symbol" id="add_div_symbol">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="addDividendModalTitle">Add Income</h5>
+                    <h5 class="modal-title" id="addDividendModalTitle">Add Dividends</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
@@ -725,14 +726,14 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="submit" class="btn btn-primary" id="add_div_submit_btn">Record Income</button>
+                    <button type="submit" class="btn btn-primary" id="add_div_submit_btn">Record Dividends</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
 
-<!-- Edit Income Modal -->
+<!-- Edit Dividends Modal -->
 {% set _div_edit_errs = (form_errors.get('dividend_edit', {}) if form_errors else {}) %}
 <div class="modal fade" id="editDividendModal" tabindex="-1" aria-labelledby="editDividendModalTitle">
     <div class="modal-dialog modal-dialog-scrollable">
@@ -741,7 +742,7 @@
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="user_timezone" value="">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="editDividendModalTitle">Edit Income</h5>
+                    <h5 class="modal-title" id="editDividendModalTitle">Edit Dividends</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
@@ -797,7 +798,7 @@
     </div>
 </div>
 
-<!-- Remove Income Modal -->
+<!-- Remove Dividends Modal -->
 <div class="modal fade" id="deleteDividendModal" tabindex="-1"
      aria-labelledby="deleteDividendModalTitle" aria-describedby="deleteDividendDescription">
     <div class="modal-dialog">
@@ -807,7 +808,7 @@
                 <div class="modal-header">
                     <h5 class="modal-title" id="deleteDividendModalTitle">
                         {{ icon('trash', class='modal-title-icon') }}
-                        Remove Income
+                        Remove Dividends
                     </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
@@ -1249,7 +1250,7 @@ window.deleteTransaction = function(id) {
 // Submit handling for #deleteSymbolForm is wired by ModalAjaxHandler
 // (main.js). This wrapper just primes the hidden inputs + warning copy
 // for the row the user clicked, then opens the modal.
-window.openDeleteSymbolModal = function(portfolioId, portfolioName, symbol, txCount, incomeCount) {
+window.openDeleteSymbolModal = function(portfolioId, portfolioName, symbol, txCount, dividendCount) {
     var portfolioInput = document.getElementById('delete_symbol_portfolio_id');
     var symbolInput = document.getElementById('delete_symbol_ticker');
     if (portfolioInput) portfolioInput.value = portfolioId ? String(portfolioId) : '';
@@ -1265,8 +1266,8 @@ window.openDeleteSymbolModal = function(portfolioId, portfolioName, symbol, txCo
     if (txCount > 0) {
         removalCounts.push(txCount + ' asset entr' + (txCount !== 1 ? 'ies' : 'y'));
     }
-    if (incomeCount > 0) {
-        removalCounts.push(incomeCount + ' income entr' + (incomeCount !== 1 ? 'ies' : 'y'));
+    if (dividendCount > 0) {
+        removalCounts.push(dividendCount + ' dividend income entr' + (dividendCount !== 1 ? 'ies' : 'y'));
     }
 
     if (removalCounts.length > 0 && warningDiv && warningText) {
@@ -1441,11 +1442,11 @@ window.openDeleteSymbolModal = function(portfolioId, portfolioName, symbol, txCo
             const portfolioName = delBtn.getAttribute('data-portfolio') || '';
             const symbol = delBtn.getAttribute('data-symbol') || '';
             const txCount = parseInt(delBtn.getAttribute('data-tx-count') || '0', 10) || 0;
-            const incomeCount = parseInt(delBtn.getAttribute('data-income-count') || '0', 10) || 0;
-            openDeleteSymbolModal(portfolioId, portfolioName, symbol, txCount, incomeCount);
+            const dividendCount = parseInt(delBtn.getAttribute('data-dividend-count') || '0', 10) || 0;
+            openDeleteSymbolModal(portfolioId, portfolioName, symbol, txCount, dividendCount);
         }
 
-        // Standalone income button — opens the dedicated Add Income modal
+        // Standalone dividend income button — opens the dedicated Add Dividends modal
         const addDivBtn = ev.target && ev.target.closest ? ev.target.closest('.js-add-dividend-btn') : null;
         if (addDivBtn) {
             ev.preventDefault();
@@ -1485,7 +1486,7 @@ window.openDeleteSymbolModal = function(portfolioId, portfolioName, symbol, txCo
 })();
 
 // -----------------------------------------------------------------------
-// Standalone Add Income Modal (opened from the $ button on asset rows)
+// Standalone Add Dividends Modal (opened from the $ button on asset rows)
 // -----------------------------------------------------------------------
 function openStandaloneDividendModal(portfolioId, symbol) {
     // Pre-fill the modal and reset any leftover validation state, then

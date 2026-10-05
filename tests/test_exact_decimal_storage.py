@@ -99,7 +99,7 @@ def test_exact_persisted_value_is_preserved_by_calculation_above_28_digits(ledge
         assert row.price == price
         replay = replay_symbol_transactions([row])
         assert replay.projections[0].gross_amount == price
-        assert replay.summary['cost_basis'] == price
+        assert replay.summary['position_cost_basis'] == price
         assert context.prec == 28
 
 
@@ -249,9 +249,9 @@ def _snapshots(records):
         funds = [row for row in records['portfolio_event'] if row['portfolio_id'] == pid]
         portfolios.append(build_portfolio_snapshot(
             portfolio_id=pid, name=name, assets=assets, cash_transactions=order_transactions(trades),
-            funding_inflows=sum((r['amount_delta'] for r in funds if r['event_type'] in ('Initial', 'Deposit')), D('0')),
+            gross_deposits=sum((r['amount_delta'] for r in funds if r['event_type'] in ('Initial', 'Deposit')), D('0')),
             net_contributions=sum((r['amount_delta'] for r in funds), D('0')),
-            income=sum(income.values(), D('0')), income_by_symbol=income,
+            dividend_income=sum(income.values(), D('0')), dividend_income_by_symbol=income,
         ))
     return build_global_snapshot(portfolios)
 
@@ -284,7 +284,7 @@ def test_upgrade_reconciles_every_raw_fact_projection_and_snapshot(legacy35):
                 assert conn.exec_driver_sql(f'SELECT DISTINCT typeof("{field}") FROM "{table}"').all() == [('text',)]
         btc = expected.portfolios[1]
         assert (btc.cash_balance, btc.net_contributions, btc.transactions['total_quantity_held'],
-                btc.transactions['cost_basis'], btc.transactions['realized_pnl'], btc.metrics['book_value']) == tuple(map(D, ('3','0','0','0','3','3')))
+                btc.transactions['position_cost_basis'], btc.transactions['realized_trading_pnl'], btc.metrics['book_value']) == tuple(map(D, ('3','0','0','0','3','3')))
         sale = btc.asset('BTC').transaction_projections[72]
         assert (sale.net_sale_proceeds, sale.released_cost_basis, sale.realized_trading_pnl) == (D('558'), D('555'), D('3'))
         # Reopen/idempotence and SQL-level referential integrity, not ORM cascade.

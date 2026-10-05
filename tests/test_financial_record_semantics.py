@@ -35,7 +35,7 @@ def test_shared_record_type_mapping_assigns_financial_roles(app):
         'Deposit': 'positive',
         'Sell': 'negative',
         'Withdrawal': 'negative',
-        'Income': 'income',
+        'Dividends': 'income',
         'Initial': 'neutral',
     }
     for label, role in expected.items():
@@ -46,7 +46,7 @@ def test_shared_record_type_mapping_assigns_financial_roles(app):
 
 def test_both_financial_tables_use_the_shared_mapping():
     assert '{{ record_type(transaction.transaction_type) }}' in ASSETS
-    assert "{{ record_type('Income') }}" in ASSETS
+    assert "{{ record_type('Dividends') }}" in ASSETS
     assert '{{ record_type(event.event_type) }}' in PORTFOLIOS
     for obsolete in ('tx-type-label', 'badge-dividend'):
         assert obsolete not in ASSETS
@@ -73,9 +73,9 @@ def test_record_type_css_uses_only_approved_foreground_roles():
 def test_financial_table_and_calculated_summary_terminology():
     assert '>Total Amount</th>' in ASSETS
     assert '>Total</th>' not in ASSETS
-    assert "metric('Total Spent')" in ASSETS
+    assert "metric('Purchase Cost')" in ASSETS
     assert 'Total Buy Cost' not in ASSETS
-    assert "const label = isSell ? 'Total Received:' : 'Total Spent:';" in MAIN
+    assert "const label = isSell ? 'Total Received:' : 'Purchase Cost:';" in MAIN
 
 
 def test_transaction_calculation_and_formatting_contract_is_unchanged():
@@ -93,5 +93,5 @@ def test_transaction_calculation_and_formatting_contract_is_unchanged():
 
 
 def test_touched_multiword_labels_are_title_case():
-    for label in ('Total Amount', 'Total Spent', 'Total Received'):
+    for label in ('Total Amount', 'Purchase Cost', 'Total Received'):
         assert label in ASSETS + MAIN

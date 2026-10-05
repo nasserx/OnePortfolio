@@ -65,7 +65,7 @@ def test_sum_is_exact_across_large_cancellation_and_retrieval_orders():
 
 def test_division_budget_is_explicit_dynamic_and_representation_independent():
     assert division_precision([D('5'), D('3')]) == 56
-    # Significant positions span +10 through -25: span 35; 3 values need 1 carry.
+    # Significant position_cost_basis span +10 through -25: span 35; 3 values need 1 carry.
     assert division_precision([PRICE, D('1'), D('0')]) == 99
     assert division_precision([PRICE, D('1.0000'), D('-0E-100')]) == 99
     assert division_precision([D('1E100'), D('1E-100')]) == 431
@@ -100,8 +100,8 @@ def test_one_raw_input_division_budget_is_used_for_every_replay_step(monkeypatch
     monkeypatch.setattr(engine, 'FinancialArithmetic', RecordedArithmetic)
     replay = engine.replay_symbol_transactions(rows)
     assert budgets == [56]
-    assert replay.summary['cost_basis'] == D('0')
-    assert replay.summary['realized_pnl'] == D('4')
+    assert replay.summary['position_cost_basis'] == D('0')
+    assert replay.summary['realized_trading_pnl'] == D('4')
 
 
 def test_repeating_partial_sales_reconcile_exact_components_through_full_liquidation():
@@ -112,27 +112,27 @@ def test_repeating_partial_sales_reconcile_exact_components_through_full_liquida
         snapshot = build_asset_snapshot('PREC', rows[:end])
         summary = snapshot.transactions
         cash = calculate_cash_balance(D('0'), rows[:end], D('0'))
-        metrics = calculate_portfolio_metrics(cash, summary['cost_basis'], summary['realized_pnl'], 0, 0)
-        assert_accounting_invariants(summary, cash=cash, net_funding=D('0'), income=D('0'),
+        metrics = calculate_portfolio_metrics(cash, summary['position_cost_basis'], summary['realized_trading_pnl'], 0, 0)
+        assert_accounting_invariants(summary, cash=cash, net_funding=D('0'), dividend_income=D('0'),
                                      book_value=metrics['book_value'])
         sales = [r for r in snapshot.transaction_projections.values() if r.transaction_type == 'Sell']
         # Independent rational checks on the finite canonical components.
-        assert sum((Fraction(r.realized_trading_pnl) for r in sales), Fraction(0)) == Fraction(summary['realized_pnl'])
-        assert sum((Fraction(r.released_cost_basis) for r in sales), Fraction(0)) == Fraction(summary['realized_cost_basis'])
+        assert sum((Fraction(r.realized_trading_pnl) for r in sales), Fraction(0)) == Fraction(summary['realized_trading_pnl'])
+        assert sum((Fraction(r.released_cost_basis) for r in sales), Fraction(0)) == Fraction(summary['released_cost_basis'])
     partial = snapshot.transaction_projections[3]
     assert partial.released_cost_basis == D('1.' + '6' * 54 + '7')
-    assert partial.post_cost_basis == D('3.' + '3' * 55)
+    assert partial.post_position_cost_basis == D('3.' + '3' * 55)
     assert partial.realized_trading_pnl == D('1.' + '3' * 55)
-    assert summary['total_quantity_held'] == summary['cost_basis'] == summary['average_cost'] == D('0')
-    assert summary['realized_pnl'] == D('5')
+    assert summary['total_quantity_held'] == summary['position_cost_basis'] == summary['average_unit_cost'] == D('0')
+    assert summary['realized_trading_pnl'] == D('5')
 
 
 def test_nonzero_tiny_position_is_not_clamped():
     rows = [_row(1, 'Buy', '1', '1.000000000000000000000000000001'),
             _row(2, 'Sell', '1', '1')]
     summary = build_asset_snapshot('PREC', rows).transactions
-    assert summary['total_quantity_held'] == summary['cost_basis'] == D('1E-30')
-    assert summary['average_cost'] == D('1')
+    assert summary['total_quantity_held'] == summary['position_cost_basis'] == D('1E-30')
+    assert summary['average_unit_cost'] == D('1')
 
 
 @pytest.mark.parametrize('ambient_precision', [3, 9, 28, 90])
@@ -155,7 +155,7 @@ def test_persistence_replay_snapshots_and_validation_ignore_ambient_context(ledg
         actual = PC.get_financial_snapshot(ledger.uid)
         assert actual == expected
         assert actual.as_portfolio_summary() == expected_rows
-        assert PC.get_available_cash_for_portfolio(ledger.pid) == expected.totals['total_cash']
+        assert PC.get_cash_balance_for_portfolio(ledger.pid) == expected.totals['cash_balance']
         assert PC.get_quantity_held_for_symbol(ledger.pid, 'BTC') == D('2.000000000000000000000000000001')
         assert ledger.svc.transaction_service._proposed_cash_effect('Buy', PRICE, QUANTITY, FEE) == (
             REFERENCE.add(REFERENCE.multiply(PRICE, QUANTITY), FEE).copy_negate())
@@ -173,9 +173,9 @@ def test_high_precision_db_to_replay_fees_cash_basis_and_partial_then_full_sale(
     bought = PC.get_asset_snapshot(ledger.pid, 'BTC')
     projection = bought.transaction_projections[first.id]
     assert projection.gross_amount == REFERENCE.multiply(PRICE, QUANTITY)
-    assert projection.purchase_cost == bought.transactions['cost_basis'] == purchase
+    assert projection.purchase_cost == bought.transactions['position_cost_basis'] == purchase
     assert projection.post_average_unit_cost == expected_ratio(purchase, QUANTITY, precision=111)
-    assert PC.get_available_cash_for_portfolio(ledger.pid) == purchase.copy_negate()
+    assert PC.get_cash_balance_for_portfolio(ledger.pid) == purchase.copy_negate()
     assert purchase != Context(prec=28).add(Context(prec=28).multiply(PRICE, QUANTITY), FEE)
 
     _trade(ledger, 'Buy', str(PRICE), '2', 2, fees=str(FEE))
@@ -191,44 +191,44 @@ def test_high_precision_db_to_replay_fees_cash_basis_and_partial_then_full_sale(
     # Return is now a shared direct-operand projection, independent of scope.
     from portfolio_app.utils.financial_arithmetic import division_precision
     precision = division_precision((row.realized_trading_pnl, row.released_cost_basis))
-    assert row.trade_return_percent == expected_percent(row.realized_trading_pnl, row.released_cost_basis, precision=precision)
+    assert row.realized_trading_return == expected_percent(row.realized_trading_pnl, row.released_cost_basis, precision=precision)
     assert_accounting_invariants(partial.transactions, cash=partial.cash_balance,
-                                 net_funding=D('0'), income=D('0'), book_value=partial.metrics['book_value'])
+                                 net_funding=D('0'), dividend_income=D('0'), book_value=partial.metrics['book_value'])
     remaining = D('2.000000000000000000000000000001')
     _trade(ledger, 'Sell', str(sale_price), str(remaining), 4, fees=str(FEE))
     closed = PC.get_portfolio_snapshot(ledger.pid)
-    assert closed.transactions['total_quantity_held'] == closed.transactions['cost_basis'] == D('0')
+    assert closed.transactions['total_quantity_held'] == closed.transactions['position_cost_basis'] == D('0')
     total_quantity = D('3.000000000000000000000000000001')
     expected_profit = REFERENCE.subtract(
         REFERENCE.multiply(D('1000000000'), total_quantity), REFERENCE.multiply(FEE, D('4')))
-    assert closed.transactions['realized_pnl'] == closed.cash_balance == expected_profit
+    assert closed.transactions['realized_trading_pnl'] == closed.cash_balance == expected_profit
     assert_accounting_invariants(closed.transactions, cash=closed.cash_balance,
-                                 net_funding=D('0'), income=D('0'), book_value=closed.metrics['book_value'])
+                                 net_funding=D('0'), dividend_income=D('0'), book_value=closed.metrics['book_value'])
 
 
 def test_high_precision_income_funding_and_multiple_portfolio_aggregation(ledger):
     second = ledger.svc.portfolio_service.create_portfolio('Other', user_id=ledger.uid)
     funding = D('123456789012345678901234567890.123456789012345678901')
-    income = D('0.0000000000000000000000000000001')
+    dividend_income = D('0.0000000000000000000000000000001')
     for pid in (ledger.pid, second.id):
         ledger.svc.portfolio_service.deposit_funds(pid, funding)
         ledger.svc.portfolio_service.deposit_funds(pid, FEE)
-        ledger.svc.transaction_service.add_dividend(pid, 'BTC', income, datetime(2024, 1, 1))
-        ledger.svc.transaction_service.add_dividend(pid, 'BTC', income, datetime(2024, 1, 2))
+        ledger.svc.transaction_service.add_dividend(pid, 'BTC', dividend_income, datetime(2024, 1, 1))
+        ledger.svc.transaction_service.add_dividend(pid, 'BTC', dividend_income, datetime(2024, 1, 2))
     db.session.expire_all()
     global_state = PC.get_financial_snapshot(ledger.uid)
     expected_funding = REFERENCE.add(funding, FEE)
-    expected_income = REFERENCE.multiply(income, D('2'))
+    expected_income = REFERENCE.multiply(dividend_income, D('2'))
     expected_cash = REFERENCE.add(expected_funding, expected_income)
     for portfolio in global_state.portfolios:
-        assert portfolio.net_contributions == portfolio.funding_inflows == expected_funding
-        assert portfolio.income == expected_income
+        assert portfolio.net_contributions == portfolio.gross_deposits == expected_funding
+        assert portfolio.dividend_income == expected_income
         assert portfolio.cash_balance == portfolio.metrics['book_value'] == expected_cash
         assert portfolio.withdrawals == D('0')
-    assert global_state.totals['total_cash'] == REFERENCE.multiply(expected_cash, D('2'))
-    assert global_state.totals['total_capital'] == REFERENCE.multiply(expected_funding, D('2'))
-    assert global_state.totals['total_income'] == REFERENCE.multiply(expected_income, D('2'))
-    assert global_state.total_book_value == global_state.totals['total_value']
+    assert global_state.totals['cash_balance'] == REFERENCE.multiply(expected_cash, D('2'))
+    assert global_state.totals['net_contributions'] == REFERENCE.multiply(expected_funding, D('2'))
+    assert global_state.totals['dividend_income'] == REFERENCE.multiply(expected_income, D('2'))
+    assert global_state.total_book_value == global_state.totals['book_value']
 
 
 def test_validation_walk_and_fee_limit_retain_tiny_distinctions(ledger):
@@ -251,8 +251,8 @@ def test_legacy_return_display_is_independent_of_ambient_rounding():
         ambient.prec = 2
         ambient.rounding = ROUND_UP
         result = calculate_return('1.005', '0', '100')
-        assert result['return_percent'] == D('1.005')
-        assert result['return_display'] == '+1.00%'
+        assert result['realized_trading_return'] == D('1.005')
+        assert result['trading_return_display'] == '+1.00%'
         assert ambient.rounding == ROUND_UP
 
 

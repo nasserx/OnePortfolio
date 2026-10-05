@@ -33,9 +33,9 @@ def test_all_retrieval_permutations_have_identical_accounting_without_mutating_d
         assert [row.id for row in ordered] == [9, 3, 4, 1, 2]
         summary = PortfolioCalculator.get_symbol_transactions_summary_from_list(supplied)
         assert summary['total_quantity_held'] == Decimal('1')
-        assert summary['cost_basis'] == summary['average_cost'] == Decimal('200')
-        assert summary['realized_pnl'] == Decimal('0')
-        assert summary['realized_cost_basis'] == Decimal('400')
+        assert summary['position_cost_basis'] == summary['average_unit_cost'] == Decimal('200')
+        assert summary['realized_trading_pnl'] == Decimal('0')
+        assert summary['released_cost_basis'] == Decimal('400')
         assert [row.id for row in supplied] == original_ids
 
 

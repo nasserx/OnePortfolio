@@ -30,19 +30,19 @@ def transaction_projection(transaction):
     ).transaction_projections[transaction.id]
 
 
-def assert_accounting_invariants(summary, *, cash, net_funding, income, book_value):
-    values = [cash, net_funding, income, book_value]
+def assert_accounting_invariants(summary, *, cash, net_funding, dividend_income, book_value):
+    values = [cash, net_funding, dividend_income, book_value]
     values.extend(summary[key] for key in (
-        'total_buy_cost', 'realized_proceeds', 'cost_basis',
-        'realized_cost_basis', 'realized_pnl', 'total_quantity_held',
+        'total_purchase_cost', 'net_sale_proceeds', 'position_cost_basis',
+        'released_cost_basis', 'realized_trading_pnl', 'total_quantity_held',
         'total_buy_quantity', 'total_sell_quantity',
     ))
     assert all(isinstance(value, Decimal) for value in values)
-    assert cash == exact_sum((net_funding, summary['total_buy_cost'].copy_negate(),
-                              summary['realized_proceeds'], income))
-    assert book_value == exact_add(cash, summary['cost_basis'])
-    assert book_value == exact_sum((net_funding, summary['realized_pnl'], income))
+    assert cash == exact_sum((net_funding, summary['total_purchase_cost'].copy_negate(),
+                              summary['net_sale_proceeds'], dividend_income))
+    assert book_value == exact_add(cash, summary['position_cost_basis'])
+    assert book_value == exact_sum((net_funding, summary['realized_trading_pnl'], dividend_income))
     assert summary['total_quantity_held'] == exact_subtract(
         summary['total_buy_quantity'], summary['total_sell_quantity'])
-    assert summary['total_buy_cost'] == exact_add(summary['cost_basis'], summary['realized_cost_basis'])
-    assert summary['realized_proceeds'] == exact_add(summary['realized_cost_basis'], summary['realized_pnl'])
+    assert summary['total_purchase_cost'] == exact_add(summary['position_cost_basis'], summary['released_cost_basis'])
+    assert summary['net_sale_proceeds'] == exact_add(summary['released_cost_basis'], summary['realized_trading_pnl'])

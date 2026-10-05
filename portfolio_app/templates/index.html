@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from 'macros/ui.html' import money, percent, fact, info, marker, empty_state %}
+{% from 'macros/ui.html' import money, percent, fact, info, marker, empty_state, financial_hints %}
 {% from 'macros/icons.html' import icon %}
 
 {% block title %}Overview — OnePortfolio{% endblock %}
@@ -18,39 +18,39 @@
         <div class="hero-figure surface-card">
             <h2 class="hero-figure__label" id="overview-headline">
                 Book Value
-                {{ info('Total cash plus the recorded cost basis of current positions') }}
+                {{ info(financial_hints['Book Value']) }}
             </h2>
 
             <p class="hero-figure__value num"
-               data-countup="{{ totals.total_value }}"
-               title="{{ totals.total_value|fmt_money }}">{{ totals.total_value|fmt_display_money }}</p>
+               data-countup="{{ totals.book_value }}"
+               title="{{ totals.book_value|fmt_money }}">{{ totals.book_value|fmt_display_money }}</p>
 
             <p class="hero-figure__meta">
-                {% if totals.return_display == '—' %}
+                {% if totals.trading_return_display == '—' %}
                     <span class="delta delta--flat">—</span>
                 {% else %}
-                    <span class="delta {% if totals.return_percent > 0 %}delta--pos{% elif totals.return_percent < 0 %}delta--neg{% else %}delta--flat{% endif %}">
-                        {% if totals.return_percent > 0 %}
+                    <span class="delta {% if totals.realized_trading_return > 0 %}delta--pos{% elif totals.realized_trading_return < 0 %}delta--neg{% else %}delta--flat{% endif %}">
+                        {% if totals.realized_trading_return > 0 %}
                             <span class="visually-hidden">Positive return:</span>
                             {{ icon('arrow-up-right') }}
-                        {% elif totals.return_percent < 0 %}
+                        {% elif totals.realized_trading_return < 0 %}
                             <span class="visually-hidden">Negative return:</span>
                             {{ icon('arrow-down-right') }}
                         {% else %}
                             <span class="visually-hidden">No gain or loss:</span>
                         {% endif %}
-                        {{ totals.return_percent|fmt_display_percent(signed=True) }}
+                        {{ totals.realized_trading_return|fmt_display_percent(signed=True) }}
                     </span>
                 {% endif %}
-                <span title="Realized Trading P&amp;L ÷ Released Cost Basis × 100. Excludes Dividend Income, funding flows, and open positions.">Realized Trading Return</span>
+                <span>Realized Return {{ info(financial_hints['Realized Return']) }}</span>
             </p>
 
             <div class="hero-figure__facts">
-                {% call fact('Total Capital') %}{{ money(totals.total_capital) }}{% endcall %}
-                {% call fact('Total Cash') %}{{ money(totals.total_cash) }}{% endcall %}
-                {% call fact('Total Income') %}{{ money(totals.total_income, tone='income', signed=true) }}{% endcall %}
-                {% call fact('Realized P&L', 'Profit or loss from completed sales only, using average cost and sell fees') %}
-                    {{ money(totals.realized_pnl, tone='sign', signed=true) }}
+                {% call fact('Net Contributions') %}{{ money(totals.net_contributions) }}{% endcall %}
+                {% call fact('Cash') %}{{ money(totals.cash_balance) }}{% endcall %}
+                {% call fact('Dividends') %}{{ money(totals.dividend_income, tone='income', signed=true) }}{% endcall %}
+                {% call fact('Realized P&L') %}
+                    {{ money(totals.realized_trading_pnl, tone='sign', signed=true) }}
                 {% endcall %}
             </div>
         </div>
@@ -68,9 +68,9 @@
                     <button type="button" class="segmented__option" id="split-book-tab" role="tab"
                             aria-selected="true" aria-controls="allocation-panel" tabindex="0"
                             data-alloc-view="book_value_chart">By Book Value</button>
-                    <button type="button" class="segmented__option" id="split-capital-tab" role="tab"
+                    <button type="button" class="segmented__option" id="split-contributions-tab" role="tab"
                             aria-selected="false" aria-controls="allocation-panel" tabindex="-1"
-                            data-alloc-view="capital_chart">By Capital</button>
+                            data-alloc-view="net_contributions_chart">By Net Contributions</button>
                 </div>
             </div>
             <div class="alloc-panel__body" id="allocation-panel" role="tabpanel"
@@ -96,9 +96,9 @@
             <div class="ledger__row ledger__row--head" role="row">
                 <div role="columnheader">Portfolio</div>
                 <div role="columnheader">Book Value</div>
-                <div role="columnheader">Income</div>
+                <div role="columnheader">Dividends</div>
                 <div role="columnheader">Realized P&amp;L</div>
-                <div role="columnheader" title="Realized Trading P&amp;L ÷ Released Cost Basis × 100">Realized Trading Return</div>
+                <div role="columnheader">Realized Return</div>
                 <div role="columnheader"><span class="visually-hidden">Actions</span></div>
             </div>
 
@@ -111,14 +111,14 @@
                 <div class="ledger__num" role="cell" data-label="Book Value">
                     {{ money(item.book_value) }}
                 </div>
-                <div class="ledger__num" role="cell" data-label="Income">
-                    {{ money(item.total_income, tone='income', signed=true) }}
+                <div class="ledger__num" role="cell" data-label="Dividends">
+                    {{ money(item.dividend_income, tone='income', signed=true) }}
                 </div>
                 <div class="ledger__num" role="cell" data-label="Realized P&amp;L">
-                    {{ money(item.realized_pnl, tone='sign', signed=true) }}
+                    {{ money(item.realized_trading_pnl, tone='sign', signed=true) }}
                 </div>
-                <div class="ledger__num" role="cell" data-label="Realized Trading Return">
-                    {{ percent(item.return_percent, item.return_display) }}
+                <div class="ledger__num" role="cell" data-label="Realized Return">
+                    {{ percent(item.realized_trading_return, item.trading_return_display) }}
                 </div>
                 <div class="ledger__action" role="cell">
                     <a href="{{ url_for('transactions.transaction_list', portfolio=item.name) }}"
@@ -136,7 +136,7 @@
         </div>
         {% else %}
         {% call empty_state('folder-plus', 'No Portfolios Yet',
-            'Create your first portfolio to start recording cash events, asset entries, and income.') %}
+            'Create your first portfolio to start recording cash events, asset entries, and dividend income.') %}
             <a href="{{ url_for('portfolios.portfolios_list') }}" class="btn btn-primary">
                 {{ icon('plus') }}
                 <span>Create Portfolio</span>

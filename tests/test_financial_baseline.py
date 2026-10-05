@@ -49,17 +49,17 @@ def _trade(ledger, kind, price, quantity, day, fees='0', symbol='BTC'):
 def _assert_btc_state(ledger, expected):
     summary = PC.get_symbol_transactions_summary(ledger.pid, 'BTC', user_id=ledger.uid)
     dashboard = PC.get_portfolio_dashboard_totals(user_id=ledger.uid)
-    # Cash, net funding, quantity, open basis, trading P&L, income, book value.
+    # Cash, net funding, quantity, open basis, trading P&L, dividend_income, book value.
     actual = (
-        dashboard['total_cash'], dashboard['total_capital'],
-        summary['total_quantity_held'], summary['cost_basis'],
-        dashboard['realized_pnl'], dashboard['total_income'], dashboard['total_value'],
+        dashboard['cash_balance'], dashboard['net_contributions'],
+        summary['total_quantity_held'], summary['position_cost_basis'],
+        dashboard['realized_trading_pnl'], dashboard['dividend_income'], dashboard['book_value'],
     )
     assert actual == tuple(map(D, expected))
-    assert summary['realized_pnl'] == dashboard['realized_pnl']
+    assert summary['realized_trading_pnl'] == dashboard['realized_trading_pnl']
     assert_accounting_invariants(
-        summary, cash=dashboard['total_cash'], net_funding=dashboard['total_capital'],
-        income=dashboard['total_income'], book_value=dashboard['total_value'],
+        summary, cash=dashboard['cash_balance'], net_funding=dashboard['net_contributions'],
+        dividend_income=dashboard['dividend_income'], book_value=dashboard['book_value'],
     )
     return dashboard
 
@@ -74,26 +74,26 @@ def test_btc_unfunded_buy_funding_sale_withdrawal_and_profit_redeposit(ledger):
 
     sale = _trade(ledger, 'Sell', '186000', '0.003', 3)
     after_sale = _assert_btc_state(ledger, ('558', '555', '0', '0', '3', '0', '558'))
-    assert transaction_projection(sale).cash_amount == D('558')
+    assert transaction_projection(sale).transaction_amount == D('558')
     trade_return = expected_percent('3', '555')
-    assert transaction_projection(sale).trade_return_percent == trade_return
-    assert after_sale['return_percent'] == trade_return
+    assert transaction_projection(sale).realized_trading_return == trade_return
+    assert after_sale['realized_trading_return'] == trade_return
 
-    maximum = PC.get_available_cash_for_portfolio(ledger.pid, user_id=ledger.uid)
+    maximum = PC.get_cash_balance_for_portfolio(ledger.pid, user_id=ledger.uid)
     ledger.svc.portfolio_service.withdraw_funds(ledger.pid, maximum, date=datetime(2024, 1, 4))
     after_withdrawal = _assert_btc_state(ledger, ('0', '-3', '0', '0', '3', '0', '0'))
-    assert after_withdrawal['total_contributed'] == D('555')
-    assert after_withdrawal['return_percent'] == trade_return
+    assert after_withdrawal['gross_deposits'] == D('555')
+    assert after_withdrawal['realized_trading_return'] == trade_return
 
     ledger.svc.portfolio_service.deposit_funds(ledger.pid, D('3'), date=datetime(2024, 1, 5))
     final = _assert_btc_state(ledger, ('3', '0', '0', '0', '3', '0', '3'))
-    assert final['total_contributed'] == D('558')
-    assert final['return_percent'] == expected_percent('3', '555')
-    assert transaction_projection(sale).trade_return_percent == trade_return
-    assert final['return_percent'] == transaction_projection(sale).trade_return_percent
+    assert final['gross_deposits'] == D('558')
+    assert final['realized_trading_return'] == expected_percent('3', '555')
+    assert transaction_projection(sale).realized_trading_return == trade_return
+    assert final['realized_trading_return'] == transaction_projection(sale).realized_trading_return
     # Funding no longer changes the denominator at any scope.
-    assert final['return_display'] == '+0.54%'
-    assert f'{transaction_projection(sale).trade_return_percent:+,.2f}%' == '+0.54%'
+    assert final['trading_return_display'] == '+0.54%'
+    assert f'{transaction_projection(sale).realized_trading_return:+,.2f}%' == '+0.54%'
 
 
 def test_historical_insertion_agrees_across_calculators_pages_apis_and_sale_projection(ledger, app):
@@ -104,9 +104,9 @@ def test_historical_insertion_agrees_across_calculators_pages_apis_and_sale_proj
 
     summary = PC.get_symbol_transactions_summary(ledger.pid, 'BTC', user_id=ledger.uid)
     assert summary['total_quantity_held'] == D('1')
-    assert summary['cost_basis'] == D('150')
-    assert summary['average_cost'] == D('150')
-    assert summary['realized_pnl'] == D('0')
+    assert summary['position_cost_basis'] == D('150')
+    assert summary['average_unit_cost'] == D('150')
+    assert summary['realized_trading_pnl'] == D('0')
     db.session.refresh(sale)
     assert transaction_projection(sale).applicable_average_unit_cost == D('150')
     assert transaction_projection(sale).realized_trading_pnl == D('0')
@@ -116,26 +116,26 @@ def test_historical_insertion_agrees_across_calculators_pages_apis_and_sale_proj
     portfolio = _get_portfolios_page_context()['portfolio_details'][0]
     overview, _ = ledger.svc.overview_service.get_portfolio_summary()
     dashboard = ledger.svc.overview_service.get_portfolio_dashboard_totals()
-    performance = ledger.svc.overview_service.get_symbol_performance()[0]
+    performance = ledger.svc.overview_service.get_symbol_financials()[0]
     assert assets == {**summary,
-        'total_realized_earnings': D('0'), 'return_percent': D('0'), 'return_display': '+0.00%',
+        'total_realized_earnings': D('0'), 'realized_trading_return': D('0'), 'trading_return_display': '+0.00%',
         'realized_trading_pnl': D('0'), 'released_cost_basis': D('150'),
         'dividend_income': D('0'), 'realized_trading_return': D('0'),
     }
     for row in (portfolio, overview[0]):
-        assert row['positions'] == D('150')
-        assert row['realized_pnl'] == D('0')
-    assert dashboard['total_positions'] == D('150')
-    assert dashboard['realized_pnl'] == performance['realized_pnl'] == D('0')
-    assert performance['held_cost_basis'] == D('150')
+        assert row['position_cost_basis'] == D('150')
+        assert row['realized_trading_pnl'] == D('0')
+    assert dashboard['position_cost_basis'] == D('150')
+    assert dashboard['realized_trading_pnl'] == performance['realized_trading_pnl'] == D('0')
+    assert performance['position_cost_basis'] == D('150')
 
     client = app.test_client()
     authenticate_client(client, ledger.uid)
     response = client.get('/api/portfolio-summary')
     assert response.status_code == 200
     api_row = response.get_json()['portfolio_summary'][0]
-    assert D(str(api_row['positions'])) == D('150')
-    assert D(str(api_row['realized_pnl'])) == D('0')
+    assert D(str(api_row['position_cost_basis'])) == D('150')
+    assert D(str(api_row['realized_trading_pnl'])) == D('0')
     holdings = client.get('/api/holdings', query_string={'portfolio_id': ledger.pid, 'symbol': 'BTC'})
     assert holdings.status_code == 200
     assert D(holdings.get_json()['held_quantity']) == D('1')
@@ -164,11 +164,11 @@ def test_assets_and_overview_agree_regardless_of_repository_or_display_order(
     assets = holding['summary']
     overview, _ = ledger.svc.overview_service.get_portfolio_summary()
 
-    assert overview[0]['positions'] == D('150')
-    assert overview[0]['realized_pnl'] == D('0')
+    assert overview[0]['position_cost_basis'] == D('150')
+    assert overview[0]['realized_trading_pnl'] == D('0')
     assert assets['total_quantity_held'] == D('1')
-    assert assets['cost_basis'] == assets['average_cost'] == D('150')
-    assert assets['realized_pnl'] == overview[0]['realized_pnl'] == D('0')
+    assert assets['position_cost_basis'] == assets['average_unit_cost'] == D('150')
+    assert assets['realized_trading_pnl'] == overview[0]['realized_trading_pnl'] == D('0')
     assert transaction_projection(sale).realized_trading_pnl == D('0')
     assert [row.id for row in supplied] == original_ids
     assert [row.id for row in holding['transactions']] == list(reversed(original_ids))
@@ -190,24 +190,24 @@ def test_canonical_row_ignores_persisted_ten_decimal_average(ledger):
         # evidence. No production model property may use this formula anymore.
         legacy_pnl = (persisted.price - D('1.6666666667')) * persisted.quantity - persisted.fees
         assert legacy_pnl == D('1.3333333333')
-        assert fresh['realized_cost_basis'] == expected_ratio('5', '3')
-        assert fresh['realized_pnl'] == D('1.' + '3' * 55)
-        assert D('0') < fresh['realized_pnl'] - legacy_pnl < D('1E-10')
-        assert transaction_projection(persisted).realized_trading_pnl == fresh['realized_pnl']
+        assert fresh['released_cost_basis'] == expected_ratio('5', '3')
+        assert fresh['realized_trading_pnl'] == D('1.' + '3' * 55)
+        assert D('0') < fresh['realized_trading_pnl'] - legacy_pnl < D('1E-10')
+        assert transaction_projection(persisted).realized_trading_pnl == fresh['realized_trading_pnl']
 
 
 def test_current_unfunded_buy_acceptance_but_cost_increasing_edit_is_rejected(ledger):
     buy = _trade(ledger, 'Buy', '10', '1', 1)
-    assert PC.get_available_cash_for_portfolio(ledger.pid) == D('-10')
+    assert PC.get_cash_balance_for_portfolio(ledger.pid) == D('-10')
     with pytest.raises(ValueError) as error:
         ledger.svc.transaction_service.update_transaction(buy.id, price=D('11'))
     assert str(error.value) == MESSAGES['INSUFFICIENT_AMOUNT']
     db.session.refresh(buy)
     assert buy.price == D('10')
-    assert PC.get_available_cash_for_portfolio(ledger.pid) == D('-10')
+    assert PC.get_cash_balance_for_portfolio(ledger.pid) == D('-10')
     # Removing this independent buy is allowed and reverses its cash effect.
     ledger.svc.transaction_service.delete_transaction(buy.id)
-    assert PC.get_available_cash_for_portfolio(ledger.pid) == D('0')
+    assert PC.get_cash_balance_for_portfolio(ledger.pid) == D('0')
 
 
 def test_realized_return_excludes_dividends_and_unused_deposit_no_longer_dilutes(ledger):
@@ -216,24 +216,24 @@ def test_realized_return_excludes_dividends_and_unused_deposit_no_longer_dilutes
     sale = _trade(ledger, 'Sell', '120', '5', 3)
     ledger.svc.transaction_service.add_dividend(ledger.pid, 'BTC', D('75'), datetime(2024, 1, 4))
     before = PC.get_portfolio_dashboard_totals(user_id=ledger.uid)
-    asset_before = ledger.svc.overview_service.get_symbol_performance()[0]
-    trade_return = transaction_projection(sale).trade_return_percent
+    asset_before = ledger.svc.overview_service.get_symbol_financials()[0]
+    trade_return = transaction_projection(sale).realized_trading_return
     assert trade_return == D('100') / D('500') * D('100') == D('20')
-    assert asset_before['return_percent'] == trade_return == D('20')
-    assert before['return_percent'] == trade_return
+    assert asset_before['realized_trading_return'] == trade_return == D('20')
+    assert before['realized_trading_return'] == trade_return
     assert before['total_realized_earnings'] == D('175')
 
     ledger.svc.portfolio_service.deposit_funds(ledger.pid, D('2000'), date=datetime(2024, 1, 5))
     after = PC.get_portfolio_dashboard_totals(user_id=ledger.uid)
     portfolios, _ = ledger.svc.overview_service.get_portfolio_summary()
-    asset_after = ledger.svc.overview_service.get_symbol_performance()[0]
-    assert after['return_percent'] == before['return_percent'] == D('20')
-    assert portfolios[0]['return_percent'] == after['return_percent']
-    assert after['total_cash'] - before['total_cash'] == D('2000')
-    for key in ('realized_pnl', 'total_income', 'total_positions', 'total_realized_earnings'):
+    asset_after = ledger.svc.overview_service.get_symbol_financials()[0]
+    assert after['realized_trading_return'] == before['realized_trading_return'] == D('20')
+    assert portfolios[0]['realized_trading_return'] == after['realized_trading_return']
+    assert after['cash_balance'] - before['cash_balance'] == D('2000')
+    for key in ('realized_trading_pnl', 'dividend_income', 'position_cost_basis', 'total_realized_earnings'):
         assert after[key] == before[key]
     assert asset_after == asset_before
-    assert transaction_projection(sale).trade_return_percent == trade_return
+    assert transaction_projection(sale).realized_trading_return == trade_return
 
 
 @pytest.mark.parametrize('quantity, persisted_quantity', [
@@ -264,7 +264,7 @@ def test_asset_price_and_average_display_precision_follows_recorded_prices(
     g._services = ledger.svc
     holding = _get_transactions_page_context()['holdings'][0]
     assert holding['price_decimal_places'] == price_places
-    assert holding['avg_cost_decimal_places'] == average_places
+    assert holding['average_unit_cost_decimal_places'] == average_places
 
 
 def test_quantity_walk_and_recalculation_preserve_buy_first_when_clock_times_disagree(ledger):

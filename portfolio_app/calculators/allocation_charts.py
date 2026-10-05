@@ -61,47 +61,47 @@ def _allocation_rows(portfolio_summary: List[Dict[str, Any]]) -> List[Dict[str, 
     return rows
 
 
-def _capital_allocation_rows(portfolio_summary: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Portfolio allocation rows by Total Capital (deposits - withdrawals)."""
+def _contribution_allocation_rows(portfolio_summary: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Portfolio allocation rows by positive Net Contributions."""
     meaningful = [
         p for p in portfolio_summary
-        if Decimal(str(p.get('total_capital', ZERO))) > ZERO
+        if Decimal(str(p.get('net_contributions', ZERO))) > ZERO
     ]
-    total_capital = exact_sum(p.get('total_capital', ZERO) for p in meaningful)
+    positive_contribution_total = exact_sum(p.get('net_contributions', ZERO) for p in meaningful)
     ranked = sorted(
         meaningful,
-        key=lambda p: Decimal(str(p.get('total_capital', ZERO))),
+        key=lambda p: Decimal(str(p.get('net_contributions', ZERO))),
         reverse=True,
     )
 
     if len(ranked) <= ALLOCATION_TOP_N:
         selected = ranked
-        other_capital = ZERO
+        other_contributions = ZERO
     else:
         selected = ranked[:ALLOCATION_TOP_N]
-        other_capital = exact_sum(p.get('total_capital', ZERO) for p in ranked[ALLOCATION_TOP_N:])
+        other_contributions = exact_sum(p.get('net_contributions', ZERO) for p in ranked[ALLOCATION_TOP_N:])
 
     rows = []
     for portfolio in selected:
-        capital = Decimal(str(portfolio.get('total_capital', ZERO)))
+        net_contributions = Decimal(str(portfolio.get('net_contributions', ZERO)))
         allocation = (
-            financial_percent(capital, total_capital)
-            if total_capital != ZERO else ZERO
+            financial_percent(net_contributions, positive_contribution_total)
+            if positive_contribution_total != ZERO else ZERO
         )
         rows.append({
             'name': portfolio['name'],
-            'capital': float(capital),
+            'net_contributions': float(net_contributions),
             'allocation': float(allocation),
         })
 
-    if other_capital != ZERO or len(ranked) > ALLOCATION_TOP_N:
+    if other_contributions != ZERO or len(ranked) > ALLOCATION_TOP_N:
         allocation = (
-            financial_percent(other_capital, total_capital)
-            if total_capital != ZERO else ZERO
+            financial_percent(other_contributions, positive_contribution_total)
+            if positive_contribution_total != ZERO else ZERO
         )
         rows.append({
             'name': ALLOCATION_OTHERS_LABEL,
-            'capital': float(other_capital),
+            'net_contributions': float(other_contributions),
             'allocation': float(allocation),
         })
 
@@ -111,7 +111,7 @@ def _capital_allocation_rows(portfolio_summary: List[Dict[str, Any]]) -> List[Di
 def build_allocation_chart_data(portfolio_summary: List[Dict[str, Any]]) -> Dict[str, Any]:
     """Build the two portfolio allocation doughnut datasets."""
     allocation_rows = _allocation_rows(portfolio_summary)
-    capital_rows = _capital_allocation_rows(portfolio_summary)
+    contribution_rows = _contribution_allocation_rows(portfolio_summary)
 
     return {
         'book_value_chart': {
@@ -121,11 +121,11 @@ def build_allocation_chart_data(portfolio_summary: List[Dict[str, Any]]) -> Dict
             'total':       float(exact_sum(r['book_value'] for r in allocation_rows)),
             'grouped':     len([p for p in portfolio_summary if Decimal(str(p['book_value'])) > ZERO]) > ALLOCATION_TOP_N,
         },
-        'capital_chart': {
-            'categories':  [r['name'] for r in capital_rows],
-            'allocations': [r['allocation'] for r in capital_rows],
-            'values':      [r['capital'] for r in capital_rows],
-            'total':       float(exact_sum(r['capital'] for r in capital_rows)),
-            'grouped':     len([p for p in portfolio_summary if Decimal(str(p.get('total_capital', ZERO))) > ZERO]) > ALLOCATION_TOP_N,
+        'net_contributions_chart': {
+            'categories':  [r['name'] for r in contribution_rows],
+            'allocations': [r['allocation'] for r in contribution_rows],
+            'values':      [r['net_contributions'] for r in contribution_rows],
+            'total':       float(exact_sum(r['net_contributions'] for r in contribution_rows)),
+            'grouped':     len([p for p in portfolio_summary if Decimal(str(p.get('net_contributions', ZERO))) > ZERO]) > ALLOCATION_TOP_N,
         },
     }

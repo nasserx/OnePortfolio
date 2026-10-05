@@ -19,6 +19,12 @@
   ============================================================================
 #}
 {% from 'macros/icons.html' import icon %}
+{% set financial_hints = {
+  'Book Value': 'Book Value = Cash + Cost Basis',
+  'Net Contributions': 'Net Contributions = Deposits − Withdrawals',
+  'Realized P&L': 'Realized P&L = Net Sale Proceeds − Released Cost Basis',
+  'Realized Return': 'Realized Return = Realized P&L ÷ Released Cost Basis × 100'
+} %}
 
 
 {# Financial record type text: semantic foreground only, never a badge fill. #}
@@ -28,7 +34,7 @@
     'Deposit': 'positive',
     'Sell': 'negative',
     'Withdrawal': 'negative',
-    'Income': 'income'
+    'Dividends': 'income'
   }.get(value, 'neutral') -%}
   <span class="record-type record-type--{{ role }}">{{ value }}</span>
 {%- endmacro -%}
@@ -89,6 +95,7 @@
   `hint` renders an accessible tooltip dot next to the label.
 #}
 {%- macro fact(label, hint=none) -%}
+  {%- set hint = hint or financial_hints.get(label) -%}
   <div class="fact supporting-item">
     <p class="fact__label supporting-item__label">
       {{ label }}
@@ -102,13 +109,12 @@
 {#
   A label/value pair in a disclosure row's summary strip.
 
-  Rendered with spans rather than block elements: these live inside the
-  row's <button>, which only accepts phrasing content. The block layout
-  comes from CSS instead.
+  Compact summary metrics live inside the disclosure button. Formula help is
+  intentionally limited to the Overview, not these dense summary strips.
 #}
-{%- macro metric(label, hint=none) -%}
+{%- macro metric(label) -%}
   <span class="metric">
-    <span class="metric__label"{% if hint %} title="{{ hint }}"{% endif %}>{{ label }}</span>
+    <span class="metric__label">{{ label }}</span>
     <span class="metric__value">{{ caller() }}</span>
   </span>
 {%- endmacro -%}
@@ -121,6 +127,7 @@
         role="img"
         aria-label="{{ text }}"
         data-bs-toggle="tooltip"
+        data-bs-trigger="hover focus"
         data-bs-placement="top"
         title="{{ text }}">{{ icon('info-circle') }}</span>
 {%- endmacro -%}

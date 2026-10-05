@@ -30,16 +30,16 @@ MESSAGES = {
     'TRANSACTION_ADD_FAILED':      "We couldn't add the asset entry. Please try again in a moment.",
     'TRANSACTION_UPDATE_FAILED':   "We couldn't update the asset entry. Please try again in a moment.",
     'TRANSACTION_DELETE_FAILED':   "We couldn't remove the asset entry. Please try again in a moment.",
-    'DIVIDEND_ADD_FAILED':         "We couldn't add the income. Please try again in a moment.",
-    'DIVIDEND_UPDATE_FAILED':      "We couldn't update the income. Please try again in a moment.",
-    'DIVIDEND_DELETE_FAILED':      "We couldn't remove the income. Please try again in a moment.",
+    'DIVIDEND_ADD_FAILED':         "We couldn't add the dividend income. Please try again in a moment.",
+    'DIVIDEND_UPDATE_FAILED':      "We couldn't update the dividend income. Please try again in a moment.",
+    'DIVIDEND_DELETE_FAILED':      "We couldn't remove the dividend income. Please try again in a moment.",
     'SYMBOL_ADD_FAILED':           "We couldn't track this asset. Please try again in a moment.",
     'SYMBOL_DELETE_FAILED':        "We couldn't stop tracking this asset. Please try again in a moment.",
     'EMAIL_UPDATE_FAILED':         "We couldn't update your email. Please try again in a moment.",
     # Not-found errors
     'PORTFOLIO_NOT_FOUND':         "This portfolio no longer exists.",
     'TRANSACTION_NOT_FOUND':       "This asset entry no longer exists.",
-    'DIVIDEND_NOT_FOUND':          "This income entry no longer exists.",
+    'DIVIDEND_NOT_FOUND':          "This dividend income entry no longer exists.",
     'CASH_EVENT_NOT_FOUND':        "This transaction no longer exists.",
     'SYMBOL_NOT_FOUND':            "This tracked symbol no longer exists.",
 
@@ -91,13 +91,13 @@ MESSAGES = {
     'WITHDRAWAL_SUCCESSFUL':       "Withdrawal successful.",
 
     # Dividends
-    'DIVIDEND_ADDED':              "Income added.",
-    'DIVIDEND_UPDATED':            "Income updated.",
-    'DIVIDEND_REMOVED':            "Income removed.",
+    'DIVIDEND_ADDED':              "Dividends added.",
+    'DIVIDEND_UPDATED':            "Dividends updated.",
+    'DIVIDEND_REMOVED':            "Dividends removed.",
 
     # Remove confirmation prompts
     'CONFIRM_REMOVE_TRANSACTION':  "Remove this asset entry?",
-    'CONFIRM_REMOVE_DIVIDEND':     "Remove this income entry?",
+    'CONFIRM_REMOVE_DIVIDEND':     "Remove this dividend income entry?",
 
     # Form validation — generic
     'FIELD_REQUIRED':              "This field is required.",

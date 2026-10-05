@@ -23,13 +23,13 @@ def index() -> str:
 
     svc = get_services()
     snapshot = svc.overview_service.get_financial_snapshot()
-    portfolio_summary, total_value = snapshot.as_portfolio_summary()
+    portfolio_summary, book_value = snapshot.as_portfolio_summary()
     totals = dict(snapshot.totals)
 
     return render_template(
         'index.html',
         portfolio_summary=portfolio_summary,
-        total_value=total_value,
+        book_value=book_value,
         totals=totals,
         chart_data=build_allocation_chart_data(portfolio_summary),
     )
@@ -40,11 +40,11 @@ def index() -> str:
 def api_portfolio_summary() -> Response:
     """API endpoint for portfolio summary."""
     svc = get_services()
-    portfolio_summary, total_value = svc.overview_service.get_portfolio_summary()
+    portfolio_summary, book_value = svc.overview_service.get_portfolio_summary()
 
     return jsonify(decimal_json({
         'portfolio_summary': portfolio_summary,
-        'total_value': total_value
+        'book_value': book_value
     }))
 
 

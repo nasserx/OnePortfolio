@@ -107,10 +107,10 @@ The only application colour extensions are:
 - `--financial-flat`
 
 They are permitted only when colour communicates real financial meaning:
-signed returns, realized profit/loss, signed income, financial delta
+signed returns, realized profit/loss, signed Dividend Income, financial delta
 indicators, financial record-type text, and the currently selected Buy/Sell
 transaction direction. Record types use the shared `record_type` Jinja macro:
-Buy and Deposit are positive, Sell and Withdrawal are negative, Income uses
+Buy and Deposit are positive, Sell and Withdrawal are negative, Dividend Income uses
 the income role, and Initial or unknown types remain neutral.
 Explicit signs, values, and selector labels remain the primary cue; colour is
 never the only cue.
@@ -181,10 +181,10 @@ Authoritative behavior remains:
 - quantity: variable precision with trailing zeros removed;
 - percentage: two decimals by default;
 - price: per-asset precision;
-- average cost: at least two decimals or price precision;
+- Average Unit Cost: at least two decimals or price precision;
 - fees: trailing zeros removed;
 - realized profit/loss: explicit sign plus financial semantic role;
-- income: financial income role;
+- Dividend Income: financial income role;
 - undefined: em dash.
 
 Internal Decimal precision and display precision remain separate. Do not

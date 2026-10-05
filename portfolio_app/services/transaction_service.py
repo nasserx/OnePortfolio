@@ -349,7 +349,7 @@ class TransactionService:
         """
         if delta_change >= ZERO:
             return
-        current_cash = PortfolioCalculator.get_available_cash_for_portfolio(
+        current_cash = PortfolioCalculator.get_cash_balance_for_portfolio(
             portfolio_id, user_id=self.portfolio_repo.user_id,
         )
         if exact_add(current_cash, delta_change) < ZERO:

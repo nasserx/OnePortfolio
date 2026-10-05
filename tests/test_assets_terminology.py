@@ -92,8 +92,8 @@ def test_assets_page_uses_asset_terminology_and_total_buy_cost(app):
         uid = _seed_user()
         portfolio_id = _seed_asset_with_activity(uid)
         summary = PortfolioCalculator.get_symbol_transactions_summary(portfolio_id, 'AAPL', user_id=uid)
-        assert summary['total_buy_cost'] == _dec('1000.0000000000')
-        assert summary['cost_basis'] == _dec('500.0000000000')
+        assert summary['total_purchase_cost'] == _dec('1000.0000000000')
+        assert summary['position_cost_basis'] == _dec('500.0000000000')
 
     client = app.test_client()
     _login(client, uid)
@@ -105,8 +105,8 @@ def test_assets_page_uses_asset_terminology_and_total_buy_cost(app):
 
     for label in (
         'Assets', 'Add Asset', 'Entries',
-        'Total Spent', 'Quantity', 'Average Cost',
-        'Realized P&L', 'Realized Trading Return', 'Income', 'Fee',
+        'Purchase Cost', 'Quantity', 'Avg. Cost',
+        'Realized P&L', 'Realized Return', 'Dividends', 'Fee',
             'Total Amount', 'Return',
     ):
         assert label in text
@@ -117,13 +117,13 @@ def test_assets_page_uses_asset_terminology_and_total_buy_cost(app):
             'TRANSACTIONS', 'TOTAL SPENT',
         'HOLDINGS', 'AVG COST', 'TOTAL DIVIDENDS',
             'Qty', 'Fees', 'P&L(%)',
-        'Dividend',
+        'Miscellaneous Income',
     ):
         assert old_label not in text
     assert 'Search symbol...' not in html
 
-    # Trading P&L 100 / released basis 500; Dividend Income 75 is excluded.
-    assert re.search(r'Realized P&L\s+\+100\.00\s+Realized Trading Return\s+\+20\.00%', text)
+    # Trading P&L 100 / released basis 500; Dividends 75 is excluded.
+    assert re.search(r'Realized P&L\s+\+100\.00\s+Realized Return\s+\+20\.00%', text)
     assert not re.search(r'Realized P&L\s+\+100\.00\s+\+10\.00%', text)
     assert '1,000.00' in text
     assert '500.00' not in text
@@ -139,15 +139,15 @@ def test_asset_entry_and_income_financial_behavior_is_unchanged(app):
         tx_summary = PortfolioCalculator.get_symbol_transactions_summary(
             portfolio_id, 'AAPL', user_id=uid,
         )
-        performance = PortfolioCalculator.get_realized_performance_for_portfolio(
+        performance = PortfolioCalculator.get_realized_earnings_for_portfolio(
             portfolio_id, user_id=uid,
         )
-        cash = PortfolioCalculator.get_available_cash_for_portfolio(portfolio_id, user_id=uid)
+        cash = PortfolioCalculator.get_cash_balance_for_portfolio(portfolio_id, user_id=uid)
 
-        assert tx_summary['realized_pnl'] == _dec('100.0000000000')
-        assert tx_summary['cost_basis'] == _dec('500.0000000000')
-        assert performance['total_income'] == _dec('75.0000000000')
-        assert performance['realized_pnl'] == _dec('100.0000000000')
+        assert tx_summary['realized_trading_pnl'] == _dec('100.0000000000')
+        assert tx_summary['position_cost_basis'] == _dec('500.0000000000')
+        assert performance['dividend_income'] == _dec('75.0000000000')
+        assert performance['realized_trading_pnl'] == _dec('100.0000000000')
         assert performance['total_realized_earnings'] == _dec('175.0000000000')
         assert 'total_dividends' not in performance
         assert 'return_numerator' not in performance
@@ -200,4 +200,4 @@ def test_assets_routes_keep_existing_urls_and_return_new_messages(app):
     assert add_entry.status_code == 200
     assert add_entry.get_json()['message'] == 'Asset entry added.'
     assert add_income.status_code == 200
-    assert add_income.get_json()['message'] == 'Income added.'
+    assert add_income.get_json()['message'] == 'Dividends added.'

@@ -52,10 +52,9 @@ def test_disclosures_keep_behavior_hooks_and_shared_surface_contracts():
 def test_existing_summary_metrics_and_formatters_are_preserved():
     expected = (
         ("metric('Entries')", 'item.events|length'),
-        ("metric('Total Capital')", 'money(item.total_capital)'),
-        ("metric('Total Cash')", 'money(item.withdrawable_cash)'),
-        ("metric('Positions')", 'money(item.positions)'),
-        ("metric('Book Value')", 'money(item.book_value)'),
+        ("metric('Net Contributions')", 'money(item.net_contributions)'),
+        ("metric('Cash')", 'money(item.cash_balance)'),
+        ("metric('Cost Basis')", 'money(item.position_cost_basis)'),
     )
     positions = []
     for label, formatter in expected:
@@ -70,7 +69,7 @@ def test_capital_event_ledger_uses_shared_table_and_financial_contracts():
     assert '{{ record_type(event.event_type) }}' in TEMPLATE
     assert "money(event.amount_delta, tone='sign', signed=true)" in TEMPLATE
     assert '>Total Amount</th>' in TEMPLATE
-    assert 'Capital Events for {{ item.portfolio.name }}' in TEMPLATE
+    assert 'Funding Entries for {{ item.portfolio.name }}' in TEMPLATE
     assert 'table-light' not in TEMPLATE
     assert 'table-hover' not in TEMPLATE
     assert 'class="small records-cell' not in TEMPLATE
@@ -93,7 +92,7 @@ def test_action_menus_and_dialogs_use_clear_title_case_contracts():
     for label in (
         'Rename', 'Deposit', 'Withdraw', 'Remove',
         'Edit', 'New Portfolio', 'Rename Portfolio',
-        'Edit Capital Entry', 'Remove Capital Entry', 'Save Changes',
+        'Edit Funding Entry', 'Remove Funding Entry', 'Save Changes',
     ):
         assert label in TEMPLATE
 

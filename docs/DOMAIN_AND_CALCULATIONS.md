@@ -1,85 +1,121 @@
 # Domain and Calculations
 
-All financial calculations use `Decimal`.
+This is the canonical financial glossary. All financial arithmetic uses Decimal.
+Storage, calculation and display precision are separate contracts; see
+[Financial read models](FINANCIAL_READ_MODEL.md).
 
-## Realized P&L
+## Canonical glossary
 
-Realized P&L is profit or loss from completed sales only.
+| Concept | Meaning / formula | Canonical identifier |
+| --- | --- | --- |
+| Net Contributions | Deposits − Withdrawals, including initial funding in deposits | `net_contributions` |
+| Cash Balance | Net Contributions − Buy Outflows + Net Sale Proceeds + Dividend Income | `cash_balance` |
+| Position Cost Basis | Remaining acquisition cost of open positions, including allocated buy fees | `position_cost_basis` |
+| Book Value | Cash Balance + Position Cost Basis | `book_value` |
+| Total Purchase Cost | Sum of all historical buy outflows, including buy fees | `total_purchase_cost` |
+| Average Unit Cost | Position Cost Basis ÷ current Quantity; zero after complete liquidation | `average_unit_cost` |
+| Released Cost Basis | Acquisition cost released by sales through canonical moving-average replay | `released_cost_basis` |
+| Net Sale Proceeds | Gross sale proceeds − sell fees | `net_sale_proceeds` |
+| Realized Trading P&L | Net Sale Proceeds − Released Cost Basis | `realized_trading_pnl` |
+| Dividend Income | Cash dividends/distributions received from investments | `dividend_income` |
+| Total Realized Earnings | Realized Trading P&L + Dividend Income; a money amount | `total_realized_earnings` |
+| Realized Trading Return | Realized Trading P&L ÷ Released Cost Basis × 100 | `realized_trading_return` |
+| Funding Entries | Initial funding, deposits and withdrawals recorded by `PortfolioEvent` | Existing event model |
+| Asset Entries | Buy, Sell and Dividend records displayed for an asset | Existing transaction/dividend models |
 
-Formula per sell:
+Gross deposits (`gross_deposits`) are Initial + Deposit inflows before withdrawals.
+They are not Net Contributions and are not a return denominator.
 
-`(sell price - average cost) * quantity - sell fees`
+Negative Net Contributions are valid: deposits 555 minus withdrawals 558 = −3.
+This means withdrawals exceed deposits, not a loss. Negative Cash Balance also
+remains permitted under the current creation policy; existing mutation safeguards
+are unchanged.
 
-Average cost uses the Average Cost Method over chronological asset entries. Income is never added to Realized P&L.
+## Canonical accounting
 
-### Average Cost Method Ordering
+Replay is per portfolio/symbol, ordered by effective calendar date ascending,
+Buy before Sell on the same date, then database ID ascending. Presentation may
+independently show newest first.
 
-Asset entries are processed per portfolio and symbol in chronological order. When multiple entries share the same calendar date, buys are processed before sells, then rows are ordered by database id. This preserves deterministic average-cost behavior for same-day entries.
+Buy outflow = price × quantity + buy fee. Add that outflow to the position pool.
+For a partial sale, release pre-sale Average Unit Cost × sold quantity.
+For a valid full liquidation, release the entire remaining pool exactly, leaving
+quantity, Position Cost Basis and Average Unit Cost at zero. Never epsilon-clamp
+an open position.
 
-For buys:
+Realized Trading P&L uses net proceeds minus the *same* released component used
+to reduce the pool. Buy fees are included in released basis; sell fees reduce
+proceeds. Fees are never deducted again from trading return.
 
-`running cost += price * quantity + buy fees`
+Reconciliations:
 
-`running quantity += quantity`
+- Book Value = Net Contributions + Realized Trading P&L + Dividend Income.
+- Total Purchase Cost = Position Cost Basis + Released Cost Basis.
+- Net Sale Proceeds = Released Cost Basis + Realized Trading P&L.
+- Held Quantity = Bought Quantity − Sold Quantity.
 
-For sells:
+Book Value is cost-based, not market value or equity marked to market.
+Total Purchase Cost includes purchases since sold; it is not the current open pool.
 
-`average cost = running cost / running quantity`
+## Dividend Income and realized earnings
 
-`realized P&L += (sell price - average cost) * sold quantity - sell fees`
+`Dividend` is the valid persistence/domain model. These records are investment
+cash dividends/distributions, regardless of monthly, quarterly, semi-annual,
+annual or irregular payment schedules. They do not represent interest, staking,
+rewards, airdrops or miscellaneous receipts.
 
-`running cost -= average cost * sold quantity`
+Dividend Income increases Cash Balance, Book Value and Total Realized Earnings.
+It does not change quantity, Position Cost Basis, Realized Trading P&L or trading return.
+Total Realized Earnings is monetary, never an earnings/contributions percentage.
 
-`running quantity -= sold quantity`
+## Realized Trading Return — every scope
 
-## Total Income
+Sale, asset, portfolio and global return all use Realized Trading P&L divided by
+Released Cost Basis, times 100. Aggregate numerator and denominator first; never
+average percentages. Funding, Dividend Income, historical purchases not yet sold
+and open Position Cost Basis are not ratio inputs.
 
-Current Income records represent cash dividend/distribution income from investments,
-regardless of payment schedule. They do not represent interest, staking, rewards,
-airdrops, or miscellaneous income. The `Dividend` model is unchanged.
-Dividend Income remains separate from Realized Trading P&L everywhere.
+Zero released basis means undefined: Python `None`, JSON `null`, display dash.
+Positive released basis and zero P&L means genuine zero, displayed as `0.00%`.
+BTC's sole sale realizes 3 against basis 555: approximately +0.5405405405% at every
+scope, unaffected by withdrawing 558 and re-depositing 3.
 
-## Total Cash
+Realized Trading Return is not total portfolio performance. Market prices,
+unrealized P&L, TWR, MWR, XIRR and benchmarks are not implemented.
 
-`Total Cash = Total Capital - Buy outflows including fees + Sell proceeds after fees + Total Income`
+## User-facing placement
 
-Income increases Total Cash.
+Internal/domain names optimize for financial precision; display labels optimize
+for scanability. The mapping below is deliberate, not a second accounting model.
 
-## Positions
+| Canonical identifier | Display label |
+| --- | --- |
+| net_contributions | Net Contributions |
+| cash_balance | Cash |
+| dividend_income | Dividends |
+| realized_trading_pnl | Realized P&L |
+| realized_trading_return | Realized Return |
+| total_purchase_cost | Purchase Cost |
+| average_unit_cost | Avg. Cost |
+| position_cost_basis | Cost Basis |
+| book_value | Book Value |
 
-Positions are the recorded cost basis of current asset quantities. Income does not affect Positions.
+Overview: Book Value with Realized Return; supporting facts are Net Contributions,
+Cash, Dividends and Realized P&L. Total Realized Earnings remains an internal/API
+monetary measure; there is no redundant earnings card.
 
-## Book Value
+Portfolios: Funding Entries, Net Contributions, Cash and Cost Basis. No duplicated
+Book Value summary and no help icons. Assets: Entries, Purchase Cost, Quantity,
+Avg. Cost, Realized P&L, Realized Return and Dividends, without help icons.
 
-`Book Value = Total Cash + recorded cost basis of current positions`
+Only Overview has help indicators, for Book Value, Net Contributions, Realized
+P&L and Realized Return. Their concise text is respectively:
 
-Income affects Book Value through Total Cash.
+- Book Value = Cash + Cost Basis
+- Net Contributions = Deposits − Withdrawals
+- Realized P&L = Net Sale Proceeds − Released Cost Basis
+- Realized Return = Realized P&L ÷ Released Cost Basis × 100
 
-## Realized Trading Return — All Scopes
-
-`Realized Trading Return = Realized Trading P&L / Released Cost Basis * 100`
-
-For an individual sale, use that sale's P&L and released basis. For an asset,
-portfolio, or global view, sum realized trading P&L and released basis first,
-then divide. Never average percentages. Buy fees are already capitalized in
-released basis; sell fees already reduce proceeds/P&L. Do not deduct them again.
-
-Dividend Income is excluded from the numerator. Deposits, withdrawals, historical
-purchase outflows and still-open cost basis are excluded from the denominator.
-Only the basis actually released by sales enters the denominator.
-
-Zero released basis means undefined (`None` internally, JSON `null`, display `—`).
-Zero P&L with positive released basis means a genuine zero percentage, displayed
-by the existing formatter as `0.00%`.
-
-## Total Realized Earnings
-
-`Total Realized Earnings = Realized Trading P&L + Dividend Income`
-
-This is a monetary measure, not a percentage. It reconciles as:
-
-`Book Value = Net Contributions + Total Realized Earnings`
-
-No Dividend Return or earnings/capital percentage is calculated. Realized Trading
-Return is not total portfolio performance: market prices, unrealized P&L, TWR,
-MWR and XIRR are not implemented.
+Shared info dots preserve hover/focus tooltips, keyboard focusability and accessible
+labels. Cash and Dividends have no help icons. Number formatting, financial tones
+and the original disclosure-button interaction are unchanged.

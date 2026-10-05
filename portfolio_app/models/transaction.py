@@ -53,8 +53,8 @@ class Transaction(db.Model):
         """
         if projection.transaction_id != self.id or projection.portfolio_id != self.portfolio_id:
             raise ValueError('Projection does not belong to this transaction.')
-        net_pnl = projection.realized_trading_pnl
-        net_pnl_percent = projection.trade_return_percent
+        realized_trading_pnl = projection.realized_trading_pnl
+        realized_trading_return = projection.realized_trading_return
         return {
             'id': self.id,
             'portfolio_id': self.portfolio_id,
@@ -64,10 +64,10 @@ class Transaction(db.Model):
             'price': decimal_text(self.price),
             'quantity': decimal_text(self.quantity),
             'fees': decimal_text(self.fees),
-            'net_amount': decimal_text(projection.cash_amount),
-            'average_cost': decimal_text(projection.applicable_average_unit_cost),
-            'net_pnl': decimal_text(net_pnl) if net_pnl is not None else None,
-            'net_pnl_percent': decimal_text(net_pnl_percent) if net_pnl_percent is not None else None,
+            'transaction_amount': decimal_text(projection.transaction_amount),
+            'applicable_average_unit_cost': decimal_text(projection.applicable_average_unit_cost),
+            'realized_trading_pnl': decimal_text(realized_trading_pnl) if realized_trading_pnl is not None else None,
+            'realized_trading_return': decimal_text(realized_trading_return) if realized_trading_return is not None else None,
             'date': self.date.strftime('%Y-%m-%d %H:%M'),
             'date_short': self.date.strftime('%b %d, %Y'),
             'date_full': self.date.strftime('%B %d, %Y at %H:%M'),

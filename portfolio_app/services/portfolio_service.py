@@ -77,7 +77,7 @@ class PortfolioService:
         """Withdraw funds from a portfolio (amount_delta is positive)."""
         amount_delta = parse_financial_decimal(amount_delta)
         portfolio = self._require_portfolio(portfolio_id)
-        available_cash = PortfolioCalculator.get_available_cash_for_portfolio(
+        available_cash = PortfolioCalculator.get_cash_balance_for_portfolio(
             portfolio_id, user_id=self.portfolio_repo.user_id,
         )
         if amount_delta > available_cash:
@@ -104,7 +104,7 @@ class PortfolioService:
 
         # available_cash already reflects this event at its current amount,
         # so the post-edit cash equals current + (new − old).
-        current_cash = PortfolioCalculator.get_available_cash_for_portfolio(
+        current_cash = PortfolioCalculator.get_cash_balance_for_portfolio(
             event.portfolio_id, user_id=self.portfolio_repo.user_id,
         )
         delta_change = exact_subtract(amount_delta, event.amount_delta)
@@ -143,7 +143,7 @@ class PortfolioService:
         # Only triggers for Deposit/Initial deletions (Withdrawals have
         # negative amount_delta, so removing them *raises* cash and the
         # check passes trivially).
-        current_cash = PortfolioCalculator.get_available_cash_for_portfolio(
+        current_cash = PortfolioCalculator.get_cash_balance_for_portfolio(
             portfolio_id, user_id=self.portfolio_repo.user_id,
         )
         if exact_subtract(current_cash, event.amount_delta) < ZERO:

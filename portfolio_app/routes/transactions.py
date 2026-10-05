@@ -105,7 +105,7 @@ def _get_transactions_page_context(portfolio_filter=''):
             price_decimal_places = max((_decimal_places(t.price) for t in transactions), default=0)
             price_decimal_places = max(0, min(int(price_decimal_places), 10))
 
-            avg_cost_decimal_places = max(2, price_decimal_places)
+            average_unit_cost_decimal_places = max(2, price_decimal_places)
             asset = snapshot.asset(sym_norm)
             summary = asset.as_assets_summary()
 
@@ -119,7 +119,7 @@ def _get_transactions_page_context(portfolio_filter=''):
                 'transaction_projections': asset.transaction_projections,
                 'summary': summary,
                 'price_decimal_places': price_decimal_places,
-                'avg_cost_decimal_places': avg_cost_decimal_places,
+                'average_unit_cost_decimal_places': average_unit_cost_decimal_places,
                 'symbol_id': tracked.id if tracked else None,
             })
 
@@ -127,9 +127,9 @@ def _get_transactions_page_context(portfolio_filter=''):
     visible_portfolio_ids = [p.id for p in portfolios if not portfolio_filter or p.name == portfolio_filter]
     dividends_by_symbol: dict = {}
     dividend_totals = {
-        (pid, symbol): income
+        (pid, symbol): dividend_income
         for pid, snapshot in snapshots.items()
-        for symbol, income in snapshot.income_by_symbol.items()
+        for symbol, dividend_income in snapshot.dividend_income_by_symbol.items()
     }
     for div in svc.dividend_repo.get_by_portfolio_ids(visible_portfolio_ids):
         sym = (div.symbol or '').upper()
@@ -309,7 +309,7 @@ def transaction_delete(transaction_id):
 @transactions_bp.route('/dividends/add', methods=['POST'])
 @login_required
 def dividend_add():
-    """Add a new dividend income record."""
+    """Add a new dividend dividend_income record."""
     try:
         svc = get_services()
         portfolios = svc.portfolio_repo.get_all()

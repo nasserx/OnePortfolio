@@ -1,8 +1,8 @@
-"""Pure, read-only aggregate financial views and legacy response adapters.
+"""Pure, read-only aggregate financial views and canonical response adapters.
 
 SQL loading belongs to PortfolioCalculator; arithmetic belongs to financial_math.
 Snapshots are per-read values, never persisted or cached. Dictionary keys in the
-adapters intentionally preserve the existing HTTP/template vocabulary.
+adapters use the canonical financial vocabulary across HTTP and templates.
 """
 
 from dataclasses import dataclass
@@ -29,19 +29,8 @@ def _readonly(values):
     return MappingProxyType(dict(values))
 
 
-def apply_asset_summary_return(summary, income=ZERO):
-    """Legacy Assets adapter over canonical trading return and Dividend earnings."""
-    result = calculate_realized_earnings_metrics(
-        summary.get('realized_pnl', ZERO) or ZERO,
-        income or ZERO,
-        summary.get('realized_cost_basis', ZERO) or ZERO,
-    )
-    summary.update(result)
-    return summary
-
-
-def sum_income_details(dividends):
-    """Canonical income grouping from persisted Decimal rows in ID order."""
+def sum_dividend_income_details(dividends):
+    """Canonical Dividend Income grouping from persisted Decimal rows in ID order."""
     totals = {}
     for dividend in dividends:
         symbol = (dividend.symbol or '').strip().upper()
@@ -55,42 +44,36 @@ class AssetFinancialSnapshot:
     symbol: str
     transactions: Mapping[str, Union[Decimal, int]]
     dividend_income: Decimal
-    returns: Mapping[str, Union[Decimal, str, None]]
+    metrics: Mapping[str, Union[Decimal, str, None]]
     transaction_projections: Mapping[int, TransactionFinancialProjection]
-
-    @property
-    def income(self):
-        """Legacy adapter: current Income records mean Dividend Income only."""
-        return self.dividend_income
 
     def as_assets_summary(self):
         """Fresh mutable template adapter; never mutate the underlying snapshot."""
-        return {**self.transactions, **self.returns}
+        return {**self.transactions, **self.metrics}
 
-    def as_performance_row(self, portfolio_id, portfolio_name):
+    def as_financial_row(self, portfolio_id, portfolio_name):
         summary = self.transactions
         return {
             'portfolio_id': portfolio_id,
             'portfolio_name': portfolio_name,
             'symbol': self.symbol,
-            'realized_pnl': summary['realized_pnl'],
-            'total_income': self.income,
-            'total_buy_cost': summary['total_buy_cost'],
-            'realized_cost_basis': summary['realized_cost_basis'],
-            'held_cost_basis': summary['cost_basis'],
-            'return_base': summary['realized_cost_basis'],
-            **self.returns,
+            'realized_trading_pnl': summary['realized_trading_pnl'],
+            'dividend_income': self.dividend_income,
+            'total_purchase_cost': summary['total_purchase_cost'],
+            'released_cost_basis': summary['released_cost_basis'],
+            'position_cost_basis': summary['position_cost_basis'],
+            **self.metrics,
         }
 
 
-def build_asset_snapshot(symbol, transactions, income=ZERO):
+def build_asset_snapshot(symbol, transactions, dividend_income=ZERO):
     """One canonical ordered replay per asset, independent of retrieval order."""
     replay = replay_symbol_transactions(order_transactions(transactions))
     summary = replay.summary
-    income = to_decimal(income)
+    dividend_income = to_decimal(dividend_income)
     return AssetFinancialSnapshot(
-        symbol, _readonly(summary), income,
-        _readonly(calculate_realized_earnings_metrics(summary['realized_pnl'], income, summary['realized_cost_basis'])),
+        symbol, _readonly(summary), dividend_income,
+        _readonly(calculate_realized_earnings_metrics(summary['realized_trading_pnl'], dividend_income, summary['released_cost_basis'])),
         _readonly({row.transaction_id: row for row in replay.projections if row.transaction_id is not None}),
     )
 
@@ -98,10 +81,10 @@ def build_asset_snapshot(symbol, transactions, income=ZERO):
 def aggregate_transaction_summaries(assets):
     """Roll up replay results without replaying any symbol a second time."""
     totals = dict.fromkeys((
-        'total_buy_cost', 'total_buy_fees', 'total_buy_quantity',
-        'total_sell_cost', 'total_sell_fees', 'total_sell_quantity',
-        'total_quantity_held', 'realized_pnl', 'cost_basis',
-        'realized_cost_basis', 'realized_proceeds',
+        'total_purchase_cost', 'total_buy_fees', 'total_buy_quantity',
+        'net_sale_proceeds', 'total_sell_fees', 'total_sell_quantity',
+        'total_quantity_held', 'realized_trading_pnl', 'position_cost_basis',
+        'released_cost_basis',
     ), ZERO)
     totals['transaction_count'] = 0
     for asset in assets:
@@ -114,11 +97,11 @@ def aggregate_transaction_summaries(assets):
     average = ZERO
     if totals['total_quantity_held'] > ZERO:
         weighted_cost = exact_sum(
-            exact_multiply(a.transactions['average_cost'], a.transactions['total_quantity_held'])
+            exact_multiply(a.transactions['average_unit_cost'], a.transactions['total_quantity_held'])
             for a in assets
         )
         average = financial_divide(weighted_cost, totals['total_quantity_held'])
-    return {**totals, 'average_cost': average}
+    return {**totals, 'average_unit_cost': average}
 
 
 @dataclass(frozen=True)
@@ -127,21 +110,16 @@ class PortfolioFinancialSnapshot:
     name: str
     assets: Mapping[str, AssetFinancialSnapshot]
     transactions: Mapping[str, Union[Decimal, int]]
-    funding_inflows: Decimal
+    gross_deposits: Decimal
     net_contributions: Decimal
     cash_balance: Decimal
     dividend_income: Decimal
     metrics: Mapping[str, Union[Decimal, str, None]]
-    income_by_symbol: Mapping[str, Decimal]
-
-    @property
-    def income(self):
-        """Legacy adapter for the unchanged UI Income vocabulary."""
-        return self.dividend_income
+    dividend_income_by_symbol: Mapping[str, Decimal]
 
     @property
     def withdrawals(self):
-        return exact_subtract(self.funding_inflows, self.net_contributions)
+        return exact_subtract(self.gross_deposits, self.net_contributions)
 
     def asset(self, symbol):
         if symbol in self.assets:
@@ -152,22 +130,21 @@ class PortfolioFinancialSnapshot:
         return {
             'id': self.portfolio_id,
             'name': self.name,
-            'total_contributed': self.funding_inflows,
-            'total_capital': self.net_contributions,
-            'cash': self.cash_balance,
-            'positions': self.transactions['cost_basis'],
-            'cost_basis': self.transactions['cost_basis'],
-            'realized_pnl': self.transactions['realized_pnl'],
-            'total_income': self.income,
+            'gross_deposits': self.gross_deposits,
+            'net_contributions': self.net_contributions,
+            'cash_balance': self.cash_balance,
+            'position_cost_basis': self.transactions['position_cost_basis'],
+            'realized_trading_pnl': self.transactions['realized_trading_pnl'],
+            'dividend_income': self.dividend_income,
             **self.metrics,
         }
 
-    def as_realized_performance(self):
+    def as_realized_earnings(self):
         return {
             **{key: self.transactions[key] for key in (
-                'realized_pnl', 'realized_cost_basis', 'realized_proceeds',
+                'realized_trading_pnl', 'released_cost_basis', 'net_sale_proceeds',
             )},
-            'total_income': self.income,
+            'dividend_income': self.dividend_income,
             **{key: self.metrics[key] for key in (
                 'realized_trading_pnl', 'released_cost_basis', 'dividend_income',
                 'total_realized_earnings', 'realized_trading_return',
@@ -175,20 +152,20 @@ class PortfolioFinancialSnapshot:
         }
 
 
-def build_portfolio_snapshot(*, portfolio_id, name, assets, funding_inflows,
-                             net_contributions, cash_transactions, income,
-                             income_by_symbol):
+def build_portfolio_snapshot(*, portfolio_id, name, assets, gross_deposits,
+                             net_contributions, cash_transactions, dividend_income,
+                             dividend_income_by_symbol):
     summary = aggregate_transaction_summaries(tuple(assets.values()))
-    # Keep the existing sequential cash calculation (not a reassociated
-    # N - total_buys + total_sales expression); do not change cash policy.
-    cash = calculate_cash_balance(net_contributions, cash_transactions, income)
+    # Keep the existing sequential cash_balance calculation (not a reassociated
+    # N - total_buys + total_sales expression); do not change cash_balance policy.
+    cash_balance = calculate_cash_balance(net_contributions, cash_transactions, dividend_income)
     metrics = calculate_portfolio_metrics(
-        cash, summary['cost_basis'], summary['realized_pnl'], income, summary['realized_cost_basis'],
+        cash_balance, summary['position_cost_basis'], summary['realized_trading_pnl'], dividend_income, summary['released_cost_basis'],
     )
     return PortfolioFinancialSnapshot(
         portfolio_id, name, _readonly(assets), _readonly(summary),
-        funding_inflows, net_contributions, cash, income, _readonly(metrics),
-        _readonly(income_by_symbol),
+        gross_deposits, net_contributions, cash_balance, dividend_income, _readonly(metrics),
+        _readonly(dividend_income_by_symbol),
     )
 
 
@@ -209,33 +186,32 @@ class GlobalFinancialSnapshot:
             rows.append(row)
         return rows, self.total_book_value
 
-    def as_symbol_performance(self):
+    def as_symbol_financials(self):
         # Preserve the existing response order: traded symbols across all
-        # portfolios first, then the income-only symbols.
+        # portfolios first, then the dividend_income-only symbols.
         traded, income_only = [], []
         for portfolio in self.portfolios:
             for asset in portfolio.assets.values():
                 target = traded if asset.transactions['transaction_count'] else income_only
-                target.append(asset.as_performance_row(portfolio.portfolio_id, portfolio.name))
+                target.append(asset.as_financial_row(portfolio.portfolio_id, portfolio.name))
         return traded + income_only
 
 
 def build_global_snapshot(portfolios):
     portfolios = tuple(portfolios)
     totals = {
-        'total_contributed': exact_sum(p.funding_inflows for p in portfolios),
-        'total_capital': exact_sum(p.net_contributions for p in portfolios),
-        'total_cash': exact_sum(p.cash_balance for p in portfolios),
-        'total_positions': exact_sum(p.transactions['cost_basis'] for p in portfolios),
-        'realized_pnl': exact_sum(p.transactions['realized_pnl'] for p in portfolios),
-        'released_cost_basis': exact_sum(p.transactions['realized_cost_basis'] for p in portfolios),
-        'total_income': exact_sum(p.income for p in portfolios),
+        'gross_deposits': exact_sum(p.gross_deposits for p in portfolios),
+        'net_contributions': exact_sum(p.net_contributions for p in portfolios),
+        'cash_balance': exact_sum(p.cash_balance for p in portfolios),
+        'position_cost_basis': exact_sum(p.transactions['position_cost_basis'] for p in portfolios),
+        'realized_trading_pnl': exact_sum(p.transactions['realized_trading_pnl'] for p in portfolios),
+        'released_cost_basis': exact_sum(p.transactions['released_cost_basis'] for p in portfolios),
+        'dividend_income': exact_sum(p.dividend_income for p in portfolios),
     }
     metrics = calculate_portfolio_metrics(
-        totals['total_cash'], totals['total_positions'], totals['realized_pnl'],
-        totals['total_income'], totals['released_cost_basis'],
+        totals['cash_balance'], totals['position_cost_basis'], totals['realized_trading_pnl'],
+        totals['dividend_income'], totals['released_cost_basis'],
     )
     totals.update(metrics)
-    totals['total_value'] = totals.pop('book_value')
     total_book_value = exact_sum(p.metrics['book_value'] for p in portfolios)
     return GlobalFinancialSnapshot(portfolios, _readonly(totals), total_book_value)

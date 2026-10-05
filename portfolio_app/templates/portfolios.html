@@ -58,12 +58,12 @@
                         <span class="disclosure__name" title="{{ item.portfolio.name }}">{{ item.portfolio.name }}</span>
                     </span>
 
+
                     <span class="disclosure__metrics">
                         {% call metric('Entries') %}{{ item.events|length }}{% endcall %}
-                        {% call metric('Total Capital') %}{{ money(item.total_capital) }}{% endcall %}
-                        {% call metric('Total Cash') %}{{ money(item.withdrawable_cash) }}{% endcall %}
-                        {% call metric('Positions') %}{{ money(item.positions) }}{% endcall %}
-                        {% call metric('Book Value') %}{{ money(item.book_value) }}{% endcall %}
+                        {% call metric('Net Contributions') %}{{ money(item.net_contributions) }}{% endcall %}
+                        {% call metric('Cash') %}{{ money(item.cash_balance) }}{% endcall %}
+                        {% call metric('Cost Basis') %}{{ money(item.position_cost_basis) }}{% endcall %}
                     </span>
                 </button>
 
@@ -89,7 +89,7 @@
                         <button type="button" class="dropdown-item js-withdraw-funds-btn"
                                 data-portfolio-id="{{ item.portfolio.id }}"
                                 data-name="{{ item.portfolio.name|e }}"
-                                data-withdrawable-cash-input="{{ item.withdrawable_cash|withdrawal_max_text }}">
+                                data-withdrawable-cash-input="{{ item.cash_balance|withdrawal_max_text }}">
                             {{ icon('arrow-up-circle') }}
                             <span>Withdraw</span>
                         </button>
@@ -107,12 +107,12 @@
                 </div>
             </div>
 
-            <!-- Capital log (collapsed by default) -->
+            <!-- Funding log (collapsed by default) -->
             <div class="disclosure__panel portfolio-cash-events" id="{{ panel_id }}" hidden>
                     {% if item.events %}
                     <div class="table-responsive">
                         <table class="table records-table records-table--portfolio-events">
-                            <caption class="visually-hidden">Capital Events for {{ item.portfolio.name }}</caption>
+                            <caption class="visually-hidden">Funding Entries for {{ item.portfolio.name }}</caption>
                             <colgroup>
                                 <col class="records-col records-col--date">
                                 <col class="records-col records-col--type">
@@ -178,7 +178,7 @@
                         </table>
                     </div>
                     <div class="pagination-bar" id="pgbar-ev-{{ item.portfolio.id }}"
-                         data-pagination-label="Capital Entries for {{ item.portfolio.name }}" hidden></div>
+                         data-pagination-label="Funding Entries for {{ item.portfolio.name }}" hidden></div>
                     {% else %}
                     <p class="inline-empty">No entries yet. Use Deposit to add funds.</p>
                     {% endif %}
@@ -192,7 +192,7 @@
 
     {% else %}
     {% call empty_state('folder-plus', 'No Portfolios Yet',
-        'Create your first portfolio to start recording capital entries and asset activity.') %}
+        'Create your first portfolio to start recording funding entries and asset activity.') %}
         <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newPortfolioModal">
             {{ icon('plus') }}
             <span>Create Portfolio</span>
@@ -440,7 +440,7 @@
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="user_timezone" value="">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="editPortfolioEventModalTitle">Edit Capital Entry</h5>
+                    <h5 class="modal-title" id="editPortfolioEventModalTitle">Edit Funding Entry</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
@@ -510,7 +510,7 @@
                 <div class="modal-header">
                     <h5 class="modal-title" id="deletePortfolioEventModalTitle">
                         {{ icon('trash', class='modal-title-icon') }}
-                        Remove Capital Entry
+                        Remove Funding Entry
                     </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
@@ -518,7 +518,7 @@
                     <p id="deletePortfolioEventDescription">Remove this <span class="text-emphasis" id="delete_event_type_name"></span> entry?</p>
                     <div class="alert alert-warning mb-0">
                         {{ icon('alert-triangle') }}
-                        This will reverse the effect on portfolio capital and cash.
+                        This will reverse the effect on Net Contributions and Cash.
                     </div>
                 </div>
                 <div class="modal-footer">

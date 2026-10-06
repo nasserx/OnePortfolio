@@ -38,12 +38,21 @@ def ledger(app):
         yield SimpleNamespace(uid=user.id, svc=svc, pid=portfolio.id)
 
 
-def _trade(ledger, kind, price, quantity, day, fees='0', symbol='BTC'):
-    return ledger.svc.transaction_service.add_transaction(
+def _historical_trade(ledger, kind, price, quantity, day, fees='0', symbol='BTC'):
+    """Seed raw historical records for read/replay contracts, not acceptance.
+
+    These fixtures deliberately include legacy deficits. Phase 10 service
+    acceptance is tested separately in test_cash_account_policy; never invent
+    funding here, since that would change the snapshots under test.
+    """
+    row = Transaction(
         portfolio_id=ledger.pid, transaction_type=kind, symbol=symbol,
         price=D(price), quantity=D(quantity), fees=D(fees),
         date=datetime(2024, 1, day),
     )
+    db.session.add(row)
+    db.session.commit()
+    return row
 
 
 def _assert_btc_state(ledger, expected):
@@ -64,15 +73,17 @@ def _assert_btc_state(ledger, expected):
     return dashboard
 
 
-def test_btc_unfunded_buy_funding_sale_withdrawal_and_profit_redeposit(ledger):
-    _trade(ledger, 'Buy', '185000', '0.003', 1)
-    _assert_btc_state(ledger, ('-555', '0', '0.003', '555', '0', '0', '0'))
-    assert ledger.svc.portfolio_event_repo.get_by_portfolio_id(ledger.pid) == []
-
-    ledger.svc.portfolio_service.deposit_funds(ledger.pid, D('555'), date=datetime(2024, 1, 2))
+def test_btc_funded_buy_sale_withdrawal_and_profit_redeposit(ledger):
+    # Old unfunded creation is no longer accepted. Fund on the effective day.
+    with pytest.raises(ValueError, match='Insufficient cash for this purchase'):
+        ledger.svc.transaction_service.add_transaction(
+            ledger.pid, 'Buy', 'BTC', D('185000'), D('0.003'), D('0'), date=datetime(2024, 1, 1),
+        )
+    ledger.svc.portfolio_service.deposit_funds(ledger.pid, D('555'), date=datetime(2024, 1, 1))
+    _historical_trade(ledger, 'Buy', '185000', '0.003', 1)
     _assert_btc_state(ledger, ('0', '555', '0.003', '555', '0', '0', '555'))
 
-    sale = _trade(ledger, 'Sell', '186000', '0.003', 3)
+    sale = _historical_trade(ledger, 'Sell', '186000', '0.003', 3)
     after_sale = _assert_btc_state(ledger, ('558', '555', '0', '0', '3', '0', '558'))
     assert transaction_projection(sale).transaction_amount == D('558')
     trade_return = expected_percent('3', '555')
@@ -97,10 +108,10 @@ def test_btc_unfunded_buy_funding_sale_withdrawal_and_profit_redeposit(ledger):
 
 
 def test_historical_insertion_agrees_across_calculators_pages_apis_and_sale_projection(ledger, app):
-    _trade(ledger, 'Buy', '100', '1', 1)
-    sale = _trade(ledger, 'Sell', '150', '1', 3)
+    _historical_trade(ledger, 'Buy', '100', '1', 1)
+    sale = _historical_trade(ledger, 'Sell', '150', '1', 3)
     assert transaction_projection(sale).realized_trading_pnl == D('50')
-    _trade(ledger, 'Buy', '200', '1', 2)
+    _historical_trade(ledger, 'Buy', '200', '1', 2)
 
     summary = PC.get_symbol_transactions_summary(ledger.pid, 'BTC', user_id=ledger.uid)
     assert summary['total_quantity_held'] == D('1')
@@ -145,9 +156,9 @@ def test_historical_insertion_agrees_across_calculators_pages_apis_and_sale_proj
 def test_assets_and_overview_agree_regardless_of_repository_or_display_order(
     ledger, monkeypatch, reverse_display,
 ):
-    first = _trade(ledger, 'Buy', '100', '1', 1)
-    sale = _trade(ledger, 'Sell', '150', '1', 3)
-    historical = _trade(ledger, 'Buy', '200', '1', 2)
+    first = _historical_trade(ledger, 'Buy', '100', '1', 1)
+    sale = _historical_trade(ledger, 'Sell', '150', '1', 3)
+    historical = _historical_trade(ledger, 'Buy', '200', '1', 2)
     # Neither insertion order nor newest-first display order is accounting order.
     supplied = [first, sale, historical]
     if reverse_display:
@@ -178,9 +189,9 @@ def test_canonical_row_ignores_persisted_ten_decimal_average(ledger):
     with localcontext() as context:
         context.prec = 28
         context.rounding = ROUND_HALF_EVEN
-        _trade(ledger, 'Buy', '1', '1', 1)
-        _trade(ledger, 'Buy', '2', '2', 2)
-        sale = _trade(ledger, 'Sell', '3', '1', 3)
+        _historical_trade(ledger, 'Buy', '1', '1', 1)
+        _historical_trade(ledger, 'Buy', '2', '2', 2)
+        sale = _historical_trade(ledger, 'Sell', '3', '1', 3)
         sale_id = sale.id
         # Discard the identity map: assert persisted values, not assigned Decimals.
         db.session.expunge_all()
@@ -196,12 +207,12 @@ def test_canonical_row_ignores_persisted_ten_decimal_average(ledger):
         assert transaction_projection(persisted).realized_trading_pnl == fresh['realized_trading_pnl']
 
 
-def test_current_unfunded_buy_acceptance_but_cost_increasing_edit_is_rejected(ledger):
-    buy = _trade(ledger, 'Buy', '10', '1', 1)
+def test_legacy_unfunded_buy_readable_but_cost_increasing_edit_is_rejected(ledger):
+    buy = _historical_trade(ledger, 'Buy', '10', '1', 1)
     assert PC.get_cash_balance_for_portfolio(ledger.pid) == D('-10')
     with pytest.raises(ValueError) as error:
         ledger.svc.transaction_service.update_transaction(buy.id, price=D('11'))
-    assert str(error.value) == MESSAGES['INSUFFICIENT_AMOUNT']
+    assert str(error.value) == MESSAGES['PURCHASE_EXCEEDS_CASH']
     db.session.refresh(buy)
     assert buy.price == D('10')
     assert PC.get_cash_balance_for_portfolio(ledger.pid) == D('-10')
@@ -212,8 +223,8 @@ def test_current_unfunded_buy_acceptance_but_cost_increasing_edit_is_rejected(le
 
 def test_realized_return_excludes_dividends_and_unused_deposit_no_longer_dilutes(ledger):
     ledger.svc.portfolio_service.deposit_funds(ledger.pid, D('2000'), date=datetime(2024, 1, 1))
-    _trade(ledger, 'Buy', '100', '10', 2)
-    sale = _trade(ledger, 'Sell', '120', '5', 3)
+    _historical_trade(ledger, 'Buy', '100', '10', 2)
+    sale = _historical_trade(ledger, 'Sell', '120', '5', 3)
     ledger.svc.transaction_service.add_dividend(ledger.pid, 'BTC', D('75'), datetime(2024, 1, 4))
     before = PC.get_portfolio_dashboard_totals(user_id=ledger.uid)
     asset_before = ledger.svc.overview_service.get_symbol_financials()[0]
@@ -243,7 +254,7 @@ def test_realized_return_excludes_dividends_and_unused_deposit_no_longer_dilutes
 def test_exact_quantity_persistence_has_no_legacy_scale_rounding(ledger, quantity, persisted_quantity):
     """Accepted subscale quantities now survive SQLite persistence exactly."""
     assert db.engine.dialect.name == 'sqlite'
-    row = _trade(ledger, 'Buy', '1', quantity, 1)
+    row = _historical_trade(ledger, 'Buy', '1', quantity, 1)
     row_id = row.id
     db.session.expunge_all()
     persisted = db.session.get(Transaction, row_id)
@@ -260,7 +271,7 @@ def test_asset_price_and_average_display_precision_follows_recorded_prices(
     ledger, prices, price_places, average_places,
 ):
     for day, price in enumerate(prices, start=1):
-        _trade(ledger, 'Buy', price, '1', day)
+        _historical_trade(ledger, 'Buy', price, '1', day)
     g._services = ledger.svc
     holding = _get_transactions_page_context()['holdings'][0]
     assert holding['price_decimal_places'] == price_places
@@ -268,6 +279,7 @@ def test_asset_price_and_average_display_precision_follows_recorded_prices(
 
 
 def test_quantity_walk_and_recalculation_preserve_buy_first_when_clock_times_disagree(ledger):
+    ledger.svc.portfolio_service.deposit_funds(ledger.pid, D('100'), date=datetime(2024, 1, 1))
     buy = ledger.svc.transaction_service.add_transaction(
         portfolio_id=ledger.pid, transaction_type='Buy', symbol='BTC',
         price=D('100'), quantity=D('1'), fees=D('0'), date=datetime(2024, 1, 1, 20),

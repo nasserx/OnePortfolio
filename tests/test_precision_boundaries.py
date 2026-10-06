@@ -27,7 +27,7 @@ from portfolio_app.utils.decimal_utils import (
     decimal_text, parse_financial_decimal, withdrawal_max_text, to_decimal,
 )
 from tests._auth import authenticate_client
-from tests.test_financial_baseline import ledger, _trade
+from tests.test_financial_baseline import ledger, _historical_trade
 from tests.test_financial_snapshots import _assert_consumers
 
 
@@ -85,7 +85,7 @@ def test_all_financial_forms_interpret_grouped_thousands_consistently():
 def test_service_entry_points_reject_nonfinite_before_any_mutation(ledger, text):
     svc = ledger.svc
     svc.portfolio_service.deposit_funds(ledger.pid, D('1000'))
-    trade = _trade(ledger, 'Buy', '10', '1', 1)
+    trade = _historical_trade(ledger, 'Buy', '10', '1', 1)
     dividend = svc.transaction_service.add_dividend(ledger.pid, 'BTC', D('1'), datetime(2024, 1, 1))
     event_id = svc.portfolio_event_repo.get_by_portfolio_id(ledger.pid)[0].id
     bad = D(text)
@@ -120,7 +120,7 @@ def test_exact_decimal_text_preserves_digits_without_context_rounding(app):
 
 
 def test_actual_template_action_payloads_do_not_float_format(ledger, app):
-    _trade(ledger, 'Buy', '1', '1', 1)
+    _historical_trade(ledger, 'Buy', '1', '1', 1)
     value = D('1234567890.1234567890')
     # Transient records isolate the template boundary. Exact database
     # persistence has separate round-trip coverage.
@@ -155,7 +155,7 @@ def test_actual_template_action_payloads_do_not_float_format(ledger, app):
     ('0.1234567891', '1234567890.1234567890'),
 ])
 def test_nonfinancial_trade_edit_preserves_loaded_financial_values(ledger, app, edit, price, quantity):
-    row = _trade(ledger, 'Buy', price, quantity, 1, fees='0.0123456789')
+    row = _historical_trade(ledger, 'Buy', price, quantity, 1, fees='0.0123456789')
     row_id = row.id
     db.session.expunge_all()
     before = db.session.get(Transaction, row_id)
@@ -188,22 +188,23 @@ def test_withdrawal_max_is_executable_cent_floor(cash, expected):
 
 
 @pytest.mark.parametrize('cash', ['1.005', '1.009', '1.019', '12.34'])
-def test_max_from_page_and_modal_is_accepted_by_service(ledger, app, cash):
+def test_date_aware_max_endpoint_is_accepted_by_service(ledger, app, cash):
     ledger.svc.transaction_service.add_dividend(ledger.pid, 'BTC', D(cash), datetime(2024, 1, 1))
     client = app.test_client()
     authenticate_client(client, ledger.uid)
     html = client.get('/portfolios/').get_data(as_text=True)
-    amount = re.search(r'data-withdrawable-cash-input="([^"]+)"', html).group(1)
+    assert 'data-withdrawable-cash-input' not in html
+    amount = client.get(f'/portfolios/withdrawal-max/{ledger.pid}?date=2024-01-01').json['amount']
     assert amount == withdrawal_max_text(D(cash))
     with app.test_request_context():
         g.services = ledger.svc
-        assert _portfolio_modal_data(ledger.pid)['withdrawable_cash_input'] == amount
+        assert 'withdrawable_cash_input' not in _portfolio_modal_data(ledger.pid)
     ledger.svc.portfolio_service.withdraw_funds(ledger.pid, D(amount))
     assert PC.get_cash_balance_for_portfolio(ledger.pid) == D(cash) - D(amount)
 
 
 def test_summary_json_preserves_high_precision_snapshot_values_and_types(ledger, app):
-    _trade(ledger, 'Buy', '0.1234567891', '0.0000000001', 1)
+    _historical_trade(ledger, 'Buy', '0.1234567891', '0.0000000001', 1)
     client = app.test_client()
     authenticate_client(client, ledger.uid)
     row = client.get('/api/portfolio-summary').get_json()['portfolio_summary'][0]
@@ -240,10 +241,10 @@ def test_nonzero_position_keeps_tiny_cost_pool():
 
 
 def test_canonical_replay_new_buy_after_repeating_average_closure_has_clean_pool(ledger):
-    _trade(ledger, 'Buy', '1', '1', 1)
-    _trade(ledger, 'Buy', '2', '2', 2)
-    _trade(ledger, 'Sell', '3', '3', 3)
-    _trade(ledger, 'Buy', '0.1', '1', 4)
+    _historical_trade(ledger, 'Buy', '1', '1', 1)
+    _historical_trade(ledger, 'Buy', '2', '2', 2)
+    _historical_trade(ledger, 'Sell', '3', '3', 3)
+    _historical_trade(ledger, 'Buy', '0.1', '1', 4)
     fresh = PC.get_asset_snapshot(ledger.pid, 'BTC')
     assert list(fresh.transaction_projections.values())[-1].applicable_average_unit_cost == D('0.1')
     assert fresh.transactions['position_cost_basis'] == D('0.1')
@@ -251,6 +252,7 @@ def test_canonical_replay_new_buy_after_repeating_average_closure_has_clean_pool
 
 
 def test_notes_only_edit_with_calendar_date_payload_does_not_replay(ledger, app, monkeypatch):
+    ledger.svc.portfolio_service.deposit_funds(ledger.pid, D('10000000'), date=datetime(2024, 1, 1))
     row = ledger.svc.transaction_service.add_transaction(
         ledger.pid, 'Buy', 'BTC', D('1234567890.1234567890'), D('0.0034567891'),
         D('0.0123456789'), date=datetime(2024, 1, 1, 12, 34),

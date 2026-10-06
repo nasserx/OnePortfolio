@@ -91,7 +91,7 @@ def test_rejected_symbol_delete_preserves_symbol_transactions_and_income(app):
         buy = _add_transaction(svc, portfolio.id, 'Buy', 'AAPL', '100')
         sell = _add_transaction(svc, portfolio.id, 'Sell', 'AAPL', '200')
         dividend = svc.transaction_service.add_dividend(
-            portfolio.id, 'AAPL', _dec('10'), datetime(2026, 1, 3),
+            portfolio.id, 'AAPL', _dec('10'), datetime(2026, 1, 2),
         )
         _add_transaction(svc, portfolio.id, 'Buy', 'MSFT', '210')
 

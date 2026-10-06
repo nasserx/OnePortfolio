@@ -10,7 +10,7 @@ from portfolio_app.calculators import PortfolioCalculator as PC
 from portfolio_app.models import Dividend
 from tests._auth import authenticate_client
 from tests._financial import expected_percent
-from tests.test_financial_baseline import ledger, _trade
+from tests.test_financial_baseline import ledger, _historical_trade
 
 
 class FinancialPage(HTMLParser):
@@ -44,8 +44,8 @@ class FinancialPage(HTMLParser):
 
 def _seed(ledger):
     ledger.svc.portfolio_service.deposit_funds(ledger.pid, D('1000'))
-    _trade(ledger, 'Buy', '100', '2', 1)
-    sale = _trade(ledger, 'Sell', '120', '1', 2)
+    _historical_trade(ledger, 'Buy', '100', '2', 1)
+    sale = _historical_trade(ledger, 'Sell', '120', '1', 2)
     ledger.svc.transaction_service.add_dividend(ledger.pid, 'BTC', D('5'), datetime(2024, 1, 3))
     return sale
 
@@ -117,9 +117,9 @@ def test_dense_summaries_do_not_have_help_indicators(ledger, app, url):
 
 
 def test_negative_contributions_are_not_presented_as_a_loss(ledger, app):
-    _trade(ledger, 'Buy', '185000', '.003', 1)
+    _historical_trade(ledger, 'Buy', '185000', '.003', 1)
     ledger.svc.portfolio_service.deposit_funds(ledger.pid, D('555'))
-    _trade(ledger, 'Sell', '186000', '.003', 2)
+    _historical_trade(ledger, 'Sell', '186000', '.003', 2)
     ledger.svc.portfolio_service.withdraw_funds(ledger.pid, D('558'))
     _, page = _page(app, ledger, '/portfolios/')
     assert '-3.00' in page.labels
@@ -162,9 +162,9 @@ def test_canonical_api_keys_are_exact_and_old_aliases_are_absent(ledger, app):
 
 @pytest.mark.parametrize('sale_price,shown', [(None, '—'), ('100', '0.00%')])
 def test_undefined_and_genuine_zero_remain_distinct_with_final_labels(ledger, app, sale_price, shown):
-    _trade(ledger, 'Buy', '100', '1', 1)
+    _historical_trade(ledger, 'Buy', '100', '1', 1)
     if sale_price:
-        _trade(ledger, 'Sell', sale_price, '1', 2)
+        _historical_trade(ledger, 'Sell', sale_price, '1', 2)
     _, page = _page(app, ledger, '/')
     assert 'Realized Return' in page.labels
     assert shown in page.labels

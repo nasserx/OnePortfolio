@@ -19,7 +19,7 @@ from portfolio_app.routes.portfolios import _get_portfolios_page_context
 from portfolio_app.routes.transactions import _get_transactions_page_context
 from tests._auth import authenticate_client
 from tests._financial import assert_accounting_invariants, transaction_projection
-from tests.test_financial_baseline import ledger, _trade
+from tests.test_financial_baseline import ledger, _historical_trade
 
 
 D = Decimal
@@ -102,11 +102,11 @@ def _assert_consumers(ledger, app):
 
 
 def test_btc_every_stage_agrees_across_snapshot_pages_and_apis(ledger, app):
-    _trade(ledger, 'Buy', '185000', '0.003', 1)
-    assert _assert_consumers(ledger, app).totals['cash_balance'] == D('-555')
-    ledger.svc.portfolio_service.deposit_funds(ledger.pid, D('555'))
+    ledger.svc.portfolio_service.deposit_funds(ledger.pid, D('555'), date=datetime(2024, 1, 1))
+    _historical_trade(ledger, 'Buy', '185000', '0.003', 1)
+    assert _assert_consumers(ledger, app).totals['cash_balance'] == D('0')
     assert _assert_consumers(ledger, app).totals['book_value'] == D('555')
-    sale = _trade(ledger, 'Sell', '186000', '0.003', 3)
+    sale = _historical_trade(ledger, 'Sell', '186000', '0.003', 3)
     assert _assert_consumers(ledger, app).totals['realized_trading_pnl'] == D('3')
     ledger.svc.portfolio_service.withdraw_funds(ledger.pid, D('558'))
     assert _assert_consumers(ledger, app).totals['net_contributions'] == D('-3')
@@ -125,9 +125,9 @@ def test_partial_and_full_sale_with_fees_income_and_multiple_buys(
     ledger, app, sold, quantity, basis, pnl, cash, book,
 ):
     ledger.svc.portfolio_service.deposit_funds(ledger.pid, D('1000'))
-    _trade(ledger, 'Buy', '10', '2', 1, fees='1')
-    _trade(ledger, 'Buy', '12', '3', 2, fees='1.5')
-    _trade(ledger, 'Sell', '15', sold, 3, fees='1')
+    _historical_trade(ledger, 'Buy', '10', '2', 1, fees='1')
+    _historical_trade(ledger, 'Buy', '12', '3', 2, fees='1.5')
+    _historical_trade(ledger, 'Sell', '15', sold, 3, fees='1')
     ledger.svc.transaction_service.add_dividend(ledger.pid, 'BTC', D('2.4'), datetime(2024, 1, 4))
     snapshot = _assert_consumers(ledger, app)
     asset = snapshot.portfolios[0].asset('BTC')
@@ -141,12 +141,12 @@ def test_partial_and_full_sale_with_fees_income_and_multiple_buys(
 
 def test_multi_portfolio_same_symbol_separate_pools_and_unused_deposit_return(ledger, app):
     ledger.svc.portfolio_service.deposit_funds(ledger.pid, D('1000'))
-    _trade(ledger, 'Buy', '100', '4', 1)
-    _trade(ledger, 'Sell', '140', '1', 2)
+    _historical_trade(ledger, 'Buy', '100', '4', 1)
+    _historical_trade(ledger, 'Sell', '140', '1', 2)
     second = ledger.svc.portfolio_service.create_portfolio('Second', user_id=ledger.uid)
     other = SimpleNamespace(pid=second.id, uid=ledger.uid, svc=ledger.svc)
-    _trade(other, 'Buy', '200', '2', 1)
-    _trade(other, 'Sell', '180', '1', 2)
+    _historical_trade(other, 'Buy', '200', '2', 1)
+    _historical_trade(other, 'Sell', '180', '1', 2)
     before = _assert_consumers(ledger, app)
     assert before.totals['position_cost_basis'] == D('500')
     assert before.totals['realized_trading_pnl'] == D('20')
@@ -175,7 +175,7 @@ def test_dividend_only_return_is_undefined_at_every_scope(ledger, app):
 def test_symbol_performance_keeps_traded_rows_before_income_only_rows(ledger):
     second = ledger.svc.portfolio_service.create_portfolio('Second', user_id=ledger.uid)
     for pid in (ledger.pid, second.id):
-        _trade(SimpleNamespace(pid=pid, svc=ledger.svc), 'Buy', '10', '1', 1)
+        _historical_trade(SimpleNamespace(pid=pid, svc=ledger.svc), 'Buy', '10', '1', 1)
         ledger.svc.transaction_service.add_dividend(pid, 'ONLY', D('2'), datetime(2024, 1, 2))
     rows = PC.get_user_symbol_financials(ledger.uid)
     assert [(row['portfolio_id'], row['symbol']) for row in rows] == [
@@ -186,7 +186,7 @@ def test_symbol_performance_keeps_traded_rows_before_income_only_rows(ledger):
 
 def test_new_snapshot_entry_points_retain_user_scoping_and_empty_state(ledger):
     ledger.svc.portfolio_service.deposit_funds(ledger.pid, D('1000'))
-    _trade(ledger, 'Buy', '100', '1', 1)
+    _historical_trade(ledger, 'Buy', '100', '1', 1)
     ledger.svc.transaction_service.add_dividend(ledger.pid, 'BTC', D('5'), datetime(2024, 1, 2))
     denied = PC.get_portfolio_snapshot(ledger.pid, user_id=ledger.uid + 1)
     assert denied.name == ''
@@ -202,7 +202,7 @@ def test_new_snapshot_entry_points_retain_user_scoping_and_empty_state(ledger):
 
 
 def test_snapshots_are_detached_read_only_values_and_adapters_are_copies(ledger):
-    _trade(ledger, 'Buy', '100', '1', 1)
+    _historical_trade(ledger, 'Buy', '100', '1', 1)
     snapshot = PC.get_financial_snapshot(ledger.uid)
     portfolio = snapshot.portfolios[0]
     asset = portfolio.asset('BTC')
@@ -222,8 +222,8 @@ def test_snapshots_are_detached_read_only_values_and_adapters_are_copies(ledger)
 
 
 def test_snapshot_reads_raw_facts_and_does_not_write(ledger):
-    _trade(ledger, 'Buy', '100', '2', 1)
-    sale = _trade(ledger, 'Sell', '120', '1', 2)
+    _historical_trade(ledger, 'Buy', '100', '2', 1)
+    sale = _historical_trade(ledger, 'Sell', '120', '1', 2)
     statements = []
 
     def record(connection, cursor, statement, parameters, context, executemany):
@@ -244,8 +244,8 @@ def test_snapshot_reads_raw_facts_and_does_not_write(ledger):
 
 def test_new_reads_reflect_edits_and_deletions_without_mutating_prior_snapshot(ledger):
     ledger.svc.portfolio_service.deposit_funds(ledger.pid, D('1000'))
-    _trade(ledger, 'Buy', '100', '2', 1)
-    sale = _trade(ledger, 'Sell', '120', '1', 2)
+    _historical_trade(ledger, 'Buy', '100', '2', 1)
+    sale = _historical_trade(ledger, 'Sell', '120', '1', 2)
     before = PC.get_financial_snapshot(ledger.uid)
     ledger.svc.transaction_service.update_transaction(sale.id, price=D('130'))
     edited = PC.get_financial_snapshot(ledger.uid)
@@ -258,8 +258,8 @@ def test_new_reads_reflect_edits_and_deletions_without_mutating_prior_snapshot(l
 def test_composed_overview_replays_each_asset_only_once(ledger, app, monkeypatch):
     import portfolio_app.calculators.financial_snapshots as engine
 
-    _trade(ledger, 'Buy', '100', '1', 1, symbol='BTC')
-    _trade(ledger, 'Buy', '200', '1', 1, symbol='ETH')
+    _historical_trade(ledger, 'Buy', '100', '1', 1, symbol='BTC')
+    _historical_trade(ledger, 'Buy', '200', '1', 1, symbol='ETH')
     original = engine.replay_symbol_transactions
     calls = []
 

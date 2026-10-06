@@ -154,6 +154,14 @@ Forms live in `portfolio_app/forms/`. They validate request payloads for auth, p
 
 ## Main Data Flow
 
+Cash-account validation uses `services/cash_account.py` and the pure
+`calculators/daily_cash.py` ledger. All cash-affecting service mutations compare
+complete pre/prospective end-of-day paths before changing ORM records. This is
+separate from the unchanged canonical Buy-before-Sell cost-basis walk. Same-day
+inflows/outflows net together; there is no intraday or settlement model. Legacy
+deficits remain readable and can be repaired without worsening their historical
+minimum. See [cash policy](FINANCIAL_READ_MODEL.md#cash-account-policy).
+
 Typical asset-entry creation:
 
 1. Route receives POST data.

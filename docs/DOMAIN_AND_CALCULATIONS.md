@@ -27,9 +27,10 @@ Gross deposits (`gross_deposits`) are Initial + Deposit inflows before withdrawa
 They are not Net Contributions and are not a return denominator.
 
 Negative Net Contributions are valid: deposits 555 minus withdrawals 558 = −3.
-This means withdrawals exceed deposits, not a loss. Negative Cash Balance also
-remains permitted under the current creation policy; existing mutation safeguards
-are unchanged.
+This means withdrawals exceed deposits, not a loss. OnePortfolio models a cash
+account: newly accepted mutations cannot create an end-of-day cash deficit in a
+valid history. Legacy deficits remain visible and repairable, never clamped or
+reinterpreted as borrowing. See [the cash policy](FINANCIAL_READ_MODEL.md#cash-account-policy).
 
 ## Canonical accounting
 

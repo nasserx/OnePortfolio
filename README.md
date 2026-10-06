@@ -4,6 +4,12 @@ OnePortfolio is a Flask web app for manual portfolio record keeping. It tracks p
 
 It does not fetch live prices, calculate market value, calculate unrealized P&L, connect to brokers, or provide financial advice.
 
+OnePortfolio models a cash account, not margin or borrowing. Recorded funding must
+cover purchases and withdrawals at each effective day's close; same-day inflows
+and outflows are netted because execution times and settlement are not modeled.
+Legacy cash deficits remain visible and repairable. See the
+[cash-account policy](docs/FINANCIAL_READ_MODEL.md#cash-account-policy).
+
 ## What It Tracks
 
 - **Portfolios**: user-defined buckets such as Stocks, ETFs, Gold, or any other name.

@@ -105,7 +105,7 @@ def test_action_menus_and_dialogs_use_clear_title_case_contracts():
     assert 'bi-' not in TEMPLATE
 
 
-def test_portfolio_forms_and_withdraw_max_contract_are_unchanged():
+def test_portfolio_forms_preserve_layout_and_max_uses_exact_server_amount():
     for form_id in (
         'depositFundsForm', 'withdrawFundsForm', 'renamePortfolioForm',
         'deletePortfolioForm', 'editPortfolioEventForm',
@@ -121,7 +121,9 @@ def test_portfolio_forms_and_withdraw_max_contract_are_unchanged():
     assert 'Available To Withdraw' not in TEMPLATE
     assert 'withdraw-available-hint' not in TEMPLATE
     assert 'id="withdraw_max_btn">Max</button>' in TEMPLATE
-    assert "amountInput.value = maxAmount;" in TEMPLATE
+    assert "amountInput.value = result.amount;" in TEMPLATE
+    assert '/portfolios/withdrawal-max/${portfolioId}' in TEMPLATE
+    assert 'dateInput.value !== date' in TEMPLATE
 
 
 def test_disclosure_paint_uses_canonical_roles_without_chart_or_raw_colors():

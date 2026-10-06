@@ -15,7 +15,7 @@ from portfolio_app.calculators.financial_math import (
 from portfolio_app.utils.financial_arithmetic import exact_add, division_precision
 from tests._auth import authenticate_client
 from tests._financial import assert_accounting_invariants, expected_percent
-from tests.test_financial_baseline import ledger, _trade
+from tests.test_financial_baseline import ledger, _historical_trade
 
 
 def _scopes(ledger, symbol='BTC'):
@@ -40,10 +40,10 @@ def _assert_single_sale_agreement(ledger, sale, expected):
 
 
 def test_btc_all_four_scopes_agree_through_principal_profit_withdrawal_and_redeposit(ledger):
-    _trade(ledger, 'Buy', '185000', '0.003', 1)
+    _historical_trade(ledger, 'Buy', '185000', '0.003', 1)
     assert PC.get_cash_balance_for_portfolio(ledger.pid) == D('-555')
     ledger.svc.portfolio_service.deposit_funds(ledger.pid, D('555'))
-    sale = _trade(ledger, 'Sell', '186000', '0.003', 3)
+    sale = _historical_trade(ledger, 'Sell', '186000', '0.003', 3)
     expected = expected_percent('3', '555')
     _assert_single_sale_agreement(ledger, sale, expected)
     ledger.svc.portfolio_service.withdraw_funds(ledger.pid, D('555'))
@@ -62,12 +62,12 @@ def test_btc_all_four_scopes_agree_through_principal_profit_withdrawal_and_redep
 
 def test_unused_deposit_open_purchase_and_dividend_cannot_dilute_realized_return(ledger):
     ledger.svc.portfolio_service.deposit_funds(ledger.pid, D('100'))
-    _trade(ledger, 'Buy', '100', '1', 1)
-    sale = _trade(ledger, 'Sell', '110', '1', 2)
+    _historical_trade(ledger, 'Buy', '100', '1', 1)
+    sale = _historical_trade(ledger, 'Sell', '110', '1', 2)
     _assert_single_sale_agreement(ledger, sale, D('10'))
     ledger.svc.portfolio_service.deposit_funds(ledger.pid, D('1000'))
     _assert_single_sale_agreement(ledger, sale, D('10'))
-    _trade(ledger, 'Buy', '1000', '1', 3)
+    _historical_trade(ledger, 'Buy', '1000', '1', 3)
     before = _assert_single_sale_agreement(ledger, sale, D('10'))[1]
     ledger.svc.transaction_service.add_dividend(ledger.pid, 'BTC', D('50'), datetime(2024, 1, 4))
     asset, after, global_state = _assert_single_sale_agreement(ledger, sale, D('10'))
@@ -89,7 +89,7 @@ def test_no_sale_and_dividend_only_states_have_undefined_return(ledger, funding,
     if D(funding):
         ledger.svc.portfolio_service.deposit_funds(ledger.pid, D(funding))
     if buy:
-        _trade(ledger, 'Buy', '100', '1', 1)
+        _historical_trade(ledger, 'Buy', '100', '1', 1)
     if D(dividend):
         ledger.svc.transaction_service.add_dividend(ledger.pid, 'BTC', D(dividend), datetime(2024, 1, 2))
     asset, portfolio, global_state = _scopes(ledger)
@@ -102,16 +102,16 @@ def test_no_sale_and_dividend_only_states_have_undefined_return(ledger, funding,
 
 @pytest.mark.parametrize('sale_price,return_value', [('100', '0'), ('110', '10'), ('90', '-10')])
 def test_zero_positive_negative_sale_return_at_every_scope(ledger, sale_price, return_value):
-    _trade(ledger, 'Buy', '100', '1', 1)
-    sale = _trade(ledger, 'Sell', sale_price, '1', 2)
+    _historical_trade(ledger, 'Buy', '100', '1', 1)
+    sale = _historical_trade(ledger, 'Sell', sale_price, '1', 2)
     _assert_single_sale_agreement(ledger, sale, D(return_value))
 
 
 def test_multiple_sales_aggregate_components_not_percentages(ledger):
-    _trade(ledger, 'Buy', '100', '1', 1)
-    first = _trade(ledger, 'Sell', '110', '1', 2)
-    _trade(ledger, 'Buy', '200', '1', 3)
-    second = _trade(ledger, 'Sell', '195', '1', 4)
+    _historical_trade(ledger, 'Buy', '100', '1', 1)
+    first = _historical_trade(ledger, 'Sell', '110', '1', 2)
+    _historical_trade(ledger, 'Buy', '200', '1', 3)
+    second = _historical_trade(ledger, 'Sell', '195', '1', 4)
     asset, portfolio, global_state = _scopes(ledger)
     assert asset.transaction_projections[first.id].realized_trading_return == D('10')
     assert asset.transaction_projections[second.id].realized_trading_return == D('-2.5')
@@ -130,10 +130,10 @@ def test_multiple_assets_or_portfolios_sum_pnl_and_basis_before_dividing(ledger,
         other = SimpleNamespace(uid=ledger.uid, pid=portfolio.id, svc=ledger.svc)
     ledger.svc.portfolio_service.deposit_funds(ledger.pid, D('1000'))
     ledger.svc.portfolio_service.deposit_funds(other.pid, D('10000'))
-    _trade(ledger, 'Buy', '100', '1', 1, symbol='AAA')
-    _trade(ledger, 'Sell', '120', '1', 2, symbol='AAA')
-    _trade(other, 'Buy', '200', '1', 1, symbol='BBB')
-    _trade(other, 'Sell', '190', '1', 2, symbol='BBB')
+    _historical_trade(ledger, 'Buy', '100', '1', 1, symbol='AAA')
+    _historical_trade(ledger, 'Sell', '120', '1', 2, symbol='AAA')
+    _historical_trade(other, 'Buy', '200', '1', 1, symbol='BBB')
+    _historical_trade(other, 'Sell', '190', '1', 2, symbol='BBB')
     before = PC.get_financial_snapshot(ledger.uid)
     assert before.totals['realized_trading_pnl'] == D('10')
     assert before.totals['released_cost_basis'] == D('300')
@@ -147,8 +147,8 @@ def test_multiple_assets_or_portfolios_sum_pnl_and_basis_before_dividing(ledger,
 
 
 def test_partial_sale_releases_only_sold_basis_and_fees_are_not_deducted_twice(ledger):
-    _trade(ledger, 'Buy', '99', '10', 1, fees='10')
-    sale = _trade(ledger, 'Sell', '120', '2.5', 2, fees='5')
+    _historical_trade(ledger, 'Buy', '99', '10', 1, fees='10')
+    sale = _historical_trade(ledger, 'Sell', '120', '2.5', 2, fees='5')
     asset, portfolio, _ = _assert_single_sale_agreement(ledger, sale, D('18'))
     assert asset.transactions['position_cost_basis'] == D('750')
     assert portfolio.metrics['released_cost_basis'] == D('250')
@@ -158,9 +158,9 @@ def test_partial_sale_releases_only_sold_basis_and_fees_are_not_deducted_twice(l
 
 @pytest.mark.parametrize('precision', [3, 28, 90])
 def test_repeating_high_precision_row_and_aggregate_return_share_identical_projection(ledger, precision):
-    _trade(ledger, 'Buy', '1234567890.1234567890123456789012345', '1', 1)
-    _trade(ledger, 'Buy', '2', '2', 2)
-    sale = _trade(ledger, 'Sell', '1234567891.1234567890123456789012345', '1', 3, fees='1E-31')
+    _historical_trade(ledger, 'Buy', '1234567890.1234567890123456789012345', '1', 1)
+    _historical_trade(ledger, 'Buy', '2', '2', 2)
+    sale = _historical_trade(ledger, 'Sell', '1234567891.1234567890123456789012345', '1', 3, fees='1E-31')
     db.session.expire_all()
     asset, _, _ = _scopes(ledger)
     row = asset.transaction_projections[sale.id]
@@ -201,8 +201,8 @@ def test_api_and_overview_expose_new_semantics_without_losing_exact_decimal_stri
     assert 'Realized Return' in html
     assert 'Realized Return On Net Contributions' not in html
     assert 'delta delta--flat">—</span>' in html
-    _trade(ledger, 'Buy', '100', '1', 2)
-    _trade(ledger, 'Sell', '100', '1', 3)
+    _historical_trade(ledger, 'Buy', '100', '1', 2)
+    _historical_trade(ledger, 'Sell', '100', '1', 3)
     payload = client.get('/api/portfolio-summary').get_json()['portfolio_summary'][0]
     assert isinstance(payload['realized_trading_return'], str)
     assert D(payload['realized_trading_return']) == D('0')

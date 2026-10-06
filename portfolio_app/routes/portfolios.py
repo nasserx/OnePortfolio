@@ -14,7 +14,6 @@ from portfolio_app.forms import (
     PortfolioEventDeleteForm,
 )
 from portfolio_app.calculators.portfolio_calculator import PortfolioCalculator
-from portfolio_app.utils.decimal_utils import withdrawal_max_text
 from portfolio_app.utils import (
     get_error_message, get_first_form_error, MESSAGES,
     is_ajax_request, json_response, field_error_response,
@@ -59,15 +58,9 @@ def _portfolio_modal_data(portfolio_id):
     if not portfolio:
         return {'portfolio_id': portfolio_id}
 
-    withdrawable_cash = PortfolioCalculator.get_cash_balance_for_portfolio(
-        portfolio.id, user_id=svc.portfolio_repo.user_id,
-    )
-    withdrawable_cash_display = f"{withdrawable_cash:,.2f}"
     return {
         'portfolio_id': portfolio.id,
         'name': portfolio.name,
-        'withdrawable_cash': withdrawable_cash_display,
-        'withdrawable_cash_input': withdrawal_max_text(withdrawable_cash),
     }
 
 
@@ -424,6 +417,27 @@ def portfolios_event_edit(event_id):
         flash(MESSAGES['CASH_EVENT_UPDATE_FAILED'], 'error')
 
     return redirect(url_for('portfolios.portfolios_list'))
+
+
+@portfolios_bp.route('/withdrawal-max/<int:portfolio_id>')
+@login_required
+def portfolios_withdrawal_max(portfolio_id):
+    """Date-aware executable amount; no monetary arithmetic in this route."""
+    form = PortfolioWithdrawForm({
+        'amount_delta': '1', 'withdraw_date': request.args.get('date', ''),
+        'user_timezone': request.args.get('user_timezone', ''),
+    }, portfolio_id)
+    if not form.validate():
+        return json_response(False, errors=form.errors)
+    try:
+        amount = get_services().portfolio_service.cash_account.withdrawal_max(
+            portfolio_id, form.get_cleaned_data()['date'],
+        )
+        response, status = json_response(True, amount=amount)
+        response.headers['Cache-Control'] = 'no-store'
+        return response, status
+    except ValueError as exc:
+        return json_response(False, errors={'__all__': get_error_message(exc)})
 
 
 @portfolios_bp.route('/events/delete/<int:event_id>', methods=['POST'])

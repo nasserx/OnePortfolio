@@ -20,7 +20,7 @@ from portfolio_app.models import Transaction
 from portfolio_app.routes.transactions import _get_transactions_page_context
 from portfolio_app.utils.decimal_utils import decimal_text
 from tests._auth import authenticate_client
-from tests.test_financial_baseline import ledger, _trade
+from tests.test_financial_baseline import ledger, _historical_trade
 from tests._financial import expected_percent
 from portfolio_app.utils.financial_arithmetic import exact_sum
 
@@ -132,9 +132,9 @@ def test_repeating_average_row_is_exact_aggregate_contribution(quantity, pnl, ba
 
 
 def test_btc_projection_is_reconciled_through_funding_withdrawal_and_redeposit(ledger):
-    _trade(ledger, 'Buy', '185000', '0.003', 1)
+    _historical_trade(ledger, 'Buy', '185000', '0.003', 1)
     ledger.svc.portfolio_service.deposit_funds(ledger.pid, D('555'))
-    sale = _trade(ledger, 'Sell', '186000', '0.003', 3)
+    sale = _historical_trade(ledger, 'Sell', '186000', '0.003', 3)
     before = PC.get_portfolio_snapshot(ledger.pid, user_id=ledger.uid)
     row = before.asset('BTC').transaction_projections[sale.id]
     assert row.net_sale_proceeds == row.transaction_amount == row.cash_effect == D('558')
@@ -156,8 +156,8 @@ def _html_trade_row(html, transaction_id):
 
 
 def test_raw_only_rows_drive_replay_display_and_serialization(ledger, app):
-    buy = _trade(ledger, 'Buy', '100', '2', 1, fees='2')
-    sale = _trade(ledger, 'Sell', '120', '1', 2, fees='1')
+    buy = _historical_trade(ledger, 'Buy', '100', '2', 1, fees='2')
+    sale = _historical_trade(ledger, 'Sell', '120', '1', 2, fees='1')
     client = app.test_client()
     authenticate_client(client, ledger.uid)
     before = PC.get_portfolio_snapshot(ledger.pid, user_id=ledger.uid)
@@ -187,9 +187,9 @@ def test_raw_only_rows_drive_replay_display_and_serialization(ledger, app):
 
 
 def test_replay_and_serializer_work_without_derived_columns_or_queries(ledger):
-    _trade(ledger, 'Buy', '1', '1', 1)
-    _trade(ledger, 'Buy', '2', '2', 2)
-    _trade(ledger, 'Sell', '3', '1', 3)
+    _historical_trade(ledger, 'Buy', '1', '1', 1)
+    _historical_trade(ledger, 'Buy', '2', '2', 2)
+    _historical_trade(ledger, 'Sell', '3', '1', 3)
     db.session.expunge_all()
     records = Transaction.query.order_by(Transaction.id).all()
     statements = []
@@ -212,8 +212,8 @@ def test_replay_and_serializer_work_without_derived_columns_or_queries(ledger):
 
 
 def test_serializer_requires_explicit_matching_projection_and_has_no_legacy_pnl_properties(ledger):
-    first = _trade(ledger, 'Buy', '1', '1', 1)
-    second = _trade(ledger, 'Buy', '2', '1', 2)
+    first = _historical_trade(ledger, 'Buy', '1', '1', 1)
+    second = _historical_trade(ledger, 'Buy', '2', '1', 2)
     snapshot = PC.get_asset_snapshot(ledger.pid, 'BTC')
     assert not hasattr(Transaction, 'net_pnl')
     assert not hasattr(Transaction, 'net_pnl_percent')
@@ -224,11 +224,11 @@ def test_serializer_requires_explicit_matching_projection_and_has_no_legacy_pnl_
 
 
 def test_historical_insertion_updates_canonical_rows_without_changing_display_order(ledger, app):
-    buy = _trade(ledger, 'Buy', '100', '1', 1)
-    sale = _trade(ledger, 'Sell', '150', '1', 3)
+    buy = _historical_trade(ledger, 'Buy', '100', '1', 1)
+    sale = _historical_trade(ledger, 'Sell', '150', '1', 3)
     old = PC.get_asset_snapshot(ledger.pid, 'BTC').transaction_projections[sale.id]
     assert old.realized_trading_pnl == D('50')
-    historical = _trade(ledger, 'Buy', '200', '1', 2)
+    historical = _historical_trade(ledger, 'Buy', '200', '1', 2)
     with app.test_request_context():
         g._services = ledger.svc
         holding = _get_transactions_page_context()['holdings'][0]
@@ -256,7 +256,7 @@ def test_assets_batch_read_replays_once_and_query_count_does_not_grow_with_rows(
     counts = []
     for number in (1, 8):
         for day in range(1 if number == 1 else 2, number + 1):
-            _trade(ledger, 'Buy', '100', '1', day)
+            _historical_trade(ledger, 'Buy', '100', '1', day)
         statements = []
 
         def record_sql(connection, cursor, statement, parameters, context, executemany):

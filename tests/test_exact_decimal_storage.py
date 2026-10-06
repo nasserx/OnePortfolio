@@ -19,7 +19,7 @@ from portfolio_app.calculators.transaction_order import order_transactions
 from portfolio_app.models import Transaction, Dividend, PortfolioEvent
 from portfolio_app.services.transaction_service import ValidationError
 from portfolio_app.utils.exact_decimal import ExactDecimalText, canonical_decimal_text
-from tests.test_financial_baseline import ledger, _trade
+from tests.test_financial_baseline import ledger, _historical_trade
 from tests.test_migrations import _create_version_33_no_action_database, _config_for
 from tests._auth import authenticate_client
 
@@ -92,7 +92,7 @@ def test_orm_rejects_float_before_sql_persistence(ledger):
 def test_exact_persisted_value_is_preserved_by_calculation_above_28_digits(ledger):
     # Phase 7 converts the former ambient-context loss into a correctness contract.
     price = D('123456789012345678901234567890.123456789')
-    row = _trade(ledger, 'Buy', str(price), '1', 1)
+    row = _historical_trade(ledger, 'Buy', str(price), '1', 1)
     db.session.refresh(row)
     with localcontext() as context:
         context.prec = 28
@@ -104,7 +104,7 @@ def test_exact_persisted_value_is_preserved_by_calculation_above_28_digits(ledge
 
 
 def test_high_precision_withdrawal_sign_conversion_and_edit_are_exact(ledger, app):
-    ledger.svc.portfolio_service.deposit_funds(ledger.pid, D('100'))
+    ledger.svc.portfolio_service.deposit_funds(ledger.pid, D('100'), date=datetime(2024, 1, 1))
     amount = D('0.123456789012345678901234567890123456789')
     ledger.svc.portfolio_service.withdraw_funds(ledger.pid, amount)
     row = PortfolioEvent.query.filter_by(event_type='Withdrawal').one()
@@ -145,7 +145,7 @@ def test_fresh_schema_has_exact_types_and_no_persisted_derivatives(app):
 @pytest.mark.parametrize('field, value', [('price', '0'), ('price', '-1'),
                                          ('quantity', '0'), ('quantity', '-1'), ('fees', '-1')])
 def test_service_owns_trade_sign_validation_after_numeric_checks_removed(ledger, field, value):
-    row = _trade(ledger, 'Buy', '10', '1', 1)
+    row = _historical_trade(ledger, 'Buy', '10', '1', 1)
     values = dict(price=D('10'), quantity=D('1'), fees=D('0'))
     values[field] = D(value)
     with pytest.raises(ValidationError):
@@ -166,8 +166,9 @@ def test_service_owns_income_sign_validation(ledger, value):
 
 
 def test_mutations_write_raw_row_only_never_historical_projections(ledger):
+    ledger.svc.portfolio_service.deposit_funds(ledger.pid, D('100'), date=datetime(2024, 1, 1))
     ledger.svc.portfolio_service.deposit_funds(ledger.pid, D('1000'))
-    _trade(ledger, 'Buy', '1', '1', 1)
+    _historical_trade(ledger, 'Buy', '1', '1', 1)
     statements = []
 
     def capture(conn, cursor, statement, parameters, context, many):
@@ -176,7 +177,9 @@ def test_mutations_write_raw_row_only_never_historical_projections(ledger):
 
     sa.event.listen(db.engine, 'before_cursor_execute', capture)
     try:
-        row = _trade(ledger, 'Buy', '2', '2', 2)
+        row = ledger.svc.transaction_service.add_transaction(
+            ledger.pid, 'Buy', 'BTC', D('2'), D('2'), D('0'), date=datetime(2024, 1, 2),
+        )
         ledger.svc.transaction_service.update_transaction(row.id, price=D('2.00000000001'))
         ledger.svc.transaction_service.delete_transaction(row.id)
     finally:

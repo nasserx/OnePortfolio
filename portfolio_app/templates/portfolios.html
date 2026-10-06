@@ -88,8 +88,7 @@
                     <li>
                         <button type="button" class="dropdown-item js-withdraw-funds-btn"
                                 data-portfolio-id="{{ item.portfolio.id }}"
-                                data-name="{{ item.portfolio.name|e }}"
-                                data-withdrawable-cash-input="{{ item.cash_balance|withdrawal_max_text }}">
+                                data-name="{{ item.portfolio.name|e }}">
                             {{ icon('arrow-up-circle') }}
                             <span>Withdraw</span>
                         </button>
@@ -720,7 +719,7 @@ function withdrawFunds(id, name, opts) {
     opts = opts || {};
     document.getElementById('withdrawFundsForm').action = `/portfolios/withdraw/${id}`;
     document.getElementById('withdraw_portfolio_name').value = name || '';
-    document.getElementById('withdraw_max_btn').dataset.maxAmount = opts.withdrawableCashInput || '';
+    document.getElementById('withdraw_max_btn').dataset.portfolioId = String(id);
     document.getElementById('withdraw_funds_amount').value = (opts.amount != null ? String(opts.amount) : '');
     document.getElementById('withdraw_date').value = (opts.date || todayStr());
     document.getElementById('withdraw_funds_notes').value = (opts.notes || '');
@@ -732,12 +731,33 @@ function withdrawFunds(id, name, opts) {
     const amountInput = document.getElementById('withdraw_funds_amount');
     if (!btn || !amountInput) return;
 
-    btn.addEventListener('click', function() {
-        const maxAmount = btn.dataset.maxAmount || '';
-        if (!maxAmount) return;
-        amountInput.value = maxAmount;
-        amountInput.dispatchEvent(new Event('input'));
+    btn.addEventListener('click', async function() {
+        const dateInput = document.getElementById('withdraw_date');
+        const date = dateInput.value;
+        const portfolioId = btn.dataset.portfolioId;
+        btn.disabled = true;
+        try {
+            const params = new URLSearchParams({date, user_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone});
+            const response = await fetch(`/portfolios/withdrawal-max/${portfolioId}?${params}`, {cache: 'no-store'});
+            const result = await response.json();
+            // A response for another date/portfolio must never populate this form.
+            if (dateInput.value !== date || btn.dataset.portfolioId !== portfolioId) return;
+            if (!response.ok || !result.success) {
+                amountInput.setCustomValidity(Object.values(result.errors || {}).join(' ') || 'Unable to calculate Max.');
+                amountInput.reportValidity();
+                return;
+            }
+            amountInput.setCustomValidity('');
+            amountInput.value = result.amount;
+            amountInput.dispatchEvent(new Event('input'));
+        } catch (error) {
+            amountInput.setCustomValidity('Unable to calculate Max. Please try again.');
+            amountInput.reportValidity();
+        } finally {
+            btn.disabled = false;
+        }
     });
+    amountInput.addEventListener('input', () => amountInput.setCustomValidity(''));
 })();
 
 function deletePortfolio(id, name) {
@@ -790,7 +810,6 @@ function deletePortfolioEvent(id, type) {
                     amount: {{ (_with_vals.get('amount_delta', '') if form_values and form_values.get('portfolios_withdraw') else '') | tojson }},
                     date:   {{ (_with_vals.get('withdraw_date', '') if form_values and form_values.get('portfolios_withdraw') else '') | tojson }},
                     notes:  {{ (_with_vals.get('notes', '') if form_values and form_values.get('portfolios_withdraw') else '') | tojson }},
-                    withdrawableCashInput: payload.withdrawable_cash_input || '',
                 });
             }
             if (which === 'newPortfolioModal') {
@@ -845,10 +864,7 @@ function deletePortfolioEvent(id, type) {
             ev.preventDefault(); ev.stopPropagation(); ev.stopImmediatePropagation();
             const id = parseInt(withBtn.getAttribute('data-portfolio-id') || '0', 10);
             const name = withBtn.getAttribute('data-name') || '';
-            const withdrawableCashInput = withBtn.getAttribute('data-withdrawable-cash-input') || '';
-            if (id) withdrawFunds(id, name, {
-                withdrawableCashInput: withdrawableCashInput,
-            });
+            if (id) withdrawFunds(id, name);
             return;
         }
 

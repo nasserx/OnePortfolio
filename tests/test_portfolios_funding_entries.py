@@ -104,10 +104,10 @@ def test_portfolios_page_renders_funding_metrics_and_log(app):
     assert 'withdraw-available-hint' not in html
     assert 'withdraw_available_cash' not in html
     assert 'id="withdraw_max_btn">Max</button>' in html
-    assert 'data-withdrawable-cash-input="750.00"' in html
-    assert "document.getElementById('withdraw_max_btn').dataset.maxAmount" in html
+    assert 'data-withdrawable-cash-input' not in html
+    assert "document.getElementById('withdraw_max_btn').dataset.portfolioId" in html
     assert "btn.addEventListener('click'" in html
-    assert 'amountInput.value = maxAmount;' in html
+    assert 'amountInput.value = result.amount;' in html
 
     components = Path('portfolio_app/static/css/components.css').read_text(encoding='utf-8')
     assert '.withdraw-available-hint' not in components
@@ -186,7 +186,7 @@ def test_editing_and_deleting_capital_entries_update_summary(app):
 
         svc.portfolio_service.update_portfolio_event(
             deposit.id, amount_delta=_dec('1200'), notes='Edited deposit',
-            date=datetime(2024, 1, 3),
+            date=datetime(2024, 1, 1, 12),
         )
         assert PortfolioCalculator.get_net_contributions_for_portfolio(portfolio.id, user_id=uid) == _dec('950.00')
         assert PortfolioCalculator.get_cash_balance_for_portfolio(portfolio.id, user_id=uid) == _dec('950.00')

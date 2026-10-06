@@ -265,7 +265,7 @@ def test_action_items_preserve_dispatch_classes_and_payloads(app):
     assert portfolio.item('Deposit').attrs['data-portfolio-id'] == str(ids['portfolio_id'])
     assert portfolio.item('Deposit').attrs['data-name'] == 'Growth'
     assert portfolio.item('Withdraw').attrs['class'].endswith('js-withdraw-funds-btn')
-    assert 'data-withdrawable-cash-input' in portfolio.item('Withdraw').attrs
+    assert 'data-withdrawable-cash-input' not in portfolio.item('Withdraw').attrs
     assert portfolio.item('Remove').attrs['class'].endswith('js-delete-portfolio-btn')
 
     event = portfolio_menus['Actions for Deposit entry on 2024-01-01']

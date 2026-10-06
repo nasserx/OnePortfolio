@@ -283,7 +283,7 @@ def test_withdraw_route_accepts_grouped_amount_for_ajax(app):
         uid = _seed_user('withdraw_grouped')
         svc = Services(user_id=uid)
         p = svc.portfolio_service.create_portfolio('P', user_id=uid)
-        svc.portfolio_service.deposit_funds(p.id, _dec(1000))
+        svc.portfolio_service.deposit_funds(p.id, _dec(1000), date=datetime(2026, 1, 1))
         portfolio_id = p.id
 
     client = app.test_client()

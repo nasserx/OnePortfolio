@@ -21,10 +21,12 @@ from portfolio_app.utils import (
 # Service-layer exceptions on the *add* path map to inputs of the form
 # the user just submitted from. The edit path uses ``edit_*`` ids.
 _TX_ADD_FIELD_MAP = {
+    MESSAGES['PURCHASE_EXCEEDS_CASH']: 'quantity',
     MESSAGES['INSUFFICIENT_QUANTITY']: 'quantity',
     MESSAGES['FEES_EXCEED_PROCEEDS']: 'fees',
 }
 _TX_EDIT_FIELD_MAP = {
+    MESSAGES['PURCHASE_EXCEEDS_CASH']: 'edit_quantity',
     MESSAGES['INSUFFICIENT_QUANTITY']: 'edit_quantity',
     MESSAGES['FEES_EXCEED_PROCEEDS']: 'edit_fees',
     # Cash drift on edit usually traces back to quantity or price, but

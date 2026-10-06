@@ -215,20 +215,23 @@ def calculate_portfolio_metrics(cash_balance, position_cost_basis, realized_trad
     }
 
 
+def transaction_cash_effect(transaction):
+    """Raw trade cash effect shared by aggregate cash and daily validation."""
+    gross = exact_multiply(to_decimal(transaction.price), to_decimal(transaction.quantity))
+    fees = to_decimal(transaction.fees)
+    if transaction.transaction_type == 'Buy':
+        return exact_add(gross, fees).copy_negate()
+    if transaction.transaction_type == 'Sell':
+        return exact_subtract(gross, fees)
+    return ZERO
+
+
 def calculate_cash_balance(net_contributions, transactions, dividend_income):
     """Calculate Cash Balance from Net Contributions, trades and Dividend Income."""
     cash_balance = to_decimal(net_contributions)
 
     for transaction in transactions:
-        price = to_decimal(transaction.price)
-        quantity = to_decimal(transaction.quantity)
-        fees = to_decimal(transaction.fees)
-        gross = exact_multiply(price, quantity)
-
-        if transaction.transaction_type == 'Buy':
-            cash_balance = exact_subtract(cash_balance, exact_add(gross, fees))
-        elif transaction.transaction_type == 'Sell':
-            cash_balance = exact_add(cash_balance, exact_subtract(gross, fees))
+        cash_balance = exact_add(cash_balance, transaction_cash_effect(transaction))
 
     cash_balance = exact_add(cash_balance, dividend_income)
     return cash_balance

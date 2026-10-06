@@ -21,7 +21,7 @@ from portfolio_app.utils.financial_arithmetic import (
     exact_multiply, exact_sum, financial_divide,
 )
 from tests._financial import assert_accounting_invariants, expected_ratio, expected_percent
-from tests.test_financial_baseline import ledger, _trade
+from tests.test_financial_baseline import ledger, _historical_trade
 
 
 PRICE = D('1234567890.1234567890123456789012345')
@@ -137,9 +137,9 @@ def test_nonzero_tiny_position_is_not_clamped():
 
 @pytest.mark.parametrize('ambient_precision', [3, 9, 28, 90])
 def test_persistence_replay_snapshots_and_validation_ignore_ambient_context(ledger, ambient_precision):
-    _trade(ledger, 'Buy', str(PRICE), str(QUANTITY), 1, fees=str(FEE))
-    _trade(ledger, 'Buy', '2', '2', 2)
-    _trade(ledger, 'Sell', '3', '1', 3, fees=str(FEE))
+    _historical_trade(ledger, 'Buy', str(PRICE), str(QUANTITY), 1, fees=str(FEE))
+    _historical_trade(ledger, 'Buy', '2', '2', 2)
+    _historical_trade(ledger, 'Sell', '3', '1', 3, fees=str(FEE))
     ledger.svc.portfolio_service.deposit_funds(ledger.pid, D('9000000000.00000000000000000000001'))
     ledger.svc.transaction_service.add_dividend(ledger.pid, 'BTC', FEE, datetime(2024, 1, 4))
     db.session.expire_all()
@@ -157,7 +157,8 @@ def test_persistence_replay_snapshots_and_validation_ignore_ambient_context(ledg
         assert actual.as_portfolio_summary() == expected_rows
         assert PC.get_cash_balance_for_portfolio(ledger.pid) == expected.totals['cash_balance']
         assert PC.get_quantity_held_for_symbol(ledger.pid, 'BTC') == D('2.000000000000000000000000000001')
-        assert ledger.svc.transaction_service._proposed_cash_effect('Buy', PRICE, QUANTITY, FEE) == (
+        from portfolio_app.calculators.financial_math import transaction_cash_effect
+        assert transaction_cash_effect(SimpleNamespace(transaction_type='Buy', price=PRICE, quantity=QUANTITY, fees=FEE)) == (
             REFERENCE.add(REFERENCE.multiply(PRICE, QUANTITY), FEE).copy_negate())
         assert ambient.prec == ambient_precision and ambient.rounding == ROUND_UP
         assert (ambient.Emin, ambient.Emax) == (-9, 9)
@@ -167,7 +168,7 @@ def test_persistence_replay_snapshots_and_validation_ignore_ambient_context(ledg
 
 def test_high_precision_db_to_replay_fees_cash_basis_and_partial_then_full_sale(ledger):
     purchase = REFERENCE.add(REFERENCE.multiply(PRICE, QUANTITY), FEE)
-    first = _trade(ledger, 'Buy', str(PRICE), str(QUANTITY), 1, fees=str(FEE))
+    first = _historical_trade(ledger, 'Buy', str(PRICE), str(QUANTITY), 1, fees=str(FEE))
     db.session.refresh(first)
     assert (first.price, first.quantity, first.fees) == (PRICE, QUANTITY, FEE)
     bought = PC.get_asset_snapshot(ledger.pid, 'BTC')
@@ -178,9 +179,9 @@ def test_high_precision_db_to_replay_fees_cash_basis_and_partial_then_full_sale(
     assert PC.get_cash_balance_for_portfolio(ledger.pid) == purchase.copy_negate()
     assert purchase != Context(prec=28).add(Context(prec=28).multiply(PRICE, QUANTITY), FEE)
 
-    _trade(ledger, 'Buy', str(PRICE), '2', 2, fees=str(FEE))
+    _historical_trade(ledger, 'Buy', str(PRICE), '2', 2, fees=str(FEE))
     sale_price = D('2234567890.1234567890123456789012345')
-    sale = _trade(ledger, 'Sell', str(sale_price), '1', 3, fees=str(FEE))
+    sale = _historical_trade(ledger, 'Sell', str(sale_price), '1', 3, fees=str(FEE))
     partial = PC.get_portfolio_snapshot(ledger.pid)
     row = partial.asset('BTC').transaction_projections[sale.id]
     total_cost = REFERENCE.add(purchase, REFERENCE.add(REFERENCE.multiply(PRICE, D('2')), FEE))
@@ -195,7 +196,7 @@ def test_high_precision_db_to_replay_fees_cash_basis_and_partial_then_full_sale(
     assert_accounting_invariants(partial.transactions, cash=partial.cash_balance,
                                  net_funding=D('0'), dividend_income=D('0'), book_value=partial.metrics['book_value'])
     remaining = D('2.000000000000000000000000000001')
-    _trade(ledger, 'Sell', str(sale_price), str(remaining), 4, fees=str(FEE))
+    _historical_trade(ledger, 'Sell', str(sale_price), str(remaining), 4, fees=str(FEE))
     closed = PC.get_portfolio_snapshot(ledger.pid)
     assert closed.transactions['total_quantity_held'] == closed.transactions['position_cost_basis'] == D('0')
     total_quantity = D('3.000000000000000000000000000001')
@@ -233,16 +234,21 @@ def test_high_precision_income_funding_and_multiple_portfolio_aggregation(ledger
 
 def test_validation_walk_and_fee_limit_retain_tiny_distinctions(ledger):
     quantity = D('1.000000000000000000000000000001')
+    ledger.svc.portfolio_service.deposit_funds(ledger.pid, D('2'), date=datetime(2024, 1, 1))
+    def accepted_trade(kind, qty, day, fees='0'):
+        return ledger.svc.transaction_service.add_transaction(
+            ledger.pid, kind, 'BTC', D('1'), D(qty), D(fees), date=datetime(2024, 1, day),
+        )
     with localcontext() as ambient:
         ambient.prec = 3
-        _trade(ledger, 'Buy', '1', str(quantity), 1)
-        _trade(ledger, 'Sell', '1', '1', 2)
+        accepted_trade('Buy', str(quantity), 1)
+        accepted_trade('Sell', '1', 2)
         assert PC.get_quantity_held_for_symbol(ledger.pid, 'BTC') == D('1E-30')
         with pytest.raises(ValidationError):
-            _trade(ledger, 'Sell', '1', '2E-30', 3)
+            accepted_trade('Sell', '2E-30', 3)
         with pytest.raises(ValidationError):
-            _trade(ledger, 'Sell', '1', '1E-30', 3, fees='1.000000000000000000000000000001E-30')
-        _trade(ledger, 'Sell', '1', '1E-30', 3)
+            accepted_trade('Sell', '1E-30', 3, fees='1.000000000000000000000000000001E-30')
+        accepted_trade('Sell', '1E-30', 3)
         assert PC.get_quantity_held_for_symbol(ledger.pid, 'BTC') == D('0')
 
 

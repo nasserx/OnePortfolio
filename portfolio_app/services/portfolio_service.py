@@ -1,7 +1,6 @@
 """Portfolio service for portfolio CRUD and cash-event business logic."""
 
 from decimal import Decimal
-from portfolio_app.utils.financial_arithmetic import exact_add, exact_subtract
 from typing import Optional, Any
 from portfolio_app.models.portfolio import Portfolio
 from portfolio_app.models.portfolio_event import PortfolioEvent
@@ -10,7 +9,7 @@ from portfolio_app.repositories.portfolio_event_repository import PortfolioEvent
 from portfolio_app.utils.constants import EventType
 from portfolio_app.utils.decimal_utils import ZERO, parse_financial_decimal
 from portfolio_app.utils.messages import MESSAGES
-from portfolio_app.calculators.portfolio_calculator import PortfolioCalculator
+from portfolio_app.services.cash_account import CashAccount, cash_fact, cash_mutation, new_effective_date
 
 
 class PortfolioService:
@@ -19,6 +18,7 @@ class PortfolioService:
     def __init__(self, portfolio_repo: PortfolioRepository, portfolio_event_repo: PortfolioEventRepository):
         self.portfolio_repo = portfolio_repo
         self.portfolio_event_repo = portfolio_event_repo
+        self.cash_account = CashAccount(portfolio_repo)
 
     # ------------------------------------------------------------------
     # Portfolio CRUD
@@ -65,6 +65,7 @@ class PortfolioService:
     # Deposit / Withdraw
     # ------------------------------------------------------------------
 
+    @cash_mutation
     def deposit_funds(self, portfolio_id: int, amount_delta: Decimal, notes: Optional[str] = None, date: Optional[Any] = None) -> Portfolio:
         """Deposit funds into a portfolio."""
         amount_delta = parse_financial_decimal(amount_delta)
@@ -73,15 +74,11 @@ class PortfolioService:
         self.portfolio_repo.commit()
         return portfolio
 
+    @cash_mutation
     def withdraw_funds(self, portfolio_id: int, amount_delta: Decimal, notes: Optional[str] = None, date: Optional[Any] = None) -> Portfolio:
         """Withdraw funds from a portfolio (amount_delta is positive)."""
         amount_delta = parse_financial_decimal(amount_delta)
         portfolio = self._require_portfolio(portfolio_id)
-        available_cash = PortfolioCalculator.get_cash_balance_for_portfolio(
-            portfolio_id, user_id=self.portfolio_repo.user_id,
-        )
-        if amount_delta > available_cash:
-            raise ValueError(MESSAGES['WITHDRAWAL_EXCEEDS_CASH'])
         self._create_event(portfolio_id, EventType.WITHDRAWAL, amount_delta.copy_negate(), notes, date)
         self.portfolio_repo.commit()
         return portfolio
@@ -90,33 +87,19 @@ class PortfolioService:
     # Cash-event operations
     # ------------------------------------------------------------------
 
+    @cash_mutation
     def update_portfolio_event(self, event_id: int, amount_delta: Decimal, notes: Optional[str] = None, date: Optional[Any] = None) -> PortfolioEvent:
-        """Update a portfolio event. Net deposits are derived on read.
-
-        Rejects an edit that would push live available cash below zero
-        (e.g. lowering a deposit below what's already been withdrawn or
-        spent on Buys). The create path (``deposit_funds``/``withdraw_funds``)
-        already enforces this; the edit path needs the same guard.
-        """
+        """Validate the complete prospective cash history before changing raw facts."""
         amount_delta = parse_financial_decimal(amount_delta)
         event = self._require_event(event_id)
         self._require_portfolio(event.portfolio_id)
 
-        # available_cash already reflects this event at its current amount,
-        # so the post-edit cash equals current + (new − old).
-        current_cash = PortfolioCalculator.get_cash_balance_for_portfolio(
-            event.portfolio_id, user_id=self.portfolio_repo.user_id,
+        self.cash_account.validate(
+            event.portfolio_id, remove=(event,),
+            add=(cash_fact(event, amount_delta=amount_delta,
+                           date=date if date is not None else event.date),),
+            message=MESSAGES['WITHDRAWAL_EXCEEDS_CASH'] if event.event_type == 'Withdrawal' else None,
         )
-        delta_change = exact_subtract(amount_delta, event.amount_delta)
-        if exact_add(current_cash, delta_change) < ZERO:
-            # Lowering a Deposit/Initial = clawback (money's been spent on
-            # later transactions). Raising a Withdrawal = genuine
-            # over-spend. The two scenarios call for different wording so
-            # the user knows whether to undo a *later* action or change
-            # the value they just typed.
-            if event.event_type in ('Deposit', 'Initial'):
-                raise ValueError(MESSAGES['CASH_ALREADY_SPENT'])
-            raise ValueError(MESSAGES['INSUFFICIENT_AMOUNT'])
 
         event.amount_delta = amount_delta
         if notes is not None:
@@ -127,27 +110,14 @@ class PortfolioService:
         self.portfolio_repo.commit()
         return event
 
+    @cash_mutation
     def delete_portfolio_event(self, event_id: int) -> int:
-        """Delete a portfolio event. Net deposits are derived on read.
-
-        Rejects a delete that would push live available cash below zero —
-        e.g. removing a deposit that already covered later withdrawals or
-        Buys. Sister guard to the one in ``update_portfolio_event``.
-        """
+        """Delete only when the prospective daily cash history permits it."""
         event = self._require_event(event_id)
         portfolio_id = event.portfolio_id
         self._require_portfolio(portfolio_id)
 
-        # Removing the event subtracts its amount_delta from net deposits,
-        # which in turn subtracts the same value from available cash.
-        # Only triggers for Deposit/Initial deletions (Withdrawals have
-        # negative amount_delta, so removing them *raises* cash and the
-        # check passes trivially).
-        current_cash = PortfolioCalculator.get_cash_balance_for_portfolio(
-            portfolio_id, user_id=self.portfolio_repo.user_id,
-        )
-        if exact_subtract(current_cash, event.amount_delta) < ZERO:
-            raise ValueError(MESSAGES['CASH_ALREADY_SPENT'])
+        self.cash_account.validate(portfolio_id, remove=(event,))
 
         self.portfolio_event_repo.delete(event)
         self.portfolio_repo.commit()
@@ -174,9 +144,16 @@ class PortfolioService:
             portfolio_id=portfolio_id,
             event_type=event_type,
             amount_delta=amount_delta,
-            notes=notes
+            notes=notes,
+            date=new_effective_date(date),
         )
-        if date is not None:
-            event.date = date
+        if (event_type == EventType.WITHDRAWAL and amount_delta >= ZERO) or (
+            event_type != EventType.WITHDRAWAL and amount_delta <= ZERO
+        ):
+            raise ValueError(MESSAGES['VALUE_POSITIVE'])
+        self.cash_account.validate(
+            portfolio_id, add=(cash_fact(event),),
+            message=MESSAGES['WITHDRAWAL_EXCEEDS_CASH'] if event_type == EventType.WITHDRAWAL else None,
+        )
         self.portfolio_event_repo.add(event)
         return event

@@ -256,7 +256,7 @@ def test_icon_sprite_has_unique_consumed_symbols_and_live_aliases():
         'circle-check', 'alert-circle', 'alert-triangle', 'info-circle',
         'arrow-up-right', 'arrow-down-right', 'arrow-right', 'plus',
         'arrow-left', 'folder-plus', 'square-plus', 'dots-vertical', 'edit',
-        'arrow-down-circle', 'arrow-up-circle', 'trash', 'filter',
+        'arrow-down-circle', 'arrow-up-circle', 'arrows-exchange', 'trash', 'filter',
         'cash-banknote', 'shield-lock', 'broadcast', 'notebook', 'calculator',
         'chart-pie', 'check', 'brand-github', 'mail', 'user', 'user-cog',
         'user-circle', 'calendar', 'mail-check', 'refresh',

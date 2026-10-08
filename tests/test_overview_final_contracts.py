@@ -36,12 +36,13 @@ def test_book_value_and_supporting_metric_contracts_are_preserved():
     assert 'totals.realized_trading_return|fmt_display_percent(signed=True)' in TEMPLATE
 
     labels = re.findall(r"call fact\('([^']+)'", TEMPLATE)
-    assert labels == ['Net Contributions', 'Cash', 'Dividends', 'Realized P&L']
+    assert labels == ['Net Contributions', 'Cash', 'Dividends']
     assert "money(totals.net_contributions)" in TEMPLATE
     assert "money(totals.cash_balance)" in TEMPLATE
     assert "money(totals.dividend_income, tone='income', signed=true)" in TEMPLATE
     assert "money(totals.realized_trading_pnl, tone='sign', signed=true)" in TEMPLATE
-    assert 'class="fact supporting-item"' in MACROS
+    assert 'class="fact"' in MACROS
+    assert 'class="fact supporting-item"' not in MACROS
 
     item = _rule(COMPONENTS, '.supporting-item')
     assert 'border: 1px solid var(--border)' in item

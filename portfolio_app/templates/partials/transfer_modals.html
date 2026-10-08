@@ -8,10 +8,15 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
+                <div id="transfer_source_context" class="mb-3">
+                    <label class="form-label" for="transfer_source_name">From Portfolio</label>
+                    <input id="transfer_source_name" class="form-control" type="text" readonly>
+                    <input id="transfer_context_source" type="hidden" name="source_portfolio_id">
+                </div>
                 {% for field, label in [('source_portfolio_id', 'From Portfolio'), ('destination_portfolio_id', 'To Portfolio')] %}
-                <div class="mb-3">
+                <div class="mb-3"{% if field == 'source_portfolio_id' %} id="transfer_source_picker" hidden{% endif %}>
                     <label for="transfer_{{ field }}" class="form-label">{{ label }}</label>
-                    <select id="transfer_{{ field }}" name="{{ field }}" class="form-select" required>
+                    <select id="transfer_{{ field }}" name="{{ field }}" class="form-select" required{% if field == 'source_portfolio_id' %} disabled{% endif %}>
                         <option value="">Select Portfolio</option>
                         {% for portfolio in portfolios %}<option value="{{ portfolio.id }}">{{ portfolio.name }}</option>{% endfor %}
                     </select>

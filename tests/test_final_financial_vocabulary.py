@@ -3,6 +3,7 @@
 from datetime import datetime
 from decimal import Decimal as D
 from html.parser import HTMLParser
+from html import escape
 
 import pytest
 
@@ -88,24 +89,37 @@ def test_concise_page_vocabulary_is_separate_from_precise_domain_names(ledger, a
         assert '+25.00' not in page.labels  # earnings remain internal, no redundant card
 
 
-def test_overview_has_only_four_focusable_formula_indicators(ledger, app):
+def test_overview_has_only_three_focusable_formula_indicators(ledger, app):
     _seed(ledger)
     _, page = _page(app, ledger, '/')
-    assert len(page.help) == 4
+    assert len(page.help) == 3
     expected = {
         'Book Value = Cash + Cost Basis',
         'Net Contributions = Deposits − Withdrawals',
-        'Realized P&L = Net Sale Proceeds − Released Cost Basis',
+        'Realized P&L = Net Sale Proceeds − Released Cost Basis\n'
         'Realized Return = Realized P&L ÷ Released Cost Basis × 100',
     }
     assert {attrs['aria-label'] for attrs, _ in page.help} == expected
     for attrs, button_depth in page.help:
-        assert button_depth == 0
-        assert attrs['tabindex'] == '0'
-        assert attrs['role'] == 'img'
+        assert button_depth == 1
+        assert attrs['type'] == 'button'
+        assert 'tabindex' not in attrs
+        assert 'role' not in attrs
         assert attrs['aria-label'] == attrs['title']
         assert attrs['data-bs-toggle'] == 'tooltip'
         assert attrs['data-bs-trigger'] == 'hover focus'
+        assert attrs['data-bs-html'] == 'true'
+        expected_lines = []
+        for line in attrs['aria-label'].split('\n'):
+            name, formula = line.split('=', 1)
+            expected_lines.append(
+                '<span class="tooltip-formula">'
+                f'<strong>{escape(name.strip())}</strong> = {escape(formula.strip())}'
+                '</span>'
+            )
+        assert attrs['data-bs-title'] == (
+            '<span class="tooltip-formulas">' + ''.join(expected_lines) + '</span>'
+        )
 
 
 @pytest.mark.parametrize('url', ['/portfolios/', '/transactions/'])

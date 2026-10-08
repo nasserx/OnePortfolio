@@ -376,14 +376,14 @@ def test_overview_supporting_metrics_use_one_shared_item_grid_contract():
         'Net Contributions',
         'Cash',
         'Dividends',
-        'Realized P&L',
     ]
     assert "money(totals.net_contributions)" in template
     assert "money(totals.cash_balance)" in template
     assert "money(totals.dividend_income, tone='income', signed=true)" in template
     assert "money(totals.realized_trading_pnl, tone='sign', signed=true)" in template
 
-    assert 'class="fact supporting-item"' in macros
+    assert 'class="fact"' in macros
+    assert 'class="fact supporting-item"' not in macros
     assert 'class="fact__label supporting-item__label"' in macros
     assert 'class="fact__value supporting-item__value"' in macros
 

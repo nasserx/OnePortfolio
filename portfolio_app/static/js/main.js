@@ -1261,13 +1261,11 @@ class ModalAjaxHandler {
         const existing = modal.querySelector('.js-modal-banner');
         if (existing) existing.remove();
         const banner = document.createElement('div');
-        banner.className = 'alert alert-danger js-modal-banner d-flex align-items-center mb-3';
+        // Reuse field-validation typography for form-level errors too. One
+        // shared owner keeps transfers and other financial dialogs consistent.
+        banner.className = 'invalid-feedback d-block js-modal-banner mb-3';
         banner.setAttribute('role', 'alert');
-        const icon = window.OnePortfolioIcons.create('alert-circle', 'me-2');
-        const text = document.createElement('span');
-        text.textContent = message;
-        banner.appendChild(icon);
-        banner.appendChild(text);
+        banner.textContent = message;
         const body = modal.querySelector('.modal-body');
         if (body) {
             body.insertBefore(banner, body.firstChild);

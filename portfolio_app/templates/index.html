@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from 'macros/ui.html' import money, percent, fact, info, marker, empty_state, financial_hints %}
+{% from 'macros/ui.html' import money, percent, fact, info, realized_info, marker, empty_state, financial_hints %}
 {% from 'macros/icons.html' import icon %}
 
 {% block title %}Overview — OnePortfolio{% endblock %}
@@ -25,7 +25,11 @@
                data-countup="{{ totals.book_value }}"
                title="{{ totals.book_value|fmt_money }}">{{ totals.book_value|fmt_display_money }}</p>
 
-            <p class="hero-figure__meta">
+            <div class="hero-figure__realized">
+                <span class="hero-figure__pnl-label">Realized P&amp;L</span>
+                <span class="hero-figure__pnl-value">{{ money(totals.realized_trading_pnl, tone='sign', signed=true) }}</span>
+                <span class="hero-figure__return">
+                <span class="visually-hidden">Realized Return</span>
                 {% if totals.trading_return_display == '—' %}
                     <span class="delta delta--flat">—</span>
                 {% else %}
@@ -42,16 +46,14 @@
                         {{ totals.realized_trading_return|fmt_display_percent(signed=True) }}
                     </span>
                 {% endif %}
-                <span>Realized Return {{ info(financial_hints['Realized Return']) }}</span>
-            </p>
+                {{ realized_info() }}
+                </span>
+            </div>
 
             <div class="hero-figure__facts">
                 {% call fact('Net Contributions') %}{{ money(totals.net_contributions) }}{% endcall %}
                 {% call fact('Cash') %}{{ money(totals.cash_balance) }}{% endcall %}
                 {% call fact('Dividends') %}{{ money(totals.dividend_income, tone='income', signed=true) }}{% endcall %}
-                {% call fact('Realized P&L') %}
-                    {{ money(totals.realized_trading_pnl, tone='sign', signed=true) }}
-                {% endcall %}
             </div>
         </div>
 

@@ -56,6 +56,15 @@ def test_inputs_and_native_select_follow_nova_and_theme_contract():
     assert 'color: var(--popover-foreground)' in options
     assert ':root[data-theme="dark"] .form-select { color-scheme: dark; }' in css
     assert ':root:not([data-theme="light"]) .form-select { color-scheme: dark; }' in css
+    disabled = _rule(css, '.form-control:disabled,\n  .form-select:disabled')
+    assert 'opacity: 0.5' in disabled
+    assert '.form-control[readonly]' not in disabled
+    readonly = _rule(css, '.form-control[readonly]')
+    assert 'cursor: default' in readonly
+
+    tokens = TOKENS.read_text(encoding='utf-8')
+    assert "viewBox='0 0 24 24'" in tokens
+    assert "d='M8 9l4-4l4 4m0 6l-4 4l-4-4'" in tokens
 
 
 def test_card_dialog_tabs_and_menu_use_recipe_radius_tiers():
@@ -80,6 +89,57 @@ def test_card_dialog_tabs_and_menu_use_recipe_radius_tiers():
     assert 'border-radius: var(--radius-lg)' in menu
     item = _rule(css, '.dropdown-item')
     assert 'border-radius: var(--radius-md)' in item
+    assert 'gap: 0.375rem' in item
+    assert 'font-size: var(--text-sm)' in item
+    assert 'cursor: default' in item
+    menu_geometry = re.findall(r'(?m)^  \.dropdown-menu\s*\{([^}]*)\}', css)[-1]
+    assert 'min-width: 8rem' in menu_geometry
+    divider = _rule(css, '.dropdown-divider')
+    assert 'margin: var(--space-1) calc(-1 * var(--space-1))' in divider
+
+
+def test_tooltip_help_error_and_financial_delta_follow_nova_recipes():
+    css = COMPONENTS.read_text(encoding='utf-8')
+
+    tooltip_root = _rule(css, '.tooltip')
+    assert '--bs-tooltip-opacity: 1' in tooltip_root
+    assert 'opacity: 1 !important' not in tooltip_root
+    tooltip = _rule(css, '.tooltip .tooltip-inner')
+    assert 'max-width: 20rem' in tooltip
+    assert 'padding: 0.375rem var(--space-3)' in tooltip
+    assert 'border-radius: var(--radius-md)' in tooltip
+    assert 'background-color: var(--foreground)' in tooltip
+    assert 'color: var(--background)' in tooltip
+    assert 'font-size: var(--text-xs)' in tooltip
+    assert 'box-shadow' not in tooltip
+
+    arrow = re.findall(r'(?m)^  \.tooltip \.tooltip-arrow::before\s*\{([^}]*)\}', css)[-1]
+    assert 'width: 0.625rem' in _rule(
+        css, '.tooltip .tooltip-arrow,\n  .tooltip .tooltip-arrow::before'
+    )
+    assert 'background-color: var(--foreground)' in arrow
+    assert 'border-radius: 2px' in arrow
+    assert 'transform: rotate(45deg)' in arrow
+
+    trigger = _rule(css, '.info-dot')
+    for expected in (
+        'width: 1.5rem', 'height: 1.5rem',
+        'border-radius: var(--radius-md)', 'background-color: transparent',
+    ):
+        assert expected in trigger
+    trigger_focus = _rule(css, '.info-dot:focus-visible')
+    assert 'border-color: var(--ring)' in trigger_focus
+    assert 'box-shadow: 0 0 0 3px var(--focus-ring-soft)' in trigger_focus
+
+    error = _rule(css, '.invalid-feedback')
+    assert 'color: var(--destructive)' in error
+    assert 'font-size: var(--text-sm)' in error
+
+    delta = _rule(css, '.delta')
+    assert 'height: 1.25rem' in delta
+    assert 'padding: 0.125rem var(--space-2)' in delta
+    assert 'border-radius: var(--radius-4xl)' in delta
+    assert 'font-size: var(--text-xs)' in delta
 
 
 def test_table_uses_nova_neutral_rows_and_single_separator_recipe():

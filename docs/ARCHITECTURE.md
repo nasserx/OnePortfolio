@@ -194,7 +194,7 @@ Typical asset-entry creation:
 `services/mutation.py` owns `BEGIN IMMEDIATE`, flush, commit and rollback for
 trades, dividends, funding, transfers, symbols, portfolios and confirmed account
 removal. A direct top-level service call owns its transaction; an HTTP submission
-owns the larger service-plus-receipt transaction. Nested services join that owner,
+owns the larger service-plus-receipt-plus-audit transaction. Nested services join that owner,
 never commit independently, and poison the whole operation on failure. An
 SQLAlchemy commit guard rejects accidental nested/helper commits. Entry requires
 a clean session and no manually opened database transaction.
@@ -247,6 +247,49 @@ endpoint. Its edits/deletes use the same event service. The portfolio-summary,
 holdings and withdrawal-Max JSON endpoints are read-only; no alternate financial
 JSON write path bypasses these services. Registration/email/login/challenge
 operations are nonfinancial and retain their existing authentication boundaries.
+
+### Append-only financial history (schema 39)
+
+`FinancialAudit` records committed create/update/delete revisions for Portfolio,
+Transaction, PortfolioEvent (including Initial), Dividend, PortfolioTransfer and
+tracked Symbol records. `services/financial_audit.py` captures server-side
+persisted before values before the first ORM flush inside `mutation_transaction()`.
+After all financial writes, the owner reads final persisted values and appends
+audit rows against the same successful `MutationReceipt.id`, before committing.
+Financial writes, receipt and audit either all commit or all roll back. The
+audit writer never commits. Retry replay never invokes the financial services
+again and therefore never adds an audit row.
+
+Each revision contains owner ID, entity table/type, stable entity ID, action,
+UTC creation timestamp and nullable before/after JSON text. Entity IDs are not
+foreign keys: deleting a portfolio or symbol retains a separate before snapshot
+for each deleted child. One receipt groups all rows of a compound operation.
+Multiple changes to one entity within that transaction describe its original
+and final committed states, not uncommitted intermediate revisions.
+
+Snapshots use explicit persisted-domain field allowlists in
+`repositories/financial_audit_repository.py`: no ORM internals, credentials,
+submission/CSRF tokens or calculated financial metrics. JSON keys are sorted;
+Decimal values use canonical exact ordinary decimal strings, never floats or UI
+formatting. Stored DateTimes serialize with ISO microseconds; null stays null.
+Automatic `updated_at` differences alone do not create a revision; meaningful
+updates retain the full timestamps. Normalized no-op edits still follow Phase 13
+receipt/revision behavior but add no misleading audit event.
+
+`Services(user_id).audit_repo` exposes only tenant-filtered history and ID reads,
+returning immutable revision objects ordered by timestamp then ID, with bounded
+pagination. It has no ordinary update/delete interface. ORM guards and SQLite
+triggers reject audit updates and individual deletes. Confirmed whole-account
+deletion is the retention exception: its user cascade removes that account's
+audit rows and receipts atomically. It does not retain an account-deletion event.
+An individual portfolio deletion never deletes audit history.
+
+Audit is historical evidence, not accounting authority or stale-write control:
+calculators never read it; the latest Phase 13 receipt still controls stale
+edits. No pre-upgrade history is invented. Administrative SQL/imports outside the
+supported mutation boundary are not audited; future financial workflows must
+use the boundary and ORM writes (or explicitly extend capture for bulk SQL).
+This is account-lifetime application history, not tamper-proof external archival.
 
 Overview reads records through scoped services/repositories, then calls calculator helpers to build totals, portfolio summaries, and allocation chart data.
 

@@ -108,7 +108,7 @@ composing multiple services. Start with a clean session; never manually begin a
 deferred transaction before entering it. Repositories add/delete/flush only
 inside this boundary. Do not commit in nested services or swallow a failed
 sub-operation and continue writing. The owner commits validation, raw writes
-and durable retry receipt together; any failed sub-operation rolls back all of
+and durable retry receipt and audit revisions together; any failed sub-operation rolls back all of
 them. Existing nonfinancial authentication workflows retain their own commits.
 
 All financial HTTP POSTs (including confirmed account removal) require the
@@ -135,6 +135,25 @@ The mutation receipt table has no automatic pruning: its history protects
 successful retries and its monotonic IDs provide revisions. A future retention
 change must preserve both contracts. Raw fixture seeding is for legacy/test
 states only and deliberately bypasses these application guards.
+
+Financial audit capture is automatic for the allowlisted ORM domain entities
+inside the mutation owner. Do not issue bulk SQL financial updates/deletes that
+bypass capture. Confirmed account removal is the deliberate exception: the
+account's entire lifetime history is removed. When adding a persisted domain
+field, review the audit allowlist; never serialize ORM internals or credentials.
+Read through `Services(user_id).audit_repo.history(...)` or `get_by_id(...)`,
+not an unscoped audit query. Returned revisions are immutable; JSON monetary
+values are exact decimal strings. Do not add an audit commit or mutate revisions.
+
+Test actual persisted before/after snapshots, no-op edits, receipt replay,
+compound child deletion and failure **after audit INSERT**, not just failures
+before business validation. Fixture cleanup deletes accounts to cascade lifetime
+audit/receipt records; it must not disable append-only triggers. Use only
+disposable database copies for migration tests.
+
+```bash
+pytest -q tests/test_financial_audit.py tests/test_financial_audit_migration.py tests/test_mutation_integrity.py
+```
 
 ## Repository Safety
 

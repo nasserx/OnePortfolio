@@ -11,6 +11,7 @@ from portfolio_app.models.pending_registration import PendingRegistration
 from portfolio_app.models.oauth_identity import OAuthIdentity
 from portfolio_app.models.auth_challenge import AuthChallenge
 from portfolio_app.models.mutation_receipt import MutationReceipt
+from portfolio_app.models.financial_audit import FinancialAudit
 
 __all__ = [
     'Portfolio',
@@ -24,4 +25,5 @@ __all__ = [
     'OAuthIdentity',
     'AuthChallenge',
     'MutationReceipt',
+    'FinancialAudit',
 ]

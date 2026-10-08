@@ -172,6 +172,31 @@ Rollback to older application code requires restoring a schema-35 backup, not
 running the old Numeric models against schema 36. A down-migration would be lossy
 for newly accepted precision and is deliberately not provided.
 
+## Schema 39: append-only financial audit history
+
+The forward `_migrate_financial_audit` step adds `financial_audit`: owner and
+receipt foreign keys, entity type/ID (no live-entity FK), create/update/delete
+action, nullable exact before/after JSON TEXT, and UTC timestamp. Three indexes
+support account chronology, mutation grouping and entity history. CHECKs enforce
+the action and before/after null shape. SQLite triggers prevent UPDATE and
+individual DELETE while the owner account exists; account deletion cascades
+remain allowed. No financial column or existing row is changed. No historical
+audit backfill is fabricated.
+
+Table, indexes, triggers and version 39 commit in one SQLite writer-reserved
+transaction. Failure rolls back that forward step to schema 38; startup can
+retry. Fresh installs use the same model/DDL through the existing startup schema
+architecture. Earlier migration steps retain their own existing transaction
+boundaries. Tests cover fresh schema, upgrade, index/trigger failure and retry,
+unchanged raw financial rows and receipts, restart idempotency, and account
+lifetime retention. See `tests/test_financial_audit_migration.py` and
+`tests/test_financial_audit.py`.
+
+Snapshots preserve domain numbers as canonical decimal strings, dates as ISO
+microsecond strings and nulls as nulls. Audit rows never enter accounting or
+replace Phase 13 stale-write revisions. There is no audit pruning or individual
+audit CRUD operation during the account lifetime.
+
 ## Schema 38: durable financial mutation receipts
 
 The additive `mutation_receipt` table stores a user-owned operation key, request

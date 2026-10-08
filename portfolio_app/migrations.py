@@ -8,7 +8,7 @@ from portfolio_app import db
 # Bumped whenever a new migration step is added below. Stored in the SQLite
 # header (PRAGMA user_version) after a successful migration so subsequent
 # boots can short-circuit the whole inspection pass.
-TARGET_SCHEMA_VERSION = 38
+TARGET_SCHEMA_VERSION = 39
 
 # Sidecar file that carries the startup schema lock, derived from the
 # application database path (``portfolio.db`` → ``portfolio.db.schema-lock``).
@@ -223,6 +223,7 @@ def _run_migration_pass(app):
             try:
                 _apply_migration_steps(conn, sa)
                 _migrate_mutation_receipts(conn, sa)
+                _migrate_financial_audit(conn, sa)
                 # End any residual migration transaction before changing the
                 # connection-level FK pragma. Individual historical steps may
                 # commit earlier, but inspection-only work can autobegin again.
@@ -281,6 +282,8 @@ class _LiveInspector:
 
 
 def _apply_migration_steps(conn, sa):
+    if conn.exec_driver_sql('PRAGMA user_version').scalar() == 38:
+        return  # Only the append-only financial audit schema is new.
     if conn.exec_driver_sql('PRAGMA user_version').scalar() == 37:
         return  # Only the additive mutation-receipt step is needed.
     if conn.exec_driver_sql('PRAGMA user_version').scalar() == 36:
@@ -870,6 +873,22 @@ def _apply_migration_steps(conn, sa):
 
     # Step 37: one linked cash transfer; existing financial facts are untouched.
     _migrate_portfolio_transfers(conn, sa)
+
+
+def _migrate_financial_audit(conn, sa):
+    """Atomic additive schema 39, including append-only triggers."""
+    from portfolio_app.models.financial_audit import FinancialAudit
+    if 'user' not in sa.inspect(conn).get_table_names():
+        return
+    conn.commit()
+    conn.exec_driver_sql('BEGIN IMMEDIATE')
+    try:
+        FinancialAudit.__table__.create(conn, checkfirst=True)
+        conn.exec_driver_sql('PRAGMA user_version = 39')
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
 
 
 def _migrate_mutation_receipts(conn, sa):

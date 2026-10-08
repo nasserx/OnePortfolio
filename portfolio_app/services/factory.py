@@ -32,6 +32,7 @@ from portfolio_app.services.overview_service import OverviewService
 from portfolio_app.services.auth_service import AuthService
 from portfolio_app.services.transfer_service import TransferService
 from portfolio_app.repositories.portfolio_transfer_repository import PortfolioTransferRepository
+from portfolio_app.repositories.financial_audit_repository import FinancialAuditRepository
 
 
 class Services:
@@ -44,10 +45,12 @@ class Services:
         'portfolio_service', 'transaction_service', 'overview_service',
         'auth_service',
         'transfer_repo', 'transfer_service',
+        'audit_repo',
     )
 
     def __init__(self, user_id: Optional[int] = None):
         self.portfolio_repo = PortfolioRepository(Portfolio, db, user_id=user_id)
+        self.audit_repo = FinancialAuditRepository(user_id)
         self.portfolio_event_repo = PortfolioEventRepository(PortfolioEvent, db, user_id=user_id)
         self.transaction_repo = TransactionRepository(Transaction, db, user_id=user_id)
         self.symbol_repo = SymbolRepository(Symbol, db, user_id=user_id)

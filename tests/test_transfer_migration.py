@@ -48,6 +48,8 @@ def version36(pair, test_db_path, tmp_path):
     expected = PC.get_financial_snapshot(pair.uid)
     with sqlite3.connect(test_db_path) as source, sqlite3.connect(path) as destination:
         source.backup(destination)
+        destination.execute('DROP TABLE financial_audit')
+        destination.execute('DROP TABLE mutation_receipt')
         destination.execute('DROP TABLE portfolio_transfer')
         destination.execute('PRAGMA user_version=36')
     return path, expected, pair.uid

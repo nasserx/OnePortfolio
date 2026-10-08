@@ -3,7 +3,7 @@
 import logging
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
-from portfolio_app import db
+from portfolio_app.services.mutation import abort_mutation
 from portfolio_app.services import get_services
 from portfolio_app.forms import (
     PortfolioAddForm,
@@ -116,6 +116,7 @@ def portfolios_add():
         return redirect(url_for('portfolios.portfolios_list'))
 
     except ValueError as e:
+        abort_mutation()
         if is_ajax_request():
             return json_response(False, errors={'__all__': get_error_message(e)})
 
@@ -130,7 +131,7 @@ def portfolios_add():
 
     except Exception:
         logger.exception('Failed to add portfolio')
-        db.session.rollback()
+        abort_mutation()
 
         if is_ajax_request():
             return json_response(False, errors={'__all__': MESSAGES['PORTFOLIO_ADD_FAILED']})
@@ -187,6 +188,7 @@ def portfolios_rename(portfolio_id):
         return redirect(url_for('portfolios.portfolios_list'))
 
     except ValueError as e:
+        abort_mutation()
         message = get_error_message(e)
         if is_ajax_request():
             field = 'name' if message == MESSAGES['PORTFOLIO_NAME_TAKEN'] else '__all__'
@@ -197,7 +199,7 @@ def portfolios_rename(portfolio_id):
 
     except Exception:
         logger.exception('Failed to rename portfolio %s', portfolio_id)
-        db.session.rollback()
+        abort_mutation()
 
         if is_ajax_request():
             return json_response(False, errors={'__all__': MESSAGES['PORTFOLIO_RENAME_FAILED']})
@@ -219,13 +221,14 @@ def portfolios_delete(portfolio_id):
         flash(MESSAGES['PORTFOLIO_REMOVED'], 'success')
 
     except ValueError as e:
+        abort_mutation()
         if is_ajax_request():
             return json_response(False, errors={'__all__': get_error_message(e)})
         flash(get_error_message(e), 'error')
 
     except Exception:
         logger.exception('Failed to delete portfolio %s', portfolio_id)
-        db.session.rollback()
+        abort_mutation()
         if is_ajax_request():
             return json_response(
                 False, errors={'__all__': MESSAGES['PORTFOLIO_DELETE_FAILED']},
@@ -272,6 +275,7 @@ def portfolios_deposit(portfolio_id):
         return redirect(url_for('portfolios.portfolios_list'))
 
     except ValueError as e:
+        abort_mutation()
         if is_ajax_request():
             return json_response(False, errors={'__all__': get_error_message(e)})
 
@@ -280,7 +284,7 @@ def portfolios_deposit(portfolio_id):
 
     except Exception:
         logger.exception('Failed to deposit to portfolio %s', portfolio_id)
-        db.session.rollback()
+        abort_mutation()
 
         if is_ajax_request():
             return json_response(False, errors={'__all__': MESSAGES['DEPOSIT_FAILED']})
@@ -326,6 +330,7 @@ def portfolios_withdraw(portfolio_id):
         return redirect(url_for('portfolios.portfolios_list'))
 
     except ValueError as e:
+        abort_mutation()
         if is_ajax_request():
             # Withdrawal business-rule errors belong under Amount rather
             # than as a modal-level banner.
@@ -343,7 +348,7 @@ def portfolios_withdraw(portfolio_id):
 
     except Exception:
         logger.exception('Failed to withdraw from portfolio %s', portfolio_id)
-        db.session.rollback()
+        abort_mutation()
 
         if is_ajax_request():
             return json_response(False, errors={'__all__': MESSAGES['WITHDRAWAL_FAILED']})
@@ -402,6 +407,7 @@ def portfolios_event_edit(event_id):
         return redirect(url_for('portfolios.portfolios_list'))
 
     except ValueError as e:
+        abort_mutation()
         if is_ajax_request():
             # Event-edit's input is named ``edit_cash_event_amount`` —
             # surface insufficient/clawback messages under it.
@@ -416,7 +422,7 @@ def portfolios_event_edit(event_id):
 
     except Exception:
         logger.exception('Failed to edit event %s', event_id)
-        db.session.rollback()
+        abort_mutation()
         if is_ajax_request():
             return json_response(False, errors={'__all__': MESSAGES['CASH_EVENT_UPDATE_FAILED']})
         flash(MESSAGES['CASH_EVENT_UPDATE_FAILED'], 'error')
@@ -463,11 +469,12 @@ def portfolios_transfer_save(transfer_id=None):
             return json_response(True, message=MESSAGES['TRANSFER_SAVED'], transfer=transfer.to_dict())
         flash(MESSAGES['TRANSFER_SAVED'], 'success')
     except ValueError as exc:
+        abort_mutation()
         if is_ajax_request():
             return json_response(False, errors={'__all__': get_error_message(exc)})
         flash(get_error_message(exc), 'error')
     except Exception:
-        db.session.rollback()
+        abort_mutation()
         logger.exception('Transfer mutation failed')
         if is_ajax_request():
             return json_response(False, errors={'__all__': MESSAGES['TRANSFER_FAILED']})
@@ -484,11 +491,12 @@ def portfolios_transfer_delete(transfer_id):
             return json_response(True, message=MESSAGES['TRANSFER_REMOVED'])
         flash(MESSAGES['TRANSFER_REMOVED'], 'success')
     except ValueError as exc:
+        abort_mutation()
         if is_ajax_request():
             return json_response(False, errors={'__all__': get_error_message(exc)})
         flash(get_error_message(exc), 'error')
     except Exception:
-        db.session.rollback()
+        abort_mutation()
         logger.exception('Transfer deletion failed')
         if is_ajax_request():
             return json_response(False, errors={'__all__': MESSAGES['TRANSFER_FAILED']})
@@ -535,13 +543,14 @@ def portfolios_event_delete(event_id):
         flash(MESSAGES['TRANSACTION_REMOVED'], 'success')
 
     except ValueError as e:
+        abort_mutation()
         if is_ajax_request():
             return json_response(False, errors={'__all__': get_error_message(e)})
         flash(get_error_message(e), 'error')
 
     except Exception:
         logger.exception('Failed to delete event %s', event_id)
-        db.session.rollback()
+        abort_mutation()
         if is_ajax_request():
             return json_response(
                 False, errors={'__all__': MESSAGES['CASH_EVENT_DELETE_FAILED']},

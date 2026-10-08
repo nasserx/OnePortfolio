@@ -942,11 +942,11 @@ def test_account_deletion_rolls_back_when_commit_fails(
     client.post('/settings/delete/request')
     code = mail_log[-1][1]
 
-    def fail_commit(_repository):
+    def fail_commit(_session):
         raise SQLAlchemyError('forced commit failure')
 
     monkeypatch.setattr(
-        'portfolio_app.repositories.user_repository.UserRepository.commit',
+        'sqlalchemy.orm.Session.commit',
         fail_commit,
     )
     response = client.post('/settings/delete/verify', data={'code': code})

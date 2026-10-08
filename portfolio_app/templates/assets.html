@@ -308,6 +308,7 @@
         <div class="modal-content">
             <form method="POST" action="{{ url_for('transactions.symbol_add') }}" autocomplete="off" novalidate>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="mutation_token" value="{{ mutation_token() }}">
                 <div class="modal-header">
                     <h5 class="modal-title" id="addSymbolModalTitle">Add Asset</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -362,6 +363,7 @@
         <div class="modal-content">
             <form method="POST" action="{{ url_for('transactions.transaction_add') }}" autocomplete="off" novalidate>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="mutation_token" value="{{ mutation_token() }}">
                 <input type="hidden" name="user_timezone" value="">
                 <div class="modal-header">
                     <h5 class="modal-title" id="add_tx_modal_title">Add Asset Entry</h5>
@@ -493,6 +495,7 @@
         <div class="modal-content">
             <form method="POST" id="editTransactionForm" autocomplete="off" novalidate>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="mutation_token" value="{{ mutation_token() }}">
                 <input type="hidden" name="user_timezone" value="">
                 <div class="modal-header">
                     <h5 class="modal-title" id="editTransactionModalTitle">Edit Asset Entry</h5>
@@ -609,6 +612,7 @@
         <div class="modal-content">
             <form method="POST" id="deleteTransactionForm" novalidate>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="mutation_token" value="{{ mutation_token() }}">
                 <div class="modal-header">
                     <h5 class="modal-title" id="deleteTransactionModalTitle">
                         {{ icon('trash', class='modal-title-icon') }}
@@ -641,6 +645,7 @@
         <div class="modal-content">
             <form method="POST" id="deleteSymbolForm" action="{{ url_for('transactions.symbol_delete') }}" novalidate>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="mutation_token" value="{{ mutation_token() }}">
                 <input type="hidden" name="delete_symbol_portfolio_id" id="delete_symbol_portfolio_id">
                 <input type="hidden" name="delete_symbol_ticker" id="delete_symbol_ticker">
                 <div class="modal-header">
@@ -675,6 +680,7 @@
         <div class="modal-content">
             <form method="POST" action="{{ url_for('transactions.dividend_add') }}" autocomplete="off" novalidate>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="mutation_token" value="{{ mutation_token() }}">
                 <input type="hidden" name="user_timezone" value="">
                 <input type="hidden" name="portfolio_id" id="add_div_portfolio_id">
                 <input type="hidden" name="div_symbol" id="add_div_symbol">
@@ -740,6 +746,7 @@
         <div class="modal-content">
             <form method="POST" id="editDividendForm" autocomplete="off" novalidate>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="mutation_token" value="{{ mutation_token() }}">
                 <input type="hidden" name="user_timezone" value="">
                 <div class="modal-header">
                     <h5 class="modal-title" id="editDividendModalTitle">Edit Dividends</h5>
@@ -805,6 +812,7 @@
         <div class="modal-content">
             <form method="POST" id="deleteDividendForm" novalidate>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="mutation_token" value="{{ mutation_token() }}">
                 <div class="modal-header">
                     <h5 class="modal-title" id="deleteDividendModalTitle">
                         {{ icon('trash', class='modal-title-icon') }}

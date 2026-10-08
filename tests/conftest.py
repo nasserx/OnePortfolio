@@ -6,6 +6,13 @@ from config import Config
 from portfolio_app import create_app, db
 
 
+@pytest.fixture(autouse=True)
+def signed_financial_form_clients(monkeypatch):
+    from flask import Flask
+    from tests._mutation_client import MutationClient
+    monkeypatch.setattr(Flask, 'test_client_class', MutationClient)
+
+
 class TestConfig(Config):
     TESTING = True
     WTF_CSRF_ENABLED = False

@@ -178,13 +178,75 @@ minimum. See [cash policy](FINANCIAL_READ_MODEL.md#cash-account-policy).
 
 Typical asset-entry creation:
 
-1. Route receives POST data.
-2. Form validates and cleans fields.
-3. Route calls `TransactionService`.
+1. Authenticated, CSRF-protected POST supplies a signed form submission token.
+2. `utils/mutation_requests.py` reserves the SQLite writer, checks a durable retry
+   receipt, and checks the rendered account revision for edits/removals.
+3. Form validates and cleans fields; route calls `TransactionService`.
 4. Service checks ownership, cash, quantity, chronology, and business rules.
-5. Repository/model changes are written.
+5. Repositories flush raw changes; the transaction owner saves the successful
+   response receipt and commits both together. Errors roll everything back.
 6. Subsequent reads replay raw facts into financial projections; no derived history is written.
-7. Route returns JSON or redirects.
+7. Route returns JSON or redirects. Repeating the same successful submission
+   returns its saved response without executing the service again.
+
+## Financial mutation ownership
+
+`services/mutation.py` owns `BEGIN IMMEDIATE`, flush, commit and rollback for
+trades, dividends, funding, transfers, symbols, portfolios and confirmed account
+removal. A direct top-level service call owns its transaction; an HTTP submission
+owns the larger service-plus-receipt transaction. Nested services join that owner,
+never commit independently, and poison the whole operation on failure. An
+SQLAlchemy commit guard rejects accidental nested/helper commits. Entry requires
+a clean session and no manually opened database transaction.
+
+The SQLite reservation precedes current-state reads and lasts through commit.
+It serializes cash and quantity validation together, including historical edits
+and multi-record deletion. No financial mutation is performed by GET. Read-only
+snapshot/Max endpoints do not reserve the writer. Non-SQLite mutation backends
+are rejected until an equivalent locking contract is implemented.
+
+Schema 38 adds `MutationReceipt`, with a unique `(user_id, operation_key)` and a
+monotonic ID. It stores a payload digest and the successful HTTP response, not
+financial calculations. Receipts are committed with the financial writes and
+survive retries, separate workers and application restarts. Failed operations
+do not consume their token. A changed payload/path cannot reuse a consumed token.
+Each rendered form receives a new random signed intent, so intentionally
+identical records remain possible. CSRF and ownership checks remain independent.
+
+The latest receipt ID is the account's optimistic mutation revision. It is
+captured before page financial records are read, so a concurrent write during
+rendering cannot label stale fields with a newer revision. Edits and deletes
+compare that signed revision under the writer reservation. This is deliberately
+conservative: *any* intervening financial mutation in that account
+requires refreshing an old edit/confirmation, including metadata edits and bulk
+removals. Creates instead revalidate current cash/quantity and may coexist. A
+successful retry is recognized before the stale check. Direct scoped service
+calls advance the same revision and may pass `expected_revision`; without an
+HTTP submission token, each direct invocation is a distinct intended operation.
+
+Receipts are retained for the account lifetime and cascade on whole-account
+deletion. The existing one-time deletion challenge and authentication checks
+make retries after account removal ineffective. Individual portfolios linked to
+transfers still cannot be removed. Direct SQL/ORM writes outside these services
+remain unsupported application mutation paths and do not advance revisions.
+
+Audited mutation surface (all state-changing routes are POST):
+
+| Routes | Service | Records/repositories | Boundary |
+| --- | --- | --- | --- |
+| `/transactions/add`, `/edit/<id>`, `/delete/<id>` | TransactionService | TransactionRepository / Transaction | Shared mutation owner |
+| `/transactions/dividends/add`, `/edit/<id>`, `/delete/<id>` | TransactionService | DividendRepository / Dividend | Shared mutation owner |
+| `/transactions/symbols/add`, `/symbols/delete` | TransactionService | Symbol, Transaction, Dividend repositories | One atomic bulk operation |
+| `/portfolios/add`, `/rename/<id>`, `/delete/<id>` | PortfolioService | PortfolioRepository and child cascades | Shared owner; linked transfers restrict deletion |
+| `/portfolios/deposit/<id>`, `/withdraw/<id>`, `/events/edit/<id>`, `/events/delete/<id>` | PortfolioService | PortfolioEventRepository | Shared mutation owner |
+| `/portfolios/transfers/add`, `/transfers/edit/<id>`, `/transfers/delete/<id>` | TransferService | PortfolioTransferRepository | Both endpoint validations and one linked write |
+| `/settings/delete/verify` | AuthService | UserRepository, owned transfers and account cascades | OTP validation and complete removal under one owner |
+
+Initial Funding is a legacy funding-entry type, not a separate current create
+endpoint. Its edits/deletes use the same event service. The portfolio-summary,
+holdings and withdrawal-Max JSON endpoints are read-only; no alternate financial
+JSON write path bypasses these services. Registration/email/login/challenge
+operations are nonfinancial and retain their existing authentication boundaries.
 
 Overview reads records through scoped services/repositories, then calls calculator helpers to build totals, portfolio summaries, and allocation chart data.
 

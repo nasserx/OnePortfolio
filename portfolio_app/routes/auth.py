@@ -18,6 +18,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from portfolio_app import limiter
 from portfolio_app.forms.auth_forms import LoginForm, UpdateEmailForm, VerifyCodeForm
 from portfolio_app.services import get_services
+from portfolio_app.services.mutation import abort_mutation
 from portfolio_app.services.auth_service import (
     AUTHENTICATION_PURPOSE,
     RECENT_AUTH_PURPOSE,
@@ -413,7 +414,7 @@ def delete_account_verify():
             current_user, form.get_cleaned_data()['code'],
         )
     except SQLAlchemyError:
-        get_services().user_repo.db.session.rollback()
+        abort_mutation()
         logger.warning('Account deletion failed')
         success, message = False, MESSAGES['OPERATION_FAILED']
     if success:

@@ -101,6 +101,41 @@ For behavior changes, manually exercise the affected page or route. For financia
 
 For UI changes, check desktop and narrow viewports and confirm text does not overlap or overflow.
 
+## Testing financial mutations
+
+Use the `financial_mutation` service boundary, or `mutation_transaction()` when
+composing multiple services. Start with a clean session; never manually begin a
+deferred transaction before entering it. Repositories add/delete/flush only
+inside this boundary. Do not commit in nested services or swallow a failed
+sub-operation and continue writing. The owner commits validation, raw writes
+and durable retry receipt together; any failed sub-operation rolls back all of
+them. Existing nonfinancial authentication workflows retain their own commits.
+
+All financial HTTP POSTs (including confirmed account removal) require the
+hidden `mutation_token` issued with the rendered form, in addition to CSRF.
+Keep the token unchanged on a network retry. After success, the existing page
+reload issues new intents. Reusing a successful token with changed fields or a
+different action is a conflict. Edits/removals require the account revision from
+the form's render; a conflict uses the existing form-level error and asks for a
+refresh. No formatted numeric value serves as a concurrency token.
+
+`tests/_mutation_client.py` supplies fresh signed intents for existing route
+tests, as a newly rendered form would. Set `auto_mutation_tokens=False` for
+missing-token, stale-form and retry tests and reuse explicit tokens. This test
+helper never bypasses production token verification. Direct service tests may
+pass `expected_revision` when simulating an old read. Test concurrency with
+separate application contexts/connections and inject failures after SQL writes,
+not only before validation. Relevant groups:
+
+```bash
+pytest -q tests/test_mutation_integrity.py tests/test_mutation_migration.py tests/test_cash_account_policy.py tests/test_portfolio_transfers.py
+```
+
+The mutation receipt table has no automatic pruning: its history protects
+successful retries and its monotonic IDs provide revisions. A future retention
+change must preserve both contracts. Raw fixture seeding is for legacy/test
+states only and deliberately bypasses these application guards.
+
 ## Repository Safety
 
 Never commit:

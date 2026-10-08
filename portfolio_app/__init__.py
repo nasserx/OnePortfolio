@@ -337,6 +337,8 @@ def create_app(config_class=Config):
     # Register blueprints
     from portfolio_app.routes import register_blueprints
     register_blueprints(app)
+    from portfolio_app.utils.mutation_requests import register_mutation_requests
+    register_mutation_requests(app)
 
     # Bring the database to the target schema: incremental migrations first
     # (renames, column drops/adds), then create_all() for any new tables

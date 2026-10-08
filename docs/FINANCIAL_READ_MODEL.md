@@ -243,8 +243,9 @@ changes and all later days, not just a mutation's amount delta. Ownership and
 quantity-walk safeguards remain independent prerequisites.
 
 SQLite mutations reserve the writer with `BEGIN IMMEDIATE` before service reads
-and hold it through the existing service commit, preventing concurrent requests
-from spending the same cash. Exceptions roll back; no-op edits release the lock.
+and hold it through the transaction owner's commit, preventing concurrent requests
+from spending the same cash or quantity. `services/mutation.py` owns the boundary;
+HTTP submission receipts share that same commit. Exceptions roll back; no-op edits release the lock.
 Read-only ledger/Max requests never acquire this reservation. Service callers
 should enter with a clean session, not a hand-opened deferred database transaction;
 direct SQL/ORM writes outside the services are not policy-validated.
@@ -271,7 +272,7 @@ validation remains authoritative even after Max is requested.
 
 `TransferService` uses the existing SQLite mutation reservation, validates every
 affected portfolio with `CashAccount`, then writes one raw `PortfolioTransfer`
-record and commits once. Edits validate removal of the old effects plus addition
+record within the shared mutation transaction. Edits validate removal of the old effects plus addition
 of the new effects before dirtying the ORM. Deletes validate the destination
 clawback too. Any failure rolls back; no independent funding rows are created.
 

@@ -131,6 +131,9 @@ def test_actual_template_action_payloads_do_not_float_format(ledger, app):
                         date=datetime(2024, 1, 1))
     with app.test_request_context():
         g.services = ledger.svc
+        from flask_login import login_user
+        from portfolio_app.models import User
+        login_user(db.session.get(User, ledger.uid))
         context = _get_transactions_page_context()
         context['holdings'][0]['transactions'] = [row]
         context['holdings'][0]['transaction_projections'] = build_asset_snapshot('BTC', [row]).transaction_projections

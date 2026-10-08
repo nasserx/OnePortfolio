@@ -17,7 +17,8 @@ from portfolio_app.calculators.transaction_order import (
 )
 from portfolio_app.utils.decimal_utils import ZERO, parse_financial_decimal
 from portfolio_app.utils.financial_arithmetic import exact_add, exact_subtract, exact_multiply
-from portfolio_app.services.cash_account import CashAccount, cash_fact, cash_mutation, new_effective_date
+from portfolio_app.services.cash_account import CashAccount, cash_fact, new_effective_date
+from portfolio_app.services.mutation import financial_mutation
 from portfolio_app.utils.messages import MESSAGES
 
 
@@ -42,7 +43,7 @@ class TransactionService:
         self.dividend_repo = dividend_repo
         self.cash_account = CashAccount(portfolio_repo)
 
-    @cash_mutation
+    @financial_mutation
     def add_transaction(
         self,
         portfolio_id: int,
@@ -109,10 +110,9 @@ class TransactionService:
         self.transaction_repo.add(transaction)
         self.transaction_repo.flush()
 
-        self.transaction_repo.commit()
         return transaction
 
-    @cash_mutation
+    @financial_mutation
     def update_transaction(
         self,
         transaction_id: int,
@@ -149,7 +149,6 @@ class TransactionService:
                 transaction.notes = notes
             if date is not None:
                 transaction.date = date
-            self.transaction_repo.commit()
             return transaction
 
         self._validate_trade_values(
@@ -196,10 +195,9 @@ class TransactionService:
 
         self.transaction_repo.flush()
 
-        self.transaction_repo.commit()
         return transaction
 
-    @cash_mutation
+    @financial_mutation
     def delete_transaction(self, transaction_id: int) -> int:
         """Delete a transaction. Returns portfolio_id of the deleted transaction."""
         transaction = self.transaction_repo.get_by_id(transaction_id)
@@ -232,9 +230,9 @@ class TransactionService:
         self.transaction_repo.delete(transaction)
         self.transaction_repo.flush()
 
-        self.transaction_repo.commit()
         return portfolio_id
 
+    @financial_mutation
     def add_symbol(self, portfolio_id: int, symbol: str) -> Symbol:
         """Track a new symbol in a portfolio."""
         symbol = PortfolioCalculator.normalize_symbol(symbol)
@@ -248,11 +246,10 @@ class TransactionService:
 
         tracked = Symbol(portfolio_id=portfolio_id, symbol=symbol)
         self.symbol_repo.add(tracked)
-        self.symbol_repo.commit()
 
         return tracked
 
-    @cash_mutation
+    @financial_mutation
     def delete_symbol(self, portfolio_id: int, symbol: str) -> None:
         """Remove a tracked symbol and all of its financial records atomically."""
         symbol = PortfolioCalculator.normalize_symbol(symbol)
@@ -277,9 +274,6 @@ class TransactionService:
             self.dividend_repo.delete(dividend)
 
         self.symbol_repo.delete(tracked)
-        # All matching records share the same SQLAlchemy session; this one
-        # commit is the atomic boundary for the complete asset removal.
-        self.symbol_repo.commit()
 
     @staticmethod
     def _validate_trade_values(price, quantity, fees):
@@ -437,7 +431,7 @@ class TransactionService:
     # Dividend operations
     # ------------------------------------------------------------------
 
-    @cash_mutation
+    @financial_mutation
     def add_dividend(
         self,
         portfolio_id: int,
@@ -467,10 +461,9 @@ class TransactionService:
         )
         self.cash_account.validate(portfolio_id, add=(cash_fact(dividend),))
         self.dividend_repo.add(dividend)
-        self.dividend_repo.commit()
         return dividend
 
-    @cash_mutation
+    @financial_mutation
     def update_dividend(
         self,
         dividend_id: int,
@@ -499,10 +492,9 @@ class TransactionService:
         if notes is not None:
             dividend.notes = notes or None
 
-        self.dividend_repo.commit()
         return dividend
 
-    @cash_mutation
+    @financial_mutation
     def delete_dividend(self, dividend_id: int) -> None:
         """Delete a dividend record."""
         dividend = self.dividend_repo.get_by_id(dividend_id)
@@ -515,4 +507,3 @@ class TransactionService:
         self.cash_account.validate(dividend.portfolio_id, remove=(dividend,))
 
         self.dividend_repo.delete(dividend)
-        self.dividend_repo.commit()

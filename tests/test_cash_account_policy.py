@@ -279,7 +279,8 @@ def test_max_api_is_exact_date_aware_and_tenant_scoped(ledger, app):
     user = User(username='other', email='other@example.com', is_verified=True)
     db.session.add(user)
     db.session.commit()
-    other = ledger.svc.portfolio_service.create_portfolio('Other', user_id=user.id)
+    from portfolio_app.services.factory import Services
+    other = Services(user_id=user.id).portfolio_service.create_portfolio('Other', user_id=user.id)
     assert client.get(f'/portfolios/withdrawal-max/{other.id}?date=2024-01-02').status_code == 400
 
 

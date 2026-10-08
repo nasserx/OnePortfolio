@@ -27,7 +27,7 @@ def schema(conn):
     assert {r[1] for r in conn.exec_driver_sql('PRAGMA index_list(portfolio_transfer)')} == {
         'ix_transfer_source_date', 'ix_transfer_destination_date',
     }
-    assert conn.exec_driver_sql('PRAGMA user_version').scalar() == 37
+    assert conn.exec_driver_sql('PRAGMA user_version').scalar() == migrations.TARGET_SCHEMA_VERSION
     assert conn.exec_driver_sql('PRAGMA foreign_keys').scalar() == 1
     assert conn.exec_driver_sql('PRAGMA foreign_key_check').all() == []
 

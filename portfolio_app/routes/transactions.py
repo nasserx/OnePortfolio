@@ -5,7 +5,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required
 from decimal import Decimal
 from sqlalchemy.exc import OperationalError
-from portfolio_app import db
+from portfolio_app.services.mutation import abort_mutation
 from portfolio_app.services import get_services, ValidationError
 from portfolio_app.calculators import PortfolioCalculator
 from portfolio_app.forms import (
@@ -207,6 +207,7 @@ def transaction_add():
         return redirect(url_for('transactions.transaction_list'))
 
     except (ValueError, ValidationError) as e:
+        abort_mutation()
         if is_ajax_request():
             return field_error_response(get_error_message(e), _TX_ADD_FIELD_MAP)
         flash(get_error_message(e), 'error')
@@ -214,7 +215,7 @@ def transaction_add():
 
     except Exception:
         logger.exception('Failed to add transaction')
-        db.session.rollback()
+        abort_mutation()
         if is_ajax_request():
             return json_response(False, errors={'__all__': MESSAGES['TRANSACTION_ADD_FAILED']})
         flash(MESSAGES['TRANSACTION_ADD_FAILED'], 'error')
@@ -267,6 +268,7 @@ def transaction_edit(transaction_id):
         return redirect(url_for('transactions.transaction_list'))
 
     except (ValueError, ValidationError) as e:
+        abort_mutation()
         if is_ajax_request():
             return field_error_response(get_error_message(e), _TX_EDIT_FIELD_MAP)
         flash(get_error_message(e), 'error')
@@ -274,7 +276,7 @@ def transaction_edit(transaction_id):
 
     except Exception:
         logger.exception('Failed to edit transaction %s', transaction_id)
-        db.session.rollback()
+        abort_mutation()
         if is_ajax_request():
             return json_response(False, errors={'__all__': MESSAGES['TRANSACTION_UPDATE_FAILED']})
         flash(MESSAGES['TRANSACTION_UPDATE_FAILED'], 'error')
@@ -294,13 +296,14 @@ def transaction_delete(transaction_id):
         flash(MESSAGES['TRANSACTION_REMOVED'], 'success')
 
     except (ValueError, ValidationError) as e:
+        abort_mutation()
         if is_ajax_request():
             return json_response(False, errors={'__all__': get_error_message(e)})
         flash(get_error_message(e), 'error')
 
     except Exception:
         logger.exception('Failed to delete transaction %s', transaction_id)
-        db.session.rollback()
+        abort_mutation()
         if is_ajax_request():
             return json_response(False, errors={'__all__': MESSAGES['TRANSACTION_DELETE_FAILED']})
         flash(MESSAGES['TRANSACTION_DELETE_FAILED'], 'error')
@@ -346,6 +349,7 @@ def dividend_add():
         return redirect(url_for('transactions.transaction_list'))
 
     except (ValueError, ValidationError) as e:
+        abort_mutation()
         if is_ajax_request():
             return json_response(False, errors={'__all__': get_error_message(e)})
         flash(get_error_message(e), 'error')
@@ -353,7 +357,7 @@ def dividend_add():
 
     except Exception:
         logger.exception('Failed to add dividend')
-        db.session.rollback()
+        abort_mutation()
         if is_ajax_request():
             return json_response(False, errors={'__all__': MESSAGES['DIVIDEND_ADD_FAILED']})
         flash(MESSAGES['DIVIDEND_ADD_FAILED'], 'error')
@@ -406,6 +410,7 @@ def dividend_edit(dividend_id):
         return redirect(url_for('transactions.transaction_list'))
 
     except (ValueError, ValidationError) as e:
+        abort_mutation()
         if is_ajax_request():
             return field_error_response(get_error_message(e), _DIV_EDIT_FIELD_MAP)
         flash(get_error_message(e), 'error')
@@ -413,7 +418,7 @@ def dividend_edit(dividend_id):
 
     except Exception:
         logger.exception('Failed to edit dividend %s', dividend_id)
-        db.session.rollback()
+        abort_mutation()
         if is_ajax_request():
             return json_response(False, errors={'__all__': MESSAGES['DIVIDEND_UPDATE_FAILED']})
         flash(MESSAGES['DIVIDEND_UPDATE_FAILED'], 'error')
@@ -433,13 +438,14 @@ def dividend_delete(dividend_id):
         flash(MESSAGES['DIVIDEND_REMOVED'], 'success')
 
     except ValueError as e:
+        abort_mutation()
         if is_ajax_request():
             return json_response(False, errors={'__all__': get_error_message(e)})
         flash(get_error_message(e), 'error')
 
     except Exception:
         logger.exception('Failed to delete dividend %s', dividend_id)
-        db.session.rollback()
+        abort_mutation()
         if is_ajax_request():
             return json_response(False, errors={'__all__': MESSAGES['DIVIDEND_DELETE_FAILED']})
         flash(MESSAGES['DIVIDEND_DELETE_FAILED'], 'error')
@@ -481,6 +487,7 @@ def symbol_add():
         return redirect(url_for('transactions.transaction_list'))
 
     except ValueError as e:
+        abort_mutation()
         if is_ajax_request():
             return json_response(False, errors={'__all__': get_error_message(e)})
         flash(get_error_message(e), 'error')
@@ -488,7 +495,7 @@ def symbol_add():
 
     except Exception:
         logger.exception('Failed to track symbol')
-        db.session.rollback()
+        abort_mutation()
         if is_ajax_request():
             return json_response(False, errors={'__all__': MESSAGES['SYMBOL_ADD_FAILED']})
         flash(MESSAGES['SYMBOL_ADD_FAILED'], 'error')
@@ -520,13 +527,14 @@ def symbol_delete():
         flash(MESSAGES['SYMBOL_REMOVED'], 'success')
 
     except ValueError as e:
+        abort_mutation()
         if is_ajax_request():
             return json_response(False, errors={'__all__': get_error_message(e)})
         flash(get_error_message(e), 'error')
 
     except Exception:
         logger.exception('Failed to stop tracking symbol')
-        db.session.rollback()
+        abort_mutation()
         if is_ajax_request():
             return json_response(False, errors={'__all__': MESSAGES['SYMBOL_DELETE_FAILED']})
         flash(MESSAGES['SYMBOL_DELETE_FAILED'], 'error')

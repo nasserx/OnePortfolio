@@ -83,6 +83,10 @@ For behavior changes, manually exercise the affected page or route. For financia
 - Realized Trading P&L remains limited to completed sales.
 - Dividend Income records represent investment dividends/distributions and remain separate from trading P&L.
 - Cash Balance includes Dividend Income.
+- Internal transfers add signed portfolio cash without changing external Net
+  Contributions. Validate both endpoints through the shared daily ledger; never
+  simulate a transfer with independent funding rows. Run
+  `node tests/portfolio_transfers.js` for exact edit-payload checks.
 - Cash-account service acceptance validates every recorded day's closing cash.
   Seed raw legacy fixtures explicitly when testing negative-history reads;
   new Buy/Withdrawal service tests must record funding on or before the spend.

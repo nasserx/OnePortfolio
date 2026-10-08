@@ -116,6 +116,12 @@ class PortfolioFinancialSnapshot:
     dividend_income: Decimal
     metrics: Mapping[str, Union[Decimal, str, None]]
     dividend_income_by_symbol: Mapping[str, Decimal]
+    transfer_in: Decimal = ZERO
+    transfer_out: Decimal = ZERO
+
+    @property
+    def net_internal_transfers(self):
+        return exact_subtract(self.transfer_in, self.transfer_out)
 
     @property
     def withdrawals(self):
@@ -132,6 +138,9 @@ class PortfolioFinancialSnapshot:
             'name': self.name,
             'gross_deposits': self.gross_deposits,
             'net_contributions': self.net_contributions,
+            'transfer_in': self.transfer_in,
+            'transfer_out': self.transfer_out,
+            'net_internal_transfers': self.net_internal_transfers,
             'cash_balance': self.cash_balance,
             'position_cost_basis': self.transactions['position_cost_basis'],
             'realized_trading_pnl': self.transactions['realized_trading_pnl'],
@@ -154,18 +163,19 @@ class PortfolioFinancialSnapshot:
 
 def build_portfolio_snapshot(*, portfolio_id, name, assets, gross_deposits,
                              net_contributions, cash_transactions, dividend_income,
-                             dividend_income_by_symbol):
+                             dividend_income_by_symbol, transfer_in=ZERO, transfer_out=ZERO):
     summary = aggregate_transaction_summaries(tuple(assets.values()))
     # Keep the existing sequential cash_balance calculation (not a reassociated
     # N - total_buys + total_sales expression); do not change cash_balance policy.
-    cash_balance = calculate_cash_balance(net_contributions, cash_transactions, dividend_income)
+    cash_balance = calculate_cash_balance(net_contributions, cash_transactions, dividend_income,
+                                          exact_subtract(transfer_in, transfer_out))
     metrics = calculate_portfolio_metrics(
         cash_balance, summary['position_cost_basis'], summary['realized_trading_pnl'], dividend_income, summary['released_cost_basis'],
     )
     return PortfolioFinancialSnapshot(
         portfolio_id, name, _readonly(assets), _readonly(summary),
         gross_deposits, net_contributions, cash_balance, dividend_income, _readonly(metrics),
-        _readonly(dividend_income_by_symbol),
+        _readonly(dividend_income_by_symbol), transfer_in, transfer_out,
     )
 
 
@@ -202,6 +212,9 @@ def build_global_snapshot(portfolios):
     totals = {
         'gross_deposits': exact_sum(p.gross_deposits for p in portfolios),
         'net_contributions': exact_sum(p.net_contributions for p in portfolios),
+        'transfer_in': exact_sum(p.transfer_in for p in portfolios),
+        'transfer_out': exact_sum(p.transfer_out for p in portfolios),
+        'net_internal_transfers': exact_sum(p.net_internal_transfers for p in portfolios),
         'cash_balance': exact_sum(p.cash_balance for p in portfolios),
         'position_cost_basis': exact_sum(p.transactions['position_cost_basis'] for p in portfolios),
         'realized_trading_pnl': exact_sum(p.transactions['realized_trading_pnl'] for p in portfolios),

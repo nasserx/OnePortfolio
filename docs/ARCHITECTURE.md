@@ -72,6 +72,8 @@ Models live in `portfolio_app/models/`:
 - `OAuthIdentity`: inert rollback data for a former external provider link; no tokens or secrets.
 - `Portfolio`: user-owned portfolio bucket.
 - `PortfolioEvent`: funding entries.
+- `PortfolioTransfer`: one exact cash movement linking two same-owner portfolios;
+  restrictive foreign keys protect the other endpoint during portfolio deletion.
 - `Symbol`: tracked asset symbol per portfolio.
 - `Transaction`: buy/sell asset entries.
 - `Dividend`: investment cash dividend/distribution records.
@@ -153,6 +155,18 @@ See [schema 36 conversion and rollback](MIGRATIONS.md#schema-36-exact-decimal-st
 Forms live in `portfolio_app/forms/`. They validate request payloads for auth, portfolios, funding entries, assets, asset entries, and Dividend Income. They also normalize common inputs before service code receives them.
 
 ## Main Data Flow
+
+Internal transfers use `TransferService`/`PortfolioTransferRepository`, the same
+cash mutation reservation and canonical daily ledger. A single row is projected
+into two portfolio histories by `portfolio_history.py`; it is never rewritten as
+Deposit/Withdrawal. Prospective edit/delete validation covers every old/new
+endpoint before one commit. Portfolio snapshots expose signed internal flows
+separately from external Net Contributions; global flows cancel. Schema 37 adds
+the raw transfer table without changing existing financial rows.
+
+Individual portfolio deletion is blocked while a transfer is linked. Confirmed
+whole-account deletion resolves only transfers with both endpoints owned by that
+account before the existing portfolio cascades, in the same transaction.
 
 Cash-account validation uses `services/cash_account.py` and the pure
 `calculators/daily_cash.py` ledger. All cash-affecting service mutations compare

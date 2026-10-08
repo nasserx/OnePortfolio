@@ -172,6 +172,35 @@ Rollback to older application code requires restoring a schema-35 backup, not
 running the old Numeric models against schema 36. A down-migration would be lossy
 for newly accepted precision and is deliberately not provided.
 
+## Schema 37: linked internal cash transfers
+
+The additive forward step `_migrate_portfolio_transfers` creates
+`portfolio_transfer` with id, source_portfolio_id, destination_portfolio_id,
+amount (ExactDecimalText / physical TEXT), date, notes, created_at and updated_at.
+Source and destination are distinct, nonnull foreign keys to Portfolio with
+ON DELETE RESTRICT. Each endpoint has a (portfolio ID, date) index. Exact amount
+representation is enforced by the persistence type; positivity and same-user
+ownership are authoritative service rules, not SQLite numeric coercion.
+
+Schema-36 upgrades run only this step. Earlier upgrades complete their historical
+steps first. Table and index creation share an explicit BEGIN IMMEDIATE and roll
+back together on failure. The runner advances user_version only after success
+and restores foreign-key enforcement. Fresh databases use the identical model
+DDL. Existing financial records, IDs, timestamps, foreign keys and indexes are
+not rebuilt or changed. This migration does not infer transfers from historical
+Withdrawal/Deposit pairs.
+
+Transfer mutation atomicity uses the Phase 10 write reservation. Individual
+portfolio deletion is blocked by service validation and restrictive FKs. A
+confirmed full-account removal explicitly deletes only wholly owned transfer
+links before the existing cascades in the same transaction.
+
+`tests/test_transfer_migration.py` verifies fresh/upgrade schema, existing-data
+reconciliation, failed DDL rollback, indexes, restrictive FKs and distinct endpoints
+using disposable databases. No working database is migrated during development.
+Do not run older application code on a database containing transfers: it would
+omit internal cash effects. Restore a coordinated backup if rollback is needed.
+
 ## Required Validation
 
 Run:

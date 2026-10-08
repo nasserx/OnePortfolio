@@ -69,7 +69,7 @@ def test_capital_event_ledger_uses_shared_table_and_financial_contracts():
     assert '{{ record_type(event.event_type) }}' in TEMPLATE
     assert "money(event.amount_delta, tone='sign', signed=true)" in TEMPLATE
     assert '>Total Amount</th>' in TEMPLATE
-    assert 'Funding Entries for {{ item.portfolio.name }}' in TEMPLATE
+    assert 'Entries for {{ item.portfolio.name }}' in TEMPLATE
     assert 'table-light' not in TEMPLATE
     assert 'table-hover' not in TEMPLATE
     assert 'class="small records-cell' not in TEMPLATE
@@ -96,9 +96,9 @@ def test_action_menus_and_dialogs_use_clear_title_case_contracts():
     ):
         assert label in TEMPLATE
 
-    assert TEMPLATE.count('dropdown-item--danger') == 2
+    assert TEMPLATE.count('dropdown-item--danger') == 3  # Funding and transfer row branches.
     assert TEMPLATE.count('class="btn btn-danger"') == 2
-    assert TEMPLATE.count('<span>Remove</span>') == 2
+    assert TEMPLATE.count('<span>Remove</span>') == 3
     assert TEMPLATE.count("{{ icon('trash') }}Remove") == 2
     assert 'aria-describedby="deletePortfolioDescription"' in TEMPLATE
     assert 'aria-describedby="deletePortfolioEventDescription"' in TEMPLATE

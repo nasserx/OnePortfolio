@@ -58,6 +58,14 @@ MESSAGES = {
     'INSUFFICIENT_AMOUNT':         "Insufficient amount.",
     'WITHDRAWAL_EXCEEDS_CASH':     "Insufficient cash for this withdrawal.",
     'PURCHASE_EXCEEDS_CASH':       "Insufficient cash for this purchase.",
+    'TRANSFER_EXCEEDS_CASH':       "Insufficient cash for this transfer change. Check both portfolios and the date.",
+    'TRANSFER_PORTFOLIO_INVALID':  "Select portfolios belonging to your account.",
+    'TRANSFER_SAME_PORTFOLIO':     "Choose two different portfolios.",
+    'TRANSFER_NOT_FOUND':         "Transfer not found.",
+    'PORTFOLIO_HAS_TRANSFERS':     "Remove linked transfers before removing this portfolio.",
+    'TRANSFER_SAVED':             "Transfer saved.",
+    'TRANSFER_REMOVED':           "Transfer removed.",
+    'TRANSFER_FAILED':            "Unable to save this transfer. Please try again.",
     'INSUFFICIENT_QUANTITY':       "Insufficient quantity.",
     # Surfaces when a delete/edit/symbol-change would leave a previously
     # covered Sell without enough holdings on its date — distinct from

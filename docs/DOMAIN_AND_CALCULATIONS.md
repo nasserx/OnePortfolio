@@ -8,8 +8,9 @@ Storage, calculation and display precision are separate contracts; see
 
 | Concept | Meaning / formula | Canonical identifier |
 | --- | --- | --- |
-| Net Contributions | Deposits − Withdrawals, including initial funding in deposits | `net_contributions` |
-| Cash Balance | Net Contributions − Buy Outflows + Net Sale Proceeds + Dividend Income | `cash_balance` |
+| Net Contributions | External Deposits − External Withdrawals, including initial funding in deposits | `net_contributions` |
+| Net Internal Transfers | Transfer In − Transfer Out | `net_internal_transfers` |
+| Cash Balance | Net Contributions + Net Internal Transfers − Buy Outflows + Net Sale Proceeds + Dividend Income | `cash_balance` |
 | Position Cost Basis | Remaining acquisition cost of open positions, including allocated buy fees | `position_cost_basis` |
 | Book Value | Cash Balance + Position Cost Basis | `book_value` |
 | Total Purchase Cost | Sum of all historical buy outflows, including buy fees | `total_purchase_cost` |
@@ -50,13 +51,42 @@ proceeds. Fees are never deducted again from trading return.
 
 Reconciliations:
 
-- Book Value = Net Contributions + Realized Trading P&L + Dividend Income.
+- Portfolio Book Value = Net Contributions + Net Internal Transfers + Realized Trading P&L + Dividend Income.
+- Global Book Value = Net Contributions + Realized Trading P&L + Dividend Income (internal flows cancel).
 - Total Purchase Cost = Position Cost Basis + Released Cost Basis.
 - Net Sale Proceeds = Released Cost Basis + Realized Trading P&L.
 - Held Quantity = Bought Quantity − Sold Quantity.
 
 Book Value is cost-based, not market value or equity marked to market.
 Total Purchase Cost includes purchases since sold; it is not the current open pool.
+
+## Internal portfolio transfers
+
+An internal transfer moves cash between two distinct portfolios owned by the same
+user. One linked `PortfolioTransfer` row supplies Transfer Out and Transfer In;
+neither side is an external funding entry. Net Contributions, gross deposits and
+external withdrawals exclude transfers. Transfers never affect trading P&L,
+Released Cost Basis, Realized Trading Return or Dividends.
+
+At portfolio scope, Net Internal Transfers = Transfer In − Transfer Out. At global
+account scope the signed flows cancel exactly; global Cash and Book Value do not
+change. Book Value always remains Cash + Cost Basis.
+
+Both histories are checked prospectively through the daily cash ledger on create,
+edit and delete, including old/new endpoints and all later dates. Phase 10's
+repair-safe minimum rule still applies. Removing a spent destination inflow may
+therefore be rejected. Same-day inflows can fund transfer outflows; no settlement
+or intraday timing is modeled.
+
+Transfers use exact positive finite Decimal amounts, with no newly imposed cent
+scale. No Transfer Max action is provided; Withdrawal Max includes transfer cash
+effects through the shared ledger. All transfers assume the same accounting unit:
+currency conversion, FX and cross-user transfers are not supported.
+
+Linked portfolios cannot be individually removed until transfers are explicitly
+resolved. Confirmed whole-account deletion removes wholly owned transfers with
+both portfolios atomically. History shows each side once, as Transfer Out/Transfer
+In with its counterparty; the existing Entries count includes these visible rows.
 
 ## Dividend Income and realized earnings
 

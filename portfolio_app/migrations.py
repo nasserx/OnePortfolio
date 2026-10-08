@@ -8,7 +8,7 @@ from portfolio_app import db
 # Bumped whenever a new migration step is added below. Stored in the SQLite
 # header (PRAGMA user_version) after a successful migration so subsequent
 # boots can short-circuit the whole inspection pass.
-TARGET_SCHEMA_VERSION = 36
+TARGET_SCHEMA_VERSION = 37
 
 # Sidecar file that carries the startup schema lock, derived from the
 # application database path (``portfolio.db`` → ``portfolio.db.schema-lock``).
@@ -280,10 +280,14 @@ class _LiveInspector:
 
 
 def _apply_migration_steps(conn, sa):
+    if conn.exec_driver_sql('PRAGMA user_version').scalar() == 36:
+        _migrate_portfolio_transfers(conn, sa)
+        return
     # Current-schema upgrades need only the atomic forward step. Do not replay
     # historical commits (or auth/data cleanup) across this financial boundary.
     if conn.exec_driver_sql('PRAGMA user_version').scalar() == 35:
         _migrate_exact_decimal_storage(conn, sa)
+        _migrate_portfolio_transfers(conn, sa)
         return
     inspector = _LiveInspector(conn, sa)
     tables = set(inspector.get_table_names())
@@ -859,6 +863,27 @@ def _apply_migration_steps(conn, sa):
     # obsolete transaction derivatives. This forward step has its own atomic
     # boundary; historical steps retain their existing commit conventions.
     _migrate_exact_decimal_storage(conn, sa)
+
+
+    # Step 37: one linked cash transfer; existing financial facts are untouched.
+    _migrate_portfolio_transfers(conn, sa)
+
+
+def _migrate_portfolio_transfers(conn, sa):
+    """Forward-only, atomic table/index creation; no historical cash conversion."""
+    from portfolio_app.models.portfolio_transfer import PortfolioTransfer
+    if 'portfolio' not in sa.inspect(conn).get_table_names():
+        return  # Empty installs use the same final model through create_all.
+    conn.commit()
+    conn.exec_driver_sql('BEGIN IMMEDIATE')
+    try:
+        PortfolioTransfer.__table__.create(conn, checkfirst=True)
+        if conn.exec_driver_sql('PRAGMA foreign_key_check(portfolio_transfer)').fetchall():
+            raise RuntimeError('Invalid portfolio transfer foreign keys')
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
 
 
 def _migrate_exact_decimal_storage(conn, sa):

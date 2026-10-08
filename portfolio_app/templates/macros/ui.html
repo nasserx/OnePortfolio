@@ -34,6 +34,8 @@
     'Deposit': 'positive',
     'Sell': 'negative',
     'Withdrawal': 'negative',
+    'Transfer In': 'positive',
+    'Transfer Out': 'negative',
     'Dividends': 'income'
   }.get(value, 'neutral') -%}
   <span class="record-type record-type--{{ role }}">{{ value }}</span>

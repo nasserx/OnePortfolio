@@ -286,7 +286,7 @@ def test_fresh_database_startup_creates_schema_and_sets_user_version(tmp_path):
 def test_fresh_schema_uses_database_cascades_for_all_ownership_foreign_keys(tmp_path):
     app = create_app(_config_for(tmp_path / 'fresh-cascades.sqlite'))
 
-    assert TARGET_SCHEMA_VERSION == 36
+    assert TARGET_SCHEMA_VERSION == 37
     assert _foreign_key_contract(app, 'portfolio') == (
         ('user_id', 'user', 'id', 'NO ACTION', 'CASCADE'),
     )
@@ -831,7 +831,7 @@ def test_migration_removes_legacy_admin_column_and_preserves_user_graph(tmp_path
 def test_migration_hardens_otp_columns_and_invalidates_legacy_state(tmp_path):
     import sqlite3
 
-    assert TARGET_SCHEMA_VERSION == 36
+    assert TARGET_SCHEMA_VERSION == 37, 'Linked transfers are the current forward revision'
     upgraded_path = tmp_path / 'legacy-otp-upgrade.sqlite'
     con = sqlite3.connect(upgraded_path)
     try:

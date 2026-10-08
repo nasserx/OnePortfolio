@@ -193,7 +193,7 @@ def test_action_menus_render_the_expected_entity_actions(app):
     asset_menus = _by_label(rendered['/transactions/'][1])
 
     assert [item.text for item in portfolio_menus['Actions for portfolio Growth'].items] == [
-        'Rename', 'Deposit', 'Withdraw', 'Remove',
+        'Rename', 'Deposit', 'Withdraw', 'Transfer', 'Remove',
     ]
     assert [item.text for item in portfolio_menus['Actions for Deposit entry on 2024-01-01'].items] == [
         'Edit', 'Remove',

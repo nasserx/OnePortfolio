@@ -2,6 +2,7 @@
     <div class="modal-dialog"><div class="modal-content">
         <form method="POST" id="transferForm" autocomplete="off" novalidate>
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="mutation_token" value="{{ mutation_token() }}">
             <input type="hidden" name="user_timezone" value="">
             <div class="modal-header">
                 <h5 class="modal-title" id="transferModalTitle">Transfer</h5>
@@ -48,6 +49,7 @@
     <div class="modal-dialog"><div class="modal-content">
         <form method="POST" id="deleteTransferForm">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="mutation_token" value="{{ mutation_token() }}">
             <div class="modal-header">
                 <h5 class="modal-title" id="deleteTransferModalTitle">Remove Transfer</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>

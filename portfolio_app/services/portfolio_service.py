@@ -10,7 +10,8 @@ from portfolio_app.repositories.portfolio_event_repository import PortfolioEvent
 from portfolio_app.utils.constants import EventType
 from portfolio_app.utils.decimal_utils import ZERO, parse_financial_decimal
 from portfolio_app.utils.messages import MESSAGES
-from portfolio_app.services.cash_account import CashAccount, cash_fact, cash_mutation, new_effective_date
+from portfolio_app.services.cash_account import CashAccount, cash_fact, new_effective_date
+from portfolio_app.services.mutation import financial_mutation
 
 
 class PortfolioService:
@@ -25,16 +26,22 @@ class PortfolioService:
     # Portfolio CRUD
     # ------------------------------------------------------------------
 
+    @financial_mutation
     def create_portfolio(self, name: str, user_id: Optional[int] = None) -> Portfolio:
         """Create a new portfolio."""
+        owner_id = self.portfolio_repo.user_id
+        if owner_id is not None:
+            if user_id not in (None, owner_id):
+                raise ValueError(MESSAGES['PORTFOLIO_NOT_FOUND'])
+            user_id = owner_id
         if self.portfolio_repo.get_by_name(name):
             raise ValueError(MESSAGES['PORTFOLIO_NAME_TAKEN'])
 
         portfolio = Portfolio(name=name, user_id=user_id)
         self.portfolio_repo.add(portfolio)
-        self.portfolio_repo.commit()
         return portfolio
 
+    @financial_mutation
     def rename_portfolio(self, portfolio_id: int, name: str) -> Portfolio:
         """Rename a tenant-owned portfolio without changing its identity."""
         portfolio = self._require_portfolio(portfolio_id)
@@ -51,10 +58,9 @@ class PortfolioService:
             raise ValueError(MESSAGES['PORTFOLIO_NAME_TAKEN'])
 
         portfolio.name = normalized_name
-        self.portfolio_repo.commit()
         return portfolio
 
-    @cash_mutation
+    @financial_mutation
     def delete_portfolio(self, portfolio_id: int) -> str:
         """Delete portfolio and cascade-delete its events and transactions."""
         portfolio = self._require_portfolio(portfolio_id)
@@ -65,41 +71,43 @@ class PortfolioService:
         ).first():
             raise ValueError(MESSAGES['PORTFOLIO_HAS_TRANSFERS'])
         self.portfolio_repo.delete(portfolio)
-        self.portfolio_repo.commit()
         return name
 
     # ------------------------------------------------------------------
     # Deposit / Withdraw
     # ------------------------------------------------------------------
 
-    @cash_mutation
+    @financial_mutation
     def deposit_funds(self, portfolio_id: int, amount_delta: Decimal, notes: Optional[str] = None, date: Optional[Any] = None) -> Portfolio:
         """Deposit funds into a portfolio."""
         amount_delta = parse_financial_decimal(amount_delta)
         portfolio = self._require_portfolio(portfolio_id)
         self._create_event(portfolio_id, EventType.DEPOSIT, amount_delta, notes, date)
-        self.portfolio_repo.commit()
         return portfolio
 
-    @cash_mutation
+    @financial_mutation
     def withdraw_funds(self, portfolio_id: int, amount_delta: Decimal, notes: Optional[str] = None, date: Optional[Any] = None) -> Portfolio:
         """Withdraw funds from a portfolio (amount_delta is positive)."""
         amount_delta = parse_financial_decimal(amount_delta)
         portfolio = self._require_portfolio(portfolio_id)
         self._create_event(portfolio_id, EventType.WITHDRAWAL, amount_delta.copy_negate(), notes, date)
-        self.portfolio_repo.commit()
         return portfolio
 
     # ------------------------------------------------------------------
     # Cash-event operations
     # ------------------------------------------------------------------
 
-    @cash_mutation
+    @financial_mutation
     def update_portfolio_event(self, event_id: int, amount_delta: Decimal, notes: Optional[str] = None, date: Optional[Any] = None) -> PortfolioEvent:
         """Validate the complete prospective cash history before changing raw facts."""
         amount_delta = parse_financial_decimal(amount_delta)
         event = self._require_event(event_id)
         self._require_portfolio(event.portfolio_id)
+
+        if (event.event_type == EventType.WITHDRAWAL and amount_delta >= ZERO) or (
+            event.event_type != EventType.WITHDRAWAL and amount_delta <= ZERO
+        ):
+            raise ValueError(MESSAGES['VALUE_POSITIVE'])
 
         self.cash_account.validate(
             event.portfolio_id, remove=(event,),
@@ -114,10 +122,9 @@ class PortfolioService:
         if date is not None:
             event.date = date
 
-        self.portfolio_repo.commit()
         return event
 
-    @cash_mutation
+    @financial_mutation
     def delete_portfolio_event(self, event_id: int) -> int:
         """Delete only when the prospective daily cash history permits it."""
         event = self._require_event(event_id)
@@ -127,7 +134,6 @@ class PortfolioService:
         self.cash_account.validate(portfolio_id, remove=(event,))
 
         self.portfolio_event_repo.delete(event)
-        self.portfolio_repo.commit()
         return portfolio_id
 
     # ------------------------------------------------------------------

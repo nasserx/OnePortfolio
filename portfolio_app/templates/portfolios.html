@@ -224,6 +224,7 @@
         <div class="modal-content">
             <form method="POST" id="depositFundsForm" autocomplete="off" novalidate>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="mutation_token" value="{{ mutation_token() }}">
                 <input type="hidden" name="user_timezone" value="">
                 <div class="modal-header">
                     <h5 class="modal-title" id="depositFundsModalTitle">Deposit</h5>
@@ -283,6 +284,7 @@
         <div class="modal-content">
             <form method="POST" id="withdrawFundsForm" autocomplete="off" novalidate>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="mutation_token" value="{{ mutation_token() }}">
                 <input type="hidden" name="user_timezone" value="">
                 <div class="modal-header">
                     <h5 class="modal-title" id="withdrawFundsModalTitle">Withdraw</h5>
@@ -347,6 +349,7 @@
         <div class="modal-content">
             <form method="POST" action="{{ url_for('portfolios.portfolios_add') }}" autocomplete="off" novalidate>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="mutation_token" value="{{ mutation_token() }}">
                 <div class="modal-header">
                     <h5 class="modal-title" id="newPortfolioModalTitle">New Portfolio</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -385,6 +388,7 @@
         <div class="modal-content">
             <form method="POST" id="renamePortfolioForm" autocomplete="off" novalidate>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="mutation_token" value="{{ mutation_token() }}">
                 <div class="modal-header">
                     <h5 class="modal-title" id="renamePortfolioModalTitle">Rename Portfolio</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -422,6 +426,7 @@
         <div class="modal-content">
             <form method="POST" id="deletePortfolioForm" novalidate>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="mutation_token" value="{{ mutation_token() }}">
                 <div class="modal-header">
                     <h5 class="modal-title" id="deletePortfolioModalTitle">
                         {{ icon('trash', class='modal-title-icon') }}
@@ -454,6 +459,7 @@
         <div class="modal-content">
             <form method="POST" id="editPortfolioEventForm" autocomplete="off" novalidate>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="mutation_token" value="{{ mutation_token() }}">
                 <input type="hidden" name="user_timezone" value="">
                 <div class="modal-header">
                     <h5 class="modal-title" id="editPortfolioEventModalTitle">Edit Funding Entry</h5>
@@ -523,6 +529,7 @@
         <div class="modal-content">
             <form method="POST" id="deletePortfolioEventForm" novalidate>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="mutation_token" value="{{ mutation_token() }}">
                 <div class="modal-header">
                     <h5 class="modal-title" id="deletePortfolioEventModalTitle">
                         {{ icon('trash', class='modal-title-icon') }}

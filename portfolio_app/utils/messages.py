@@ -6,6 +6,8 @@ strings elsewhere. Dynamic messages use ``str.format`` placeholders.
 
 
 MESSAGES = {
+    'MUTATION_STALE': 'Your financial records changed. Please refresh the page and try again.',
+    'MUTATION_REUSED': 'This submission was already used. Please refresh the page for a new operation.',
     # Generic errors. ``OPERATION_FAILED`` is a last-resort fallback only;
     # every interactive route should use one of the action-specific
     # ``*_FAILED`` keys below so users see what actually went wrong.

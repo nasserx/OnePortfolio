@@ -1,7 +1,8 @@
 """Atomic transfer mutations, with prospective validation of every affected owner portfolio."""
 
 from portfolio_app.models import PortfolioTransfer
-from portfolio_app.services.cash_account import CashAccount, cash_fact, cash_mutation, new_effective_date
+from portfolio_app.services.cash_account import CashAccount, cash_fact, new_effective_date
+from portfolio_app.services.mutation import financial_mutation
 from portfolio_app.utils.decimal_utils import ZERO, parse_financial_decimal
 from portfolio_app.utils.messages import MESSAGES
 
@@ -46,15 +47,14 @@ class TransferService:
             ) else ()
             self.cash_account.validate(pid, remove=removed, add=added, message=MESSAGES['TRANSFER_EXCEEDS_CASH'])
 
-    @cash_mutation
+    @financial_mutation
     def create(self, source_portfolio_id, destination_portfolio_id, amount, date=None, notes=''):
         row = self._proposal(source_portfolio_id, destination_portfolio_id, amount, date, notes)
         self._validate(new=row)
         self.transfer_repo.add(row)
-        self.transfer_repo.commit()
         return row
 
-    @cash_mutation
+    @financial_mutation
     def update(self, transfer_id, *, source_portfolio_id=None, destination_portfolio_id=None,
                amount=None, date=None, notes=None):
         row = self._require_transfer(transfer_id)
@@ -67,12 +67,10 @@ class TransferService:
         self._validate(old=row, new=proposal)
         for field in ('source_portfolio_id', 'destination_portfolio_id', 'amount', 'date', 'notes'):
             setattr(row, field, getattr(proposal, field))
-        self.transfer_repo.commit()
         return row
 
-    @cash_mutation
+    @financial_mutation
     def delete(self, transfer_id):
         row = self._require_transfer(transfer_id)
         self._validate(old=row)
         self.transfer_repo.delete(row)
-        self.transfer_repo.commit()

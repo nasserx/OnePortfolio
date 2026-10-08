@@ -16,6 +16,7 @@ from portfolio_app.repositories.pending_registration_repository import PendingRe
 from portfolio_app.repositories.user_repository import UserRepository
 from portfolio_app.utils.messages import MESSAGES
 from portfolio_app.utils.otp import otp_digest, verify_otp
+from portfolio_app.services.mutation import financial_mutation
 
 
 VERIFICATION_CODE_EXPIRY_MINUTES = 10
@@ -247,6 +248,7 @@ class AuthService:
         user.deletion_code_failed_attempts = 0
         self.user_repo.commit()
 
+    @financial_mutation
     def confirm_account_deletion(self, user: User, code: str) -> Tuple[bool, str]:
         if not self._deletion_code_is_live(user):
             return False, MESSAGES['DELETION_INVALID_CODE']
@@ -261,10 +263,8 @@ class AuthService:
                 user.deletion_code = None
                 user.deletion_code_expires_at = None
                 user.deletion_code_failed_attempts = 0
-            self.user_repo.commit()
             return False, MESSAGES['DELETION_INVALID_CODE']
         self.user_repo.delete(user)
-        self.user_repo.commit()
         return True, ''
 
     def _issue_challenge(self, purpose: str, *, user: Optional[User],

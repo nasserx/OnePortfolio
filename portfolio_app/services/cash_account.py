@@ -5,10 +5,8 @@ leak into the session through autoflush. Daily balances are never persisted.
 """
 
 from datetime import datetime, timezone
-from functools import wraps
 from types import SimpleNamespace
 
-from portfolio_app import db
 from portfolio_app.calculators.daily_cash import CashFact, cash_day, build_daily_cash_ledger, permits_cash_mutation
 from portfolio_app.calculators.financial_math import transaction_cash_effect
 from portfolio_app.models.transaction import Transaction
@@ -17,37 +15,6 @@ from portfolio_app.models.dividend import Dividend
 from portfolio_app.models.portfolio_transfer import PortfolioTransfer
 from portfolio_app.utils.decimal_utils import ZERO, withdrawal_max_text
 from portfolio_app.utils.messages import MESSAGES
-
-
-def cash_mutation(method):
-    """Serialize SQLite validation-through-commit, not read-only ledger queries.
-
-    SQLite's deferred driver transaction otherwise allows two readers to approve
-    spending the same cash. Acquire the writer reservation BEFORE service reads.
-    Existing active DB transactions must already be write transactions; service
-    callers normally enter with only an SQLAlchemy logical/autobegin transaction.
-    """
-    @wraps(method)
-    def guarded(*args, **kwargs):
-        try:
-            connection = db.session.connection()
-            if connection.dialect.name == 'sqlite':
-                driver = connection.connection.driver_connection
-                if not driver.in_transaction:
-                    connection.exec_driver_sql('BEGIN IMMEDIATE')
-                # Routes can have loaded a record before entering the service.
-                # Refresh clean identity-map rows only; never discard pending work.
-                if not (db.session.new or db.session.dirty or db.session.deleted):
-                    db.session.expire_all()
-            result = method(*args, **kwargs)
-            # No-op edits return early without the method's usual commit.
-            if connection.dialect.name == 'sqlite' and driver.in_transaction:
-                db.session.commit()
-            return result
-        except Exception:
-            db.session.rollback()
-            raise
-    return guarded
 
 
 def new_effective_date(value):

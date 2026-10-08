@@ -211,6 +211,7 @@
                                 <form method="post" action="{{ url_for('auth.delete_account_verify') }}"
                                       novalidate>
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <input type="hidden" name="mutation_token" value="{{ mutation_token() }}">
                                     <div class="settings-field">
                                         <label for="delete-code" class="form-label">Confirmation Code</label>
                                         <input type="text" id="delete-code" name="code"

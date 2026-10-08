@@ -8,7 +8,7 @@ from portfolio_app import db
 # Bumped whenever a new migration step is added below. Stored in the SQLite
 # header (PRAGMA user_version) after a successful migration so subsequent
 # boots can short-circuit the whole inspection pass.
-TARGET_SCHEMA_VERSION = 37
+TARGET_SCHEMA_VERSION = 38
 
 # Sidecar file that carries the startup schema lock, derived from the
 # application database path (``portfolio.db`` → ``portfolio.db.schema-lock``).
@@ -222,6 +222,7 @@ def _run_migration_pass(app):
             raw_conn.execute('PRAGMA foreign_keys=OFF')
             try:
                 _apply_migration_steps(conn, sa)
+                _migrate_mutation_receipts(conn, sa)
                 # End any residual migration transaction before changing the
                 # connection-level FK pragma. Individual historical steps may
                 # commit earlier, but inspection-only work can autobegin again.
@@ -280,6 +281,8 @@ class _LiveInspector:
 
 
 def _apply_migration_steps(conn, sa):
+    if conn.exec_driver_sql('PRAGMA user_version').scalar() == 37:
+        return  # Only the additive mutation-receipt step is needed.
     if conn.exec_driver_sql('PRAGMA user_version').scalar() == 36:
         _migrate_portfolio_transfers(conn, sa)
         return
@@ -867,6 +870,22 @@ def _apply_migration_steps(conn, sa):
 
     # Step 37: one linked cash transfer; existing financial facts are untouched.
     _migrate_portfolio_transfers(conn, sa)
+
+
+def _migrate_mutation_receipts(conn, sa):
+    """Atomic additive revision 38; financial rows are never rewritten."""
+    from portfolio_app.models.mutation_receipt import MutationReceipt
+    if 'user' not in sa.inspect(conn).get_table_names():
+        return  # Fresh databases use final models through create_all.
+    conn.commit()
+    conn.exec_driver_sql('BEGIN IMMEDIATE')
+    try:
+        MutationReceipt.__table__.create(conn, checkfirst=True)
+        conn.exec_driver_sql('PRAGMA user_version = 38')
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
 
 
 def _migrate_portfolio_transfers(conn, sa):

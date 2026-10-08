@@ -172,6 +172,20 @@ Rollback to older application code requires restoring a schema-35 backup, not
 running the old Numeric models against schema 36. A down-migration would be lossy
 for newly accepted precision and is deliberately not provided.
 
+## Schema 38: durable financial mutation receipts
+
+The additive `mutation_receipt` table stores a user-owned operation key, request
+digest, saved successful response and monotonic ID. Its unique user/key constraint
+enforces one receipt per intended submission. The user/revision index supports
+optimistic revision checks, and the foreign key cascades only with account
+deletion. No financial columns, records, types or formulas change.
+
+The forward step from version 37 creates the table/index and writes version 38
+in one explicit SQLite transaction. Failed creation rolls back and can be retried.
+Fresh installations use the same model through the existing serialized startup
+sequence. Receipts are necessary to recognize successful retries across processes
+and restarts; session cookies or JavaScript alone cannot guarantee this.
+
 ## Schema 37: linked internal cash transfers
 
 The additive forward step `_migrate_portfolio_transfers` creates

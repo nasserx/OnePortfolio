@@ -14,6 +14,8 @@ from sqlalchemy.orm import Session
 from portfolio_app import db
 from portfolio_app.models.mutation_receipt import MutationReceipt
 from portfolio_app.utils.messages import MESSAGES
+from portfolio_app.models.user import User
+from portfolio_app.services.financial_audit import append_financial_audit
 
 
 @event.listens_for(Session, 'before_commit')
@@ -37,11 +39,13 @@ def current_revision(user_id):
 
 
 def record_mutation(user_id, key=None, digest='', response=None):
-    db.session.add(MutationReceipt(user_id=user_id, operation_key=key or token_hex(32),
-                                   request_digest=digest, response_json=response))
+    receipt = MutationReceipt(user_id=user_id, operation_key=key or token_hex(32),
+                              request_digest=digest, response_json=response)
+    db.session.add(receipt)
     state = db.session.info.get('financial_mutation')
     if state is not None:
         state['receipt_users'].add(user_id)
+        state['receipts'][user_id] = receipt
 
 
 def abort_mutation():
@@ -67,7 +71,7 @@ def mutation_transaction():
     # Pending work belongs to its caller; never discard it to obtain a lock.
     if session.new or session.dirty or session.deleted:
         raise RuntimeError('Financial mutations require a clean session boundary.')
-    state = {'failed': False, 'writes': 0, 'users': set(), 'receipt_users': set()}
+    state = {'failed': False, 'writes': 0, 'users': set(), 'receipt_users': set(), 'receipts': {}}
     try:
         connection = session.connection()
         if connection.dialect.name != 'sqlite':
@@ -81,8 +85,12 @@ def mutation_transaction():
         if state['failed']:
             session.rollback()
         else:
+            session.flush()
             for uid in sorted(state['users'] - state['receipt_users']):
-                record_mutation(uid)
+                if session.get(User, uid) is not None:
+                    record_mutation(uid)
+            session.flush()
+            append_financial_audit(session, state)
             session.flush()
             # Only this owner may commit, including when called from a route.
             session.info['financial_mutation_committing'] = True

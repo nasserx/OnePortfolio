@@ -19,6 +19,15 @@ determine trading results. Funding comes from PortfolioEvent signed amount_delta
 Dividend Income comes from Dividend amount. Internal cash comes from the linked
 PortfolioTransfer endpoints, amount and effective date. No derived accounting fields are stored.
 
+Schema 39 adds account-private append-only `FinancialAudit` revisions, grouped
+by the Phase 13 mutation receipt. Exact before/after snapshots describe successful
+persisted domain changes; they are historical evidence only. No calculator reads
+audit rows, and deleting a live entity does not restore or replay its old audit
+snapshot into accounting. The existing raw-record flow above remains authoritative.
+Audit and financial changes share one commit/rollback boundary. See the
+[audit architecture](ARCHITECTURE.md#append-only-financial-history-schema-39)
+for serialization, no-op handling, tenant reads and account-lifetime retention.
+
 One symbol replay produces both aggregate state and individual transaction
 projections. Assets renders the projection map by transaction ID independently
 of newest-first row presentation. No per-row history queries or replays occur.

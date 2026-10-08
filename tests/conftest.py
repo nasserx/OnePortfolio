@@ -46,6 +46,8 @@ def _clear_database():
     db.create_all()
     meta = db.metadata
     for table in reversed(meta.sorted_tables):
+        if table.name in ('financial_audit', 'mutation_receipt'):
+            continue  # Lifetime history is removed only by its account cascade.
         db.session.execute(table.delete())
     db.session.commit()
     db.session.remove()

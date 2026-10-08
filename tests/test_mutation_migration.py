@@ -21,13 +21,14 @@ def schema37(pair, test_db_path, tmp_path):
     path = tmp_path / 'schema37.sqlite'
     with sqlite3.connect(test_db_path) as source, sqlite3.connect(path) as destination:
         source.backup(destination)
+        destination.execute('DROP TABLE financial_audit')
         destination.execute('DROP TABLE mutation_receipt')
         destination.execute('PRAGMA user_version=37')
     return path, pair.uid, expected
 
 
 def assert_schema(connection):
-    assert connection.exec_driver_sql('PRAGMA user_version').scalar() == 38
+    assert connection.exec_driver_sql('PRAGMA user_version').scalar() == migrations.TARGET_SCHEMA_VERSION
     assert {r[1] for r in connection.exec_driver_sql('PRAGMA table_info(mutation_receipt)')} == {
         'id', 'user_id', 'operation_key', 'request_digest', 'response_json',
     }

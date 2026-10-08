@@ -122,14 +122,14 @@ def test_high_precision_withdrawal_sign_conversion_and_edit_are_exact(ledger, ap
     assert db.session.get(PortfolioEvent, identifier).amount_delta == amount.copy_negate()
 
 
-def _assert_schema(conn):
+def _assert_schema(conn, version=migrations.TARGET_SCHEMA_VERSION):
     for table, fields in FIELDS.items():
         info = {r[1]: r for r in conn.exec_driver_sql(f'PRAGMA table_info("{table}")')}
         assert all(info[field][2] == 'TEXT' and info[field][3] for field in fields)
         assert not {'average_cost', 'net_amount'} & set(info)
         fk = conn.exec_driver_sql(f'PRAGMA foreign_key_list("{table}")').one()
         assert (fk[2], fk[3], fk[4], fk[6]) == ('portfolio', 'portfolio_id', 'id', 'CASCADE')
-    assert conn.exec_driver_sql('PRAGMA user_version').scalar() == 36
+    assert conn.exec_driver_sql('PRAGMA user_version').scalar() == version
     assert conn.exec_driver_sql('PRAGMA foreign_key_check').all() == []
 
 
@@ -327,7 +327,7 @@ def test_failed_upgrade_rolls_back_all_three_tables_and_version(legacy35):
         assert _observed_records(conn, True) == before
         assert conn.exec_driver_sql('SELECT type,name,sql FROM sqlite_master ORDER BY name').all() == schema
         migrations._migrate_exact_decimal_storage(conn, sa)
-        _assert_schema(conn)
+        _assert_schema(conn, version=36)
     engine.dispose()
 
 

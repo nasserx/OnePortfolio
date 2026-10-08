@@ -9,6 +9,21 @@ from portfolio_app.models.user import User
 class UserRepository(BaseRepository[User]):
     """Repository for User model database operations."""
 
+    def delete(self, user):
+        """Confirmed whole-account removal resolves only wholly owned transfers.
+
+        This and the existing user/portfolio cascades commit in one transaction.
+        Individual portfolio deletion does NOT use this path. Malformed cross-owner
+        links are deliberately left restricted instead of changing another user.
+        """
+        from portfolio_app.models import Portfolio, PortfolioTransfer
+        owned = self.db.session.query(Portfolio.id).filter(Portfolio.user_id == user.id)
+        PortfolioTransfer.query.filter(
+            PortfolioTransfer.source_portfolio_id.in_(owned),
+            PortfolioTransfer.destination_portfolio_id.in_(owned),
+        ).delete(synchronize_session='fetch')
+        super().delete(user)
+
     def get_by_username(self, username: str) -> Optional[User]:
         """Get user by username (case-sensitive)."""
         return self.model.query.filter_by(username=username).first()

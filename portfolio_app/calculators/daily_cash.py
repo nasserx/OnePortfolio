@@ -31,6 +31,8 @@ class DailyCash:
     buy_outflows: Decimal
     net_sale_proceeds: Decimal
     dividends: Decimal
+    transfer_in: Decimal
+    transfer_out: Decimal
     net_movement: Decimal
     closing_cash: Decimal
 
@@ -78,9 +80,10 @@ def build_daily_cash_ledger(facts):
     for day, components in sorted(grouped.items()):
         values = [components.get(key, ZERO) for key in (
             'funding_inflows', 'withdrawals', 'buy_outflows', 'net_sale_proceeds', 'dividends',
+            'transfer_in', 'transfer_out',
         )]
-        funding, withdrawals, buys, sales, dividends = values
-        movement = exact_subtract(exact_sum((funding, sales, dividends)), exact_add(withdrawals, buys))
+        funding, withdrawals, buys, sales, dividends, incoming, outgoing = values
+        movement = exact_subtract(exact_sum((funding, sales, dividends, incoming)), exact_sum((withdrawals, buys, outgoing)))
         opening = closing
         closing = exact_add(opening, movement)
         rows.append(DailyCash(day, opening, *values, movement, closing))

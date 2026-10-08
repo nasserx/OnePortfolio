@@ -1127,6 +1127,8 @@ class ModalAjaxHandler {
             { modalId: 'renamePortfolioModal',      formSelector: '#renamePortfolioForm' },
             { modalId: 'depositFundsModal',         formSelector: '#depositFundsForm' },
             { modalId: 'withdrawFundsModal',        formSelector: '#withdrawFundsForm' },
+            { modalId: 'transferModal',             formSelector: '#transferForm' },
+            { modalId: 'deleteTransferModal',       formSelector: '#deleteTransferForm' },
             { modalId: 'editPortfolioEventModal',   formSelector: '#editPortfolioEventForm' },
             { modalId: 'addSymbolModal',            formSelector: 'form[action$="/symbols/add"]' },
             // Delete-confirm dialogs share this owner so every workflow uses

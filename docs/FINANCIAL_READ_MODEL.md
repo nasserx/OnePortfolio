@@ -16,7 +16,8 @@ Raw exact persisted records
 
 Only raw Transaction type, price, quantity, fees, date, portfolio and symbol
 determine trading results. Funding comes from PortfolioEvent signed amount_delta;
-Dividend Income comes from Dividend amount. No derived accounting fields are stored.
+Dividend Income comes from Dividend amount. Internal cash comes from the linked
+PortfolioTransfer endpoints, amount and effective date. No derived accounting fields are stored.
 
 One symbol replay produces both aggregate state and individual transaction
 projections. Assets renders the projection map by transaction ID independently
@@ -35,7 +36,7 @@ stable. This is not a new database concurrency or transaction-isolation guarante
   per-transaction projections.
 - Portfolio: assets, transaction rollup, `gross_deposits`, `net_contributions`,
   `cash_balance`, `dividend_income`, withdrawals, `dividend_income_by_symbol`
-  and canonical financial metrics.
+  plus `transfer_in`, `transfer_out`, `net_internal_transfers` and canonical financial metrics.
 - Global: portfolio snapshots, summed canonical metrics and total Book Value.
 - Overview composes one global snapshot for its hero, facts and portfolio rows.
 - Portfolios uses portfolio snapshots; Book Value remains calculated even though
@@ -47,7 +48,7 @@ stable. This is not a new database concurrency or transaction-isolation guarante
 - `/api/holdings` remains a lightweight, sequence-independent quantity read.
 - Allocation charts retain positive-value filtering, Top-N/Other grouping and
   presentation-only numeric serialization. Allocation is not trading return.
-- Services retain chronological quantity walks, proposed cash deltas and fee
+- Services retain chronological quantity walks, prospective daily cash paths and fee
   validation. These are mutation safeguards, not alternate reporting engines.
 
 Dividend totals sum individually loaded exact Decimal rows in ID order, grouped
@@ -118,8 +119,9 @@ was introduced. URLs and raw mutation field names remain unchanged.
 
 ## Persistence precision
 
-Schema 36 uses `ExactDecimalText` for Transaction price/quantity/fees,
-Dividend amount and PortfolioEvent amount_delta. Finite Decimal -> canonical
+Schema 36 introduced `ExactDecimalText` for Transaction price/quantity/fees,
+Dividend amount and PortfolioEvent amount_delta; schema 37 adds PortfolioTransfer
+amount with the same unrestricted accepted Decimal precision. Finite Decimal -> canonical
 ordinary decimal TEXT -> Decimal never passes through float. Fractional trailing
 zeros are removed; all numeric zero representations normalize to `0`.
 No new fixed scale or significant-digit limit is imposed. Float/non-finite input
@@ -205,7 +207,7 @@ consumers pass user IDs. Malformed/non-normalized legacy data and concurrent
 edits require the existing validation/isolation policy, not new snapshot caching.
 
 Realized Trading Return is not total portfolio performance. Market valuation,
-unrealized P&L, TWR, MWR/XIRR, FX, transfers and benchmarks remain outside scope.
+unrealized P&L, TWR, MWR/XIRR, FX and benchmarks remain outside scope.
 Dividend accounting is unchanged.
 
 ## Cash-account policy
@@ -218,11 +220,13 @@ is invalid even though final cash is zero. Record funding on or before the Buy's
 date. The funded BTC sequence still realizes 3 on released basis 555.
 
 `calculators/daily_cash.py` derives immutable `DailyCashLedger`/`DailyCash` rows:
-opening cash + funding inflows + net sale proceeds + dividends − buy outflows −
-withdrawals = closing cash. All finite arithmetic uses the exact Decimal helpers.
+opening cash + external funding inflows + transfer in + net sale proceeds + dividends
+− buy outflows − external withdrawals − transfer out = closing cash.
+All finite arithmetic uses the exact Decimal helpers.
 Trade cash effects share `financial_math.transaction_cash_effect` with aggregate
 Cash. Last closing cash reconciles to canonical portfolio Cash for valid raw facts.
-No daily balances are stored, and no schema migration is needed.
+No daily balances are stored. Phase 10 required no migration; Phase 11 adds only
+the raw linked transfer table in schema 37.
 
 Cash validation nets all effects on the same recorded date, irrespective of clock
 time or insertion order. Same-day inflows can fund outflows. This is NOT broker
@@ -262,3 +266,35 @@ tenant-scoped `GET /portfolios/withdrawal-max/<id>?date=YYYY-MM-DD` returns an
 exact decimal string `amount`, with no-store caching. The dialog requests it for
 the selected date and ignores stale date/portfolio responses. Server mutation
 validation remains authoritative even after Max is requested.
+
+## Linked transfer read and mutation contracts
+
+`TransferService` uses the existing SQLite mutation reservation, validates every
+affected portfolio with `CashAccount`, then writes one raw `PortfolioTransfer`
+record and commits once. Edits validate removal of the old effects plus addition
+of the new effects before dirtying the ORM. Deletes validate the destination
+clawback too. Any failure rolls back; no independent funding rows are created.
+
+`PortfolioTransferRepository` scopes both endpoints to the same user. The daily
+ledger derives transfer components from the raw row; aggregate cash receives
+the exact signed net transfer total. Portfolio snapshots and
+`/api/portfolio-summary` add exact-string `transfer_in`, `transfer_out` and
+`net_internal_transfers` keys. Global signed totals cancel; directional totals
+measure internal movement, not external contributions or earnings.
+
+Portfolio Book Value = Net Contributions + Net Internal Transfers + Realized P&L
++ Dividends. Global Book Value = Net Contributions + Realized P&L + Dividends.
+The primary Cash + Cost Basis formula is unchanged, as is Realized Trading Return.
+
+Portfolio history projects each linked record once per endpoint, with the same
+transfer ID and raw edit payload, without persisting side records. The existing
+Entries count includes each visible side once. Existing funding history order
+and money formatting are preserved. No Overview card or help indicator is added.
+
+Authenticated CSRF-protected mutation routes are POST `/portfolios/transfers/add`,
+`/portfolios/transfers/edit/<id>` and `/portfolios/transfers/delete/<id>`.
+Save responses include `transfer` with `id`, `source_portfolio_id`,
+`destination_portfolio_id`, exact-string `amount`, effective `date` and `notes`.
+Forms use existing finite Decimal/date parsers; edit fields never use displayed
+money. No fixed cent restriction, no float conversion, and no Transfer Max button.
+Currency/FX, cross-user transfers and securities transfers remain unsupported.

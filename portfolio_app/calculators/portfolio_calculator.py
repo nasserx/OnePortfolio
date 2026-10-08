@@ -14,9 +14,11 @@ from portfolio_app.calculators.financial_snapshots import (
     build_asset_snapshot, build_portfolio_snapshot, build_global_snapshot,
     sum_dividend_income_details,
 )
-from portfolio_app.models import Portfolio, Transaction, PortfolioEvent, Dividend
+from portfolio_app.models import Portfolio, Transaction, PortfolioEvent, Dividend, PortfolioTransfer
+from portfolio_app import db
+from portfolio_app.repositories.portfolio_transfer_repository import PortfolioTransferRepository
 from portfolio_app.utils.decimal_utils import ZERO, to_decimal as _to_decimal
-from portfolio_app.utils.financial_arithmetic import exact_sum
+from portfolio_app.utils.financial_arithmetic import exact_sum, exact_subtract
 
 # Realized P&L is computed on demand from the transactions table. There is
 # intentionally no snapshot table — a single source of truth eliminates the
@@ -131,6 +133,15 @@ class PortfolioCalculator:
                 portfolio_id, user_id=user_id, exclude_transaction_id=exclude_transaction_id,
             ),
             PortfolioCalculator.get_dividend_total_for_portfolio(portfolio_id, user_id=user_id),
+            exact_subtract(*PortfolioCalculator.get_transfer_totals(portfolio_id, user_id=user_id)),
+        )
+
+    @staticmethod
+    def get_transfer_totals(portfolio_id, *, user_id=None):
+        rows = PortfolioTransferRepository(PortfolioTransfer, db, user_id).get_by_portfolio_ids([portfolio_id])
+        return (
+            exact_sum(row.amount for row in rows if row.destination_portfolio_id == portfolio_id),
+            exact_sum(row.amount for row in rows if row.source_portfolio_id == portfolio_id),
         )
 
     @staticmethod
@@ -165,6 +176,7 @@ class PortfolioCalculator:
             if symbol not in assets:
                 assets[symbol] = build_asset_snapshot(symbol, [], dividend_income)
 
+        transfer_in, transfer_out = PortfolioCalculator.get_transfer_totals(portfolio_id, user_id=user_id)
         return build_portfolio_snapshot(
             portfolio_id=portfolio_id,
             name=portfolio.name if portfolio is not None else '',
@@ -174,6 +186,7 @@ class PortfolioCalculator:
             cash_transactions=PortfolioCalculator._cash_transactions(portfolio_id, user_id=user_id),
             dividend_income=exact_sum(dividend_income_by_symbol.values()),
             dividend_income_by_symbol=dividend_income_by_symbol,
+            transfer_in=transfer_in, transfer_out=transfer_out,
         )
 
     @staticmethod

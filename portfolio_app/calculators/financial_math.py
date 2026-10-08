@@ -226,9 +226,9 @@ def transaction_cash_effect(transaction):
     return ZERO
 
 
-def calculate_cash_balance(net_contributions, transactions, dividend_income):
+def calculate_cash_balance(net_contributions, transactions, dividend_income, net_internal_transfers=ZERO):
     """Calculate Cash Balance from Net Contributions, trades and Dividend Income."""
-    cash_balance = to_decimal(net_contributions)
+    cash_balance = exact_add(to_decimal(net_contributions), net_internal_transfers)
 
     for transaction in transactions:
         cash_balance = exact_add(cash_balance, transaction_cash_effect(transaction))

@@ -4,6 +4,7 @@ from decimal import Decimal
 from typing import Optional, Any
 from portfolio_app.models.portfolio import Portfolio
 from portfolio_app.models.portfolio_event import PortfolioEvent
+from portfolio_app.models.portfolio_transfer import PortfolioTransfer
 from portfolio_app.repositories.portfolio_repository import PortfolioRepository
 from portfolio_app.repositories.portfolio_event_repository import PortfolioEventRepository
 from portfolio_app.utils.constants import EventType
@@ -53,10 +54,16 @@ class PortfolioService:
         self.portfolio_repo.commit()
         return portfolio
 
+    @cash_mutation
     def delete_portfolio(self, portfolio_id: int) -> str:
         """Delete portfolio and cascade-delete its events and transactions."""
         portfolio = self._require_portfolio(portfolio_id)
         name = portfolio.name
+        if PortfolioTransfer.query.filter(
+            (PortfolioTransfer.source_portfolio_id == portfolio_id) |
+            (PortfolioTransfer.destination_portfolio_id == portfolio_id),
+        ).first():
+            raise ValueError(MESSAGES['PORTFOLIO_HAS_TRANSFERS'])
         self.portfolio_repo.delete(portfolio)
         self.portfolio_repo.commit()
         return name

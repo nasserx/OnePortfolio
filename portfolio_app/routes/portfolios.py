@@ -14,6 +14,8 @@ from portfolio_app.forms import (
     PortfolioEventDeleteForm,
 )
 from portfolio_app.calculators.portfolio_calculator import PortfolioCalculator
+from portfolio_app.calculators.portfolio_history import build_portfolio_entries
+from portfolio_app.forms.transfer_form import TransferForm
 from portfolio_app.utils import (
     get_error_message, get_first_form_error, MESSAGES,
     is_ajax_request, json_response, field_error_response,
@@ -29,10 +31,13 @@ def _get_portfolios_page_context():
     svc = get_services()
     portfolios = svc.portfolio_repo.get_all()
     uid = svc.portfolio_repo.user_id
+    transfers = svc.transfer_repo.get_by_portfolio_ids([p.id for p in portfolios])
+    names = {p.id: p.name for p in portfolios}
 
     portfolio_details = []
     for portfolio in portfolios:
         events = svc.portfolio_event_repo.get_by_portfolio_id(portfolio.id)
+        events = build_portfolio_entries(portfolio.id, events, transfers, names)
 
         snapshot = PortfolioCalculator.get_portfolio_snapshot(portfolio.id, user_id=uid)
         portfolio_details.append({
@@ -438,6 +443,57 @@ def portfolios_withdrawal_max(portfolio_id):
         return response, status
     except ValueError as exc:
         return json_response(False, errors={'__all__': get_error_message(exc)})
+
+
+@portfolios_bp.route('/transfers/add', methods=['POST'])
+@portfolios_bp.route('/transfers/edit/<int:transfer_id>', methods=['POST'])
+@login_required
+def portfolios_transfer_save(transfer_id=None):
+    try:
+        svc = get_services()
+        form = TransferForm(request.form, svc.portfolio_repo.get_all())
+        if not form.validate():
+            if is_ajax_request():
+                return json_response(False, errors=form.errors)
+            flash(get_first_form_error(form.errors), 'error')
+            return redirect(url_for('portfolios.portfolios_list'))
+        values = form.get_cleaned_data()
+        transfer = svc.transfer_service.create(**values) if transfer_id is None else svc.transfer_service.update(transfer_id, **values)
+        if is_ajax_request():
+            return json_response(True, message=MESSAGES['TRANSFER_SAVED'], transfer=transfer.to_dict())
+        flash(MESSAGES['TRANSFER_SAVED'], 'success')
+    except ValueError as exc:
+        if is_ajax_request():
+            return json_response(False, errors={'__all__': get_error_message(exc)})
+        flash(get_error_message(exc), 'error')
+    except Exception:
+        db.session.rollback()
+        logger.exception('Transfer mutation failed')
+        if is_ajax_request():
+            return json_response(False, errors={'__all__': MESSAGES['TRANSFER_FAILED']})
+        flash(MESSAGES['TRANSFER_FAILED'], 'error')
+    return redirect(url_for('portfolios.portfolios_list'))
+
+
+@portfolios_bp.route('/transfers/delete/<int:transfer_id>', methods=['POST'])
+@login_required
+def portfolios_transfer_delete(transfer_id):
+    try:
+        get_services().transfer_service.delete(transfer_id)
+        if is_ajax_request():
+            return json_response(True, message=MESSAGES['TRANSFER_REMOVED'])
+        flash(MESSAGES['TRANSFER_REMOVED'], 'success')
+    except ValueError as exc:
+        if is_ajax_request():
+            return json_response(False, errors={'__all__': get_error_message(exc)})
+        flash(get_error_message(exc), 'error')
+    except Exception:
+        db.session.rollback()
+        logger.exception('Transfer deletion failed')
+        if is_ajax_request():
+            return json_response(False, errors={'__all__': MESSAGES['TRANSFER_FAILED']})
+        flash(MESSAGES['TRANSFER_FAILED'], 'error')
+    return redirect(url_for('portfolios.portfolios_list'))
 
 
 @portfolios_bp.route('/events/delete/<int:event_id>', methods=['POST'])

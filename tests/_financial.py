@@ -30,7 +30,8 @@ def transaction_projection(transaction):
     ).transaction_projections[transaction.id]
 
 
-def assert_accounting_invariants(summary, *, cash, net_funding, dividend_income, book_value):
+def assert_accounting_invariants(summary, *, cash, net_funding, dividend_income, book_value,
+                                net_internal_transfers=Decimal('0')):
     values = [cash, net_funding, dividend_income, book_value]
     values.extend(summary[key] for key in (
         'total_purchase_cost', 'net_sale_proceeds', 'position_cost_basis',
@@ -39,9 +40,9 @@ def assert_accounting_invariants(summary, *, cash, net_funding, dividend_income,
     ))
     assert all(isinstance(value, Decimal) for value in values)
     assert cash == exact_sum((net_funding, summary['total_purchase_cost'].copy_negate(),
-                              summary['net_sale_proceeds'], dividend_income))
+                              summary['net_sale_proceeds'], dividend_income, net_internal_transfers))
     assert book_value == exact_add(cash, summary['position_cost_basis'])
-    assert book_value == exact_sum((net_funding, summary['realized_trading_pnl'], dividend_income))
+    assert book_value == exact_sum((net_funding, net_internal_transfers, summary['realized_trading_pnl'], dividend_income))
     assert summary['total_quantity_held'] == exact_subtract(
         summary['total_buy_quantity'], summary['total_sell_quantity'])
     assert summary['total_purchase_cost'] == exact_add(summary['position_cost_basis'], summary['released_cost_basis'])

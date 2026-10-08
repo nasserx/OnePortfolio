@@ -14,6 +14,8 @@ Legacy cash deficits remain visible and repairable. See the
 
 - **Portfolios**: user-defined buckets such as Stocks, ETFs, Gold, or any other name.
 - **Funding Entries**: deposits and withdrawals.
+- **Internal Transfers**: linked cash movements between your portfolios; excluded
+  from Net Contributions and Realized Return, with no currency conversion.
 - **Assets**: symbols tracked inside a portfolio.
 - **Asset entries**: buy and sell records with price, quantity, fees, date, and notes.
 - **Dividend Income**: dividend/distribution income attributed to an asset symbol.

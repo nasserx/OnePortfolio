@@ -1,0 +1,57 @@
+<div class="modal fade" id="transferModal" tabindex="-1" aria-labelledby="transferModalTitle">
+    <div class="modal-dialog"><div class="modal-content">
+        <form method="POST" id="transferForm" autocomplete="off" novalidate>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="user_timezone" value="">
+            <div class="modal-header">
+                <h5 class="modal-title" id="transferModalTitle">Transfer</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                {% for field, label in [('source_portfolio_id', 'From Portfolio'), ('destination_portfolio_id', 'To Portfolio')] %}
+                <div class="mb-3">
+                    <label for="transfer_{{ field }}" class="form-label">{{ label }}</label>
+                    <select id="transfer_{{ field }}" name="{{ field }}" class="form-select" required>
+                        <option value="">Select Portfolio</option>
+                        {% for portfolio in portfolios %}<option value="{{ portfolio.id }}">{{ portfolio.name }}</option>{% endfor %}
+                    </select>
+                </div>
+                {% endfor %}
+                <div class="row g-2">
+                    <div class="col-6 mb-3">
+                        <label for="transfer_amount" class="form-label">Amount</label>
+                        <input id="transfer_amount" name="amount" class="form-control" type="text" inputmode="decimal" placeholder="0.00" required>
+                    </div>
+                    <div class="col-6 mb-3">
+                        <label for="transfer_date" class="form-label">Date</label>
+                        <input id="transfer_date" name="date" class="form-control" type="text" data-datepicker="flatpickr" required>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="transfer_notes" class="form-label">Notes</label>
+                    <textarea id="transfer_notes" name="notes" class="form-control" maxlength="300" rows="2"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Transfer</button>
+            </div>
+        </form>
+    </div></div>
+</div>
+<div class="modal fade" id="deleteTransferModal" tabindex="-1" aria-labelledby="deleteTransferModalTitle" aria-describedby="deleteTransferDescription">
+    <div class="modal-dialog"><div class="modal-content">
+        <form method="POST" id="deleteTransferForm">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteTransferModalTitle">Remove Transfer</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body"><p id="deleteTransferDescription">Remove this transfer from both portfolios?</p></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-danger">Remove</button>
+            </div>
+        </form>
+    </div></div>
+</div>

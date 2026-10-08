@@ -1,6 +1,7 @@
 """Scoped Title Case contracts for authenticated financial UI copy."""
 
 from pathlib import Path
+from html import unescape
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -19,7 +20,7 @@ TEMPLATES = {
 
 
 def test_overview_short_financial_labels_use_title_case_source_copy():
-    source = TEMPLATES['index']
+    source = unescape(TEMPLATES['index'])
     for label in (
         'Book Value',
         'Net Contributions',

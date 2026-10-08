@@ -331,8 +331,9 @@ def test_remove_items_keep_destructive_presentation(app):
 
     css = COMPONENTS_CSS.read_text(encoding='utf-8')
     dropdown_item_rule = css.split('.dropdown-item {', 1)[1].split('}', 1)[0]
-    assert 'font-size: var(--text-xs);' in dropdown_item_rule
+    assert 'font-size: var(--text-sm);' in dropdown_item_rule
     assert 'line-height: var(--leading-normal);' in dropdown_item_rule
+    assert 'gap: 0.375rem;' in dropdown_item_rule
     assert 'padding: var(--space-1) 0.375rem;' in dropdown_item_rule
     assert 'border-radius: var(--radius-md);' in dropdown_item_rule
     assert '.dropdown-item--danger { color: var(--destructive); }' in css

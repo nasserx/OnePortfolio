@@ -93,13 +93,13 @@
                             <span>Withdraw</span>
                         </button>
                     </li>
-                    <li><hr class="dropdown-divider"></li>
                     <li>
                         <button type="button" class="dropdown-item" data-transfer-action="create"
                                 data-transfer='{{ {"source_portfolio_id": item.portfolio.id}|tojson|e }}'>
-                            {{ icon('arrow-up-circle') }}<span>Transfer</span>
+                            {{ icon('arrows-exchange') }}<span>Transfer</span>
                         </button>
                     </li>
+                    <li><hr class="dropdown-divider"></li>
                     <li>
                         <button type="button" class="dropdown-item dropdown-item--danger js-delete-portfolio-btn"
                                 data-portfolio-id="{{ item.portfolio.id }}"

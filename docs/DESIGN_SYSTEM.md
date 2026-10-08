@@ -307,6 +307,32 @@ compact `px-3`/`py-2.5` spacing, and no shadow. It does not use Nova's separate
 muted-fill variant. Labels use `--muted-foreground`, values use `--foreground`,
 and only the nested formatted number may add a genuine financial semantic role.
 
+The authenticated Overview uses unboxed `.fact` pairs within its single Book
+Value card. Realized P&L sits immediately below the hero amount, alongside its
+signed return pill; that percentage is not a ratio of Book Value. Net
+Contributions and Cash share the first supporting row, with Dividends below.
+The saved Book Value reference guides this composition; shared money/percentage
+formatters and financial tokens remain unchanged. Marketing supporting items
+retain their existing outline treatment.
+Overview help is limited to three indicators: Book Value, Net Contributions,
+and one shared realized-metrics indicator after the return pill. The shared
+tooltip has two formula lines. In every Overview formula tooltip, only the
+metric name before the first equals sign is emphasized; the accessible label
+retains the formulas as plain text, without extra headings. The trigger adapts
+Nova's ghost `icon-xs` button with the preset's Tabler `IconInfoCircle`. The
+Bootstrap-owned tooltip uses Nova's foreground/background roles, compact
+`px-3`/`py-1.5` spacing, `--radius-md`, and rotated-square arrow; it deliberately
+has no extra panel shadow.
+
+Transfer creation fixes the source from the initiating portfolio menu and shows
+it in a readonly From Portfolio input. The submitted source ID stays hidden;
+the visible name is not submitted. Editing retains both endpoint selectors. Destination
+options exclude the selected source; server ownership and cash validation remain
+authoritative. Readonly inputs retain Nova's normal input appearance; only
+disabled controls receive muted opacity. Shared modal form-level errors reuse
+the preset-aligned field-error typography with `role="alert"`, rather than a
+separate large transfer banner.
+
 `.tx-preview` is the calculated form-output contract derived from Nova
 FieldDescription rather than validation/help styling. It uses text-sm type and
 shared field spacing; its label is muted while `.tx-preview__value` uses normal

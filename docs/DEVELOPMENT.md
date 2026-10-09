@@ -157,6 +157,21 @@ pytest -q tests/test_financial_audit.py tests/test_financial_audit_migration.py 
 
 ## Repository Safety
 
+### Final-audit correction regressions
+
+Run `pytest -q tests/test_final_audit_corrections.py
+tests/test_session_identity_migration.py` and `node tests/overview_chart_ranges.js`.
+Read-consistency regressions use separate connections and deterministic
+interleaving. WAL is enabled only on disposable test databases so a writer can
+commit while the read snapshot remains open; production journal policy is unchanged.
+Session-identity migration tests preserve financial/audit rows and test failed
+upgrade retry. Authentication helpers resolve the current random identity; do not
+construct numeric/v1 sessions except when explicitly testing their rejection.
+
+Do not open a standalone reporting boundary with pending ORM work. Compose
+financial writes inside `mutation_transaction()` and let nested reporting join
+that existing database transaction without owning its commit or rollback.
+
 Never commit:
 
 - `.env` or environment variants with secrets

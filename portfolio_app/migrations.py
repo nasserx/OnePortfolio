@@ -8,7 +8,7 @@ from portfolio_app import db
 # Bumped whenever a new migration step is added below. Stored in the SQLite
 # header (PRAGMA user_version) after a successful migration so subsequent
 # boots can short-circuit the whole inspection pass.
-TARGET_SCHEMA_VERSION = 39
+TARGET_SCHEMA_VERSION = 40
 
 # Sidecar file that carries the startup schema lock, derived from the
 # application database path (``portfolio.db`` → ``portfolio.db.schema-lock``).
@@ -221,9 +221,11 @@ def _run_migration_pass(app):
             # PRAGMA reaches SQLite while it's still in autocommit mode.
             raw_conn.execute('PRAGMA foreign_keys=OFF')
             try:
-                _apply_migration_steps(conn, sa)
-                _migrate_mutation_receipts(conn, sa)
-                _migrate_financial_audit(conn, sa)
+                if current_version < 39:
+                    _apply_migration_steps(conn, sa)
+                    _migrate_mutation_receipts(conn, sa)
+                    _migrate_financial_audit(conn, sa)
+                _migrate_session_identity(conn, sa)
                 # End any residual migration transaction before changing the
                 # connection-level FK pragma. Individual historical steps may
                 # commit earlier, but inspection-only work can autobegin again.
@@ -242,6 +244,32 @@ def _run_migration_pass(app):
 
             # Mark this DB as up-to-date so future boots skip everything above.
             raw_conn.execute(f'PRAGMA user_version = {TARGET_SCHEMA_VERSION}')
+
+
+def _migrate_session_identity(conn, sa):
+    """Schema 40: additive account identities; no financial/history rewrites."""
+    from secrets import token_hex
+    if 'user' not in sa.inspect(conn).get_table_names():
+        return  # Fresh installations use the final User model.
+    conn.commit()
+    conn.exec_driver_sql('BEGIN IMMEDIATE')
+    try:
+        columns = {column['name'] for column in sa.inspect(conn).get_columns('user')}
+        if 'session_identity' not in columns:
+            # SQLite requires a constant default for an additive NOT NULL column.
+            # Empty is deliberately not an accepted login identity; application
+            # inserts supply a cryptographically random value via the ORM.
+            conn.exec_driver_sql("ALTER TABLE user ADD COLUMN session_identity VARCHAR(64) NOT NULL DEFAULT ''")
+        rows = conn.exec_driver_sql("SELECT id FROM user WHERE session_identity = ''").all()
+        for (identifier,) in rows:
+            conn.execute(sa.text('UPDATE user SET session_identity = :identity WHERE id = :id'),
+                         {'identity': token_hex(32), 'id': identifier})
+        conn.exec_driver_sql('CREATE UNIQUE INDEX IF NOT EXISTS ix_user_session_identity ON user (session_identity)')
+        conn.exec_driver_sql('PRAGMA user_version = 40')
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
 
 
 class _LiveInspector:

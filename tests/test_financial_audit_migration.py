@@ -6,6 +6,7 @@ import pytest
 import sqlalchemy as sa
 
 from portfolio_app import create_app, db
+from portfolio_app.migrations import TARGET_SCHEMA_VERSION
 from portfolio_app.models import FinancialAudit
 from tests.test_financial_baseline import ledger
 from tests.test_portfolio_transfers import pair, transfer, PC
@@ -26,7 +27,7 @@ def schema38(pair, test_db_path, tmp_path):
 
 
 def assert_schema(connection):
-    assert connection.exec_driver_sql('PRAGMA user_version').scalar() == 39
+    assert connection.exec_driver_sql('PRAGMA user_version').scalar() == TARGET_SCHEMA_VERSION
     columns = {r[1]: r[2] for r in connection.exec_driver_sql('PRAGMA table_info(financial_audit)')}
     assert columns == dict(id='INTEGER', user_id='INTEGER', mutation_receipt_id='INTEGER',
                           entity_type='VARCHAR(32)', entity_id='INTEGER', action='VARCHAR(6)',

@@ -1,6 +1,7 @@
 """Allocation chart data builders for the Overview page."""
 
 from decimal import Decimal
+from math import isfinite
 from typing import Any, Dict, List
 
 from portfolio_app.utils.decimal_utils import ZERO
@@ -43,8 +44,8 @@ def _allocation_rows(portfolio_summary: List[Dict[str, Any]]) -> List[Dict[str, 
         )
         rows.append({
             'name': portfolio['name'],
-            'book_value': float(book_value),
-            'allocation': float(allocation),
+            'book_value': book_value,
+            'allocation': allocation,
         })
 
     if other_book_value != ZERO or len(ranked) > ALLOCATION_TOP_N:
@@ -54,8 +55,8 @@ def _allocation_rows(portfolio_summary: List[Dict[str, Any]]) -> List[Dict[str, 
         )
         rows.append({
             'name': ALLOCATION_OTHERS_LABEL,
-            'book_value': float(other_book_value),
-            'allocation': float(allocation),
+            'book_value': other_book_value,
+            'allocation': allocation,
         })
 
     return rows
@@ -90,8 +91,8 @@ def _contribution_allocation_rows(portfolio_summary: List[Dict[str, Any]]) -> Li
         )
         rows.append({
             'name': portfolio['name'],
-            'net_contributions': float(net_contributions),
-            'allocation': float(allocation),
+            'net_contributions': net_contributions,
+            'allocation': allocation,
         })
 
     if other_contributions != ZERO or len(ranked) > ALLOCATION_TOP_N:
@@ -101,11 +102,31 @@ def _contribution_allocation_rows(portfolio_summary: List[Dict[str, Any]]) -> Li
         )
         rows.append({
             'name': ALLOCATION_OTHERS_LABEL,
-            'net_contributions': float(other_contributions),
-            'allocation': float(allocation),
+            'net_contributions': other_contributions,
+            'allocation': allocation,
         })
 
     return rows
+
+
+def _chart_dataset(rows, value_key, grouped):
+    """Convert only the completed Decimal calculation, never sum float rows.
+
+    Canvas numbers are presentational. If conversion overflows or erases a
+    positive value, omit this chart rather than emitting infinity/false zero.
+    Canonical metrics and the portfolio table remain independent and exact.
+    """
+    total = exact_sum(row[value_key] for row in rows)
+    decimals = [total, *(row[value_key] for row in rows), *(row['allocation'] for row in rows)]
+    converted = [float(value) for value in decimals]
+    if any(not isfinite(number) or (value != ZERO and number == 0)
+           for value, number in zip(decimals, converted)):
+        return {'categories': [], 'allocations': [], 'values': [], 'total': None,
+                'grouped': grouped, 'unavailable': True}
+    size = len(rows)
+    return {'categories': [row['name'] for row in rows],
+            'values': converted[1:1 + size], 'allocations': converted[1 + size:],
+            'total': converted[0], 'grouped': grouped}
 
 
 def build_allocation_chart_data(portfolio_summary: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -114,18 +135,8 @@ def build_allocation_chart_data(portfolio_summary: List[Dict[str, Any]]) -> Dict
     contribution_rows = _contribution_allocation_rows(portfolio_summary)
 
     return {
-        'book_value_chart': {
-            'categories':  [r['name'] for r in allocation_rows],
-            'allocations': [r['allocation'] for r in allocation_rows],
-            'values':      [r['book_value'] for r in allocation_rows],
-            'total':       float(exact_sum(r['book_value'] for r in allocation_rows)),
-            'grouped':     len([p for p in portfolio_summary if Decimal(str(p['book_value'])) > ZERO]) > ALLOCATION_TOP_N,
-        },
-        'net_contributions_chart': {
-            'categories':  [r['name'] for r in contribution_rows],
-            'allocations': [r['allocation'] for r in contribution_rows],
-            'values':      [r['net_contributions'] for r in contribution_rows],
-            'total':       float(exact_sum(r['net_contributions'] for r in contribution_rows)),
-            'grouped':     len([p for p in portfolio_summary if Decimal(str(p.get('net_contributions', ZERO))) > ZERO]) > ALLOCATION_TOP_N,
-        },
+        'book_value_chart': _chart_dataset(allocation_rows, 'book_value',
+            len([p for p in portfolio_summary if Decimal(str(p['book_value'])) > ZERO]) > ALLOCATION_TOP_N),
+        'net_contributions_chart': _chart_dataset(contribution_rows, 'net_contributions',
+            len([p for p in portfolio_summary if Decimal(str(p.get('net_contributions', ZERO))) > ZERO]) > ALLOCATION_TOP_N),
     }

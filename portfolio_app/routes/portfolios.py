@@ -4,6 +4,7 @@ import logging
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
 from portfolio_app.services.mutation import abort_mutation
+from portfolio_app.repositories.read_snapshot import coherent_read
 from portfolio_app.services import get_services
 from portfolio_app.forms import (
     PortfolioAddForm,
@@ -26,6 +27,7 @@ logger = logging.getLogger(__name__)
 portfolios_bp = Blueprint('portfolios', __name__)
 
 
+@coherent_read
 def _get_portfolios_page_context():
     """Build context data for the portfolios page."""
     svc = get_services()

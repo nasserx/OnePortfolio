@@ -205,6 +205,20 @@ deposit_funds/withdraw_funds action names remain accurate and unchanged.
 
 ## Remaining limits
 
+Financial reports now hold an explicit SQLite read snapshot across all related
+queries, including displayed raw histories and canonical projections. Nested
+reads join the caller's existing database transaction. Standalone reporting does
+not reserve the writer or change journal mode, and cannot commit caller work.
+This prevents a concurrent transfer/trade/funding change from mixing pre-change
+and post-change balances in one report. Dividend-only symbols are included in
+Assets history even without a tracked Symbol or transaction.
+
+Chart values are a presentation-only boundary: Decimal totals are calculated
+before conversion. If any positive chart component or total overflows or
+underflows the chart's binary-number range, that dataset is unavailable; exact
+financial metrics and the portfolio table remain available with their existing
+formatting. No business precision limit is imposed.
+
 Recurring division remains approximate; terminating division also observes its
 working budget. Guards cannot promise arbitrary relative accuracy after cancellation.
 Adding historical transactions can increase replay precision and refine low-order

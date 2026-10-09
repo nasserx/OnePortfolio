@@ -172,6 +172,26 @@ Rollback to older application code requires restoring a schema-35 backup, not
 running the old Numeric models against schema 36. A down-migration would be lossy
 for newly accepted precision and is deliberately not provided.
 
+## Schema 40: account-lifetime session identity
+
+Adds `user.session_identity` (64-character cryptographically random identity)
+and its unique index. The additive, writer-reserved step preserves numeric IDs,
+financial records, mutation receipts, audit records, and authentication generation.
+Existing accounts receive independent random identities; retries retain identities
+already installed by a successful migration. Failure rolls back the entire step.
+Fresh installations use the same final column/index through the User model.
+
+All old numeric and `v1` login cookies deliberately become invalid. Users must
+authenticate again after deployment. New `v2` cookies bind the random account
+identity and the existing generation counter, never a recyclable SQLite rowid.
+Deleting an account cannot authorize its surviving cookies as a new account.
+
+SQLite requires a constant default when adding a NOT NULL column to populated
+tables. The empty SQL default is an inert, invalid login identity; the migration
+backfills every existing row and application inserts always use the random ORM
+default. Direct SQL account creation must supply an identity explicitly.
+No historical migration or financial precision contract is changed.
+
 ## Schema 39: append-only financial audit history
 
 The forward `_migrate_financial_audit` step adds `financial_audit`: owner and

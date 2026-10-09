@@ -6,6 +6,7 @@ from flask_login import login_required
 from decimal import Decimal
 from sqlalchemy.exc import OperationalError
 from portfolio_app.services.mutation import abort_mutation
+from portfolio_app.repositories.read_snapshot import coherent_read
 from portfolio_app.services import get_services, ValidationError
 from portfolio_app.calculators import PortfolioCalculator
 from portfolio_app.forms import (
@@ -60,6 +61,7 @@ def _decimal_places(value) -> int:
     return len(fractional)
 
 
+@coherent_read
 def _get_transactions_page_context(portfolio_filter=''):
     """Build context data for the transactions page."""
     svc = get_services()
@@ -77,7 +79,9 @@ def _get_transactions_page_context(portfolio_filter=''):
             portfolio.id, user_id=portfolio_repo.user_id,
         )
         snapshots[portfolio.id] = snapshot
-        tracked_symbols = set()
+        # Include accepted dividend-only assets without inventing holdings or
+        # tracked-symbol records. Canonical assets already union trades/dividends.
+        tracked_symbols = set(snapshot.assets)
         tracked_by_ticker = {}
 
         try:

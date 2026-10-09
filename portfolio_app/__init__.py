@@ -25,8 +25,7 @@ db = SQLAlchemy()
 csrf = CSRFProtect()
 login_manager = LoginManager()
 mail = Mail()
-_AUTH_IDENTITY_RE = re.compile(r'\Av1:([1-9][0-9]*):(0|[1-9][0-9]*)\Z')
-_LEGACY_AUTH_IDENTITY_RE = re.compile(r'\A[1-9][0-9]*\Z')
+_AUTH_IDENTITY_RE = re.compile(r'\Av2:([0-9a-f]{64}):(0|[1-9][0-9]*)\Z')
 # ``RATELIMIT_STORAGE_URI`` is owned by application configuration and consumed
 # by ``init_app``. No constructor value should override that deployment choice.
 limiter = Limiter(
@@ -106,23 +105,15 @@ def create_app(config_class=Config):
     def load_user(identity: str):
         from portfolio_app.models.user import User
 
-        # Current identities explicitly bind the database id to the user's
-        # authentication generation. Pre-cutover id-only identities represent
-        # generation zero and fail after migration 35 advances every retained
-        # account; malformed values also fail closed.
+        # Schema 40 deliberately invalidates all numeric/v1 sessions. A random
+        # account-lifetime identity cannot inherit a deleted account's cookies.
         if not isinstance(identity, str):
             return None
         match = _AUTH_IDENTITY_RE.fullmatch(identity)
-        if match:
-            user_id = int(match.group(1))
-            generation = int(match.group(2))
-        elif _LEGACY_AUTH_IDENTITY_RE.fullmatch(identity):
-            user_id = int(identity)
-            generation = 0
-        else:
+        if not match:
             return None
-
-        user = db.session.get(User, user_id)
+        generation = int(match.group(2))
+        user = User.query.filter_by(session_identity=match.group(1)).first()
         if (
             user is None
             or user.auth_generation != generation
@@ -339,6 +330,8 @@ def create_app(config_class=Config):
     register_blueprints(app)
     from portfolio_app.utils.mutation_requests import register_mutation_requests
     register_mutation_requests(app)
+    from portfolio_app.utils.financial_reads import register_financial_reads
+    register_financial_reads(app)
 
     # Bring the database to the target schema: incremental migrations first
     # (renames, column drops/adds), then create_all() for any new tables

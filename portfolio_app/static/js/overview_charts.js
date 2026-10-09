@@ -232,8 +232,14 @@
       this.canvas.hidden = true;
       if (this.canvasWrap) this.canvasWrap.hidden = true;
       this.legend.hidden = true;
-      if (this.empty) this.empty.hidden = false;
-      if (this.status) this.status.textContent = accessibleLabel + ': no portfolio data available.';
+      var emptyMessage = dataset && dataset.unavailable
+        ? 'Chart unavailable for this numeric range. See the portfolio details below.'
+        : 'No portfolio data available.';
+      if (this.empty) {
+        this.empty.hidden = false;
+        this.empty.textContent = emptyMessage;
+      }
+      if (this.status) this.status.textContent = accessibleLabel + ': ' + emptyMessage;
       return;
     }
 

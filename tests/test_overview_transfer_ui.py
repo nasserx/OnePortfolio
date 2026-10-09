@@ -15,10 +15,10 @@ from tests.test_portfolio_transfers import pair, day, D, buy
 
 
 @pytest.mark.parametrize('sale_price,tone,percentage,amount,arrow', [
-    ('120', 'pos', '+20.00%', '+20.00', 'arrow-up-right'),
-    ('80', 'neg', '-20.00%', '-20.00', 'arrow-down-right'),
+    ('120', 'pos', '+2.00%', '+20.00', 'arrow-up-right'),
+    ('80', 'neg', '-2.00%', '-20.00', 'arrow-down-right'),
     ('100', 'flat', '0.00%', '0.00', None),
-    (None, 'flat', '—', '0.00', None),
+    (None, 'flat', '0.00%', '0.00', None),
 ])
 def test_overview_groups_return_with_pnl_not_book_value(pair, app, sale_price, tone, percentage, amount, arrow):
     buy(pair, pair.a, '100', 1)
@@ -31,8 +31,8 @@ def test_overview_groups_return_with_pnl_not_book_value(pair, app, sale_price, t
     headline, realized = hero.split('<div class="hero-figure__realized">', 1)
     realized, facts = realized.split('<div class="hero-figure__facts">', 1)
     assert 'fmt_' not in hero
-    assert 'Realized Return' not in headline and 'delta' not in headline
-    assert 'Realized P&amp;L' in realized and 'Realized Return' in realized
+    assert '>Return<' not in headline and 'delta' not in headline
+    assert '>Cumulative P&amp;L<' in realized and '>Return<' in realized
     assert amount in realized and percentage in realized
     assert f'delta--{tone}' in realized
     if arrow:
@@ -40,7 +40,7 @@ def test_overview_groups_return_with_pnl_not_book_value(pair, app, sale_price, t
     else:
         assert '#op-icon-arrow-' not in realized
     assert facts.count('class="fact"') == 3
-    assert 'fact supporting-item' not in facts and 'Realized P&amp;L' not in facts
+    assert 'fact supporting-item' not in facts and '>Cumulative P&amp;L<' not in facts
     assert facts.index('Net Contributions') < facts.index('Cash') < facts.index('Dividends')
     assert hero.count('class="info-dot"') == 3
     assert hero.count('data-bs-trigger="hover focus"') == 3
@@ -48,23 +48,17 @@ def test_overview_groups_return_with_pnl_not_book_value(pair, app, sale_price, t
         assert f'aria-label="{formula}"' in hero
     assert realized.count('class="info-dot"') == 1
     label = realized.split('class="hero-figure__pnl-label">', 1)[1].split('</span>', 1)[0]
-    assert label == 'Realized P&amp;L'
+    assert label == 'Cumulative P&amp;L'
     assert realized.index('class="info-dot"') > realized.index('class="delta ')
-    # No extra labels/headings; exactly two formula lines, with only the
-    # leading concept names emphasized. HTMLParser decodes attribute entities.
+    # Same indicator, exactly two consolidated formulas and no extra headings.
     hint, _ = FinancialPage(realized).help[0]
     assert hint['data-bs-html'] == 'true'
-    assert hint['data-bs-title'] == (
-        '<span class="tooltip-formulas">'
-        '<span class="tooltip-formula"><strong>Realized P&amp;L</strong> = '
-        'Net Sale Proceeds − Released Cost Basis</span>'
-        '<span class="tooltip-formula"><strong>Realized Return</strong> = '
-        'Realized P&amp;L ÷ Released Cost Basis × 100</span>'
-        '</span>'
-    )
-    assert hint['aria-label'] == hint['title'] == (
-        'Realized P&L = Net Sale Proceeds − Released Cost Basis\n'
-        'Realized Return = Realized P&L ÷ Released Cost Basis × 100'
+    assert hint['data-bs-title'].count('<strong>') == 2
+    assert hint['data-bs-title'].count('class="tooltip-formula"') == 2
+    assert hint['aria-label'] == hint['title']
+    assert hint['title'] == (
+        'Cumulative P&L = Net Sale Proceeds − Released Cost Basis + Dividends\n'
+        'Return = Cumulative P&L ÷ Gross External Deposits × 100'
     )
     assert not FinancialPage(facts.split('Cash', 1)[1]).help
 

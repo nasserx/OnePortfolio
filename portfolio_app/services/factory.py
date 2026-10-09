@@ -66,7 +66,7 @@ class Services:
             self.transaction_repo, self.symbol_repo, self.portfolio_repo,
             dividend_repo=self.dividend_repo,
         )
-        self.overview_service = OverviewService(self.portfolio_repo, user_id=user_id)
+        self.overview_service = OverviewService(user_id=user_id)
         self.auth_service = AuthService(
             self.user_repo,
             self.pending_registration_repo,

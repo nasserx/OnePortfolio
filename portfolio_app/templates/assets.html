@@ -91,8 +91,8 @@
                             {% call metric('Purchase Cost') %}{{ money(item.summary.total_purchase_cost) }}{% endcall %}
                             {% call metric('Quantity') %}{{ quantity(item.summary.total_quantity_held) }}{% endcall %}
                             {% call metric('Avg. Cost') %}{{ money(item.summary.average_unit_cost, decimals=item.average_unit_cost_decimal_places) }}{% endcall %}
-                            {% call metric('Realized P&L') %}{{ money(item.summary.realized_trading_pnl, tone='sign', signed=true) }}{% endcall %}
-                            {% call metric('Realized Return') %}{{ percent(item.summary.realized_trading_return, item.summary.trading_return_display) }}{% endcall %}
+                            {% call metric('Cumulative P&L') %}{{ money(item.summary.total_realized_earnings, tone='sign', signed=true) }}{% endcall %}
+                            {% call metric('Return') %}{{ percent(item.summary.purchase_cost_return) }}{% endcall %}
                             {% call metric('Dividends') %}{{ money(symbol_dividend_total, tone='income', signed=true) }}{% endcall %}
                         </span>
                 </button>
@@ -158,7 +158,7 @@
                                     <th class="records-cell records-cell--number">Fee</th>
                                     <th class="records-cell records-cell--number">Total Amount</th>
                                     <th class="records-cell records-cell--number">Realized P&amp;L</th>
-                                    <th class="records-cell records-cell--number">Return</th>
+                                    <th class="records-cell records-cell--number" aria-label="Return" title="Return">Return</th>
                                     <th class="records-cell">Notes</th>
                                     <th class="records-cell records-cell--actions">Actions</th>
                                 </tr>
@@ -459,7 +459,7 @@
                                     {% if _tx_add_errs.get('fees') %}
                                     <div class="invalid-feedback">{{ _tx_add_errs.get('fees') }}</div>
                                     {% endif %}
-                                    <div id="total_cost_preview" class="tx-preview" aria-live="polite"></div>
+                                    <div id="transaction_amount_preview" class="tx-preview" aria-live="polite"></div>
                                 </div>
                             </div>
                             <div class="col-6">
@@ -573,7 +573,7 @@
                                 {% if _tx_edit_errs.get('edit_fees') %}
                                 <div class="invalid-feedback">{{ _tx_edit_errs.get('edit_fees') }}</div>
                                 {% endif %}
-                                <div id="edit_total_cost_preview" class="tx-preview" aria-live="polite"></div>
+                                <div id="edit_transaction_amount_preview" class="tx-preview" aria-live="polite"></div>
                             </div>
                         </div>
                         <div class="col-6">

@@ -10,7 +10,7 @@ from decimal import Decimal
 from types import MappingProxyType
 from typing import Mapping, Optional, Tuple, Union
 
-from portfolio_app.utils.decimal_utils import ZERO, to_decimal
+from portfolio_app.utils.decimal_utils import ZERO, to_decimal, parse_financial_decimal
 from portfolio_app.utils.financial_arithmetic import (
     FinancialArithmetic, exact_add, exact_subtract, exact_multiply, financial_percent,
 )
@@ -65,11 +65,6 @@ def calculate_quantity_held(transactions):
             quantity_held = exact_subtract(quantity_held, quantity)
 
     return quantity_held
-
-
-def calculate_symbol_transaction_summary(transactions):
-    """Legacy summary adapter over the single replay implementation."""
-    return dict(replay_symbol_transactions(transactions).summary)
 
 
 def replay_symbol_transactions(transactions):
@@ -169,11 +164,24 @@ def replay_symbol_transactions(transactions):
     return AssetReplayResult(MappingProxyType(summary), tuple(projections))
 
 
+def calculate_cumulative_return(earnings, capital):
+    """Non-annualized earnings / historical capital, never net contributions.
+
+    The snapshot supplies the scope-specific capital: asset purchase cost,
+    portfolio deposits plus transfer in, or consolidated external deposits.
+    Zero capital is undefined; negative capital is invalid, not a loss.
+    """
+    earnings, capital = map(parse_financial_decimal, (earnings, capital))
+    if capital < ZERO:
+        raise ValueError('Cumulative return capital cannot be negative.')
+    return financial_percent(earnings, capital) if capital > ZERO else None
+
+
 def calculate_realized_trading_return(realized_trading_pnl, released_cost_basis):
-    """One percentage at every scope; sum P&L and released basis before calling.
+    """Trading-only percentage; sum trading P&L and released basis before calling.
 
     Dividend Income, funding and open basis are deliberately not inputs.
-    Use the Phase 7 direct-operand division policy identically at every scope.
+    Use the direct-operand division precision policy identically at every scope.
     """
     pnl, basis = map(to_decimal, (realized_trading_pnl, released_cost_basis))
     return financial_percent(pnl, basis) if basis != ZERO else None

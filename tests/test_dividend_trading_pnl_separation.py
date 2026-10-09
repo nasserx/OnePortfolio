@@ -156,7 +156,7 @@ def test_asset_trading_pnl_and_return_exclude_dividend_income(app):
         assert 'dividend_total' not in row
 
 
-def test_income_only_symbol_has_zero_realized_pnl_and_no_return_base(app):
+def test_income_only_symbol_has_zero_trading_pnl_and_no_trading_return_base(app):
     with app.app_context():
         uid = _seed_user('income_only_symbol')
         svc, portfolio = _portfolio_with_deposit(uid)

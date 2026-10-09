@@ -22,8 +22,8 @@
 {% set financial_hints = {
   'Book Value': 'Book Value = Cash + Cost Basis',
   'Net Contributions': 'Net Contributions = Deposits − Withdrawals',
-  'Realized P&L': 'Realized P&L = Net Sale Proceeds − Released Cost Basis',
-  'Realized Return': 'Realized Return = Realized P&L ÷ Released Cost Basis × 100'
+  'Cumulative P&L': 'Cumulative P&L = Net Sale Proceeds − Released Cost Basis + Dividends',
+  'Return': 'Return = Cumulative P&L ÷ Gross External Deposits × 100'
 } %}
 
 
@@ -148,8 +148,8 @@
 {%- endmacro -%}
 
 
-{%- macro realized_info() -%}
-  {%- set lines = [financial_hints['Realized P&L'], financial_hints['Realized Return']] -%}
+{%- macro cumulative_return_info() -%}
+  {%- set lines = [financial_hints['Cumulative P&L'], financial_hints['Return']] -%}
   {{ info(lines|join('\n')) }}
 {%- endmacro -%}
 

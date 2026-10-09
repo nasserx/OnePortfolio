@@ -1,4 +1,4 @@
-"""Phase 8 policy: only realized trading P&L / released cost basis is a return."""
+"""Retained trading-only returns: realized trading P&L / released cost basis."""
 
 from datetime import datetime
 from decimal import Decimal as D, Inexact, Rounded, ROUND_UP, localcontext
@@ -28,9 +28,9 @@ def _scopes(ledger, symbol='BTC'):
 def _assert_single_sale_agreement(ledger, sale, expected):
     asset, portfolio, global_state = _scopes(ledger, sale.symbol)
     row = asset.transaction_projections[sale.id]
-    assert row.realized_trading_return == row.realized_trading_return == expected
+    assert row.realized_trading_return == expected
     for metrics in (asset.metrics, portfolio.metrics, global_state.totals):
-        assert metrics['realized_trading_return'] == metrics['realized_trading_return'] == expected
+        assert metrics['realized_trading_return'] == expected
         assert metrics['released_cost_basis'] == row.released_cost_basis
         assert metrics['realized_trading_pnl'] == row.realized_trading_pnl
     assert_accounting_invariants(portfolio.transactions, cash=portfolio.cash_balance,
@@ -60,7 +60,7 @@ def test_btc_all_four_scopes_agree_through_principal_profit_withdrawal_and_redep
             global_state.totals['book_value']) == tuple(map(D, ('3', '0', '0', '0', '3', '3')))
 
 
-def test_unused_deposit_open_purchase_and_dividend_cannot_dilute_realized_return(ledger):
+def test_unused_deposit_open_purchase_and_dividend_cannot_dilute_trading_return(ledger):
     ledger.svc.portfolio_service.deposit_funds(ledger.pid, D('100'))
     _historical_trade(ledger, 'Buy', '100', '1', 1)
     sale = _historical_trade(ledger, 'Sell', '110', '1', 2)
@@ -85,7 +85,7 @@ def test_unused_deposit_open_purchase_and_dividend_cannot_dilute_realized_return
     ('0', False, '100'), ('1000', False, '100'), ('1000', True, '100'),
     ('1000', True, '0'), ('0', False, '0'),
 ])
-def test_no_sale_and_dividend_only_states_have_undefined_return(ledger, funding, buy, dividend):
+def test_no_sale_and_dividend_only_states_have_undefined_trading_return(ledger, funding, buy, dividend):
     if D(funding):
         ledger.svc.portfolio_service.deposit_funds(ledger.pid, D(funding))
     if buy:
@@ -95,7 +95,7 @@ def test_no_sale_and_dividend_only_states_have_undefined_return(ledger, funding,
     asset, portfolio, global_state = _scopes(ledger)
     for metrics in (asset.metrics, portfolio.metrics, global_state.totals):
         assert metrics['released_cost_basis'] == metrics['realized_trading_pnl'] == D('0')
-        assert metrics['realized_trading_return'] is metrics['realized_trading_return'] is None
+        assert metrics['realized_trading_return'] is None
         assert metrics['trading_return_display'] == '—'
         assert metrics['total_realized_earnings'] == D(dividend)
 
@@ -194,11 +194,11 @@ def test_api_and_overview_expose_new_semantics_without_losing_exact_decimal_stri
     authenticate_client(client, ledger.uid)
     ledger.svc.transaction_service.add_dividend(ledger.pid, 'BTC', D('50'), datetime(2024, 1, 1))
     payload = client.get('/api/portfolio-summary').get_json()['portfolio_summary'][0]
-    assert payload['realized_trading_return'] is payload['realized_trading_return'] is None
+    assert payload['realized_trading_return'] is None
     assert D(payload['total_realized_earnings']) == D('50')
     assert 'return_amount' not in payload
     html = client.get('/').get_data(as_text=True)
-    assert 'Realized Return' in html
+    assert '<span class="visually-hidden">Return</span>' in html
     assert 'Realized Return On Net Contributions' not in html
     assert 'delta delta--flat">—</span>' in html
     _historical_trade(ledger, 'Buy', '100', '1', 2)
@@ -215,5 +215,6 @@ def test_obsolete_return_helpers_are_not_available_as_production_fallbacks():
     from portfolio_app.calculators import financial_math
     assert not hasattr(financial_math, 'calculate_return')
     assert not hasattr(financial_math, 'calculate_asset_return')
+    assert not hasattr(financial_math, 'calculate_symbol_transaction_summary')
     assert calculate_realized_trading_return('0', '0') is None
     assert calculate_realized_trading_return('0', '100') == D('0')

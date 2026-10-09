@@ -104,13 +104,21 @@ for investment cash dividends/distributions, not generic income.
 
 Calculators should use `Decimal` for financial math and should not introduce cached financial totals without a clear invalidation strategy.
 
-Phase 8 uses one `calculate_realized_trading_return(pnl, released_basis)` function
-for sale, asset, portfolio and global views. It divides summed trading P&L by
+Retained trading fields use `calculate_realized_trading_return(pnl, released_basis)`
+at sale, asset, portfolio and global scopes. It divides summed trading P&L by
 summed released basis, never averages percentages. Dividend Income, funding and
 open basis are not inputs. `calculate_realized_earnings_metrics` separately
 exposes monetary `total_realized_earnings = realized_trading_pnl + dividend_income`.
 Zero basis is `None`/JSON null/dash, distinct from a break-even sale's Decimal zero.
 These are realized trading measures, not total performance, TWR, MWR or XIRR.
+
+Summary displays use the authoritative cumulative-capital policy: the pure
+`calculate_cumulative_return` helper receives earnings including dividends and
+the historical capital supplied to the reporting scope. Snapshot builders add
+`purchase_cost_return` to assets and `paid_in_capital`/`capital_return` to portfolio
+and global metrics, preserving trading fields. Portfolio capital includes
+incoming transfers; global capital excludes them. The glossary specifies
+reinvestment and repeated-funding semantics. No persistence change is required.
 
 Aggregate consumers now use immutable asset, portfolio, and global snapshots
 from `calculators/financial_snapshots.py`. `PortfolioCalculator` loads scoped
@@ -382,12 +390,14 @@ All active financial read-model/JSON keys use the canonical names in
 were removed in Phase 9; the complete API rename map is in
 [Financial reads](FINANCIAL_READ_MODEL.md#phase-9-api-and-identifier-changes).
 Dividend and PortfolioEvent remain valid persistence models. No schema change.
-Overview places Realized P&L and its Realized Return pill beneath the Book Value
+Overview places Cumulative P&L and its Return pill beneath the Book Value
 hero, followed by Net Contributions, Cash and Dividends, with no earnings card.
 Portfolios has no duplicated Book Value summary. The glossary defines concise
 display labels separately from precise internal/API identifiers. Overview has
 three hover/focus info dots: Book Value, Net Contributions, and one shared
-Realized P&L / Realized Return indicator after the return pill.
+Cumulative P&L / Return indicator after the return pill, with exactly two
+consolidated formula lines and no explanations of other scopes.
 Assets and Portfolios retain their original disclosure controls without help icons.
 Formatting functions and color roles remain
-unchanged. No financial policy or arithmetic precision change accompanies renaming.
+unchanged. The cumulative-capital policy changes summary semantics explicitly;
+sale-row trading calculations and arithmetic precision remain unchanged.

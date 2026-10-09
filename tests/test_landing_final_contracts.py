@@ -60,7 +60,7 @@ def test_preview_composes_authenticated_overview_contracts():
     assert 'Net Contributions' in TEMPLATE
     assert 'Cash' in TEMPLATE
     assert 'Dividends' in TEMPLATE
-    assert 'Realized P&amp;L' in TEMPLATE
+    assert '>Cumulative P&amp;L<' in TEMPLATE
     assert 'num--income' in TEMPLATE
     assert 'num--pos' in TEMPLATE
     assert 'class="allocation-legend"' in TEMPLATE
@@ -142,7 +142,8 @@ def test_landing_remains_synthetic_and_has_no_private_data_path():
         assert forbidden not in combined
     assert 'var SAMPLE = {' in SCRIPT
     assert "total('bookValue')" in SCRIPT
-    assert "total('netContributions')" in SCRIPT
+    assert "document.getElementById('landing-preview-data')" in SCRIPT
+    assert 'landing_preview.metrics.capital_return|fmt_display_percent' in TEMPLATE
 
 
 def test_responsive_contracts_prevent_fixed_width_overflow():

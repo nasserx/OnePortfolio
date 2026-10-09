@@ -5,6 +5,7 @@ from flask import Blueprint, render_template, jsonify, request, Response
 from flask_login import login_required, current_user
 from portfolio_app.utils.decimal_utils import decimal_json, decimal_text
 from portfolio_app.services import get_services
+from portfolio_app.services.overview_service import OverviewService
 from portfolio_app.calculators import PortfolioCalculator
 from portfolio_app.calculators.allocation_charts import build_allocation_chart_data
 from portfolio_app.utils.messages import MESSAGES
@@ -19,7 +20,7 @@ dashboard_bp = Blueprint('dashboard', __name__)
 def index() -> str:
     """Landing page for guests, dashboard for authenticated users."""
     if not current_user.is_authenticated:
-        return render_template('landing.html')
+        return render_template('landing.html', landing_preview=decimal_json(OverviewService.get_landing_preview()))
 
     svc = get_services()
     snapshot = svc.overview_service.get_financial_snapshot()

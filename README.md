@@ -15,7 +15,8 @@ Legacy cash deficits remain visible and repairable. See the
 - **Portfolios**: user-defined buckets such as Stocks, ETFs, Gold, or any other name.
 - **Funding Entries**: deposits and withdrawals.
 - **Internal Transfers**: linked cash movements between your portfolios; excluded
-  from Net Contributions and Realized Return, with no currency conversion.
+  from Net Contributions and consolidated capital/earnings. Incoming transfers
+  count toward the receiving portfolio's historical paid-in capital. No FX.
 - **Assets**: symbols tracked inside a portfolio.
 - **Asset entries**: buy and sell records with price, quantity, fees, date, and notes.
 - **Dividend Income**: dividend/distribution income attributed to an asset symbol.
@@ -23,10 +24,16 @@ Legacy cash deficits remain visible and repairable. See the
 ## Financial terminology
 
 See the [canonical financial glossary](docs/DOMAIN_AND_CALCULATIONS.md) for all
-names and formulas. Book Value is cost-based. Realized Trading Return excludes
-Dividend Income, funding flows and open Position Cost Basis. Total Realized
-Earnings is monetary, not a percentage. No market performance, TWR, MWR or XIRR
-is implemented.
+names and formulas. Book Value remains Cash + Cost Basis. Cumulative P&L includes
+realized trading results and cash dividends. Asset Return divides this P&L by
+historical Purchase Cost including buy fees; portfolio Return uses all external
+deposits plus incoming transfers; consolidated Return uses external deposits only.
+Withdrawals never reduce historical capital. Redeposits and incoming transfer
+round trips count again, intentionally diluting local return. Retained/reinvested
+earnings are not portfolio contributions. Zero capital displays a dash, while
+positive capital with zero earnings displays 0%. Sale rows remain trading-only.
+These are cumulative, non-annualized accounting returns, not market performance.
+Annualized returns, TWR, MWR, XIRR and external valuations are not implemented.
 
 ## Features
 

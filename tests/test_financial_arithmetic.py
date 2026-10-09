@@ -12,7 +12,7 @@ from portfolio_app import db
 from portfolio_app.calculators import PortfolioCalculator as PC
 from portfolio_app.calculators.financial_math import (
     calculate_cash_balance, calculate_portfolio_metrics, calculate_quantity_held,
-    calculate_realized_earnings_metrics as calculate_return,
+    calculate_realized_earnings_metrics,
 )
 from portfolio_app.calculators.financial_snapshots import build_asset_snapshot
 from portfolio_app.services.transaction_service import ValidationError
@@ -256,7 +256,7 @@ def test_legacy_return_display_is_independent_of_ambient_rounding():
     with localcontext() as ambient:
         ambient.prec = 2
         ambient.rounding = ROUND_UP
-        result = calculate_return('1.005', '0', '100')
+        result = calculate_realized_earnings_metrics('1.005', '0', '100')
         assert result['realized_trading_return'] == D('1.005')
         assert result['trading_return_display'] == '+1.00%'
         assert ambient.rounding == ROUND_UP

@@ -2,27 +2,21 @@
    OnePortfolio — Marketing page
    ==========================================================================
 
-   Fills the product shot with sample figures and renders its allocation
-   ring. The numbers live here rather than in the template so the preview
-   stays internally consistent — the totals are derived, never hand-typed.
+   Renders the allocation ring from the public synthetic preview. Financial
+   metrics are calculated with Decimal and rendered by the server; JavaScript
+   converts only chart values to presentation numbers.
 
    Header state, scroll reveal, and the theme toggle are shared shell concerns;
-   this file owns only the deterministic preview metrics and allocation ring.
+   this file owns only the preview allocation ring.
    ========================================================================== */
 
 (function () {
   'use strict';
 
   var SAMPLE = {
-    portfolios: [
-      { name: 'Stocks', bookValue: 18400, netContributions: 20000 },
-      { name: 'ETFs',   bookValue: 14200, netContributions: 16000 },
-      { name: 'Crypto', bookValue: 9580,  netContributions: 12000 }
-    ],
-    cashBalance: 6320,
-    dividendIncome: 2410,
-    realizedTradingPnl: 3640,
-    releasedCostBasis: 28000
+    portfolios: JSON.parse(document.getElementById('landing-preview-data').textContent).map(function (item) {
+      return { name: item.name, bookValue: Number(item.bookValue) };
+    })
   };
 
   var display = window.OnePortfolioDisplay;
@@ -39,35 +33,6 @@
 
   function prefersReducedMotion() {
     return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  }
-
-  /* ---------------------------------------------------------------------
-     Figures
-     --------------------------------------------------------------------- */
-
-  function renderMetrics() {
-    var netContributions = total('netContributions');
-
-    // Every figure in the preview is derived from SAMPLE, including the
-    // headline return. Nothing is hand-typed into the template, so the
-    // preview can never quietly contradict itself.
-    // Illustrative display-only data, never used by application accounting.
-    var realizedTradingReturn = SAMPLE.releasedCostBasis > 0
-      ? (SAMPLE.realizedTradingPnl / SAMPLE.releasedCostBasis) * 100 : null;
-
-    var values = {
-      bookValue: display.money(total('bookValue'), false),
-      netContributions: display.money(netContributions, false),
-      cashBalance: display.money(SAMPLE.cashBalance, false),
-      dividendIncome: display.money(SAMPLE.dividendIncome, true),
-      realizedTradingPnl: display.money(SAMPLE.realizedTradingPnl, true),
-      realizedTradingReturn: display.percentage(realizedTradingReturn, 2, true)
-    };
-
-    document.querySelectorAll('[data-landing-metric]').forEach(function (element) {
-      var key = element.getAttribute('data-landing-metric');
-      element.textContent = values[key] || '';
-    });
   }
 
   /* ---------------------------------------------------------------------
@@ -169,7 +134,6 @@
   }
 
   function start() {
-    renderMetrics();
     renderChart();
 
     // The ring is canvas-drawn, so a theme flip needs a full redraw.

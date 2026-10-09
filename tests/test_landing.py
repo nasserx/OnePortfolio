@@ -1,9 +1,13 @@
 import re
+import json
+from decimal import Decimal as D
 from html.parser import HTMLParser
 from pathlib import Path
 
 from portfolio_app import db
 from portfolio_app.models.user import User
+from portfolio_app.services.overview_service import OverviewService
+from tests._financial import expected_percent
 from tests._auth import authenticate_client
 
 _TOKENS = Path('portfolio_app/static/css/tokens.css')
@@ -71,13 +75,6 @@ def _landing_script():
     return Path('portfolio_app/static/js/landing.js').read_text(encoding='utf-8')
 
 
-def _sample_number(script, path):
-    """Pull a numeric literal out of the SAMPLE object in landing.js."""
-    match = re.search(rf"{re.escape(path)}:\s*(-?\d+(?:\.\d+)?)", script)
-    assert match is not None, f'{path} not found in landing.js'
-    return float(match.group(1))
-
-
 def test_landing_renders_public_product_preview(app):
     html = _landing_html(app)
     text = _visible_text(html)
@@ -85,27 +82,27 @@ def test_landing_renders_public_product_preview(app):
     assert html.count('<h1') == 1
     assert 'A clear record of every portfolio you manage.' in text
 
-    # The preview is one allocation ring driven entirely by data hooks; no
-    # figure may be typed into the markup.
+    # The preview keeps one allocation ring; metrics are server-rendered.
     assert html.count('<canvas') == 1
     assert 'id="landingChart"' in html
     assert 'id="landingLegend"' in html
 
     for hook in ('bookValue', 'netContributions', 'cashBalance',
-                 'dividendIncome', 'realizedTradingPnl', 'realizedTradingReturn'):
+                 'dividendIncome', 'totalRealizedEarnings', 'capitalReturn'):
         assert f'data-landing-metric="{hook}"' in html
 
     for label in ('Book Value', 'Net Contributions', 'Cash',
-                  'Dividends', 'Realized P&L'):
+                  'Dividends', 'Cumulative P&L'):
         assert label in text
 
-    # Preview figures are rendered by landing.js, so none may be baked in.
-    assert not re.search(r'>\s*\d{1,3},\d{3}\.\d{2}\s*<', html)
+    assert '42,180.00' in text
+    assert '+6,050.00' in text
+    assert '+12.60%' in text
 
-    # Sample portfolio names come from the script, not the template.
-    script = _landing_script()
+    # Exact public sample data supplies the chart; no private holdings are loaded.
+    payload = json.loads(re.search(r'id="landing-preview-data" type="application/json">(.*?)</script>', html).group(1))
     for portfolio in ('Stocks', 'ETFs', 'Crypto'):
-        assert f"'{portfolio}'" in script
+        assert portfolio in [p['name'] for p in payload]
         assert portfolio not in text
 
     for stale in ('Gold', 'Bonds', 'AAPL', 'VOO', 'BTC', 'GLD', 'BND',
@@ -287,36 +284,23 @@ def test_the_hero_title_uses_the_neutral_preset_foreground_in_both_themes():
 
 
 def test_landing_sample_data_is_internally_consistent():
-    """The preview's totals must be derived from the sample rows rather than
-    hand-typed, so the marketing screenshot can never contradict itself."""
+    """Public preview uses exact server calculations, including dividends once."""
     script = _landing_script()
-
-    book_values = [float(v) for v in re.findall(r'bookValue:\s*(\d+)', script)]
-    capitals = [float(v) for v in re.findall(r'netContributions:\s*(\d+)', script)]
-
-    assert len(book_values) == 3
-    assert len(capitals) == 3
-
-    # Totals are computed in JS, never written as literals.
+    sample = OverviewService.get_landing_preview()
+    metrics = sample['metrics']
+    assert len(sample['portfolios']) == 3
+    assert sum(p['bookValue'] for p in sample['portfolios']) == metrics['book_value'] == D('42180')
+    assert metrics['net_contributions'] == D('36130')
+    assert metrics['total_realized_earnings'] == D('6050')
+    assert metrics['paid_in_capital'] == D('48000')
+    assert metrics['capital_return'] == expected_percent('6050', '48000')
+    assert metrics['cash_balance'] == D('6320')
+    assert metrics['dividend_income'] == D('2410')
+    assert metrics['book_value'] == metrics['net_contributions'] + metrics['total_realized_earnings']
     assert 'function total(' in script
     assert "total('bookValue')" in script
-    assert "total('netContributions')" in script
-
-    # The illustrative headline uses trading P&L / released basis, never capital.
-    assert 'SAMPLE.realizedTradingPnl / SAMPLE.releasedCostBasis' in script
-    assert 'SAMPLE.realizedTradingPnl / capital' not in script
-    assert 'realizedTradingReturn' in script
-
-    cash = _sample_number(script, 'cashBalance')
-    income = _sample_number(script, 'dividendIncome')
-    realized = _sample_number(script, 'realizedTradingPnl')
-
-    # Sanity: a plausible, positive sample book that is smaller than capital
-    # (book value net of withdrawals) with non-negative income.
-    assert 0 < sum(book_values) < sum(capitals)
-    assert cash > 0
-    assert income >= 0
-    assert realized >= 0
+    assert 'renderMetrics' not in script
+    assert 'realizedTradingReturn' not in script
 
     for stale in ('Gold', 'Bonds', 'landingBookValueChart', 'landingCapitalChart'):
         assert stale not in script

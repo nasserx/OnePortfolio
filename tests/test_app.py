@@ -532,10 +532,10 @@ def test_symbol_performance(app):
     """Verify per-(portfolio, symbol) realized performance.
 
     Covers:
-      - Symbol with sells: realized P&L and ROI use total buy cost so the
-        percentage matches the Assets section symbol summary
-      - Symbol with dividends only (held, never sold): ROI uses total buy
-        cost so dividends are measured against the whole symbol position
+      - Symbol with sells: retained trading return uses released cost basis;
+        dividend-inclusive summary Return uses historical Purchase Cost
+      - Symbol with dividends only (held, never sold): summary Return uses
+        historical Purchase Cost, while trading return remains undefined
       - Dividend recorded against a symbol with no transaction history
         still surfaces (rare, but real for transferred-in holdings)
       - Cross-user isolation: another user sees only their own rows

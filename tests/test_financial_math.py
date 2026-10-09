@@ -2,12 +2,11 @@ from decimal import Decimal, localcontext, ROUND_HALF_EVEN
 from types import SimpleNamespace
 
 from portfolio_app.calculators.financial_math import (
-    calculate_realized_earnings_metrics as calculate_asset_return,
     calculate_cash_balance,
     calculate_portfolio_metrics,
     calculate_quantity_held,
-    calculate_realized_earnings_metrics as calculate_return,
-    calculate_symbol_transaction_summary,
+    calculate_realized_earnings_metrics,
+    replay_symbol_transactions,
 )
 from tests._financial import assert_accounting_invariants, expected_percent
 
@@ -39,14 +38,13 @@ def _assert_metric_decimals(result):
 def _assert_return_decimals(result):
     for key in ('total_realized_earnings', 'realized_trading_pnl', 'released_cost_basis', 'dividend_income'):
         assert isinstance(result[key], Decimal)
-    for key in ('realized_trading_return', 'realized_trading_return'):
-        assert result[key] is None or isinstance(result[key], Decimal)
+    assert result['realized_trading_return'] is None or isinstance(result['realized_trading_return'], Decimal)
 
 
 def test_single_buy_includes_fees_in_cost_basis_and_average_cost():
-    summary = calculate_symbol_transaction_summary([
+    summary = replay_symbol_transactions([
         _tx('Buy', '10', '3', '0.75'),
-    ])
+    ]).summary
 
     _assert_decimal(summary['total_purchase_cost'], '30.75')
     _assert_decimal(summary['total_buy_fees'], '0.75')
@@ -56,10 +54,10 @@ def test_single_buy_includes_fees_in_cost_basis_and_average_cost():
 
 
 def test_multiple_buys_use_weighted_average_cost():
-    summary = calculate_symbol_transaction_summary([
+    summary = replay_symbol_transactions([
         _tx('Buy', '10', '2', '1'),
         _tx('Buy', '12', '3', '1.5'),
-    ])
+    ]).summary
 
     _assert_decimal(summary['total_purchase_cost'], '58.5')
     _assert_decimal(summary['total_buy_quantity'], '5')
@@ -68,11 +66,11 @@ def test_multiple_buys_use_weighted_average_cost():
 
 
 def test_partial_sell_uses_average_cost_and_sell_fees():
-    summary = calculate_symbol_transaction_summary([
+    summary = replay_symbol_transactions([
         _tx('Buy', '10', '2', '1'),
         _tx('Buy', '12', '3', '1.5'),
         _tx('Sell', '15', '2', '1'),
-    ])
+    ]).summary
 
     _assert_decimal(summary['realized_trading_pnl'], '5.6')
     _assert_decimal(summary['released_cost_basis'], '23.4')
@@ -84,10 +82,10 @@ def test_partial_sell_uses_average_cost_and_sell_fees():
 
 
 def test_full_liquidation_zeroes_open_position_values():
-    summary = calculate_symbol_transaction_summary([
+    summary = replay_symbol_transactions([
         _tx('Buy', '25', '4', '4'),
         _tx('Sell', '30', '4', '2'),
-    ])
+    ]).summary
 
     _assert_decimal(summary['total_quantity_held'], '0')
     _assert_decimal(summary['position_cost_basis'], '0')
@@ -98,12 +96,12 @@ def test_full_liquidation_zeroes_open_position_values():
 
 
 def test_accumulated_realized_pnl_across_multiple_sells():
-    summary = calculate_symbol_transaction_summary([
+    summary = replay_symbol_transactions([
         _tx('Buy', '10', '10'),
         _tx('Sell', '12', '4', '1'),
         _tx('Buy', '13', '4', '2'),
         _tx('Sell', '11', '5', '0.5'),
-    ])
+    ]).summary
 
     _assert_decimal(summary['realized_trading_pnl'], '4.5')
     _assert_decimal(summary['released_cost_basis'], '97')
@@ -113,11 +111,11 @@ def test_accumulated_realized_pnl_across_multiple_sells():
 
 
 def test_exact_decimal_precision_without_float_conversion():
-    summary = calculate_symbol_transaction_summary([
+    summary = replay_symbol_transactions([
         _tx('Buy', '0.10', '0.10', '0.01'),
         _tx('Buy', '0.30', '0.10', '0.01'),
         _tx('Sell', '0.50', '0.10', '0.002'),
-    ])
+    ]).summary
 
     for key, value in summary.items():
         if key != 'transaction_count':
@@ -129,32 +127,32 @@ def test_exact_decimal_precision_without_float_conversion():
     _assert_decimal(summary['average_unit_cost'], '0.3000')
 
 
-def test_positive_return_display():
-    result = calculate_return(_dec('25'), _dec('0'), _dec('500'))
+def test_positive_trading_return_display():
+    result = calculate_realized_earnings_metrics(_dec('25'), _dec('0'), _dec('500'))
 
     _assert_decimal(result['total_realized_earnings'], '25')
     _assert_decimal(result['realized_trading_return'], '5.00')
     assert result['trading_return_display'] == '+5.00%'
 
 
-def test_negative_return_display():
-    result = calculate_return(_dec('-11'), _dec('0'), _dec('100'))
+def test_negative_trading_return_display():
+    result = calculate_realized_earnings_metrics(_dec('-11'), _dec('0'), _dec('100'))
 
     _assert_decimal(result['total_realized_earnings'], '-11')
     _assert_decimal(result['realized_trading_return'], '-11.00')
     assert result['trading_return_display'] == '-11.00%'
 
 
-def test_return_includes_income():
-    result = calculate_return(_dec('36'), _dec('25'), _dec('1500'))
+def test_earnings_include_dividends_but_trading_return_excludes_them():
+    result = calculate_realized_earnings_metrics(_dec('36'), _dec('25'), _dec('1500'))
 
     _assert_decimal(result['total_realized_earnings'], '61')
     assert result['realized_trading_return'] == expected_percent('36', '1500')
     assert result['trading_return_display'] == '+2.40%'
 
 
-def test_zero_denominator_return_display():
-    result = calculate_return(_dec('0'), _dec('12.34'), _dec('0'))
+def test_zero_released_basis_trading_return_display():
+    result = calculate_realized_earnings_metrics(_dec('0'), _dec('12.34'), _dec('0'))
 
     _assert_decimal(result['total_realized_earnings'], '12.34')
     assert result['realized_trading_return'] is None
@@ -385,8 +383,8 @@ def test_portfolio_metrics_all_zero_values():
     assert result['trading_return_display'] == '—'
 
 
-def test_asset_return_positive_realized_pnl():
-    result = calculate_asset_return('50', '0', '1000')
+def test_trading_earnings_positive_realized_pnl():
+    result = calculate_realized_earnings_metrics('50', '0', '1000')
 
     _assert_return_decimals(result)
     _assert_decimal(result['total_realized_earnings'], '50')
@@ -394,8 +392,8 @@ def test_asset_return_positive_realized_pnl():
     assert result['trading_return_display'] == '+5.00%'
 
 
-def test_asset_return_negative_realized_pnl():
-    result = calculate_asset_return('-25', '0', '500')
+def test_trading_earnings_negative_realized_pnl():
+    result = calculate_realized_earnings_metrics('-25', '0', '500')
 
     _assert_return_decimals(result)
     _assert_decimal(result['total_realized_earnings'], '-25')
@@ -403,8 +401,8 @@ def test_asset_return_negative_realized_pnl():
     assert result['trading_return_display'] == '-5.00%'
 
 
-def test_asset_return_income_contributes_to_total_realized_earnings():
-    result = calculate_asset_return('0', '30', '600')
+def test_trading_earnings_income_contributes_to_total_realized_earnings():
+    result = calculate_realized_earnings_metrics('0', '30', '600')
 
     _assert_return_decimals(result)
     _assert_decimal(result['total_realized_earnings'], '30')
@@ -412,8 +410,8 @@ def test_asset_return_income_contributes_to_total_realized_earnings():
     assert result['trading_return_display'] == '+0.00%'
 
 
-def test_asset_return_combines_realized_pnl_and_income():
-    result = calculate_asset_return('36', '25', '505')
+def test_trading_earnings_combines_realized_pnl_and_income():
+    result = calculate_realized_earnings_metrics('36', '25', '505')
 
     _assert_return_decimals(result)
     _assert_decimal(result['total_realized_earnings'], '61')
@@ -421,8 +419,8 @@ def test_asset_return_combines_realized_pnl_and_income():
     assert result['trading_return_display'] == '+7.13%'
 
 
-def test_asset_return_zero_released_basis_displays_dash():
-    result = calculate_asset_return('0', '12.34', '0')
+def test_trading_earnings_zero_released_basis_displays_dash():
+    result = calculate_realized_earnings_metrics('0', '12.34', '0')
 
     _assert_return_decimals(result)
     _assert_decimal(result['total_realized_earnings'], '12.34')
@@ -430,8 +428,8 @@ def test_asset_return_zero_released_basis_displays_dash():
     assert result['trading_return_display'] == '—'
 
 
-def test_asset_return_does_not_disguise_invalid_negative_released_basis_with_abs():
-    result = calculate_asset_return('10', '5', '-300')
+def test_trading_earnings_does_not_disguise_invalid_negative_released_basis_with_abs():
+    result = calculate_realized_earnings_metrics('10', '5', '-300')
 
     _assert_return_decimals(result)
     _assert_decimal(result['total_realized_earnings'], '15')
@@ -439,8 +437,8 @@ def test_asset_return_does_not_disguise_invalid_negative_released_basis_with_abs
     assert result['trading_return_display'] == '-3.33%'
 
 
-def test_asset_return_exact_decimal_precision_without_float_conversion():
-    result = calculate_asset_return('0.03', '0.04', '0.70')
+def test_trading_earnings_exact_decimal_precision_without_float_conversion():
+    result = calculate_realized_earnings_metrics('0.03', '0.04', '0.70')
 
     _assert_return_decimals(result)
     _assert_decimal(result['total_realized_earnings'], '0.07')
@@ -448,8 +446,8 @@ def test_asset_return_exact_decimal_precision_without_float_conversion():
     assert result['trading_return_display'] == '+4.29%'
 
 
-def test_asset_return_all_zero_values():
-    result = calculate_asset_return('0', '0', '0')
+def test_trading_earnings_all_zero_values():
+    result = calculate_realized_earnings_metrics('0', '0', '0')
 
     _assert_return_decimals(result)
     _assert_decimal(result['total_realized_earnings'], '0')
@@ -478,7 +476,7 @@ def test_remaining_cost_pool_and_invariants_through_liquidation_and_rebuy():
     funding, dividend_income = _dec('100'), _dec('2.5')
     for end, state in enumerate(expected, start=1):
         prefix = transactions[:end]
-        summary = calculate_symbol_transaction_summary(prefix)
+        summary = replay_symbol_transactions(prefix).summary
         assert tuple(summary[key] for key in (
             'total_quantity_held', 'position_cost_basis', 'average_unit_cost', 'realized_trading_pnl',
         )) == tuple(map(_dec, state)), f'after entry {end}'
@@ -500,11 +498,11 @@ def test_repeating_average_full_liquidation_releases_exact_remaining_pool():
     with localcontext() as context:
         context.prec = 28
         context.rounding = ROUND_HALF_EVEN
-        summary = calculate_symbol_transaction_summary([
+        summary = replay_symbol_transactions([
             _tx('Buy', '1', '1'),
             _tx('Buy', '2', '2'),
             _tx('Sell', '3', '3'),
-        ])
+        ]).summary
     assert summary['total_quantity_held'] == _dec('0')
     assert summary['average_unit_cost'] == _dec('0')
     assert summary['position_cost_basis'] == _dec('0')
@@ -515,7 +513,7 @@ def test_repeating_average_full_liquidation_releases_exact_remaining_pool():
 def test_pure_calculators_preserve_products_beyond_database_decimal_scale():
     """Pure math retains digits that a Numeric(20,10) field cannot represent."""
     transactions = [_tx('Buy', '0.1234567891', '0.0000000001', '0.00000000001')]
-    summary = calculate_symbol_transaction_summary(transactions)
+    summary = replay_symbol_transactions(transactions).summary
     assert summary['total_quantity_held'] == _dec('0.0000000001')
     assert summary['position_cost_basis'] == _dec('0.00000000002234567891')
     assert summary['average_unit_cost'] == _dec('0.2234567891')

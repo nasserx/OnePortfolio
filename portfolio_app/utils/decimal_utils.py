@@ -57,9 +57,3 @@ def decimal_json(value):
     if isinstance(value, (list, tuple)):
         return [decimal_json(item) for item in value]
     return value
-
-
-def safe_divide(numerator: Decimal, denominator: Decimal, default: Decimal = ZERO) -> Decimal:
-    """Divide numerator by denominator, returning default if denominator is zero."""
-    from portfolio_app.utils.financial_arithmetic import financial_divide
-    return financial_divide(numerator, denominator, default)

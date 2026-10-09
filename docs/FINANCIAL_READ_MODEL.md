@@ -37,7 +37,8 @@ raw exact price/quantity/fees, not presentation values, populate edit inputs.
 Snapshots are frozen dataclasses with read-only mappings and no ORM references.
 Adapters return fresh dictionaries. They are not persisted, cached or hidden
 inside model properties. New reads reflect edits/deletions; old snapshots remain
-stable. This is not a new database concurrency or transaction-isolation guarantee.
+stable. Immutability is separate from database isolation: the explicit SQLite
+read boundary described below keeps all inputs to a complete report coherent.
 
 ## Read models and consumers
 
@@ -190,12 +191,16 @@ Higher storage/calculation precision does not alter these formatting conventions
 
 ## Presentation / accessibility
 
-Overview retains its compact four-fact grid; Total Realized Earnings remains
-internal/API-only, with no earnings card. Portfolios has four summary metrics
+Overview places Realized P&L and its return pill below the Book Value hero;
+Net Contributions, Cash and Dividends form the unboxed supporting grid.
+Total Realized Earnings remains internal/API-only, with no earnings card.
+Portfolios has four summary metrics
 without Book Value. Assets retains seven compact summary metrics. Display labels
 deliberately differ from internal identifiers: see the glossary's display mapping.
-Only Overview has formula info dots, for Book Value, Net Contributions, Realized
-P&L and Realized Return. They have aria labels and explicit hover/focus triggers.
+Only Overview has formula info dots: Book Value, Net Contributions, and one
+shared Realized P&L / Realized Return indicator after the return pill. Each
+formula bolds only its leading metric name before the equals sign, with no
+duplicate heading. Indicators have aria labels and explicit hover/focus triggers.
 Cash, Dividends, Assets and Portfolios have no help indicators. The original whole-row
 disclosure buttons and existing number-formatting/visual conventions remain intact.
 

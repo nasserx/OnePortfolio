@@ -33,7 +33,7 @@ generic responses for known and unknown addresses.
 
 Flask-Login continues to use signed client-side Flask sessions; no server-side
 session store or remember identity is used. Each serialized identity binds the
-user id to `User.auth_generation`, which remains the global revocation source
+random account-lifetime `User.session_identity` to `User.auth_generation`, the revocation source
 of truth. The signed session also carries authentication issue, last-seen, and
 recent-auth timestamps. Sessions fail closed without those timestamps, use a
 rolling seven-day inactivity timeout, have a 30-day absolute lifetime, and
@@ -66,7 +66,7 @@ Application users manage their own accounts and tenant-scoped portfolio data. Th
 
 Models live in `portfolio_app/models/`:
 
-- `User`: accounts, authentication generation, inert rollback password/reset/lockout state, and pending account-security state. The legacy application-admin column has no model field and is dropped from upgraded databases by migration Step 32.
+- `User`: accounts, random account-lifetime session identity, authentication generation, inert rollback password/reset/lockout state, and pending account-security state. The legacy application-admin column has no model field and is dropped from upgraded databases by migration Step 32.
 - `PendingRegistration`: staged passwordless signup state.
 - `AuthChallenge`: purpose-bound authentication-code digest, expiry, attempt, and atomic-consumption state.
 - `OAuthIdentity`: inert rollback data for a former external provider link; no tokens or secrets.
@@ -77,12 +77,14 @@ Models live in `portfolio_app/models/`:
 - `Symbol`: tracked asset symbol per portfolio.
 - `Transaction`: buy/sell asset entries.
 - `Dividend`: investment cash dividend/distribution records.
+- `MutationReceipt`: durable submission replay and account revision records.
+- `FinancialAudit`: append-only persisted-domain revisions linked to receipts.
 
 Pending email-change claims are bounded by their verification-code lifetime.
 Expired or incomplete pending-email state is non-reserving and is cleared when
 an account workflow encounters it, so it cannot indefinitely hold an address.
 
-The user-facing term is Dividend Income. The `Dividend` model remains accurate
+The concise user-facing label is Dividends. The `Dividend` model remains accurate
 for investment cash dividends/distributions, not generic income.
 
 ## Calculators
@@ -369,7 +371,7 @@ See [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md) for UI constraints.
 
 - `portfolio_app/__init__.py` is large because it still contains app wiring, extension setup, error handlers, security headers, and blueprint registration.
 - `PortfolioCalculator` is large because it owns portfolio, asset, cash, and return calculations.
-- `TransactionService` is large because it coordinates asset entries, Dividend Income, symbols, validations, and recalculation.
+- `TransactionService` coordinates asset entries, Dividend Income, symbols and prospective cash/quantity validation; it does not persist recalculated projections.
 
 Safe future work should define boundaries first, add tests around existing behavior, then move one responsibility at a time. Avoid broad rewrites that mix behavior changes with file movement.
 
@@ -380,10 +382,12 @@ All active financial read-model/JSON keys use the canonical names in
 were removed in Phase 9; the complete API rename map is in
 [Financial reads](FINANCIAL_READ_MODEL.md#phase-9-api-and-identifier-changes).
 Dividend and PortfolioEvent remain valid persistence models. No schema change.
-Overview remains a compact four-fact layout with no earnings card; Portfolios
-removes its duplicated Book Value summary. The glossary defines concise display
-labels separately from precise internal/API identifiers. Only Overview's Book Value,
-Net Contributions, Realized P&L and Realized Return have hover/focus info dots.
+Overview places Realized P&L and its Realized Return pill beneath the Book Value
+hero, followed by Net Contributions, Cash and Dividends, with no earnings card.
+Portfolios has no duplicated Book Value summary. The glossary defines concise
+display labels separately from precise internal/API identifiers. Overview has
+three hover/focus info dots: Book Value, Net Contributions, and one shared
+Realized P&L / Realized Return indicator after the return pill.
 Assets and Portfolios retain their original disclosure controls without help icons.
 Formatting functions and color roles remain
 unchanged. No financial policy or arithmetic precision change accompanies renaming.

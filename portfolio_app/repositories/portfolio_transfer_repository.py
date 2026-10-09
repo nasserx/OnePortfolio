@@ -2,7 +2,7 @@
 
 from sqlalchemy import or_
 from sqlalchemy.orm import aliased
-from portfolio_app.models import Portfolio, PortfolioTransfer
+from portfolio_app.models import Portfolio
 from portfolio_app.repositories.base import BaseRepository
 
 

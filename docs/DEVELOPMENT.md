@@ -10,7 +10,7 @@ Use a branch per change and keep application behavior changes separate from docu
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
+python -m pip install -r requirements-dev.txt
 Copy-Item .env.example .env
 ```
 
@@ -20,7 +20,7 @@ Copy-Item .env.example .env
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
+python -m pip install -r requirements-dev.txt
 cp .env.example .env
 ```
 
@@ -57,6 +57,33 @@ Run the full test suite:
 ```bash
 python -m pytest -v
 ```
+
+Tests use disposable databases; do not point diagnostic application instances
+at the working database. Node.js is needed only for the frontend checks below,
+with no npm install or browser required:
+
+```bash
+node tests/precision_boundaries.js
+node tests/cash_account_max.js
+node tests/portfolio_transfers.js
+node tests/modal_form_errors.js
+node tests/overview_chart_ranges.js
+```
+
+Check syntax for every application and assertion script (PowerShell):
+
+```powershell
+Get-ChildItem portfolio_app/static/js/*.js, tests/*.js | ForEach-Object { node --check $_.FullName }
+```
+
+Or in a POSIX shell:
+
+```bash
+for file in portfolio_app/static/js/*.js tests/*.js; do node --check "$file" || exit; done
+```
+
+CI runs the complete Python suite on the declared Python versions plus these
+JavaScript assertions and syntax checks. No Python linter is configured.
 
 Compile Python files:
 
@@ -99,7 +126,9 @@ For behavior changes, manually exercise the affected page or route. For financia
 - Total Realized Earnings includes trading P&L plus Dividend Income as a money amount only.
 - No sales means undefined return (dash), not zero return. A break-even sale gives genuine 0%.
 
-For UI changes, check desktop and narrow viewports and confirm text does not overlap or overflow.
+Visual acceptance belongs to the user. Automated agents verify template,
+JavaScript and accessibility contracts without browser or screenshot review
+unless explicitly requested.
 
 ## Testing financial mutations
 

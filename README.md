@@ -150,6 +150,7 @@ OnePortfolio/
 
 - [Domain and calculations](docs/DOMAIN_AND_CALCULATIONS.md)
 - [Architecture](docs/ARCHITECTURE.md)
+- [Financial read models](docs/FINANCIAL_READ_MODEL.md)
 - [Development](docs/DEVELOPMENT.md)
 - [Design system](docs/DESIGN_SYSTEM.md)
 - [Migrations](docs/MIGRATIONS.md)
@@ -157,12 +158,19 @@ OnePortfolio/
 ## Testing
 
 ```bash
+python -m pip install -r requirements-dev.txt
 python -m pytest -v
 python -m compileall portfolio_app
-git diff --check
 ```
 
-Tests live in `tests/`.
+Tests live in `tests/` and use isolated databases. See
+[Development](docs/DEVELOPMENT.md#validation-commands) for all JavaScript assertion
+and syntax checks. Node.js is needed for those checks, not for application runtime.
+
+The current SQLite schema is 40. Its account-lifetime session identities
+intentionally invalidate pre-upgrade login cookies; existing users sign in again.
+See [Migrations](docs/MIGRATIONS.md#schema-40-account-lifetime-session-identity)
+for deployment compatibility and upgrade guarantees.
 
 ## Deployment Notes
 

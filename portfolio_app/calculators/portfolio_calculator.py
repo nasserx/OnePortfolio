@@ -1,4 +1,4 @@
-"""Database-facing financial façade and legacy response adapters.
+"""Database-facing financial façade and canonical response adapters.
 
 Aggregate reads compose immutable snapshots using the pure financial engine.
 All derived transaction values are read projections; mutations persist raw facts.
@@ -18,7 +18,7 @@ from portfolio_app.models import Portfolio, Transaction, PortfolioEvent, Dividen
 from portfolio_app import db
 from portfolio_app.repositories.portfolio_transfer_repository import PortfolioTransferRepository
 from portfolio_app.repositories.read_snapshot import coherent_read
-from portfolio_app.utils.decimal_utils import ZERO, to_decimal as _to_decimal
+from portfolio_app.utils.decimal_utils import ZERO
 from portfolio_app.utils.financial_arithmetic import exact_sum, exact_subtract
 
 # Realized P&L is computed on demand from the transactions table. There is
@@ -41,8 +41,6 @@ class PortfolioCalculator:
     compatibility with internal recursive calls and tests; treat omitting
     it as a deliberate choice, not a free pass.
     """
-
-    _to_decimal = staticmethod(_to_decimal)
 
     @staticmethod
     def _scope_to_user(query, model_cls, user_id):

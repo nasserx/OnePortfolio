@@ -1,6 +1,7 @@
 """User identity model for passwordless authentication."""
 
 from datetime import datetime, timezone
+from secrets import token_hex
 from flask_login import UserMixin
 from sqlalchemy import text
 from portfolio_app import db
@@ -52,6 +53,12 @@ class User(UserMixin, db.Model):
         server_default=text('0'),
         nullable=False,
     )
+    # Account-lifetime identity: unlike SQLite rowids, this is never recycled.
+    # The migration's inert SQL default is not a valid session identity. Every
+    # application-created account supplies the random ORM default instead.
+    session_identity = db.Column(db.String(64), nullable=False, unique=True,
+                                 index=True, default=lambda: token_hex(32),
+                                 server_default=text("''"))
 
     portfolios = db.relationship(
         'Portfolio',
@@ -74,7 +81,7 @@ class User(UserMixin, db.Model):
 
     def get_id(self) -> str:
         """Return the versioned Flask-Login identity for this credential era."""
-        return f'v1:{self.id}:{self.auth_generation}'
+        return f'v2:{self.session_identity}:{self.auth_generation}'
 
     def __repr__(self) -> str:
         return f'<User {self.username}>'

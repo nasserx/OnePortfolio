@@ -191,6 +191,44 @@ Typical asset-entry creation:
 
 ## Financial mutation ownership
 
+### Coherent financial reads
+
+`repositories/read_snapshot.py` owns a real deferred SQLite `BEGIN` around a
+complete report, rather than relying on SQLAlchemy's logical Session transaction.
+Asset/portfolio/global snapshots, Assets and Portfolios history contexts, and
+daily cash-ledger reads share this boundary. Nested reads join the same snapshot.
+Standalone reads require a clean Session, refresh cached ORM data, and use
+connection-local `query_only` protection. They release only their own physical
+read transaction; they never commit pending application work. Reads inside an
+existing database transaction join that owner without committing or rolling it
+back. Mutation validation therefore retains its existing writer reservation.
+
+No writer reservation or journal-mode change is introduced for reporting.
+In SQLite rollback-journal mode a reader may briefly delay a writer's commit;
+in WAL mode committed concurrent writes remain invisible to that read snapshot.
+Assets also includes canonical dividend-only symbols in its history groups,
+without persisting synthetic symbols, trades, or quantities.
+
+Allocation chart calculations and totals remain Decimal until final chart
+serialization. Values outside finite nonzero binary-number representation use
+the existing chart empty-state surface with a numeric-range message. Canonical
+metrics, exact API values, and the portfolio table are unaffected.
+
+### Account-lifetime authentication
+
+Schema 40 gives each account a unique random `session_identity`. Version-2
+Flask-Login identities bind it to `auth_generation`; numeric IDs are solely
+database relationships, not session authority. Existing sessions require a new
+login at upgrade. Generation-based invalidation and account deletion still apply.
+Protected financial submissions recheck that same lifetime identity under the
+writer reservation, so account deletion/rowid reuse between authentication and
+validation cannot retarget an in-flight request.
+Authenticated financial GET responses also recheck the account identity inside
+the read snapshot and retain that snapshot through response rendering. A read
+already authenticated before account deletion cannot reveal a replacement account.
+
+### Mutation owner
+
 `services/mutation.py` owns `BEGIN IMMEDIATE`, flush, commit and rollback for
 trades, dividends, funding, transfers, symbols, portfolios and confirmed account
 removal. A direct top-level service call owns its transaction; an HTTP submission

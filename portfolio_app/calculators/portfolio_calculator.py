@@ -17,6 +17,7 @@ from portfolio_app.calculators.financial_snapshots import (
 from portfolio_app.models import Portfolio, Transaction, PortfolioEvent, Dividend, PortfolioTransfer
 from portfolio_app import db
 from portfolio_app.repositories.portfolio_transfer_repository import PortfolioTransferRepository
+from portfolio_app.repositories.read_snapshot import coherent_read
 from portfolio_app.utils.decimal_utils import ZERO, to_decimal as _to_decimal
 from portfolio_app.utils.financial_arithmetic import exact_sum, exact_subtract
 
@@ -67,6 +68,7 @@ class PortfolioCalculator:
     # ------------------------------------------------------------------
 
     @staticmethod
+    @coherent_read
     def get_quantity_held_for_symbol(portfolio_id, symbol, *, user_id=None, exclude_transaction_id=None):
         """Return current quantity held for a specific symbol inside a portfolio."""
         normalized = PortfolioCalculator.normalize_symbol(symbol)
@@ -125,6 +127,7 @@ class PortfolioCalculator:
         return order_transactions(query.all())
 
     @staticmethod
+    @coherent_read
     def get_cash_balance_for_portfolio(portfolio_id, *, user_id=None, exclude_transaction_id=None) -> Decimal:
         """Lightweight validation read, using the same pure cash_balance function as snapshots."""
         return calculate_cash_balance(
@@ -145,6 +148,7 @@ class PortfolioCalculator:
         )
 
     @staticmethod
+    @coherent_read
     def get_portfolio_snapshot(portfolio_id, *, user_id=None):
         """Load scoped inputs once per financial view; never persist or cache results.
 
@@ -190,6 +194,7 @@ class PortfolioCalculator:
         )
 
     @staticmethod
+    @coherent_read
     def get_financial_snapshot(user_id=None):
         """Canonical global read model; every aggregate consumer uses this path."""
         query = Portfolio.query
@@ -226,6 +231,7 @@ class PortfolioCalculator:
         return dict(snapshot.transactions)
 
     @staticmethod
+    @coherent_read
     def get_asset_snapshot(portfolio_id, symbol, *, user_id=None, dividend_income=None):
         symbol = PortfolioCalculator.normalize_symbol(symbol)
         query = Transaction.query.filter_by(portfolio_id=portfolio_id, symbol=symbol)

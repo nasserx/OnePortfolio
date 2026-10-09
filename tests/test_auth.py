@@ -180,7 +180,8 @@ def test_existing_user_authenticates_by_email_otp_and_preserves_hash(
     assert response.status_code in (302, 303)
     assert response.headers['Location'].endswith('/')
     state = _auth_session(client)
-    assert state['_user_id'].startswith(f'v1:{user_id}:')
+    with app.app_context():
+        assert state['_user_id'] == db.session.get(User, user_id).get_id()
     assert state['_fresh'] is True
     assert AUTH_ISSUED_AT_KEY in state
     assert AUTH_LAST_SEEN_AT_KEY in state
@@ -700,7 +701,8 @@ def test_missing_legacy_timestamps_fail_closed(app):
     user_id, _, generation = _create_user(app)
     browser = app.test_client()
     with browser.session_transaction() as state:
-        state['_user_id'] = f'v1:{user_id}:{generation}'
+        with app.app_context():
+            state['_user_id'] = db.session.get(User, user_id).get_id()
         state['_fresh'] = True
     assert browser.get('/settings').status_code in (302, 303)
     assert '_user_id' not in _auth_session(browser)
@@ -978,12 +980,13 @@ def test_auth_generation_rejects_old_identity_even_with_valid_timestamps(app):
     user_id, _, generation = _create_user(app)
     with app.app_context():
         user = db.session.get(User, user_id)
+        old_identity = user.get_id()
         user.auth_generation += 1
         db.session.commit()
     browser = app.test_client()
     now = datetime.now(timezone.utc).timestamp()
     with browser.session_transaction() as state:
-        state['_user_id'] = f'v1:{user_id}:{generation}'
+        state['_user_id'] = old_identity
         state['_fresh'] = True
         state[AUTH_ISSUED_AT_KEY] = now
         state[AUTH_LAST_SEEN_AT_KEY] = now

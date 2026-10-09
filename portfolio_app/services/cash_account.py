@@ -15,6 +15,7 @@ from portfolio_app.models.dividend import Dividend
 from portfolio_app.models.portfolio_transfer import PortfolioTransfer
 from portfolio_app.utils.decimal_utils import ZERO, withdrawal_max_text
 from portfolio_app.utils.messages import MESSAGES
+from portfolio_app.repositories.read_snapshot import coherent_read
 
 
 def new_effective_date(value):
@@ -70,6 +71,7 @@ class CashAccount:
         ).all())
         return records
 
+    @coherent_read
     def ledger(self, portfolio_id):
         return build_daily_cash_ledger(cash_fact(row, portfolio_id=portfolio_id) for row in self._records(portfolio_id))
 

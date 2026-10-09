@@ -19,11 +19,12 @@ class MutationClient(FlaskClient):
                 with self.session_transaction() as state:
                     identity = state.get('_user_id', '')
                 if identity:
-                    uid = int(identity.split(':')[1]) if identity.startswith('v1:') else int(identity)
                     from portfolio_app.utils.mutation_requests import issue_mutation_token
                     from flask import g
                     with self.application.test_request_context():
                         g.pop('_mutation_revisions', None)
-                        token = issue_mutation_token(uid)
-                    kwargs['data'] = {**data, 'mutation_token': token}
+                        user = self.application.login_manager._user_callback(identity)
+                        if user is not None:
+                            token = issue_mutation_token(user.id)
+                            kwargs['data'] = {**data, 'mutation_token': token}
         return super().open(*args, **kwargs)

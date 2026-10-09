@@ -279,11 +279,24 @@ def test_caught_helper_transaction_errors_cannot_resume_unprotected_writes(pair,
     assert PC.get_financial_snapshot(pair.uid) == before
 
 
-def test_write_between_page_read_and_template_cannot_bless_stale_fields(pair, app, monkeypatch):
+def test_write_between_page_read_and_template_cannot_bless_stale_fields(pair, app, monkeypatch, request):
     import re
     import portfolio_app.routes.transactions as routes
     row = buy(pair, pair.a, '100', 1)
     tid = row.id
+    # Reporting now holds a real read snapshot through rendering. WAL permits
+    # this deliberately synchronous interleaved commit; rollback-journal mode
+    # correctly waits until the read finishes (covered separately).
+    with db.engine.connect() as connection:
+        original_mode = connection.exec_driver_sql('PRAGMA journal_mode').scalar()
+        connection.exec_driver_sql('PRAGMA journal_mode=WAL').scalar()
+    def restore_mode():
+        db.session.remove()
+        db.engine.dispose()
+        with db.engine.connect() as connection:
+            assert original_mode in ('delete', 'wal')
+            connection.exec_driver_sql(f'PRAGMA journal_mode={original_mode}').scalar()
+    request.addfinalizer(restore_mode)
     original = routes._get_transactions_page_context
     def read_then_concurrent_write(*args, **kwargs):
         context = original(*args, **kwargs)

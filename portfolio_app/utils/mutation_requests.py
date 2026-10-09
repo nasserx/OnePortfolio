@@ -62,11 +62,19 @@ def protected_submission(view):
         except (BadSignature, ValueError, TypeError, KeyError):
             return _conflict(MESSAGES['INVALID_REQUEST'])
         uid = current_user.id
+        authenticated_identity = current_user.get_id()
         payload = [(key, request.form.getlist(key)) for key in sorted(request.form)
                    if key not in ('csrf_token', 'mutation_token')]
         digest = hashlib.sha256(json.dumps([request.path, payload], ensure_ascii=True).encode()).hexdigest()
         try:
             with mutation_transaction() as state:
+                # Authentication happened before writer reservation. Recheck
+                # the lifetime identity after reservation/expiration: deletion
+                # and rowid reuse must not retarget an already-running request.
+                account = db.session.get(User, uid)
+                if (account is None or not account.is_verified
+                        or account.get_id() != authenticated_identity):
+                    return _conflict(MESSAGES['INVALID_REQUEST'])
                 receipt = MutationReceipt.query.filter_by(user_id=uid, operation_key=intent['key']).first()
                 if receipt:
                     if receipt.request_digest != digest:

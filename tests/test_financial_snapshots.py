@@ -234,7 +234,8 @@ def test_snapshot_reads_raw_facts_and_does_not_write(ledger):
         snapshot = PC.get_financial_snapshot(ledger.uid)
     finally:
         event.remove(db.engine, 'before_cursor_execute', record)
-    assert statements and set(statements) == {'SELECT'}
+    assert 'SELECT' in statements
+    assert set(statements) <= {'SELECT', 'BEGIN', 'ROLLBACK', 'PRAGMA'}
     assert not db.session.dirty
     assert snapshot.totals['realized_trading_pnl'] == D('20')
     assert snapshot.totals['cash_balance'] == D('-80')

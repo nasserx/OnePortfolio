@@ -40,7 +40,6 @@ def _assert_projection_totals(asset):
     assert exact_sum(row.realized_trading_pnl for row in sales) == summary['realized_trading_pnl']
     assert exact_sum(row.released_cost_basis for row in sales) == summary['released_cost_basis']
     assert exact_sum(row.net_sale_proceeds for row in sales) == summary['net_sale_proceeds']
-    assert summary['net_sale_proceeds'] == summary['net_sale_proceeds']
     assert exact_sum(row.purchase_cost for row in projections) == summary['total_purchase_cost']
     if projections:
         assert projections[-1].post_quantity == summary['total_quantity_held']

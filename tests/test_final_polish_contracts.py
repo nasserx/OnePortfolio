@@ -2,6 +2,7 @@
 
 import re
 from pathlib import Path
+from portfolio_app.services.overview_service import OverviewService
 
 
 ROOT = Path('portfolio_app')
@@ -23,7 +24,7 @@ def _rule(source, selector):
 
 def test_calculated_transaction_summary_has_one_neutral_shared_contract():
     assert ASSETS.count('class="tx-preview" aria-live="polite"') == 2
-    assert "const label = isSell ? 'Total Received:' : 'Purchase Cost:';" in MAIN
+    assert "const label = isSell ? 'Net Proceeds:' : 'Purchase Cost:';" in MAIN
     assert 'class="tx-preview__label"' in MAIN
     assert 'class="tx-preview__value"' in MAIN
 
@@ -62,7 +63,7 @@ def test_browser_display_formatter_is_shared_and_matches_preview_precision():
         assert 'window.OnePortfolioDisplay' in script
         assert 'new Intl.NumberFormat' not in script
 
-    assert "display.percentage(realizedTradingReturn, 2, true)" in LANDING
+    assert 'landing_preview.metrics.capital_return|fmt_display_percent(signed=True)' in LANDING_TEMPLATE
     assert "display.percentage(shares[index], 1, false)" in LANDING
     assert "display.percentage(share, 1, false)" in OVERVIEW
 
@@ -91,7 +92,8 @@ def test_landing_and_overview_share_structured_allocation_legend_contract():
 
 
 def test_landing_sample_book_value_and_percentages_are_consistent():
-    values = [float(value) for value in re.findall(r'bookValue:\s*(\d+)', LANDING)]
+    # Chart presentation alone uses binary numbers; the source metrics are Decimal.
+    values = [float(row['bookValue']) for row in OverviewService.get_landing_preview()['portfolios']]
     assert values == [18400.0, 14200.0, 9580.0]
     assert sum(values) == 42180.0
     shares = [value / sum(values) * 100 for value in values]
@@ -100,7 +102,7 @@ def test_landing_sample_book_value_and_percentages_are_consistent():
     assert displayed_shares == [43.6, 33.7, 22.7]
     assert round(sum(displayed_shares), 1) == 100.0
 
-    assert "bookValue: display.money(total('bookValue'), false)" in LANDING
+    assert 'landing_preview.metrics.book_value|fmt_display_money' in LANDING_TEMPLATE
     assert 'var grandTotal = total(\'bookValue\');' in LANDING
     assert '(item.bookValue / grandTotal) * 100' in LANDING
     assert 'data: shares' in LANDING

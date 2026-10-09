@@ -308,15 +308,16 @@ muted-fill variant. Labels use `--muted-foreground`, values use `--foreground`,
 and only the nested formatted number may add a genuine financial semantic role.
 
 The authenticated Overview uses unboxed `.fact` pairs within its single Book
-Value card. Realized P&L sits immediately below the hero amount, alongside its
+Value card. Cumulative P&L sits immediately below the hero amount, alongside its
 signed return pill; that percentage is not a ratio of Book Value. Net
 Contributions and Cash share the first supporting row, with Dividends below.
 The saved Book Value reference guides this composition; shared money/percentage
 formatters and financial tokens remain unchanged. Marketing supporting items
 retain their existing outline treatment.
 Overview help is limited to three indicators: Book Value, Net Contributions,
-and one shared realized-metrics indicator after the return pill. The shared
-tooltip has two formula lines. In every Overview formula tooltip, only the
+and one shared Cumulative P&L/Return indicator after the return pill. The shared
+tooltip contains exactly two consolidated formula lines, with no other scope's
+formulas or explanatory notes. In every Overview formula tooltip, only the
 metric name before the first equals sign is emphasized; the accessible label
 retains the formulas as plain text, without extra headings. The trigger adapts
 Nova's ghost `icon-xs` button with the preset's Tabler `IconInfoCircle`. The

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from 'macros/ui.html' import money, percent, fact, info, realized_info, marker, empty_state, financial_hints %}
+{% from 'macros/ui.html' import money, percent, fact, info, cumulative_return_info, marker, empty_state, financial_hints %}
 {% from 'macros/icons.html' import icon %}
 
 {% block title %}Overview — OnePortfolio{% endblock %}
@@ -26,27 +26,27 @@
                title="{{ totals.book_value|fmt_money }}">{{ totals.book_value|fmt_display_money }}</p>
 
             <div class="hero-figure__realized">
-                <span class="hero-figure__pnl-label">Realized P&amp;L</span>
-                <span class="hero-figure__pnl-value">{{ money(totals.realized_trading_pnl, tone='sign', signed=true) }}</span>
+                <span class="hero-figure__pnl-label">Cumulative P&amp;L</span>
+                <span class="hero-figure__pnl-value">{{ money(totals.total_realized_earnings, tone='sign', signed=true) }}</span>
                 <span class="hero-figure__return">
-                <span class="visually-hidden">Realized Return</span>
-                {% if totals.trading_return_display == '—' %}
+                <span class="visually-hidden">Return</span>
+                {% if totals.capital_return is none %}
                     <span class="delta delta--flat">—</span>
                 {% else %}
-                    <span class="delta {% if totals.realized_trading_return > 0 %}delta--pos{% elif totals.realized_trading_return < 0 %}delta--neg{% else %}delta--flat{% endif %}">
-                        {% if totals.realized_trading_return > 0 %}
+                    <span class="delta {% if totals.capital_return > 0 %}delta--pos{% elif totals.capital_return < 0 %}delta--neg{% else %}delta--flat{% endif %}">
+                        {% if totals.capital_return > 0 %}
                             <span class="visually-hidden">Positive return:</span>
                             {{ icon('arrow-up-right') }}
-                        {% elif totals.realized_trading_return < 0 %}
+                        {% elif totals.capital_return < 0 %}
                             <span class="visually-hidden">Negative return:</span>
                             {{ icon('arrow-down-right') }}
                         {% else %}
                             <span class="visually-hidden">No gain or loss:</span>
                         {% endif %}
-                        {{ totals.realized_trading_return|fmt_display_percent(signed=True) }}
+                        {{ totals.capital_return|fmt_display_percent(signed=True) }}
                     </span>
                 {% endif %}
-                {{ realized_info() }}
+                {{ cumulative_return_info() }}
                 </span>
             </div>
 
@@ -99,8 +99,8 @@
                 <div role="columnheader">Portfolio</div>
                 <div role="columnheader">Book Value</div>
                 <div role="columnheader">Dividends</div>
-                <div role="columnheader">Realized P&amp;L</div>
-                <div role="columnheader">Realized Return</div>
+                <div role="columnheader">Cumulative P&amp;L</div>
+                <div role="columnheader">Return</div>
                 <div role="columnheader"><span class="visually-hidden">Actions</span></div>
             </div>
 
@@ -116,11 +116,11 @@
                 <div class="ledger__num" role="cell" data-label="Dividends">
                     {{ money(item.dividend_income, tone='income', signed=true) }}
                 </div>
-                <div class="ledger__num" role="cell" data-label="Realized P&amp;L">
-                    {{ money(item.realized_trading_pnl, tone='sign', signed=true) }}
+                <div class="ledger__num" role="cell" data-label="Cumulative P&amp;L">
+                    {{ money(item.total_realized_earnings, tone='sign', signed=true) }}
                 </div>
-                <div class="ledger__num" role="cell" data-label="Realized Return">
-                    {{ percent(item.realized_trading_return, item.trading_return_display) }}
+                <div class="ledger__num" role="cell" data-label="Return">
+                    {{ percent(item.capital_return) }}
                 </div>
                 <div class="ledger__action" role="cell">
                     <a href="{{ url_for('transactions.transaction_list', portfolio=item.name) }}"

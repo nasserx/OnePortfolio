@@ -43,11 +43,14 @@ read boundary described below keeps all inputs to a complete report coherent.
 ## Read models and consumers
 
 - Asset: replay totals, `dividend_income`, earnings/trading-return metrics and
-  per-transaction projections.
+  dividend-inclusive `purchase_cost_return`, plus per-transaction projections.
 - Portfolio: assets, transaction rollup, `gross_deposits`, `net_contributions`,
   `cash_balance`, `dividend_income`, withdrawals, `dividend_income_by_symbol`
   plus `transfer_in`, `transfer_out`, `net_internal_transfers` and canonical financial metrics.
 - Global: portfolio snapshots, summed canonical metrics and total Book Value.
+  Portfolio and global summary Return uses `capital_return`, with the approved
+  scope-specific `paid_in_capital` denominator; retained trading-return fields
+  are separate compatibility data, not the summary reporting formula.
 - Overview composes one global snapshot for its hero, facts and portfolio rows.
 - Portfolios uses portfolio snapshots; Book Value remains calculated even though
   its duplicated summary display was removed.
@@ -65,6 +68,12 @@ Dividend totals sum individually loaded exact Decimal rows in ID order, grouped
 by normalized symbol. Funding sums signed loaded rows; gross deposits filter
 Initial/Deposit entries. No financial SQL SUM/AVG or numeric coercion over TEXT.
 
+Pure accounting tests call `replay_symbol_transactions(...).summary` directly;
+the unused legacy `calculate_symbol_transaction_summary` wrapper is removed.
+Documented `PortfolioCalculator` read adapters remain available and delegate to
+the canonical snapshots. Snapshot response adapters source earnings/return fields
+once from their metrics mapping, without shadowing them with duplicate keys.
+
 ## Return and earnings
 
 `calculate_realized_trading_return` is the only trading-return formula:
@@ -78,8 +87,28 @@ portfolio and global scope. Components are summed before division.
 
 Dividend Income is investment cash dividends/distributions only. It contributes
 to earnings, cash and Book Value, not trading P&L or trading return. Funding and
-open basis are excluded from return. Zero released basis is undefined; a
+open basis are excluded from trading return. Zero released basis is undefined; a
 break-even sale with positive basis produces a genuine zero percentage.
+
+Summary displays instead use dividend-inclusive `total_realized_earnings` and
+`calculate_cumulative_return(earnings, capital)`. This pure helper rejects negative
+capital, non-finite values and float inputs, returns None for zero capital, and uses the
+same operand-sized Decimal division policy. Snapshots add `purchase_cost_return`
+for assets; portfolios add `paid_in_capital = gross_deposits + transfer_in` and
+`capital_return`. Global totals use `paid_in_capital = gross_deposits`, excluding
+all internal transfers. Both numerator and capital are aggregated before division.
+
+These are additive API fields; retained trading fields and their display adapter
+keep their original meanings. `/api/portfolio-summary` includes exact-string
+`paid_in_capital` and exact-string/null `capital_return`; asset financial adapters
+include exact Decimal `purchase_cost_return` (string/null when serialized).
+No migration, caching, denormalized totals, or audit replay is involved.
+The glossary defines the intentional dilution from repeated funding and transfers.
+
+The public landing preview is synthetic: `OverviewService.get_landing_preview`
+uses the same pure earnings/return calculators without database reads. Metrics
+are server-rendered with existing formatters; only its allocation chart converts
+serialized Decimal values into JavaScript presentation numbers.
 
 Partial-sale basis is rounded canonical average multiplied exactly by sold
 quantity. P&L uses net proceeds minus that same released component. Full closure
@@ -191,14 +220,16 @@ Higher storage/calculation precision does not alter these formatting conventions
 
 ## Presentation / accessibility
 
-Overview places Realized P&L and its return pill below the Book Value hero;
+Overview places Cumulative P&L and its capital-return pill below the Book Value hero;
 Net Contributions, Cash and Dividends form the unboxed supporting grid.
-Total Realized Earnings remains internal/API-only, with no earnings card.
+Total Realized Earnings supplies that P&L slot, with no additional earnings card.
 Portfolios has four summary metrics
 without Book Value. Assets retains seven compact summary metrics. Display labels
 deliberately differ from internal identifiers: see the glossary's display mapping.
 Only Overview has formula info dots: Book Value, Net Contributions, and one
-shared Realized P&L / Realized Return indicator after the return pill. Each
+shared Cumulative P&L / Return indicator after the return pill. Its exactly two
+formula lines describe consolidated earnings and return on Gross External
+Deposits, including Initial funding once. It contains no other scope's formulas. Each
 formula bolds only its leading metric name before the equals sign, with no
 duplicate heading. Indicators have aria labels and explicit hover/focus triggers.
 Cash, Dividends, Assets and Portfolios have no help indicators. The original whole-row
@@ -311,8 +342,8 @@ the exact signed net transfer total. Portfolio snapshots and
 `net_internal_transfers` keys. Global signed totals cancel; directional totals
 measure internal movement, not external contributions or earnings.
 
-Portfolio Book Value = Net Contributions + Net Internal Transfers + Realized P&L
-+ Dividends. Global Book Value = Net Contributions + Realized P&L + Dividends.
+Portfolio Book Value = Net Contributions + Net Internal Transfers + Realized Trading P&L
++ Dividends. Global Book Value = Net Contributions + Realized Trading P&L + Dividends.
 The primary Cash + Cost Basis formula is unchanged, as is Realized Trading Return.
 
 Portfolio history projects each linked record once per endpoint, with the same

@@ -11,6 +11,7 @@ from types import MappingProxyType
 from typing import Mapping, Tuple, Union
 
 from portfolio_app.calculators.financial_math import (
+    calculate_cumulative_return,
     calculate_realized_earnings_metrics,
     calculate_cash_balance,
     calculate_portfolio_metrics,
@@ -57,10 +58,7 @@ class AssetFinancialSnapshot:
             'portfolio_id': portfolio_id,
             'portfolio_name': portfolio_name,
             'symbol': self.symbol,
-            'realized_trading_pnl': summary['realized_trading_pnl'],
-            'dividend_income': self.dividend_income,
             'total_purchase_cost': summary['total_purchase_cost'],
-            'released_cost_basis': summary['released_cost_basis'],
             'position_cost_basis': summary['position_cost_basis'],
             **self.metrics,
         }
@@ -71,9 +69,15 @@ def build_asset_snapshot(symbol, transactions, dividend_income=ZERO):
     replay = replay_symbol_transactions(order_transactions(transactions))
     summary = replay.summary
     dividend_income = to_decimal(dividend_income)
+    metrics = calculate_realized_earnings_metrics(
+        summary['realized_trading_pnl'], dividend_income, summary['released_cost_basis'],
+    )
+    metrics['purchase_cost_return'] = calculate_cumulative_return(
+        metrics['total_realized_earnings'], summary['total_purchase_cost'],
+    )
     return AssetFinancialSnapshot(
         symbol, _readonly(summary), dividend_income,
-        _readonly(calculate_realized_earnings_metrics(summary['realized_trading_pnl'], dividend_income, summary['released_cost_basis'])),
+        _readonly(metrics),
         _readonly({row.transaction_id: row for row in replay.projections if row.transaction_id is not None}),
     )
 
@@ -143,20 +147,16 @@ class PortfolioFinancialSnapshot:
             'net_internal_transfers': self.net_internal_transfers,
             'cash_balance': self.cash_balance,
             'position_cost_basis': self.transactions['position_cost_basis'],
-            'realized_trading_pnl': self.transactions['realized_trading_pnl'],
-            'dividend_income': self.dividend_income,
             **self.metrics,
         }
 
     def as_realized_earnings(self):
         return {
-            **{key: self.transactions[key] for key in (
-                'realized_trading_pnl', 'released_cost_basis', 'net_sale_proceeds',
-            )},
-            'dividend_income': self.dividend_income,
+            'net_sale_proceeds': self.transactions['net_sale_proceeds'],
             **{key: self.metrics[key] for key in (
                 'realized_trading_pnl', 'released_cost_basis', 'dividend_income',
                 'total_realized_earnings', 'realized_trading_return',
+                'paid_in_capital', 'capital_return',
             )},
         }
 
@@ -171,6 +171,10 @@ def build_portfolio_snapshot(*, portfolio_id, name, assets, gross_deposits,
                                           exact_subtract(transfer_in, transfer_out))
     metrics = calculate_portfolio_metrics(
         cash_balance, summary['position_cost_basis'], summary['realized_trading_pnl'], dividend_income, summary['released_cost_basis'],
+    )
+    metrics['paid_in_capital'] = exact_add(gross_deposits, transfer_in)
+    metrics['capital_return'] = calculate_cumulative_return(
+        metrics['total_realized_earnings'], metrics['paid_in_capital'],
     )
     return PortfolioFinancialSnapshot(
         portfolio_id, name, _readonly(assets), _readonly(summary),
@@ -226,5 +230,10 @@ def build_global_snapshot(portfolios):
         totals['dividend_income'], totals['released_cost_basis'],
     )
     totals.update(metrics)
+    # Internal cash movements are not account-level capital, even when recycled.
+    totals['paid_in_capital'] = totals['gross_deposits']
+    totals['capital_return'] = calculate_cumulative_return(
+        totals['total_realized_earnings'], totals['paid_in_capital'],
+    )
     total_book_value = exact_sum(p.metrics['book_value'] for p in portfolios)
     return GlobalFinancialSnapshot(portfolios, _readonly(totals), total_book_value)

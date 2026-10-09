@@ -99,7 +99,7 @@
 
                 <p class="lp-lede">
                     Record net contributions, asset activity, and dividend income yourself — then read back
-                    cash, book value, realized P&amp;L, and realized trading return in one place. No live
+                    cash, book value, cumulative P&amp;L, and return in one place. No live
                     prices, no broker connections, no market noise.
                 </p>
 
@@ -124,29 +124,29 @@
                 <div class="lp-shot__body">
                     <div class="lp-shot__hero">
                         <span class="lp-shot__label">Book Value</span>
-                        <span class="lp-shot__value num" data-landing-metric="bookValue"></span>
-                        <span class="delta delta--pos" aria-label="Realized Return">
+                        <span class="lp-shot__value num" data-landing-metric="bookValue">{{ landing_preview.metrics.book_value|fmt_display_money }}</span>
+                        <span class="delta delta--pos" aria-label="Return">
                             {{ icon('arrow-up-right') }}
-                            <span data-landing-metric="realizedTradingReturn"></span>
+                            <span data-landing-metric="capitalReturn">{{ landing_preview.metrics.capital_return|fmt_display_percent(signed=True) }}</span>
                         </span>
                     </div>
 
                     <div class="lp-shot__facts">
                         <div class="fact supporting-item">
                             <span class="fact__label supporting-item__label">Net Contributions</span>
-                            <span class="fact__value supporting-item__value num" data-landing-metric="netContributions"></span>
+                            <span class="fact__value supporting-item__value num" data-landing-metric="netContributions">{{ landing_preview.metrics.net_contributions|fmt_display_money }}</span>
                         </div>
                         <div class="fact supporting-item">
                             <span class="fact__label supporting-item__label">Cash</span>
-                            <span class="fact__value supporting-item__value num" data-landing-metric="cashBalance"></span>
+                            <span class="fact__value supporting-item__value num" data-landing-metric="cashBalance">{{ landing_preview.metrics.cash_balance|fmt_display_money }}</span>
                         </div>
                         <div class="fact supporting-item">
                             <span class="fact__label supporting-item__label">Dividends</span>
-                            <span class="fact__value supporting-item__value num num--income" data-landing-metric="dividendIncome"></span>
+                            <span class="fact__value supporting-item__value num num--income" data-landing-metric="dividendIncome">+{{ landing_preview.metrics.dividend_income|fmt_display_money }}</span>
                         </div>
                         <div class="fact supporting-item">
-                            <span class="fact__label supporting-item__label">Realized P&amp;L</span>
-                            <span class="fact__value supporting-item__value num num--pos" data-landing-metric="realizedTradingPnl"></span>
+                            <span class="fact__label supporting-item__label">Cumulative P&amp;L</span>
+                            <span class="fact__value supporting-item__value num num--pos" data-landing-metric="totalRealizedEarnings">+{{ landing_preview.metrics.total_realized_earnings|fmt_display_money }}</span>
                         </div>
                     </div>
 
@@ -177,7 +177,7 @@
                     ('wallet', 'Cash Stays Visible',
                      'Deposits, withdrawals, buys, sells, and dividend income all move the same cash balance — so the number always reconciles.'),
                     ('calculator', 'Avg. Cost, Done Properly',
-                     'Realized P&L is computed from your transactions with the average-cost method, including fees on both sides.'),
+                     'P&L combines realized trading results, calculated with average cost and fees, with cash dividends.'),
                     ('chart-pie', 'Book Value, Not Guesswork',
                      'Cost basis and cash, with no market-value assumptions layered on top. What you see is what you put in.')
                 ] %}
@@ -204,7 +204,7 @@
                 {% set steps = [
                     ('Create Your Portfolios', 'Group your holdings however you actually think about them — by asset class, by broker, or by strategy.'),
                     ('Record as You Go', 'Deposits and withdrawals, buys and sells, dividend distributions. Each entry stays explicit and editable.'),
-                    ('Read the Results', 'Cash, Book Value, Realized P&L, Dividends, and Realized Return — per asset, per portfolio, and across everything.')
+                    ('Read the Results', 'Review cumulative P&L including dividends. Return uses Purchase Cost for assets and historical paid-in capital for portfolios and the account; it is not annualized or market-based.')
                 ] %}
                 {% for title, body in steps %}
                 <li class="lp-step" data-reveal style="--reveal-index:{{ loop.index0 }}">
@@ -280,6 +280,7 @@
         crossorigin="anonymous"></script>
 <script src="{{ url_for('static', filename='js/display_formatters.js', v=ASSET_VERSION) }}"></script>
 <script src="{{ url_for('static', filename='js/shell.js', v=ASSET_VERSION) }}"></script>
+<script id="landing-preview-data" type="application/json">{{ landing_preview.portfolios|tojson }}</script>
 <script src="{{ url_for('static', filename='js/landing.js', v=ASSET_VERSION) }}"></script>
 </body>
 </html>

@@ -129,6 +129,7 @@ def test_historical_insertion_agrees_across_calculators_pages_apis_and_sale_proj
     dashboard = ledger.svc.overview_service.get_portfolio_dashboard_totals()
     performance = ledger.svc.overview_service.get_symbol_financials()[0]
     assert assets == {**summary,
+        'purchase_cost_return': D('0'),
         'total_realized_earnings': D('0'), 'realized_trading_return': D('0'), 'trading_return_display': '+0.00%',
         'realized_trading_pnl': D('0'), 'released_cost_basis': D('150'),
         'dividend_income': D('0'), 'realized_trading_return': D('0'),
@@ -221,7 +222,7 @@ def test_legacy_unfunded_buy_readable_but_cost_increasing_edit_is_rejected(ledge
     assert PC.get_cash_balance_for_portfolio(ledger.pid) == D('0')
 
 
-def test_realized_return_excludes_dividends_and_unused_deposit_no_longer_dilutes(ledger):
+def test_cumulative_capital_return_changes_with_funding_while_trading_return_does_not(ledger):
     ledger.svc.portfolio_service.deposit_funds(ledger.pid, D('2000'), date=datetime(2024, 1, 1))
     _historical_trade(ledger, 'Buy', '100', '10', 2)
     sale = _historical_trade(ledger, 'Sell', '120', '5', 3)
@@ -233,6 +234,8 @@ def test_realized_return_excludes_dividends_and_unused_deposit_no_longer_dilutes
     assert asset_before['realized_trading_return'] == trade_return == D('20')
     assert before['realized_trading_return'] == trade_return
     assert before['total_realized_earnings'] == D('175')
+    assert before['capital_return'] == D('8.75')
+    assert asset_before['purchase_cost_return'] == D('17.5')
 
     ledger.svc.portfolio_service.deposit_funds(ledger.pid, D('2000'), date=datetime(2024, 1, 5))
     after = PC.get_portfolio_dashboard_totals(user_id=ledger.uid)
@@ -240,6 +243,7 @@ def test_realized_return_excludes_dividends_and_unused_deposit_no_longer_dilutes
     asset_after = ledger.svc.overview_service.get_symbol_financials()[0]
     assert after['realized_trading_return'] == before['realized_trading_return'] == D('20')
     assert portfolios[0]['realized_trading_return'] == after['realized_trading_return']
+    assert after['capital_return'] == portfolios[0]['capital_return'] == D('4.375')
     assert after['cash_balance'] - before['cash_balance'] == D('2000')
     for key in ('realized_trading_pnl', 'dividend_income', 'position_cost_basis', 'total_realized_earnings'):
         assert after[key] == before[key]

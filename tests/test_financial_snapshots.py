@@ -26,7 +26,7 @@ D = Decimal
 
 
 def _assert_consumers(ledger, app):
-    """Exact Decimal agreement before HTTP's existing float serialization."""
+    """Exact Decimal agreement before HTTP serializes financial values as text."""
     snapshot = PC.get_financial_snapshot(ledger.uid)
     rows, total = snapshot.as_portfolio_summary()
     assert ledger.svc.overview_service.get_portfolio_summary() == (rows, total)
@@ -160,7 +160,7 @@ def test_multi_portfolio_same_symbol_separate_pools_and_unused_deposit_return(le
         assert previous.asset('BTC') == current.asset('BTC')
 
 
-def test_dividend_only_return_is_undefined_at_every_scope(ledger, app):
+def test_dividend_only_trading_return_is_undefined_at_every_scope(ledger, app):
     ledger.svc.transaction_service.add_symbol(ledger.pid, 'BTC')
     ledger.svc.transaction_service.add_dividend(ledger.pid, 'BTC', D('12.34'), datetime(2024, 1, 1))
     snapshot = _assert_consumers(ledger, app)

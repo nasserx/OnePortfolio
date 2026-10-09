@@ -278,6 +278,8 @@ def test_every_production_inline_script_has_the_correct_nonce_contract():
     assert {
         attrs.get('nonce') for attrs in parser.executable_inline_scripts
     } == {'{{ csp_nonce }}'}
-    assert len(parser.data_scripts) == 2
+    assert {attrs.get('id') for attrs in parser.data_scripts} == {
+        'commandPaletteData', 'allocationData', 'landing-preview-data',
+    }
     assert all(attrs.get('type') == 'application/json' for attrs in parser.data_scripts)
     assert all('nonce' not in attrs for attrs in parser.data_scripts)

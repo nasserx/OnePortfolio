@@ -165,14 +165,14 @@ def test_overview_uses_current_health_metrics_and_terminology(app):
         'Cash',
         'Book Value',
         'Dividends',
-        'Realized P&L',
+        'Cumulative P&L',
     ):
         assert label in text
 
     for label in (
         'Portfolio',
         'Book Value',
-        'Realized P&L',
+        'Cumulative P&L',
         'Return',
         'Dividends',
         'Assets',
@@ -181,7 +181,7 @@ def test_overview_uses_current_health_metrics_and_terminology(app):
 
     column_positions = [
         row_text.index(label)
-        for label in ('Portfolio', 'Book Value', 'Dividends', 'Realized P&L', 'Return', 'Assets')
+        for label in ('Portfolio', 'Book Value', 'Dividends', 'Cumulative P&L', 'Return', 'Assets')
     ]
     assert column_positions == sorted(column_positions)
     assert 'class="marker"' in html
@@ -246,8 +246,8 @@ def test_overview_uses_current_health_metrics_and_terminology(app):
     assert '7,175.00' in text
     assert '8,675.00' in row_text
     assert '+75.00' in row_text
-    assert '+100.00' in row_text
-    assert '+20.00%' in row_text
+    assert '+175.00' in row_text
+    assert '+1.75%' in row_text
     assert f'href="/transactions/?portfolio={quote_plus(portfolio.name)}"' in html
     assert f'aria-label="View assets in {portfolio.name}"' in html
 
@@ -380,7 +380,7 @@ def test_overview_supporting_metrics_use_one_shared_item_grid_contract():
     assert "money(totals.net_contributions)" in template
     assert "money(totals.cash_balance)" in template
     assert "money(totals.dividend_income, tone='income', signed=true)" in template
-    assert "money(totals.realized_trading_pnl, tone='sign', signed=true)" in template
+    assert "money(totals.total_realized_earnings, tone='sign', signed=true)" in template
 
     assert 'class="fact"' in macros
     assert 'class="fact supporting-item"' not in macros

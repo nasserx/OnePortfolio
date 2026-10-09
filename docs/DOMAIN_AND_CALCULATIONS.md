@@ -21,11 +21,15 @@ Storage, calculation and display precision are separate contracts; see
 | Dividend Income | Cash dividends/distributions received from investments | `dividend_income` |
 | Total Realized Earnings | Realized Trading P&L + Dividend Income; a money amount | `total_realized_earnings` |
 | Realized Trading Return | Realized Trading P&L ÷ Released Cost Basis × 100 | `realized_trading_return` |
+| Purchase Cost Return | Total Realized Earnings ÷ historical Purchase Cost × 100 | `purchase_cost_return` |
+| Paid-In Capital | Portfolio: gross external deposits + Transfer In; account: gross external deposits only | `paid_in_capital` |
+| Capital Return | Total Realized Earnings ÷ Paid-In Capital × 100 | `capital_return` |
 | Funding Entries | Initial funding, deposits and withdrawals recorded by `PortfolioEvent` | Existing event model |
 | Asset Entries | Buy, Sell and Dividend records displayed for an asset | Existing transaction/dividend models |
 
 Gross deposits (`gross_deposits`) are Initial + Deposit inflows before withdrawals.
-They are not Net Contributions and are not a return denominator.
+They are not Net Contributions. They form the consolidated return denominator;
+portfolio return also includes incoming internal transfers.
 
 Negative Net Contributions are valid: deposits 555 minus withdrawals 558 = −3.
 This means withdrawals exceed deposits, not a loss. OnePortfolio models a cash
@@ -99,9 +103,51 @@ Dividend Income increases Cash Balance, Book Value and Total Realized Earnings.
 It does not change quantity, Position Cost Basis, Realized Trading P&L or trading return.
 Total Realized Earnings is monetary, never an earnings/contributions percentage.
 
-## Realized Trading Return — every scope
+## Cumulative accounting returns
 
-Sale, asset, portfolio and global return all use Realized Trading P&L divided by
+Displayed Cumulative P&L is `total_realized_earnings`: Realized Trading P&L + cash Dividends.
+The percentage is cumulative and non-annualized; investment duration is not an
+input. It is an accounting ratio, not market-based investment performance.
+
+- Assets: earnings divided by historical Purchase Cost, including buy fees.
+- Overview portfolio rows: earnings divided by gross external deposits (including
+  Initial funding and redeposits) plus all incoming internal transfers.
+- Overview Book Value card: consolidated earnings divided by gross external
+  deposits only. Never sum portfolio capital bases containing transfers or average
+  their percentages.
+
+Withdrawals and outgoing transfers do not reduce historical paid-in capital.
+Repeated deposits and incoming transfer round trips increase it and can dilute
+local return. Internal transfers never change consolidated earnings or capital.
+Reinvesting retained profits/dividends is not a portfolio contribution; each new
+purchase does increase historical asset Purchase Cost. Different scope returns
+are therefore intentional, even for the same symbol or reused money.
+
+Deposit 1,000 and earn 1,500: Book Value 2,500 and Return +150%, regardless of
+duration. Withdraw all 2,500: earnings and Return remain 1,500 and +150%, although
+Net Contributions is -1,500. Redeposit 1,000: paid-in capital becomes 2,000 and
+Return +75%. An internal transfer round trip of 1,000 produces the same dilution
+in the receiving portfolio, but consolidated Return remains +150%.
+
+Positive capital permits negative, positive, or zero earnings. Zero capital is
+undefined (`None` / JSON `null` / display dash), not 0%. Negative capital is invalid
+and raises a calculation error; it is never clamped or converted to an absolute
+value. Dividend-only assets show earnings but no percentage without purchases;
+their earnings still contribute to a funded portfolio's return. Closed assets
+retain historical earnings and Purchase Cost. Open assets remain at cost; no
+unrealized market gain/loss is inferred.
+
+Reconcile earnings independently as Book Value + Withdrawals + Transfer Out
+- Deposits - Transfer In at portfolio scope, or Book Value + Withdrawals -
+Deposits at account scope. Dividends are already in Book Value through cash;
+do not add them again to these identities.
+
+All history means the current authoritative records. Edits/deletions update
+derived results; append-only audit revisions are evidence, never calculation inputs.
+
+## Retained Realized Trading Return
+
+The retained sale, asset, portfolio and global trading-return fields use Realized Trading P&L divided by
 Released Cost Basis, times 100. Aggregate numerator and denominator first; never
 average percentages. Funding, Dividend Income, historical purchases not yet sold
 and open Position Cost Basis are not ratio inputs.
@@ -124,34 +170,47 @@ for scanability. The mapping below is deliberate, not a second accounting model.
 | net_contributions | Net Contributions |
 | cash_balance | Cash |
 | dividend_income | Dividends |
-| realized_trading_pnl | Realized P&L |
-| realized_trading_return | Realized Return |
+| total_realized_earnings | Cumulative P&L (summaries) |
+| purchase_cost_return / capital_return | Return (summaries) |
+| realized_trading_pnl | Realized P&L (sale rows) |
+| realized_trading_return | Return (sale rows, including accessible label and hover text) |
+| transaction_amount | Total Amount (shared Buy/Sell column) |
 | total_purchase_cost | Purchase Cost |
 | average_unit_cost | Avg. Cost |
 | position_cost_basis | Cost Basis |
 | book_value | Book Value |
 
-Overview: Book Value hero, then Realized P&L with the Realized Return pill;
-supporting facts are Net Contributions, Cash and Dividends. Total Realized Earnings remains an internal/API
-monetary measure; there is no redundant earnings card.
+Overview: Book Value hero, then Cumulative P&L with the Return pill;
+supporting facts are Net Contributions, Cash and Dividends. P&L includes dividends
+in the existing slot; there is no additional earnings card.
 
 Portfolios: Entries, Net Contributions, Cash and Cost Basis. No duplicated
 Book Value summary and no help icons. Assets: Entries, Purchase Cost, Quantity,
-Avg. Cost, Realized P&L, Realized Return and Dividends, without help icons.
+Avg. Cost, Cumulative P&L, Return and Dividends, without help icons.
 
-Expanded Assets transaction rows shorten Realized Return to Return; the summary
-keeps Realized Return. This is display copy only, not a different formula.
+Expanded Assets transaction rows use Realized P&L and Return (including accessible
+label and hover text), retaining sale-specific calculations without
+attributing dividends to individual sales. The short Return header fits the
+existing narrow column without changing the table layout.
+
+The shared Buy/Sell column remains Total Amount: Purchase Cost including fees for
+buys, Net Proceeds after fees for sells. The calculated form preview uses Purchase
+Cost for buys and Net Proceeds for sells. Internal `realized_trading_*` identifiers
+and API fields retain their precise trading-only meanings.
 
 Only Overview has help indicators: Book Value, Net Contributions and one shared
-Realized P&L / Realized Return indicator after the return pill. Their formulas are:
+Cumulative P&L / Return indicator after the return pill. Their formulas are:
 
 - **Book Value** = Cash + Cost Basis
 - **Net Contributions** = Deposits − Withdrawals
-- **Realized P&L** = Net Sale Proceeds − Released Cost Basis
-- **Realized Return** = Realized P&L ÷ Released Cost Basis × 100
+- **Cumulative P&L** = Net Sale Proceeds − Released Cost Basis + Dividends
+- **Return** = Cumulative P&L ÷ Gross External Deposits × 100
 
-The shared indicator contains the last two formula lines without separate
-headings. Only the leading metric names are bold, not the equals signs or formulas.
+The shared indicator contains exactly the last two formula lines, explaining
+only the consolidated metrics. Gross External Deposits includes Initial funding
+and Deposit events, each counted once; Initial funding is not added again.
+Asset and portfolio return policies remain documented above, not in this tooltip.
+Only the leading metric names are bold, not the equals signs or formulas.
 
 Shared info dots preserve hover/focus tooltips, keyboard focusability and accessible
 labels. Cash and Dividends have no help icons. Number formatting, financial tones

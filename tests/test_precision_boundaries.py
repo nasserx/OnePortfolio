@@ -12,7 +12,7 @@ from flask import g, render_template, render_template_string
 
 from portfolio_app import db
 from portfolio_app.calculators import PortfolioCalculator as PC
-from portfolio_app.calculators.financial_math import calculate_symbol_transaction_summary
+from portfolio_app.calculators.financial_math import replay_symbol_transactions
 from portfolio_app.calculators.financial_snapshots import build_asset_snapshot
 from portfolio_app.forms.transaction_forms import (
     TransactionAddForm, TransactionEditForm, DividendAddForm, DividendEditForm,
@@ -234,10 +234,10 @@ def test_funding_sums_exact_loaded_values_not_sql_sum(ledger, app):
 
 
 def test_nonzero_position_keeps_tiny_cost_pool():
-    summary = calculate_symbol_transaction_summary([
+    summary = replay_symbol_transactions([
         SimpleNamespace(transaction_type='Buy', price=D('1E-20'), quantity=D('2E-10'), fees=D('0')),
         SimpleNamespace(transaction_type='Sell', price=D('1E-20'), quantity=D('1E-10'), fees=D('0')),
-    ])
+    ]).summary
     assert summary['total_quantity_held'] == D('1E-10')
     assert summary['position_cost_basis'] == D('1E-30')
     assert summary['average_unit_cost'] == D('1E-20')

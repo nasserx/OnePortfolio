@@ -61,23 +61,27 @@ def _page(app, ledger, url):
 
 
 @pytest.mark.parametrize('url,labels', [
-    ('/', ['Book Value', 'Realized Return', 'Net Contributions', 'Cash', 'Dividends', 'Realized P&L']),
+    ('/', ['Book Value', 'Return', 'Net Contributions', 'Cash', 'Dividends', 'Cumulative P&L']),
     ('/portfolios/', ['Entries', 'Net Contributions', 'Cash', 'Cost Basis']),
     ('/transactions/', ['Entries', 'Purchase Cost', 'Quantity', 'Avg. Cost',
-                       'Realized P&L', 'Realized Return', 'Dividends']),
+                       'Cumulative P&L', 'Return', 'Dividends', 'Realized P&L']),
 ])
 def test_concise_page_vocabulary_is_separate_from_precise_domain_names(ledger, app, url, labels):
     _seed(ledger)
     html, page = _page(app, ledger, url)
     assert set(labels) <= set(page.labels)
+    assert 'P&L' not in page.labels
     assert not {'Capital', 'Total Capital', 'Total Cash', 'Positions', 'Total Spent',
                 'Average Cost', 'Income', 'Total Income', 'Cash Balance',
                 'Dividend Income', 'Realized Trading P&L', 'Realized Trading Return',
+                'Trading P&L', 'Trading Return', 'Total Received',
                 'Total Purchase Cost', 'Average Unit Cost', 'Position Cost Basis',
                 'Total Realized Earnings'} & set(page.labels)
     if url == '/transactions/':
-        assert '<th class="records-cell records-cell--number">Return</th>' in html
-    else:
+        assert '<th class="records-cell records-cell--number" aria-label="Return" title="Return">Return</th>' in html
+        assert 'Trading Return' not in html
+        assert '>Realized P&amp;L</th>' in html
+    elif url == '/portfolios/':
         assert 'Return' not in page.labels
     if url == '/portfolios/':
         assert 'Book Value' not in page.labels
@@ -85,8 +89,8 @@ def test_concise_page_vocabulary_is_separate_from_precise_domain_names(ledger, a
         assert '925.00' in page.labels
         assert '100.00' in page.labels
     if url == '/':
-        assert '+20.00%' in page.labels
-        assert '+25.00' not in page.labels  # earnings remain internal, no redundant card
+        assert '+2.50%' in page.labels
+        assert '+25.00' in page.labels  # dividends included in the existing P&L slot
 
 
 def test_overview_has_only_three_focusable_formula_indicators(ledger, app):
@@ -96,8 +100,8 @@ def test_overview_has_only_three_focusable_formula_indicators(ledger, app):
     expected = {
         'Book Value = Cash + Cost Basis',
         'Net Contributions = Deposits − Withdrawals',
-        'Realized P&L = Net Sale Proceeds − Released Cost Basis\n'
-        'Realized Return = Realized P&L ÷ Released Cost Basis × 100',
+        'Cumulative P&L = Net Sale Proceeds − Released Cost Basis + Dividends\n'
+        'Return = Cumulative P&L ÷ Gross External Deposits × 100',
     }
     assert {attrs['aria-label'] for attrs, _ in page.help} == expected
     for attrs, button_depth in page.help:
@@ -111,12 +115,12 @@ def test_overview_has_only_three_focusable_formula_indicators(ledger, app):
         assert attrs['data-bs-html'] == 'true'
         expected_lines = []
         for line in attrs['aria-label'].split('\n'):
-            name, formula = line.split('=', 1)
-            expected_lines.append(
-                '<span class="tooltip-formula">'
-                f'<strong>{escape(name.strip())}</strong> = {escape(formula.strip())}'
-                '</span>'
-            )
+            if '=' in line:
+                name, formula = line.split('=', 1)
+                body = f'<strong>{escape(name.strip())}</strong> = {escape(formula.strip())}'
+            else:
+                body = escape(line)
+            expected_lines.append(f'<span class="tooltip-formula">{body}</span>')
         assert attrs['data-bs-title'] == (
             '<span class="tooltip-formulas">' + ''.join(expected_lines) + '</span>'
         )
@@ -155,7 +159,8 @@ def test_canonical_api_keys_are_exact_and_old_aliases_are_absent(ledger, app):
     expected = {'gross_deposits': '1000', 'net_contributions': '1000', 'cash_balance': '925',
                 'position_cost_basis': '100', 'book_value': '1025', 'dividend_income': '5',
                 'realized_trading_pnl': '20', 'released_cost_basis': '100',
-                'total_realized_earnings': '25', 'realized_trading_return': '20.0'}
+                'total_realized_earnings': '25', 'realized_trading_return': '20.0',
+                'paid_in_capital': '1000', 'capital_return': '2.500'}
     for key, value in expected.items():
         assert row[key] == value
         assert isinstance(row[key], str)
@@ -174,11 +179,11 @@ def test_canonical_api_keys_are_exact_and_old_aliases_are_absent(ledger, app):
     assert Dividend.__tablename__ == 'dividend'
 
 
-@pytest.mark.parametrize('sale_price,shown', [(None, '—'), ('100', '0.00%')])
-def test_undefined_and_genuine_zero_remain_distinct_with_final_labels(ledger, app, sale_price, shown):
+@pytest.mark.parametrize('funding,shown', [('0', '—'), ('100', '0.00%')])
+def test_undefined_and_genuine_zero_remain_distinct_with_final_labels(ledger, app, funding, shown):
+    if D(funding):
+        ledger.svc.portfolio_service.deposit_funds(ledger.pid, D(funding), date=datetime(2024, 1, 1))
     _historical_trade(ledger, 'Buy', '100', '1', 1)
-    if sale_price:
-        _historical_trade(ledger, 'Sell', sale_price, '1', 2)
     _, page = _page(app, ledger, '/')
-    assert 'Realized Return' in page.labels
+    assert 'Return' in page.labels
     assert shown in page.labels

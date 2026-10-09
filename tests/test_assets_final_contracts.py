@@ -59,8 +59,8 @@ def test_asset_disclosures_preserve_metrics_formatters_and_neutral_identity():
         ("metric('Purchase Cost')", 'money(item.summary.total_purchase_cost)'),
         ("metric('Quantity')", 'quantity(item.summary.total_quantity_held)'),
         ("metric('Avg. Cost')", 'money(item.summary.average_unit_cost'),
-        ("metric('Realized P&L')", "money(item.summary.realized_trading_pnl, tone='sign', signed=true)"),
-        ("metric('Realized Return')", 'percent(item.summary.realized_trading_return'),
+        ("metric('Cumulative P&L')", "money(item.summary.total_realized_earnings, tone='sign', signed=true)"),
+        ("metric('Return')", 'percent(item.summary.purchase_cost_return'),
         ("metric('Dividends')", "money(symbol_dividend_total, tone='income', signed=true)"),
     )
     positions = []
@@ -81,10 +81,10 @@ def test_transaction_and_income_rows_share_financial_table_contract():
     assert 'table records-table records-table--asset-entries' in ASSETS
     assert 'Entries for {{ item.symbol }} in {{ item.portfolio.name }}' in ASSETS
     assert '>Total Amount</th>' in ASSETS
-    # Transaction context permits the short header; summary wording stays explicit.
-    assert '<th class="records-cell records-cell--number">Return</th>' in ASSETS
+    # Entry results remain explicitly trading-only, unlike dividend-inclusive summaries.
+    assert '<th class="records-cell records-cell--number" aria-label="Return" title="Return">Return</th>' in ASSETS
     assert '>Realized Return</th>' not in ASSETS
-    assert "metric('Realized Return')" in ASSETS
+    assert "metric('Return')" in ASSETS
     assert 'percent(financial.realized_trading_return)' in ASSETS
     assert '{{ record_type(transaction.transaction_type) }}' in ASSETS
     assert "{{ record_type('Dividends') }}" in ASSETS
@@ -136,17 +136,17 @@ def test_asset_dialogs_keep_forms_fields_and_transaction_semantics():
     assert '<option value="Sell">Sell</option>' in ASSETS
     assert 'class="tx-type-tab tx-tab-buy"' in ASSETS
     assert 'class="tx-type-tab tx-tab-sell"' in ASSETS
-    assert 'id="total_cost_preview" class="tx-preview" aria-live="polite"' in ASSETS
-    assert 'id="edit_total_cost_preview" class="tx-preview" aria-live="polite"' in ASSETS
+    assert 'id="transaction_amount_preview" class="tx-preview" aria-live="polite"' in ASSETS
+    assert 'id="edit_transaction_amount_preview" class="tx-preview" aria-live="polite"' in ASSETS
     assert "const total = isSell ? (gross - fees) : (gross + fees);" in MAIN_JS
-    assert "const label = isSell ? 'Total Received:' : 'Purchase Cost:';" in MAIN_JS
+    assert "const label = isSell ? 'Net Proceeds:' : 'Purchase Cost:';" in MAIN_JS
 
 
 def test_assets_copy_and_empty_state_follow_scoped_title_case():
     for label in (
         'All Portfolios', 'Search Asset', 'Add Asset', 'Add Entry',
-        'Add Dividends', 'Avg. Cost', 'Realized Return', 'Total Amount',
-        'Purchase Cost', 'Total Received', 'Notes (Optional)',
+        'Add Dividends', 'Avg. Cost', 'Return', 'Total Amount',
+        'Purchase Cost', 'Net Proceeds', 'Notes (Optional)',
         'Price (Per Unit)', 'No Assets Yet', 'Create Portfolio First',
         'Save Changes',
     ):

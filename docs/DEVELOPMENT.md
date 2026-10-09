@@ -121,10 +121,11 @@ For behavior changes, manually exercise the affected page or route. For financia
 - Book Value is Cash Balance plus the recorded cost basis of current positions.
 - Position Cost Basis does not change because of Dividend Income.
 - Realized Trading Return is trading P&L / released cost basis × 100 at every scope.
-- Aggregate P&L and released basis first; never average percentages.
+- For trading-return fields, aggregate trading P&L and released basis first; never average percentages.
 - Funding, open positions and Dividend Income do not dilute or increase trading return.
-- Total Realized Earnings includes trading P&L plus Dividend Income as a money amount only.
-- No sales means undefined return (dash), not zero return. A break-even sale gives genuine 0%.
+- Total Realized Earnings includes trading P&L plus Dividend Income. It supplies displayed Cumulative P&L and the numerator of summary Return.
+- No sales means undefined trading return (dash). Summary Return can still be defined when its historical capital denominator is positive; dividends contribute even without sales. A break-even sale gives genuine 0% trading return.
+- Summary labels are Cumulative P&L / Return; sale-row labels are Realized P&L / Return. The shared Buy/Sell column is Total Amount. The sell form preview is Net Proceeds (after fees); the buy preview is Purchase Cost (including fees).
 
 Visual acceptance belongs to the user. Automated agents verify template,
 JavaScript and accessibility contracts without browser or screenshot review

@@ -87,7 +87,7 @@ def _seed_asset_with_activity(uid):
     return portfolio.id
 
 
-def test_assets_page_uses_asset_terminology_and_total_buy_cost(app):
+def test_assets_page_uses_asset_terminology_and_historical_purchase_cost(app):
     with app.app_context():
         uid = _seed_user()
         portfolio_id = _seed_asset_with_activity(uid)
@@ -106,7 +106,7 @@ def test_assets_page_uses_asset_terminology_and_total_buy_cost(app):
     for label in (
         'Assets', 'Add Asset', 'Entries',
         'Purchase Cost', 'Quantity', 'Avg. Cost',
-        'Realized P&L', 'Realized Return', 'Dividends', 'Fee',
+        'Cumulative P&L', 'Return', 'Realized P&L', 'Dividends', 'Fee',
             'Total Amount', 'Return',
     ):
         assert label in text
@@ -122,9 +122,8 @@ def test_assets_page_uses_asset_terminology_and_total_buy_cost(app):
         assert old_label not in text
     assert 'Search symbol...' not in html
 
-    # Trading P&L 100 / released basis 500; Dividends 75 is excluded.
-    assert re.search(r'Realized P&L\s+\+100\.00\s+Realized Return\s+\+20\.00%', text)
-    assert not re.search(r'Realized P&L\s+\+100\.00\s+\+10\.00%', text)
+    # Trading profit 100 + dividends 75, divided by historical purchase cost 1000.
+    assert re.search(r'Cumulative P&L\s+\+175\.00\s+Return\s+\+17\.50%', text)
     assert '1,000.00' in text
     assert '500.00' not in text
     assert 'بيع جزئي' in text

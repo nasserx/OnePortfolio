@@ -75,7 +75,8 @@ def test_financial_table_and_calculated_summary_terminology():
     assert '>Total</th>' not in ASSETS
     assert "metric('Purchase Cost')" in ASSETS
     assert 'Total Buy Cost' not in ASSETS
-    assert "const label = isSell ? 'Total Received:' : 'Purchase Cost:';" in MAIN
+    assert "const label = isSell ? 'Net Proceeds:' : 'Purchase Cost:';" in MAIN
+    assert 'Total Received' not in MAIN
 
 
 def test_transaction_calculation_and_formatting_contract_is_unchanged():
@@ -83,15 +84,15 @@ def test_transaction_calculation_and_formatting_contract_is_unchanged():
     assert 'const total = isSell ? (gross - fees) : (gross + fees);' in MAIN
     assert 'const formatted = Utils.formatMoney(total);' in MAIN
     assert (
-        '<div id="total_cost_preview" class="tx-preview" '
+        '<div id="transaction_amount_preview" class="tx-preview" '
         'aria-live="polite"></div>'
     ) in ASSETS
     assert (
-        '<div id="edit_total_cost_preview" class="tx-preview" '
+        '<div id="edit_transaction_amount_preview" class="tx-preview" '
         'aria-live="polite"></div>'
     ) in ASSETS
 
 
 def test_touched_multiword_labels_are_title_case():
-    for label in ('Total Amount', 'Purchase Cost', 'Total Received'):
+    for label in ('Total Amount', 'Purchase Cost', 'Net Proceeds'):
         assert label in ASSETS + MAIN

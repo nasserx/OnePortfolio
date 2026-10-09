@@ -33,14 +33,14 @@ def test_overview_keeps_the_approved_information_hierarchy():
 def test_book_value_and_supporting_metric_contracts_are_preserved():
     assert 'Book Value' in TEMPLATE
     assert 'totals.book_value|fmt_display_money' in TEMPLATE
-    assert 'totals.realized_trading_return|fmt_display_percent(signed=True)' in TEMPLATE
+    assert 'totals.capital_return|fmt_display_percent(signed=True)' in TEMPLATE
 
     labels = re.findall(r"call fact\('([^']+)'", TEMPLATE)
     assert labels == ['Net Contributions', 'Cash', 'Dividends']
     assert "money(totals.net_contributions)" in TEMPLATE
     assert "money(totals.cash_balance)" in TEMPLATE
     assert "money(totals.dividend_income, tone='income', signed=true)" in TEMPLATE
-    assert "money(totals.realized_trading_pnl, tone='sign', signed=true)" in TEMPLATE
+    assert "money(totals.total_realized_earnings, tone='sign', signed=true)" in TEMPLATE
     assert 'class="fact"' in MACROS
     assert 'class="fact supporting-item"' not in MACROS
 

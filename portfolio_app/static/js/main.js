@@ -129,18 +129,6 @@ const Utils = {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
-    },
-
-    // Normalize both supported AJAX error envelopes so service-layer messages
-    // remain visible instead of falling through to the generic fallback.
-    extractAjaxError(data, fallback) {
-        if (data && data.errors && typeof data.errors === 'object') {
-            if (data.errors.__all__) return data.errors.__all__;
-            for (const k in data.errors) {
-                if (data.errors[k]) return data.errors[k];
-            }
-        }
-        return (data && data.error) || fallback;
     }
 };
 
@@ -576,7 +564,7 @@ class TransactionFormHandler {
         this.quantityInput = document.getElementById('quantity');
         this.feesInput = document.getElementById('fees');
         this.typeInput = document.getElementById('transaction_type');
-        this.preview = document.getElementById('total_cost_preview');
+        this.preview = document.getElementById('transaction_amount_preview');
 
         if (this.form && this.preview) {
             this.initialize();
@@ -608,7 +596,7 @@ class TransactionFormHandler {
         }
 
         const formatted = Utils.formatMoney(total);
-        const label = isSell ? 'Total Received:' : 'Purchase Cost:';
+        const label = isSell ? 'Net Proceeds:' : 'Purchase Cost:';
         this.preview.innerHTML = `<span class="tx-preview__label">${label}</span>`
             + `<span class="tx-preview__value">${formatted}</span>`;
     }

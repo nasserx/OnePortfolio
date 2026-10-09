@@ -1,6 +1,6 @@
-"""RCR-07 regression coverage: one authoritative submit owner for Edit Income.
+"""RCR-07 regression coverage: one authoritative submit owner for Edit Dividends.
 
-The Edit Income modal (`#editDividendForm`) previously had two competing
+The Edit Dividends modal (`#editDividendForm`) previously had two competing
 frontend submit owners: a bespoke ``XMLHttpRequest`` handler inline in
 ``assets.html`` and the shared ``ModalAjaxHandler`` registration in
 ``static/js/main.js``. Neither stopped propagation, so a valid Save fired

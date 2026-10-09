@@ -193,18 +193,18 @@ def test_action_menus_render_the_expected_entity_actions(app):
     asset_menus = _by_label(rendered['/transactions/'][1])
 
     assert [item.text for item in portfolio_menus['Actions for portfolio Growth'].items] == [
-        'Rename', 'Deposit', 'Withdraw', 'Remove',
+        'Rename', 'Deposit', 'Withdraw', 'Transfer', 'Remove',
     ]
     assert [item.text for item in portfolio_menus['Actions for Deposit entry on 2024-01-01'].items] == [
         'Edit', 'Remove',
     ]
     assert [item.text for item in asset_menus['Actions for AAPL in Growth'].items] == [
-        'Buy / Sell', 'Add Income', 'Remove',
+        'Buy / Sell', 'Add Dividends', 'Remove',
     ]
     assert [item.text for item in asset_menus['Actions for Buy entry for AAPL on 2024-01-02'].items] == [
         'Edit', 'Remove',
     ]
-    assert [item.text for item in asset_menus['Actions for income entry for AAPL on 2024-01-04'].items] == [
+    assert [item.text for item in asset_menus['Actions for dividend income entry for AAPL on 2024-01-04'].items] == [
         'Edit', 'Remove',
     ]
 
@@ -265,7 +265,7 @@ def test_action_items_preserve_dispatch_classes_and_payloads(app):
     assert portfolio.item('Deposit').attrs['data-portfolio-id'] == str(ids['portfolio_id'])
     assert portfolio.item('Deposit').attrs['data-name'] == 'Growth'
     assert portfolio.item('Withdraw').attrs['class'].endswith('js-withdraw-funds-btn')
-    assert 'data-withdrawable-cash-input' in portfolio.item('Withdraw').attrs
+    assert 'data-withdrawable-cash-input' not in portfolio.item('Withdraw').attrs
     assert portfolio.item('Remove').attrs['class'].endswith('js-delete-portfolio-btn')
 
     event = portfolio_menus['Actions for Deposit entry on 2024-01-01']
@@ -277,10 +277,10 @@ def test_action_items_preserve_dispatch_classes_and_payloads(app):
     asset = asset_menus['Actions for AAPL in Growth']
     assert asset.item('Buy / Sell').attrs['class'].endswith('js-add-transaction-btn')
     assert asset.item('Buy / Sell').attrs['data-symbol'] == 'AAPL'
-    assert asset.item('Add Income').attrs['class'].endswith('js-add-dividend-btn')
+    assert asset.item('Add Dividends').attrs['class'].endswith('js-add-dividend-btn')
     assert asset.item('Remove').attrs['class'].endswith('js-delete-symbol-btn')
     assert asset.item('Remove').attrs['data-tx-count'] == '1'
-    assert asset.item('Remove').attrs['data-income-count'] == '1'
+    assert asset.item('Remove').attrs['data-dividend-count'] == '1'
 
     transaction = asset_menus['Actions for Buy entry for AAPL on 2024-01-02']
     assert json.loads(transaction.item('Edit').attrs['data-tx'])['id'] == ids['transaction_id']
@@ -288,7 +288,7 @@ def test_action_items_preserve_dispatch_classes_and_payloads(app):
     assert transaction.item('Remove').attrs['data-tx-id'] == str(ids['transaction_id'])
     assert transaction.item('Remove').attrs['class'].endswith('js-delete-transaction-btn')
 
-    income = asset_menus['Actions for income entry for AAPL on 2024-01-04']
+    income = asset_menus['Actions for dividend income entry for AAPL on 2024-01-04']
     assert json.loads(income.item('Edit').attrs['data-div'])['id'] == ids['income_id']
     assert income.item('Edit').attrs['class'].endswith('js-edit-dividend-btn')
     assert income.item('Remove').attrs['data-div-id'] == str(ids['income_id'])
@@ -331,8 +331,9 @@ def test_remove_items_keep_destructive_presentation(app):
 
     css = COMPONENTS_CSS.read_text(encoding='utf-8')
     dropdown_item_rule = css.split('.dropdown-item {', 1)[1].split('}', 1)[0]
-    assert 'font-size: var(--text-xs);' in dropdown_item_rule
+    assert 'font-size: var(--text-sm);' in dropdown_item_rule
     assert 'line-height: var(--leading-normal);' in dropdown_item_rule
+    assert 'gap: 0.375rem;' in dropdown_item_rule
     assert 'padding: var(--space-1) 0.375rem;' in dropdown_item_rule
     assert 'border-radius: var(--radius-md);' in dropdown_item_rule
     assert '.dropdown-item--danger { color: var(--destructive); }' in css

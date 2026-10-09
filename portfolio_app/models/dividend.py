@@ -1,8 +1,10 @@
 """Dividend model for dividend income transactions."""
 
 from datetime import datetime, timezone
-from sqlalchemy import Numeric, CheckConstraint
+from sqlalchemy import CheckConstraint
 from portfolio_app import db
+from portfolio_app.utils.decimal_utils import decimal_text
+from portfolio_app.utils.exact_decimal import ExactDecimalText
 
 
 class Dividend(db.Model):
@@ -22,7 +24,7 @@ class Dividend(db.Model):
     # defensive filter in the calculator. Enforce non-null at the schema
     # boundary so the filter can go away.
     symbol       = db.Column(db.String(20), nullable=False)
-    amount       = db.Column(Numeric(20, 10), nullable=False)
+    amount       = db.Column(ExactDecimalText(), nullable=False)
     date         = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     notes        = db.Column(db.Text, nullable=True)
     created_at   = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
@@ -30,7 +32,7 @@ class Dividend(db.Model):
     portfolio = db.relationship('Portfolio', backref=db.backref('dividends', lazy='dynamic', cascade='all, delete-orphan'))
 
     __table_args__ = (
-        CheckConstraint('amount > 0', name='check_dividend_amount_positive'),
+        CheckConstraint("typeof(amount) = 'text'", name='check_dividend_amount_text'),
     )
 
     @property
@@ -48,7 +50,7 @@ class Dividend(db.Model):
             'symbol':         self.symbol or '',
             'portfolio_name': self.portfolio.name if self.portfolio else '',
             'type':           'Dividend',
-            'amount':         float(self.amount),
+            'amount':         decimal_text(self.amount),
             'date':           self.date_full,
             'date_short':     self.date.strftime('%b %d, %Y') if self.date else '',
             'notes':          self.notes or '',

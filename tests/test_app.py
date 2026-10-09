@@ -15,10 +15,10 @@ from portfolio_app import create_app, db
 from portfolio_app.models import Transaction, PortfolioEvent
 from portfolio_app.models.user import User
 from portfolio_app.calculators import PortfolioCalculator
-from portfolio_app.routes.transactions import _apply_summary_roi
 from portfolio_app.services.factory import Services
 from portfolio_app.utils.messages import MESSAGES
 from tests._auth import authenticate_client
+from tests._financial import transaction_projection, expected_percent
 from datetime import datetime
 from decimal import Decimal
 from config import Config
@@ -82,12 +82,10 @@ def test_transaction_calculations(app):
         svc.portfolio_service.deposit_funds(comm.id, _dec(25000))
         t1 = Transaction(portfolio_id=comm.id, transaction_type='Buy',
                          date=datetime(2026, 1, 10), symbol='XAU',
-                         price=2000, quantity=1.5, fees=50)
-        t1.calculate_net_amount()
+                         price=2000, quantity=_dec('1.5'), fees=50)
         t2 = Transaction(portfolio_id=comm.id, transaction_type='Buy',
                          date=datetime(2026, 1, 15), symbol='XAU',
-                         price=2050, quantity=1.0, fees=30)
-        t2.calculate_net_amount()
+                         price=2050, quantity=_dec('1.0'), fees=30)
 
         # --- Stocks: AAPL (2 buys) + MSFT (1 buy) ---
         stocks = svc.portfolio_service.create_portfolio('Stocks', user_id=uid)
@@ -95,15 +93,12 @@ def test_transaction_calculations(app):
         t3 = Transaction(portfolio_id=stocks.id, transaction_type='Buy',
                          date=datetime(2026, 1, 8), symbol='AAPL',
                          price=100, quantity=50, fees=25)
-        t3.calculate_net_amount()
         t4 = Transaction(portfolio_id=stocks.id, transaction_type='Buy',
                          date=datetime(2026, 1, 12), symbol='AAPL',
                          price=105, quantity=30, fees=15)
-        t4.calculate_net_amount()
         t5 = Transaction(portfolio_id=stocks.id, transaction_type='Buy',
                          date=datetime(2026, 1, 9), symbol='MSFT',
                          price=200, quantity=10, fees=10)
-        t5.calculate_net_amount()
 
         # --- ETFs: ETHA (buy, partial sell, buy again) ---
         etfs = svc.portfolio_service.create_portfolio('ETFs', user_id=uid)
@@ -111,23 +106,14 @@ def test_transaction_calculations(app):
         e1 = Transaction(portfolio_id=etfs.id, transaction_type='Buy',
                          date=datetime(2026, 1, 1), symbol='ETHA',
                          price=10, quantity=10, fees=0)
-        e1.calculate_net_amount()
         e2 = Transaction(portfolio_id=etfs.id, transaction_type='Sell',
                          date=datetime(2026, 1, 2), symbol='ETHA',
                          price=12, quantity=5, fees=1)
-        e2.calculate_net_amount()
         e3 = Transaction(portfolio_id=etfs.id, transaction_type='Buy',
                          date=datetime(2026, 1, 3), symbol='ETHA',
                          price=10, quantity=5, fees=0)
-        e3.calculate_net_amount()
 
         db.session.add_all([t1, t2, t3, t4, t5, e1, e2, e3])
-        db.session.commit()
-
-        PortfolioCalculator.recalculate_all_averages_for_symbol(comm.id, 'XAU')
-        PortfolioCalculator.recalculate_all_averages_for_symbol(stocks.id, 'AAPL')
-        PortfolioCalculator.recalculate_all_averages_for_symbol(stocks.id, 'MSFT')
-        PortfolioCalculator.recalculate_all_averages_for_symbol(etfs.id, 'ETHA')
         db.session.commit()
 
         print("\n" + "=" * 60)
@@ -137,28 +123,28 @@ def test_transaction_calculations(app):
         # XAU average cost
         xau = PortfolioCalculator.get_symbol_transactions_summary(comm.id, 'XAU')
         expected_xau_avg = (1.5 * 2000 + 50 + 1.0 * 2050 + 30) / (1.5 + 1.0)
-        _assert('XAU average cost', round(expected_xau_avg, 4), xau['average_cost'])
+        _assert('XAU average cost', round(expected_xau_avg, 4), xau['average_unit_cost'])
 
         # AAPL average cost
         aapl = PortfolioCalculator.get_symbol_transactions_summary(stocks.id, 'AAPL')
         expected_aapl_avg = (50 * 100 + 25 + 30 * 105 + 15) / (50 + 30)
-        _assert('AAPL average cost', round(expected_aapl_avg, 4), aapl['average_cost'])
+        _assert('AAPL average cost', round(expected_aapl_avg, 4), aapl['average_unit_cost'])
 
         # MSFT must not mix with AAPL
         msft = PortfolioCalculator.get_symbol_transactions_summary(stocks.id, 'MSFT')
-        _assert('MSFT average cost (isolated)', (10 * 200 + 10) / 10, msft['average_cost'])
+        _assert('MSFT average cost (isolated)', (10 * 200 + 10) / 10, msft['average_unit_cost'])
 
         # ETHA: buy 10@10, sell 5@12 (-1 fee), buy 5@10
         etha = PortfolioCalculator.get_symbol_transactions_summary(etfs.id, 'ETHA')
-        _assert('ETHA realized P&L', 9.0, etha['realized_pnl'])   # (12-10)*5 - 1 fee
-        _assert('ETHA sell row Net P&L', 9.0, e2.net_pnl)
-        _assert('ETHA sell row Net P&L %', 18.0, e2.net_pnl_percent)
-        assert e1.net_pnl is None
-        assert e1.net_pnl_percent is None
-        _apply_summary_roi(etha)
-        _assert('ETHA transaction summary return uses Total Spent', 6.0, etha['return_percent'])
+        _assert('ETHA realized P&L', 9.0, etha['realized_trading_pnl'])   # (12-10)*5 - 1 fee
+        _assert('ETHA sell row Net P&L', 9.0, transaction_projection(e2).realized_trading_pnl)
+        _assert('ETHA sell row Net P&L %', 18.0, transaction_projection(e2).realized_trading_return)
+        assert transaction_projection(e1).realized_trading_pnl is None
+        assert transaction_projection(e1).realized_trading_return is None
+        metrics = PortfolioCalculator.get_asset_snapshot(etfs.id, 'ETHA').metrics
+        assert metrics['realized_trading_return'] == _dec('18')  # Released basis 50, not lifetime purchases 150.
         # Buy 10@10 → sell 5 (remaining cost=50) → buy 5@10 → total=100/10 = 10.0
-        _assert('ETHA average cost', 10.0, etha['average_cost'])
+        _assert('ETHA average cost', 10.0, etha['average_unit_cost'])
 
         print("  All transaction calculation checks passed.")
 
@@ -190,8 +176,8 @@ def test_fund_events(app):
         svc.portfolio_service.deposit_funds(fund_a.id, _dec(5_000))
 
         tf_a = PortfolioCalculator.get_total_deposits_for_portfolio(fund_a.id)
-        cash_a = PortfolioCalculator.get_available_cash_for_portfolio(fund_a.id)
-        net_a = PortfolioCalculator.get_net_deposits_for_portfolio(fund_a.id)
+        cash_a = PortfolioCalculator.get_cash_balance_for_portfolio(fund_a.id)
+        net_a = PortfolioCalculator.get_net_contributions_for_portfolio(fund_a.id)
 
         print("\n  Scenario A – deposits only")
         _assert('Total Funds (deposits only)', 15_000, tf_a)
@@ -210,8 +196,8 @@ def test_fund_events(app):
         svc.portfolio_service.withdraw_funds(fund_b.id, _dec(5_999))
 
         tf_b = PortfolioCalculator.get_total_deposits_for_portfolio(fund_b.id)
-        cash_b = PortfolioCalculator.get_available_cash_for_portfolio(fund_b.id)
-        net_b = PortfolioCalculator.get_net_deposits_for_portfolio(fund_b.id)
+        cash_b = PortfolioCalculator.get_cash_balance_for_portfolio(fund_b.id)
+        net_b = PortfolioCalculator.get_net_contributions_for_portfolio(fund_b.id)
 
         print("\n  Scenario B – deposits + withdrawals, no transactions")
         _assert('Total Funds (deposits only, ignores withdrawals)', 11_000, tf_b)
@@ -225,7 +211,7 @@ def test_fund_events(app):
         #   Sell 2500 AAPL @ $2 fees=1 → inflow=4,999
         #   Cash = 2 - 5,001 + 4,999 = 0
         #   current_invested = cost basis of 2500 remaining = 5,001 * (2500/5000) = 2,500.50
-        #   realized_pnl = (2*2500 - 1) - (5001 * 2500/5000) = 4,999 - 2,500.50 = 2,498.50
+        #   realized_trading_pnl = (2*2500 - 1) - (5001 * 2500/5000) = 4,999 - 2,500.50 = 2,498.50
         #   Total Funds = 10,000 + 1,000 = 11,000
         #   Total Value = cash + invested = 0 + 2,500.50 = 2,500.50
         #   ROI base = 11,000  →  ROI = 2,498.50 / 11,000 = ~22.71%
@@ -238,28 +224,24 @@ def test_fund_events(app):
         buy = Transaction(portfolio_id=fund_c.id, transaction_type='Buy',
                           date=datetime(2026, 1, 1), symbol='AAPL',
                           price=1, quantity=5000, fees=1)
-        buy.calculate_net_amount()
         sell = Transaction(portfolio_id=fund_c.id, transaction_type='Sell',
                            date=datetime(2026, 1, 2), symbol='AAPL',
                            price=2, quantity=2500, fees=1)
-        sell.calculate_net_amount()
         db.session.add_all([buy, sell])
-        db.session.commit()
-        PortfolioCalculator.recalculate_all_averages_for_symbol(fund_c.id, 'AAPL')
         db.session.commit()
 
         tf_c = PortfolioCalculator.get_total_deposits_for_portfolio(fund_c.id)
-        cash_c = PortfolioCalculator.get_available_cash_for_portfolio(fund_c.id)
-        net_c = PortfolioCalculator.get_net_deposits_for_portfolio(fund_c.id)
+        cash_c = PortfolioCalculator.get_cash_balance_for_portfolio(fund_c.id)
+        net_c = PortfolioCalculator.get_net_contributions_for_portfolio(fund_c.id)
         tx_c = PortfolioCalculator.get_portfolio_transactions_summary(fund_c.id)
-        realized_c = PortfolioCalculator.get_realized_performance_for_portfolio(fund_c.id)
+        realized_c = PortfolioCalculator.get_realized_earnings_for_portfolio(fund_c.id)
 
         print("\n  Scenario C – deposits + withdrawals + transactions")
         _assert('Total Funds (deposits only)', 11_000, tf_c)
         _assert('Net deposits', 2, net_c)
         _assert('Cash (after buys/sells)', 0, cash_c)
-        _assert('Cost Basis (2500 remaining)', _dec('2500.50'), tx_c['cost_basis'])
-        _assert('Realized P&L', _dec('2498.50'), realized_c['realized_pnl'])
+        _assert('Cost Basis (2500 remaining)', _dec('2500.50'), tx_c['position_cost_basis'])
+        _assert('Realized Trading P&L', _dec('2498.50'), realized_c['realized_trading_pnl'])
 
         print("  All fund event checks passed.")
 
@@ -298,9 +280,9 @@ def test_initial_event_remains_accounting_deposit(app):
         _assert('Initial included in total deposits', 1500,
                 PortfolioCalculator.get_total_deposits_for_portfolio(fund.id))
         _assert('Initial included in net deposits', 1200,
-                PortfolioCalculator.get_net_deposits_for_portfolio(fund.id))
+                PortfolioCalculator.get_net_contributions_for_portfolio(fund.id))
         _assert('Initial included in available cash after buy', 200,
-                PortfolioCalculator.get_available_cash_for_portfolio(fund.id))
+                PortfolioCalculator.get_cash_balance_for_portfolio(fund.id))
 
         with pytest.raises(ValueError) as excinfo:
             svc.portfolio_service.delete_portfolio_event(initial.id)
@@ -334,14 +316,10 @@ def test_category_summary(app):
         buy = Transaction(portfolio_id=fund.id, transaction_type='Buy',
                           date=datetime(2026, 1, 1), symbol='AAPL',
                           price=1, quantity=5000, fees=1)
-        buy.calculate_net_amount()
         sell = Transaction(portfolio_id=fund.id, transaction_type='Sell',
                            date=datetime(2026, 1, 2), symbol='AAPL',
                            price=2, quantity=2500, fees=1)
-        sell.calculate_net_amount()
         db.session.add_all([buy, sell])
-        db.session.commit()
-        PortfolioCalculator.recalculate_all_averages_for_symbol(fund.id, 'AAPL')
         db.session.commit()
 
         summary, _ = PortfolioCalculator.get_portfolio_summary(user_id=uid)
@@ -352,15 +330,14 @@ def test_category_summary(app):
         print("TEST 3 – CATEGORY SUMMARY (Overview cards)")
         print("=" * 60)
 
-        _assert('Total Contributed (deposits only)', 11_000, cat['total_contributed'])
-        _assert('Cash', 0, cat['cash'])
-        _assert('Cost Basis', _dec('2500.50'), cat['cost_basis'])
-        _assert('Book Value = cash + cost_basis', _dec('2500.50'), cat['book_value'])
-        _assert('Realized P&L', _dec('2498.50'), cat['realized_pnl'])
+        _assert('Total Contributed (deposits only)', 11_000, cat['gross_deposits'])
+        _assert('Cash', 0, cat['cash_balance'])
+        _assert('Cost Basis', _dec('2500.50'), cat['position_cost_basis'])
+        _assert('Book Value = cash + position_cost_basis', _dec('2500.50'), cat['book_value'])
+        _assert('Realized Trading P&L', _dec('2498.50'), cat['realized_trading_pnl'])
 
-        # Overview ROI = net realized P&L / Total Contributed * 100.
-        expected_roi = _dec('2498.50') / _dec('11000') * 100
-        _assert('Return % (base=total contributed)', round(expected_roi, 2), cat['return_percent'])
+        # Funding is excluded; aggregate realized return uses released basis.
+        assert cat['realized_trading_return'] == expected_percent('2498.50', '2500.50')
 
         print("  All category summary checks passed.")
 
@@ -394,14 +371,10 @@ def test_dashboard_totals(app):
         buy = Transaction(portfolio_id=fb.id, transaction_type='Buy',
                           date=datetime(2026, 1, 1), symbol='AAPL',
                           price=100, quantity=10, fees=10)
-        buy.calculate_net_amount()
         sell = Transaction(portfolio_id=fb.id, transaction_type='Sell',
                            date=datetime(2026, 1, 2), symbol='AAPL',
                            price=120, quantity=5, fees=5)
-        sell.calculate_net_amount()
         db.session.add_all([buy, sell])
-        db.session.commit()
-        PortfolioCalculator.recalculate_all_averages_for_symbol(fb.id, 'AAPL')
         db.session.commit()
 
         totals = PortfolioCalculator.get_portfolio_dashboard_totals(user_id=uid)
@@ -411,15 +384,15 @@ def test_dashboard_totals(app):
         print("=" * 60)
 
         # Total Contributed = 20,000 + 12,000 = 32,000 (deposits only)
-        _assert('Total Contributed (sum of deposits)', 32_000, totals['total_contributed'])
+        _assert('Total Contributed (sum of deposits)', 32_000, totals['gross_deposits'])
 
         # Cash: net_deposits(A)=15,000 + net_deposits(B)=12,000 - buy(1,010) + sell(595)
-        _assert('Total Cash (after transactions)', 26_585, totals['total_cash'])
+        _assert('Cash Balance (after transactions)', 26_585, totals['cash_balance'])
 
         # Total Value = cash + invested = 26,585 + remaining cost basis 505
-        _assert('Total Value', 27_090, totals['total_value'])
-        # Realized P&L = (120 - 101) * 5 - 5 = 90; Overview ROI = 90 / 32,000 * 100.
-        _assert('Dashboard return % (base=total contributed)', _dec('0.28'), totals['return_percent'])
+        _assert('Total Value', 27_090, totals['book_value'])
+        # Realized Trading P&L = (120 - 101) * 5 - 5 = 90; released basis = 505.
+        assert totals['realized_trading_return'] == expected_percent('90', '505')
 
         print("  All dashboard totals checks passed.")
 
@@ -508,15 +481,15 @@ def test_dividends(app):
 
         # ── 6b: dividends added to cash balance ──
         print("\n  6b – dividends reflected in cash")
-        cash = PortfolioCalculator.get_available_cash_for_portfolio(fund1.id)
+        cash = PortfolioCalculator.get_cash_balance_for_portfolio(fund1.id)
         # net_deposits = 10,000; no buy/sell; dividends = 150 → cash = 10,150
         _assert('Cash includes dividend income', _dec('10150'), cash)
 
         # ── 6c: dividends kept separate from realized P&L ──
         print("\n  6c – dividends separate from realized P&L")
-        perf = PortfolioCalculator.get_realized_performance_for_portfolio(fund1.id)
-        _assert('Realized P&L excludes dividends', _dec('0'), perf['realized_pnl'])
-        _assert('Total income remains separate', _dec('150'), perf['total_income'])
+        perf = PortfolioCalculator.get_realized_earnings_for_portfolio(fund1.id)
+        _assert('Realized Trading P&L excludes dividends', _dec('0'), perf['realized_trading_pnl'])
+        _assert('Total income remains separate', _dec('150'), perf['dividend_income'])
 
         # ── 6d: fund2 has zero dividends (no cross-contamination) ──
         print("\n  6d – no cross-fund contamination")
@@ -589,11 +562,9 @@ def test_symbol_performance(app):
         b1 = Transaction(portfolio_id=trading.id, transaction_type='Buy',
                          date=datetime(2026, 1, 1), symbol='AAPL',
                          price=100, quantity=10, fees=0)
-        b1.calculate_net_amount()
         s1 = Transaction(portfolio_id=trading.id, transaction_type='Sell',
                          date=datetime(2026, 1, 5), symbol='AAPL',
                          price=120, quantity=5, fees=0)
-        s1.calculate_net_amount()
 
         # AAPL in Long-term: same ticker, different portfolio and ROI.
         # buy 100@10, sell 10@11 → realized P&L = 10, total buy cost = 1000.
@@ -601,24 +572,17 @@ def test_symbol_performance(app):
         b1_lt = Transaction(portfolio_id=long_term.id, transaction_type='Buy',
                             date=datetime(2026, 1, 1), symbol='AAPL',
                             price=10, quantity=100, fees=0)
-        b1_lt.calculate_net_amount()
         s1_lt = Transaction(portfolio_id=long_term.id, transaction_type='Sell',
                             date=datetime(2026, 1, 6), symbol='AAPL',
                             price=11, quantity=10, fees=0)
-        s1_lt.calculate_net_amount()
 
         # MSFT in Long-term: buy 10@200, no sell → trading P&L = 0, but
-        # one dividend of 75 → total P&L = 75, total buy cost = 2000 → ROI = 3.75%
+        # one dividend of 75 gives earnings 75; without sales trading return is undefined.
         b2 = Transaction(portfolio_id=long_term.id, transaction_type='Buy',
                          date=datetime(2026, 1, 2), symbol='MSFT',
                          price=200, quantity=10, fees=0)
-        b2.calculate_net_amount()
 
         db.session.add_all([b1, s1, b1_lt, s1_lt, b2])
-        db.session.commit()
-        PortfolioCalculator.recalculate_all_averages_for_symbol(trading.id, 'AAPL')
-        PortfolioCalculator.recalculate_all_averages_for_symbol(long_term.id, 'AAPL')
-        PortfolioCalculator.recalculate_all_averages_for_symbol(long_term.id, 'MSFT')
         db.session.commit()
 
         svc1.transaction_service.add_dividend(long_term.id, 'MSFT', _dec('75'),
@@ -633,14 +597,10 @@ def test_symbol_performance(app):
         bb = Transaction(portfolio_id=bob_p.id, transaction_type='Buy',
                          date=datetime(2026, 1, 1), symbol='NVDA',
                          price=50, quantity=10, fees=0)
-        bb.calculate_net_amount()
         bs = Transaction(portfolio_id=bob_p.id, transaction_type='Sell',
                          date=datetime(2026, 1, 4), symbol='NVDA',
                          price=60, quantity=10, fees=0)
-        bs.calculate_net_amount()
         db.session.add_all([bb, bs])
-        db.session.commit()
-        PortfolioCalculator.recalculate_all_averages_for_symbol(bob_p.id, 'NVDA')
         db.session.commit()
 
         print("\n" + "=" * 60)
@@ -648,7 +608,7 @@ def test_symbol_performance(app):
         print("=" * 60)
 
         # ── 7a: u1 sees AAPL/MSFT/TRSF and nothing of u2 ──
-        rows = svc1.overview_service.get_symbol_performance()
+        rows = svc1.overview_service.get_symbol_financials()
         by_key = {(r['portfolio_name'], r['symbol']): r for r in rows}
 
         print("\n  7a – row coverage and isolation")
@@ -661,41 +621,41 @@ def test_symbol_performance(app):
 
         # ── 7b: AAPL realized P&L and ROI ──
         aapl = by_key[('Trading', 'AAPL')]
-        _assert('AAPL trading P&L',         _dec('100'),  aapl['realized_pnl'])
-        _assert('AAPL income',              _dec('0'),    aapl['total_income'])
-        _assert('AAPL return amount',       _dec('100'),  aapl['return_amount'])
-        _assert('AAPL total buy cost',      _dec('1000'), aapl['total_buy_cost'])
-        _assert('AAPL realized cost basis', _dec('500'),  aapl['realized_cost_basis'])
-        _assert('AAPL Return% uses total buy cost', _dec('10'), aapl['return_percent'])
+        _assert('AAPL trading P&L',         _dec('100'),  aapl['realized_trading_pnl'])
+        _assert('AAPL income',              _dec('0'),    aapl['dividend_income'])
+        _assert('AAPL return amount',       _dec('100'),  aapl['total_realized_earnings'])
+        _assert('AAPL total buy cost',      _dec('1000'), aapl['total_purchase_cost'])
+        _assert('AAPL realized cost basis', _dec('500'),  aapl['released_cost_basis'])
+        assert aapl['realized_trading_return'] == _dec('20')
 
         aapl_lt = by_key[('Long-term', 'AAPL')]
-        _assert('Long-term AAPL trading P&L',         _dec('10'),  aapl_lt['realized_pnl'])
-        _assert('Long-term AAPL total buy cost',      _dec('1000'), aapl_lt['total_buy_cost'])
-        _assert('Long-term AAPL realized cost basis', _dec('100'), aapl_lt['realized_cost_basis'])
-        _assert('Long-term AAPL Return% uses total buy cost', _dec('1'), aapl_lt['return_percent'])
+        _assert('Long-term AAPL trading P&L',         _dec('10'),  aapl_lt['realized_trading_pnl'])
+        _assert('Long-term AAPL total buy cost',      _dec('1000'), aapl_lt['total_purchase_cost'])
+        _assert('Long-term AAPL realized cost basis', _dec('100'), aapl_lt['released_cost_basis'])
+        assert aapl_lt['realized_trading_return'] == _dec('10')
 
-        # ── 7c: MSFT — dividend only, ROI uses total buy cost ──
+        # ── 7c: MSFT — dividend only, no released basis ──
         msft = by_key[('Long-term', 'MSFT')]
-        _assert('MSFT trading P&L',        _dec('0'),    msft['realized_pnl'])
-        _assert('MSFT income',             _dec('75'),   msft['total_income'])
-        _assert('MSFT return amount',      _dec('75'),   msft['return_amount'])
-        _assert('MSFT total buy cost',     _dec('2000'), msft['total_buy_cost'])
-        _assert('MSFT held cost basis',    _dec('2000'), msft['held_cost_basis'])
-        _assert('MSFT return base',        _dec('2000'), msft['return_base'])
-        _assert('MSFT Return%',            _dec('3.75'), msft['return_percent'])
+        _assert('MSFT trading P&L',        _dec('0'),    msft['realized_trading_pnl'])
+        _assert('MSFT income',             _dec('75'),   msft['dividend_income'])
+        _assert('MSFT return amount',      _dec('75'),   msft['total_realized_earnings'])
+        _assert('MSFT total buy cost',     _dec('2000'), msft['total_purchase_cost'])
+        _assert('MSFT held cost basis',    _dec('2000'), msft['position_cost_basis'])
+        assert msft['released_cost_basis'] == _dec('0')
+        assert msft['realized_trading_return'] is None
 
         # ── 7d: TRSF — dividend with no transactions (no cost basis at all) ──
         trsf = by_key[('Long-term', 'TRSF')]
-        _assert('TRSF return amount',      _dec('20'), trsf['return_amount'])
-        _assert('TRSF return_base',        _dec('0'),  trsf['return_base'])
-        assert trsf['return_display'] == '—', f"Expected '—', got {trsf['return_display']!r}"
+        _assert('TRSF return amount',      _dec('20'), trsf['total_realized_earnings'])
+        _assert('TRSF released_cost_basis',        _dec('0'),  trsf['released_cost_basis'])
+        assert trsf['trading_return_display'] == '—', f"Expected '—', got {trsf['trading_return_display']!r}"
         print("  PASS  dividend-only with no cost basis displays '—'")
 
         # ── 7e: u2 sees only their own rows ──
-        u2_rows = svc2.overview_service.get_symbol_performance()
+        u2_rows = svc2.overview_service.get_symbol_financials()
         assert len(u2_rows) == 1, f"u2 should have 1 row, got {len(u2_rows)}"
         assert u2_rows[0]['symbol'] == 'NVDA'
-        _assert('NVDA return amount (u2)', _dec('100'), u2_rows[0]['return_amount'])
+        _assert('NVDA return amount (u2)', _dec('100'), u2_rows[0]['total_realized_earnings'])
 
         print("\n  All symbol performance checks passed.")
 

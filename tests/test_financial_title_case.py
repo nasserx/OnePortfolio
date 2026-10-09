@@ -1,6 +1,7 @@
 """Scoped Title Case contracts for authenticated financial UI copy."""
 
 from pathlib import Path
+from html import unescape
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -19,16 +20,16 @@ TEMPLATES = {
 
 
 def test_overview_short_financial_labels_use_title_case_source_copy():
-    source = TEMPLATES['index']
+    source = unescape(TEMPLATES['index'])
     for label in (
         'Book Value',
-        'Total Capital',
-        'Total Cash',
-        'Total Income',
+        'Net Contributions',
+        'Cash',
+        'Dividends',
         'Realized P&L',
         'Portfolio Split',
         'By Book Value',
-        'By Capital',
+        'By Net Contributions',
         'View Assets',
         'No Portfolios Yet',
         'Create Portfolio',
@@ -40,9 +41,9 @@ def test_portfolio_short_financial_labels_use_title_case_source_copy():
     source = TEMPLATES['portfolios']
     for label in (
         'New Portfolio',
-        'Total Capital',
-        'Total Cash',
-        'Book Value',
+        'Net Contributions',
+        'Cash',
+        'Cost Basis',
         'No Portfolios Yet',
         'Create Portfolio',
     ):
@@ -56,10 +57,10 @@ def test_asset_short_financial_labels_use_title_case_source_copy():
         'All Portfolios',
         'Search Asset',
         'Add Asset',
-        'Total Spent',
-        'Average Cost',
+        'Purchase Cost',
+        'Avg. Cost',
         'Realized Return',
-        'Add Income',
+        'Add Dividends',
         'Add Entry',
         'Total Amount',
         'No Assets Yet',
@@ -72,7 +73,7 @@ def test_scoped_templates_do_not_retain_known_legacy_lowercase_ui_forms():
     legacy_ui_fragments = (
         "call fact('Total capital')",
         "call fact('Total cash')",
-        "call fact('Total income')",
+        "call fact('Total dividend_income')",
         "call metric('Total capital')",
         "call metric('Total cash')",
         "call metric('Book value')",
@@ -85,7 +86,7 @@ def test_scoped_templates_do_not_retain_known_legacy_lowercase_ui_forms():
         '>Create portfolio</span>',
         '>New portfolio</span>',
         '>Add asset</span>',
-        '>Add income</span>',
+        '>Add dividend_income</span>',
         ' No portfolios yet',
         ' No assets yet',
         '>All portfolios</a>',

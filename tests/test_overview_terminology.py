@@ -130,23 +130,23 @@ def test_overview_uses_current_health_metrics_and_terminology(app):
         item = summary[0]
         totals = PortfolioCalculator.get_portfolio_dashboard_totals(user_id=uid)
 
-        assert item['total_capital'] == _dec('8500.00')
-        assert item['cash'] == _dec('7175.0000000000')
-        assert item['positions'] == _dec('1500.0000000000')
+        assert item['net_contributions'] == _dec('8500.00')
+        assert item['cash_balance'] == _dec('7175.0000000000')
+        assert item['position_cost_basis'] == _dec('1500.0000000000')
         assert item['book_value'] == _dec('8675.0000000000')
-        assert item['total_income'] == _dec('75.0000000000')
-        assert item['realized_pnl'] == _dec('100.0000000000')
-        assert item['return_amount'] == _dec('175.0000000000')
-        assert item['return_display'] == '+1.75%'
+        assert item['dividend_income'] == _dec('75.0000000000')
+        assert item['realized_trading_pnl'] == _dec('100.0000000000')
+        assert item['total_realized_earnings'] == _dec('175.0000000000')
+        assert item['trading_return_display'] == '+20.00%'
 
-        assert totals['total_capital'] == _dec('8500.00')
-        assert totals['total_cash'] == _dec('7175.0000000000')
-        assert totals['total_positions'] == _dec('1500.0000000000')
-        assert totals['total_value'] == _dec('8675.0000000000')
-        assert totals['total_income'] == _dec('75.0000000000')
-        assert totals['realized_pnl'] == _dec('100.0000000000')
-        assert totals['return_amount'] == _dec('175.0000000000')
-        assert totals['return_display'] == '+1.75%'
+        assert totals['net_contributions'] == _dec('8500.00')
+        assert totals['cash_balance'] == _dec('7175.0000000000')
+        assert totals['position_cost_basis'] == _dec('1500.0000000000')
+        assert totals['book_value'] == _dec('8675.0000000000')
+        assert totals['dividend_income'] == _dec('75.0000000000')
+        assert totals['realized_trading_pnl'] == _dec('100.0000000000')
+        assert totals['total_realized_earnings'] == _dec('175.0000000000')
+        assert totals['trading_return_display'] == '+20.00%'
         assert 'total_realized_pnl' not in totals
         assert 'realized_roi_display' not in totals
 
@@ -161,10 +161,10 @@ def test_overview_uses_current_health_metrics_and_terminology(app):
     chart_data = _chart_data(html)
 
     for label in (
-        'Total Capital',
-        'Total Cash',
+        'Net Contributions',
+        'Cash',
         'Book Value',
-        'Total Income',
+        'Dividends',
         'Realized P&L',
     ):
         assert label in text
@@ -174,14 +174,14 @@ def test_overview_uses_current_health_metrics_and_terminology(app):
         'Book Value',
         'Realized P&L',
         'Return',
-        'Income',
+        'Dividends',
         'Assets',
     ):
         assert label in row_text
 
     column_positions = [
         row_text.index(label)
-        for label in ('Portfolio', 'Book Value', 'Income', 'Realized P&L', 'Return', 'Assets')
+        for label in ('Portfolio', 'Book Value', 'Dividends', 'Realized P&L', 'Return', 'Assets')
     ]
     assert column_positions == sorted(column_positions)
     assert 'class="marker"' in html
@@ -189,13 +189,13 @@ def test_overview_uses_current_health_metrics_and_terminology(app):
 
     # One canvas, with a segmented control swapping the basis in place.
     assert 'By Book Value' in text
-    assert 'By Capital' in text
+    assert 'By Net Contributions' in text
     assert html.count('<canvas') == 1
     assert '<canvas id="allocationChart"' in html
     assert 'data-alloc-view="book_value_chart"' in html
-    assert 'data-alloc-view="capital_chart"' in html
+    assert 'data-alloc-view="net_contributions_chart"' in html
     assert 'id="split-book-tab" role="tab"' in html
-    assert 'id="split-capital-tab" role="tab"' in html
+    assert 'id="split-contributions-tab" role="tab"' in html
     assert html.count('aria-controls="allocation-panel"') == 2
     assert 'id="allocation-panel" role="tabpanel"' in html
     assert 'aria-describedby="allocationLegend allocationChartStatus"' in html
@@ -204,21 +204,20 @@ def test_overview_uses_current_health_metrics_and_terminology(app):
     assert 'Positive return:' in html
     assert 'href="/charts"' not in html
     assert '>Charts<' not in html
-    assert set(chart_data) == {'book_value_chart', 'capital_chart'}
+    assert set(chart_data) == {'book_value_chart', 'net_contributions_chart'}
     assert chart_data['book_value_chart']['categories'] == ['النمو Growth']
-    assert chart_data['capital_chart']['categories'] == ['النمو Growth']
+    assert chart_data['net_contributions_chart']['categories'] == ['النمو Growth']
     assert chart_data['book_value_chart']['values'] == [8675.0]
-    assert chart_data['capital_chart']['values'] == [8500.0]
+    assert chart_data['net_contributions_chart']['values'] == [8500.0]
     assert chart_data['book_value_chart']['total'] == 8675.0
-    assert chart_data['capital_chart']['total'] == 8500.0
+    assert chart_data['net_contributions_chart']['total'] == 8500.0
 
     # The summary table carries per-portfolio figures only; account-level
     # totals belong to the hero and must not be duplicated in the rows.
     for removed_card_label in (
-        'Total Capital',
-        'Total Cash',
+        'Net Contributions',
+        'Cash',
         'Positions',
-        'Total Income',
     ):
         assert removed_card_label not in row_text
 
@@ -232,7 +231,6 @@ def test_overview_uses_current_health_metrics_and_terminology(app):
         'COST BASIS',
         'Cost Basis',
         'DIVIDENDS',
-        'Dividends',
         'View Transactions',
         'ALLOCATION',
         'Allocation',
@@ -249,7 +247,7 @@ def test_overview_uses_current_health_metrics_and_terminology(app):
     assert '8,675.00' in row_text
     assert '+75.00' in row_text
     assert '+100.00' in row_text
-    assert '+1.75%' in row_text
+    assert '+20.00%' in row_text
     assert f'href="/transactions/?portfolio={quote_plus(portfolio.name)}"' in html
     assert f'aria-label="View assets in {portfolio.name}"' in html
 
@@ -290,10 +288,10 @@ def test_overview_empty_portfolios_render_empty_chart_context(app):
     assert chart_data['book_value_chart']['allocations'] == []
     assert chart_data['book_value_chart']['values'] == []
     assert chart_data['book_value_chart']['total'] == 0.0
-    assert chart_data['capital_chart']['categories'] == []
-    assert chart_data['capital_chart']['allocations'] == []
-    assert chart_data['capital_chart']['values'] == []
-    assert chart_data['capital_chart']['total'] == 0.0
+    assert chart_data['net_contributions_chart']['categories'] == []
+    assert chart_data['net_contributions_chart']['allocations'] == []
+    assert chart_data['net_contributions_chart']['values'] == []
+    assert chart_data['net_contributions_chart']['total'] == 0.0
     assert 'sample' not in text.lower()
     assert 'demo' not in text.lower()
 
@@ -320,7 +318,7 @@ def test_overview_portfolio_allocation_groups_the_tail_as_other_portfolios(app):
 
     # Eight portfolios collapse to the top four plus one grouped wedge, so the
     # ring stays readable; the summary table below still lists all eight.
-    for key in ('book_value_chart', 'capital_chart'):
+    for key in ('book_value_chart', 'net_contributions_chart'):
         categories = chart_data[key]['categories']
         assert len(categories) == ALLOCATION_TOP_N + 1
         assert categories[-1] == 'Other Portfolios'
@@ -348,7 +346,7 @@ def test_overview_allocation_leaves_small_portfolio_counts_ungrouped(app):
     _login(client, uid)
     chart_data = _chart_data(client.get('/').get_data(as_text=True))
 
-    for key in ('book_value_chart', 'capital_chart'):
+    for key in ('book_value_chart', 'net_contributions_chart'):
         categories = chart_data[key]['categories']
         assert len(categories) == ALLOCATION_TOP_N
         assert 'Other Portfolios' not in categories
@@ -375,17 +373,17 @@ def test_overview_supporting_metrics_use_one_shared_item_grid_contract():
 
     labels = re.findall(r"call fact\('([^']+)'", template)
     assert labels == [
-        'Total Capital',
-        'Total Cash',
-        'Total Income',
-        'Realized P&L',
+        'Net Contributions',
+        'Cash',
+        'Dividends',
     ]
-    assert "money(totals.total_capital)" in template
-    assert "money(totals.total_cash)" in template
-    assert "money(totals.total_income, tone='income', signed=true)" in template
-    assert "money(totals.realized_pnl, tone='sign', signed=true)" in template
+    assert "money(totals.net_contributions)" in template
+    assert "money(totals.cash_balance)" in template
+    assert "money(totals.dividend_income, tone='income', signed=true)" in template
+    assert "money(totals.realized_trading_pnl, tone='sign', signed=true)" in template
 
-    assert 'class="fact supporting-item"' in macros
+    assert 'class="fact"' in macros
+    assert 'class="fact supporting-item"' not in macros
     assert 'class="fact__label supporting-item__label"' in macros
     assert 'class="fact__value supporting-item__value"' in macros
 

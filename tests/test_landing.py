@@ -91,12 +91,12 @@ def test_landing_renders_public_product_preview(app):
     assert 'id="landingChart"' in html
     assert 'id="landingLegend"' in html
 
-    for hook in ('bookValue', 'totalCapital', 'totalCash',
-                 'totalIncome', 'realizedPnl', 'returnPercent'):
+    for hook in ('bookValue', 'netContributions', 'cashBalance',
+                 'dividendIncome', 'realizedTradingPnl', 'realizedTradingReturn'):
         assert f'data-landing-metric="{hook}"' in html
 
-    for label in ('Book Value', 'Total Capital', 'Total Cash',
-                  'Total Income', 'Realized P&L'):
+    for label in ('Book Value', 'Net Contributions', 'Cash',
+                  'Dividends', 'Realized P&L'):
         assert label in text
 
     # Preview figures are rendered by landing.js, so none may be baked in.
@@ -292,7 +292,7 @@ def test_landing_sample_data_is_internally_consistent():
     script = _landing_script()
 
     book_values = [float(v) for v in re.findall(r'bookValue:\s*(\d+)', script)]
-    capitals = [float(v) for v in re.findall(r'capital:\s*(\d+)', script)]
+    capitals = [float(v) for v in re.findall(r'netContributions:\s*(\d+)', script)]
 
     assert len(book_values) == 3
     assert len(capitals) == 3
@@ -300,15 +300,16 @@ def test_landing_sample_data_is_internally_consistent():
     # Totals are computed in JS, never written as literals.
     assert 'function total(' in script
     assert "total('bookValue')" in script
-    assert "total('capital')" in script
+    assert "total('netContributions')" in script
 
-    # The headline return is derived from realized P&L over total capital.
-    assert 'SAMPLE.realizedPnl / capital' in script
-    assert 'returnPercent' in script
+    # The illustrative headline uses trading P&L / released basis, never capital.
+    assert 'SAMPLE.realizedTradingPnl / SAMPLE.releasedCostBasis' in script
+    assert 'SAMPLE.realizedTradingPnl / capital' not in script
+    assert 'realizedTradingReturn' in script
 
-    cash = _sample_number(script, 'cash')
-    income = _sample_number(script, 'income')
-    realized = _sample_number(script, 'realizedPnl')
+    cash = _sample_number(script, 'cashBalance')
+    income = _sample_number(script, 'dividendIncome')
+    realized = _sample_number(script, 'realizedTradingPnl')
 
     # Sanity: a plausible, positive sample book that is smaller than capital
     # (book value net of withdrawals) with non-negative income.

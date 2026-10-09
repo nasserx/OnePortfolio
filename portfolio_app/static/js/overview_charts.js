@@ -54,7 +54,7 @@
     var map = {};
     var next = 0;
 
-    ['book_value_chart', 'capital_chart'].forEach(function (key) {
+    ['book_value_chart', 'net_contributions_chart'].forEach(function (key) {
       var dataset = chartData[key] || {};
       (dataset.categories || []).forEach(function (name) {
         if (name !== 'Other Portfolios' && map[name] === undefined) {
@@ -216,7 +216,7 @@
 
   AllocationChart.prototype.render = function () {
     var dataset = this.data[this.view] || {};
-    var basis = this.view === 'capital_chart' ? 'capital' : 'book value';
+    var basis = this.view === 'net_contributions_chart' ? 'net contributions' : 'book value';
     var accessibleLabel = 'Portfolio split by ' + basis;
 
     if (this.chart) {
@@ -232,8 +232,14 @@
       this.canvas.hidden = true;
       if (this.canvasWrap) this.canvasWrap.hidden = true;
       this.legend.hidden = true;
-      if (this.empty) this.empty.hidden = false;
-      if (this.status) this.status.textContent = accessibleLabel + ': no portfolio data available.';
+      var emptyMessage = dataset && dataset.unavailable
+        ? 'Chart unavailable for this numeric range. See the portfolio details below.'
+        : 'No portfolio data available.';
+      if (this.empty) {
+        this.empty.hidden = false;
+        this.empty.textContent = emptyMessage;
+      }
+      if (this.status) this.status.textContent = accessibleLabel + ': ' + emptyMessage;
       return;
     }
 
@@ -307,7 +313,7 @@
             }
           },
           centreText: {
-            label: this.view === 'capital_chart' ? 'Total Capital' : 'Book Value',
+            label: this.view === 'net_contributions_chart' ? 'Net Contributions' : 'Book Value',
             value: compact(dataset.total || 0)
           }
         }

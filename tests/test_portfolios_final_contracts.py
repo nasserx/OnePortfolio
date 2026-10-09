@@ -52,10 +52,9 @@ def test_disclosures_keep_behavior_hooks_and_shared_surface_contracts():
 def test_existing_summary_metrics_and_formatters_are_preserved():
     expected = (
         ("metric('Entries')", 'item.events|length'),
-        ("metric('Total Capital')", 'money(item.total_capital)'),
-        ("metric('Total Cash')", 'money(item.withdrawable_cash)'),
-        ("metric('Positions')", 'money(item.positions)'),
-        ("metric('Book Value')", 'money(item.book_value)'),
+        ("metric('Net Contributions')", 'money(item.net_contributions)'),
+        ("metric('Cash')", 'money(item.cash_balance)'),
+        ("metric('Cost Basis')", 'money(item.position_cost_basis)'),
     )
     positions = []
     for label, formatter in expected:
@@ -70,7 +69,7 @@ def test_capital_event_ledger_uses_shared_table_and_financial_contracts():
     assert '{{ record_type(event.event_type) }}' in TEMPLATE
     assert "money(event.amount_delta, tone='sign', signed=true)" in TEMPLATE
     assert '>Total Amount</th>' in TEMPLATE
-    assert 'Capital Events for {{ item.portfolio.name }}' in TEMPLATE
+    assert 'Entries for {{ item.portfolio.name }}' in TEMPLATE
     assert 'table-light' not in TEMPLATE
     assert 'table-hover' not in TEMPLATE
     assert 'class="small records-cell' not in TEMPLATE
@@ -93,20 +92,20 @@ def test_action_menus_and_dialogs_use_clear_title_case_contracts():
     for label in (
         'Rename', 'Deposit', 'Withdraw', 'Remove',
         'Edit', 'New Portfolio', 'Rename Portfolio',
-        'Edit Capital Entry', 'Remove Capital Entry', 'Save Changes',
+        'Edit Funding Entry', 'Remove Funding Entry', 'Save Changes',
     ):
         assert label in TEMPLATE
 
-    assert TEMPLATE.count('dropdown-item--danger') == 2
+    assert TEMPLATE.count('dropdown-item--danger') == 3  # Funding and transfer row branches.
     assert TEMPLATE.count('class="btn btn-danger"') == 2
-    assert TEMPLATE.count('<span>Remove</span>') == 2
+    assert TEMPLATE.count('<span>Remove</span>') == 3
     assert TEMPLATE.count("{{ icon('trash') }}Remove") == 2
     assert 'aria-describedby="deletePortfolioDescription"' in TEMPLATE
     assert 'aria-describedby="deletePortfolioEventDescription"' in TEMPLATE
     assert 'bi-' not in TEMPLATE
 
 
-def test_portfolio_forms_and_withdraw_max_contract_are_unchanged():
+def test_portfolio_forms_preserve_layout_and_max_uses_exact_server_amount():
     for form_id in (
         'depositFundsForm', 'withdrawFundsForm', 'renamePortfolioForm',
         'deletePortfolioForm', 'editPortfolioEventForm',
@@ -122,7 +121,9 @@ def test_portfolio_forms_and_withdraw_max_contract_are_unchanged():
     assert 'Available To Withdraw' not in TEMPLATE
     assert 'withdraw-available-hint' not in TEMPLATE
     assert 'id="withdraw_max_btn">Max</button>' in TEMPLATE
-    assert "amountInput.value = maxAmount;" in TEMPLATE
+    assert "amountInput.value = result.amount;" in TEMPLATE
+    assert '/portfolios/withdrawal-max/${portfolioId}' in TEMPLATE
+    assert 'dateInput.value !== date' in TEMPLATE
 
 
 def test_disclosure_paint_uses_canonical_roles_without_chart_or_raw_colors():

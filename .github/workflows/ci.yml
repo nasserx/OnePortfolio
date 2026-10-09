@@ -38,3 +38,21 @@ jobs:
           SECRET_KEY: test-secret-key-for-ci
           DATABASE_URL: sqlite:///test_ci.db
         run: pytest -v
+
+  javascript:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Check JavaScript syntax
+        run: |
+          for file in portfolio_app/static/js/*.js tests/*.js; do
+            node --check "$file" || exit
+          done
+      - name: Run JavaScript assertions
+        run: |
+          for file in tests/*.js; do
+            node "$file" || exit
+          done

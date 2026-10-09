@@ -3,7 +3,8 @@
 import logging
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
-from portfolio_app import db
+from portfolio_app.services.mutation import abort_mutation
+from portfolio_app.repositories.read_snapshot import coherent_read
 from portfolio_app.services import get_services
 from portfolio_app.forms import (
     PortfolioAddForm,
@@ -14,7 +15,8 @@ from portfolio_app.forms import (
     PortfolioEventDeleteForm,
 )
 from portfolio_app.calculators.portfolio_calculator import PortfolioCalculator
-from portfolio_app.utils.decimal_utils import ZERO
+from portfolio_app.calculators.portfolio_history import build_portfolio_entries
+from portfolio_app.forms.transfer_form import TransferForm
 from portfolio_app.utils import (
     get_error_message, get_first_form_error, MESSAGES,
     is_ajax_request, json_response, field_error_response,
@@ -25,47 +27,30 @@ logger = logging.getLogger(__name__)
 portfolios_bp = Blueprint('portfolios', __name__)
 
 
+@coherent_read
 def _get_portfolios_page_context():
     """Build context data for the portfolios page."""
     svc = get_services()
     portfolios = svc.portfolio_repo.get_all()
     uid = svc.portfolio_repo.user_id
+    transfers = svc.transfer_repo.get_by_portfolio_ids([p.id for p in portfolios])
+    names = {p.id: p.name for p in portfolios}
 
     portfolio_details = []
     for portfolio in portfolios:
         events = svc.portfolio_event_repo.get_by_portfolio_id(portfolio.id)
+        events = build_portfolio_entries(portfolio.id, events, transfers, names)
 
-        cash = PortfolioCalculator.get_available_cash_for_portfolio(portfolio.id, user_id=uid)
-        tx_summary = PortfolioCalculator.get_portfolio_transactions_summary(portfolio.id, user_id=uid)
-        positions = tx_summary['cost_basis']
-        book_value = cash + positions
-
-        total_capital = PortfolioCalculator.get_total_capital_for_portfolio(portfolio.id, user_id=uid)
-        total_deposits = PortfolioCalculator.get_total_deposits_for_portfolio(portfolio.id, user_id=uid)
-
-        realized_perf = PortfolioCalculator.get_realized_performance_for_portfolio(portfolio.id, user_id=uid)
-        realized_pnl = realized_perf['realized_pnl']
-        total_income = realized_perf['total_income']
-        return_amount = realized_pnl + total_income
-        if total_deposits != ZERO:
-            return_percent = (return_amount / total_deposits) * 100
-            return_display = f"{return_percent:+,.2f}%"
-        else:
-            return_percent = ZERO
-            return_display = '—'
-
+        snapshot = PortfolioCalculator.get_portfolio_snapshot(portfolio.id, user_id=uid)
         portfolio_details.append({
             'portfolio': portfolio,
             'events': events,
-            'total_capital': total_capital,
-            'withdrawable_cash': cash,
-            'positions': positions,
-            'book_value': book_value,
-            'realized_pnl': realized_pnl,
-            'total_income': total_income,
-            'return_amount': return_amount,
-            'return_percent': return_percent,
-            'return_display': return_display,
+            'net_contributions': snapshot.net_contributions,
+            'cash_balance': snapshot.cash_balance,
+            'position_cost_basis': snapshot.transactions['position_cost_basis'],
+            'realized_trading_pnl': snapshot.transactions['realized_trading_pnl'],
+            'dividend_income': snapshot.dividend_income,
+            **snapshot.metrics,
         })
 
     return {
@@ -80,15 +65,9 @@ def _portfolio_modal_data(portfolio_id):
     if not portfolio:
         return {'portfolio_id': portfolio_id}
 
-    withdrawable_cash = PortfolioCalculator.get_available_cash_for_portfolio(
-        portfolio.id, user_id=svc.portfolio_repo.user_id,
-    )
-    withdrawable_cash_display = f"{withdrawable_cash:,.2f}"
     return {
         'portfolio_id': portfolio.id,
         'name': portfolio.name,
-        'withdrawable_cash': withdrawable_cash_display,
-        'withdrawable_cash_input': withdrawable_cash_display,
     }
 
 
@@ -139,6 +118,7 @@ def portfolios_add():
         return redirect(url_for('portfolios.portfolios_list'))
 
     except ValueError as e:
+        abort_mutation()
         if is_ajax_request():
             return json_response(False, errors={'__all__': get_error_message(e)})
 
@@ -153,7 +133,7 @@ def portfolios_add():
 
     except Exception:
         logger.exception('Failed to add portfolio')
-        db.session.rollback()
+        abort_mutation()
 
         if is_ajax_request():
             return json_response(False, errors={'__all__': MESSAGES['PORTFOLIO_ADD_FAILED']})
@@ -210,6 +190,7 @@ def portfolios_rename(portfolio_id):
         return redirect(url_for('portfolios.portfolios_list'))
 
     except ValueError as e:
+        abort_mutation()
         message = get_error_message(e)
         if is_ajax_request():
             field = 'name' if message == MESSAGES['PORTFOLIO_NAME_TAKEN'] else '__all__'
@@ -220,7 +201,7 @@ def portfolios_rename(portfolio_id):
 
     except Exception:
         logger.exception('Failed to rename portfolio %s', portfolio_id)
-        db.session.rollback()
+        abort_mutation()
 
         if is_ajax_request():
             return json_response(False, errors={'__all__': MESSAGES['PORTFOLIO_RENAME_FAILED']})
@@ -242,13 +223,14 @@ def portfolios_delete(portfolio_id):
         flash(MESSAGES['PORTFOLIO_REMOVED'], 'success')
 
     except ValueError as e:
+        abort_mutation()
         if is_ajax_request():
             return json_response(False, errors={'__all__': get_error_message(e)})
         flash(get_error_message(e), 'error')
 
     except Exception:
         logger.exception('Failed to delete portfolio %s', portfolio_id)
-        db.session.rollback()
+        abort_mutation()
         if is_ajax_request():
             return json_response(
                 False, errors={'__all__': MESSAGES['PORTFOLIO_DELETE_FAILED']},
@@ -295,6 +277,7 @@ def portfolios_deposit(portfolio_id):
         return redirect(url_for('portfolios.portfolios_list'))
 
     except ValueError as e:
+        abort_mutation()
         if is_ajax_request():
             return json_response(False, errors={'__all__': get_error_message(e)})
 
@@ -303,7 +286,7 @@ def portfolios_deposit(portfolio_id):
 
     except Exception:
         logger.exception('Failed to deposit to portfolio %s', portfolio_id)
-        db.session.rollback()
+        abort_mutation()
 
         if is_ajax_request():
             return json_response(False, errors={'__all__': MESSAGES['DEPOSIT_FAILED']})
@@ -349,6 +332,7 @@ def portfolios_withdraw(portfolio_id):
         return redirect(url_for('portfolios.portfolios_list'))
 
     except ValueError as e:
+        abort_mutation()
         if is_ajax_request():
             # Withdrawal business-rule errors belong under Amount rather
             # than as a modal-level banner.
@@ -366,7 +350,7 @@ def portfolios_withdraw(portfolio_id):
 
     except Exception:
         logger.exception('Failed to withdraw from portfolio %s', portfolio_id)
-        db.session.rollback()
+        abort_mutation()
 
         if is_ajax_request():
             return json_response(False, errors={'__all__': MESSAGES['WITHDRAWAL_FAILED']})
@@ -410,7 +394,7 @@ def portfolios_event_edit(event_id):
         amount = data['amount_delta']
         event_type = event.event_type
         if event_type == 'Withdrawal':
-            amount = -amount
+            amount = amount.copy_negate()
         svc.portfolio_service.update_portfolio_event(
             event_id=data['event_id'],
             amount_delta=amount,
@@ -425,6 +409,7 @@ def portfolios_event_edit(event_id):
         return redirect(url_for('portfolios.portfolios_list'))
 
     except ValueError as e:
+        abort_mutation()
         if is_ajax_request():
             # Event-edit's input is named ``edit_cash_event_amount`` —
             # surface insufficient/clawback messages under it.
@@ -439,11 +424,85 @@ def portfolios_event_edit(event_id):
 
     except Exception:
         logger.exception('Failed to edit event %s', event_id)
-        db.session.rollback()
+        abort_mutation()
         if is_ajax_request():
             return json_response(False, errors={'__all__': MESSAGES['CASH_EVENT_UPDATE_FAILED']})
         flash(MESSAGES['CASH_EVENT_UPDATE_FAILED'], 'error')
 
+    return redirect(url_for('portfolios.portfolios_list'))
+
+
+@portfolios_bp.route('/withdrawal-max/<int:portfolio_id>')
+@login_required
+def portfolios_withdrawal_max(portfolio_id):
+    """Date-aware executable amount; no monetary arithmetic in this route."""
+    form = PortfolioWithdrawForm({
+        'amount_delta': '1', 'withdraw_date': request.args.get('date', ''),
+        'user_timezone': request.args.get('user_timezone', ''),
+    }, portfolio_id)
+    if not form.validate():
+        return json_response(False, errors=form.errors)
+    try:
+        amount = get_services().portfolio_service.cash_account.withdrawal_max(
+            portfolio_id, form.get_cleaned_data()['date'],
+        )
+        response, status = json_response(True, amount=amount)
+        response.headers['Cache-Control'] = 'no-store'
+        return response, status
+    except ValueError as exc:
+        return json_response(False, errors={'__all__': get_error_message(exc)})
+
+
+@portfolios_bp.route('/transfers/add', methods=['POST'])
+@portfolios_bp.route('/transfers/edit/<int:transfer_id>', methods=['POST'])
+@login_required
+def portfolios_transfer_save(transfer_id=None):
+    try:
+        svc = get_services()
+        form = TransferForm(request.form, svc.portfolio_repo.get_all())
+        if not form.validate():
+            if is_ajax_request():
+                return json_response(False, errors=form.errors)
+            flash(get_first_form_error(form.errors), 'error')
+            return redirect(url_for('portfolios.portfolios_list'))
+        values = form.get_cleaned_data()
+        transfer = svc.transfer_service.create(**values) if transfer_id is None else svc.transfer_service.update(transfer_id, **values)
+        if is_ajax_request():
+            return json_response(True, message=MESSAGES['TRANSFER_SAVED'], transfer=transfer.to_dict())
+        flash(MESSAGES['TRANSFER_SAVED'], 'success')
+    except ValueError as exc:
+        abort_mutation()
+        if is_ajax_request():
+            return json_response(False, errors={'__all__': get_error_message(exc)})
+        flash(get_error_message(exc), 'error')
+    except Exception:
+        abort_mutation()
+        logger.exception('Transfer mutation failed')
+        if is_ajax_request():
+            return json_response(False, errors={'__all__': MESSAGES['TRANSFER_FAILED']})
+        flash(MESSAGES['TRANSFER_FAILED'], 'error')
+    return redirect(url_for('portfolios.portfolios_list'))
+
+
+@portfolios_bp.route('/transfers/delete/<int:transfer_id>', methods=['POST'])
+@login_required
+def portfolios_transfer_delete(transfer_id):
+    try:
+        get_services().transfer_service.delete(transfer_id)
+        if is_ajax_request():
+            return json_response(True, message=MESSAGES['TRANSFER_REMOVED'])
+        flash(MESSAGES['TRANSFER_REMOVED'], 'success')
+    except ValueError as exc:
+        abort_mutation()
+        if is_ajax_request():
+            return json_response(False, errors={'__all__': get_error_message(exc)})
+        flash(get_error_message(exc), 'error')
+    except Exception:
+        abort_mutation()
+        logger.exception('Transfer deletion failed')
+        if is_ajax_request():
+            return json_response(False, errors={'__all__': MESSAGES['TRANSFER_FAILED']})
+        flash(MESSAGES['TRANSFER_FAILED'], 'error')
     return redirect(url_for('portfolios.portfolios_list'))
 
 
@@ -486,13 +545,14 @@ def portfolios_event_delete(event_id):
         flash(MESSAGES['TRANSACTION_REMOVED'], 'success')
 
     except ValueError as e:
+        abort_mutation()
         if is_ajax_request():
             return json_response(False, errors={'__all__': get_error_message(e)})
         flash(get_error_message(e), 'error')
 
     except Exception:
         logger.exception('Failed to delete event %s', event_id)
-        db.session.rollback()
+        abort_mutation()
         if is_ajax_request():
             return json_response(
                 False, errors={'__all__': MESSAGES['CASH_EVENT_DELETE_FAILED']},

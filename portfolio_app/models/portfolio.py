@@ -7,8 +7,8 @@ from portfolio_app import db
 class Portfolio(db.Model):
     """Represents a named portfolio belonging to a user.
 
-    Cash flow (deposits/withdrawals) is stored exclusively in
-    ``PortfolioEvent`` rows; the previous ``net_deposits`` column was a
+    External cash flow is stored in ``PortfolioEvent`` rows; linked internal
+    cash flows are stored separately in ``PortfolioTransfer``. The previous ``net_deposits`` column was a
     denormalized cache that could drift from the events log and was
     removed by the ``portfolio`` table rebuild in migration step 24.
     """

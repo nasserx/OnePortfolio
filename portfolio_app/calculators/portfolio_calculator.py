@@ -1,17 +1,25 @@
-"""Portfolio calculator for financial calculations."""
+"""Database-facing financial façade and canonical response adapters.
+
+Aggregate reads compose immutable snapshots using the pure financial engine.
+All derived transaction values are read projections; mutations persist raw facts.
+"""
 
 from decimal import Decimal
-from sqlalchemy import case, func
-from portfolio_app import db
+from portfolio_app.calculators.transaction_order import order_transactions
 from portfolio_app.calculators.financial_math import (
-    calculate_asset_return,
     calculate_cash_balance,
-    calculate_portfolio_metrics,
     calculate_quantity_held,
-    calculate_symbol_transaction_summary,
 )
-from portfolio_app.models import Portfolio, Transaction, PortfolioEvent, Dividend
-from portfolio_app.utils.decimal_utils import ZERO, to_decimal as _to_decimal, safe_divide as _safe_divide
+from portfolio_app.calculators.financial_snapshots import (
+    build_asset_snapshot, build_portfolio_snapshot, build_global_snapshot,
+    sum_dividend_income_details,
+)
+from portfolio_app.models import Portfolio, Transaction, PortfolioEvent, Dividend, PortfolioTransfer
+from portfolio_app import db
+from portfolio_app.repositories.portfolio_transfer_repository import PortfolioTransferRepository
+from portfolio_app.repositories.read_snapshot import coherent_read
+from portfolio_app.utils.decimal_utils import ZERO
+from portfolio_app.utils.financial_arithmetic import exact_sum, exact_subtract
 
 # Realized P&L is computed on demand from the transactions table. There is
 # intentionally no snapshot table — a single source of truth eliminates the
@@ -33,8 +41,6 @@ class PortfolioCalculator:
     compatibility with internal recursive calls and tests; treat omitting
     it as a deliberate choice, not a free pass.
     """
-
-    _to_decimal = staticmethod(_to_decimal)
 
     @staticmethod
     def _scope_to_user(query, model_cls, user_id):
@@ -60,6 +66,7 @@ class PortfolioCalculator:
     # ------------------------------------------------------------------
 
     @staticmethod
+    @coherent_read
     def get_quantity_held_for_symbol(portfolio_id, symbol, *, user_id=None, exclude_transaction_id=None):
         """Return current quantity held for a specific symbol inside a portfolio."""
         normalized = PortfolioCalculator.normalize_symbol(symbol)
@@ -80,22 +87,21 @@ class PortfolioCalculator:
     def get_total_deposits_for_portfolio(portfolio_id, *, user_id=None) -> Decimal:
         """Total deposits = sum of Initial + Deposit events only.
 
-        Withdrawals are excluded so this represents gross capital ever allocated.
+        Withdrawals are excluded: this is gross deposits, not Net Contributions.
         """
         query = (
-            db.session.query(func.sum(PortfolioEvent.amount_delta))
+            PortfolioEvent.query.with_entities(PortfolioEvent.amount_delta)
             .filter(
                 PortfolioEvent.portfolio_id == portfolio_id,
                 PortfolioEvent.event_type.in_(['Initial', 'Deposit']),
             )
         )
         query = PortfolioCalculator._scope_to_user(query, PortfolioEvent, user_id)
-        result = query.scalar()
-        return _to_decimal(result) if result is not None else ZERO
+        return exact_sum(row.amount_delta for row in query.order_by(PortfolioEvent.id).all())
 
     @staticmethod
-    def get_net_deposits_for_portfolio(portfolio_id, *, user_id=None) -> Decimal:
-        """Net deposits = signed sum of all PortfolioEvent rows.
+    def get_net_contributions_for_portfolio(portfolio_id, *, user_id=None) -> Decimal:
+        """Net Contributions = signed sum of all Funding Entries.
 
         ``amount_delta`` is positive for Initial/Deposit and negative for
         Withdrawal, so a plain SUM gives ``deposits − withdrawals``. This
@@ -103,448 +109,158 @@ class PortfolioCalculator:
         value could drift if the events log was edited outside the service.
         """
         query = (
-            db.session.query(func.sum(PortfolioEvent.amount_delta))
+            PortfolioEvent.query.with_entities(PortfolioEvent.amount_delta)
             .filter(PortfolioEvent.portfolio_id == portfolio_id)
         )
         query = PortfolioCalculator._scope_to_user(query, PortfolioEvent, user_id)
-        result = query.scalar()
-        return _to_decimal(result) if result is not None else ZERO
+        return exact_sum(row.amount_delta for row in query.order_by(PortfolioEvent.id).all())
 
     @staticmethod
-    def get_total_capital_for_portfolio(portfolio_id, *, user_id=None) -> Decimal:
-        """Total capital = deposits minus withdrawals.
-
-        Portfolio capital entries are stored as signed event deltas in the
-        existing schema, so this is the same read path as net deposits.
-        """
-        return PortfolioCalculator.get_net_deposits_for_portfolio(
-            portfolio_id, user_id=user_id,
-        )
-
-    @staticmethod
-    def get_available_cash_for_portfolio(portfolio_id, *, user_id=None, exclude_transaction_id=None) -> Decimal:
-        """Available cash: net deposits - buy_outflows + sell_inflows + income."""
-        total_capital = PortfolioCalculator.get_net_deposits_for_portfolio(portfolio_id, user_id=user_id)
+    def _cash_transactions(portfolio_id, *, user_id=None, exclude_transaction_id=None):
+        """Cash and replay reads share deterministic canonical ordering."""
         query = Transaction.query.filter_by(portfolio_id=portfolio_id)
         query = PortfolioCalculator._scope_to_user(query, Transaction, user_id)
         if exclude_transaction_id is not None:
             query = query.filter(Transaction.id != exclude_transaction_id)
-        transactions = query.order_by(Transaction.date.asc()).all()
-        total_income = PortfolioCalculator.get_dividend_total_for_portfolio(portfolio_id, user_id=user_id)
-        return calculate_cash_balance(total_capital, transactions, total_income)
+        return order_transactions(query.all())
 
-    # ------------------------------------------------------------------
-    # Portfolio summary (dashboard cards)
-    # ------------------------------------------------------------------
+    @staticmethod
+    @coherent_read
+    def get_cash_balance_for_portfolio(portfolio_id, *, user_id=None, exclude_transaction_id=None) -> Decimal:
+        """Lightweight validation read, using the same pure cash_balance function as snapshots."""
+        return calculate_cash_balance(
+            PortfolioCalculator.get_net_contributions_for_portfolio(portfolio_id, user_id=user_id),
+            PortfolioCalculator._cash_transactions(
+                portfolio_id, user_id=user_id, exclude_transaction_id=exclude_transaction_id,
+            ),
+            PortfolioCalculator.get_dividend_total_for_portfolio(portfolio_id, user_id=user_id),
+            exact_subtract(*PortfolioCalculator.get_transfer_totals(portfolio_id, user_id=user_id)),
+        )
+
+    @staticmethod
+    def get_transfer_totals(portfolio_id, *, user_id=None):
+        rows = PortfolioTransferRepository(PortfolioTransfer, db, user_id).get_by_portfolio_ids([portfolio_id])
+        return (
+            exact_sum(row.amount for row in rows if row.destination_portfolio_id == portfolio_id),
+            exact_sum(row.amount for row in rows if row.source_portfolio_id == portfolio_id),
+        )
+
+    @staticmethod
+    @coherent_read
+    def get_portfolio_snapshot(portfolio_id, *, user_id=None):
+        """Load scoped inputs once per financial view; never persist or cache results.
+
+        Funding/dividend_income sum individually loaded Decimal column values, never SQL
+        floating-point reductions. Trading values always come from fresh canonical
+        replay, never persisted derivatives (removed in schema 36).
+        """
+        query = Portfolio.query.filter_by(id=portfolio_id)
+        if user_id is not None:
+            query = query.filter_by(user_id=user_id)
+        portfolio = query.first()
+
+        dividend_income_by_symbol = PortfolioCalculator._dividend_income_by_symbol(portfolio_id, user_id=user_id)
+
+        sym_query = Transaction.query.with_entities(Transaction.symbol).filter_by(portfolio_id=portfolio_id)
+        sym_query = PortfolioCalculator._scope_to_user(sym_query, Transaction, user_id)
+        symbols = [
+            PortfolioCalculator.normalize_symbol(row.symbol)
+            for row in sym_query.distinct().all()
+            if PortfolioCalculator.normalize_symbol(row.symbol)
+        ]
+        assets = {}
+        for symbol in symbols:
+            assets[symbol] = PortfolioCalculator.get_asset_snapshot(
+                portfolio_id, symbol, user_id=user_id,
+                dividend_income=dividend_income_by_symbol.get(symbol, ZERO),
+            )
+        for symbol, dividend_income in dividend_income_by_symbol.items():
+            if symbol not in assets:
+                assets[symbol] = build_asset_snapshot(symbol, [], dividend_income)
+
+        transfer_in, transfer_out = PortfolioCalculator.get_transfer_totals(portfolio_id, user_id=user_id)
+        return build_portfolio_snapshot(
+            portfolio_id=portfolio_id,
+            name=portfolio.name if portfolio is not None else '',
+            assets=assets,
+            gross_deposits=PortfolioCalculator.get_total_deposits_for_portfolio(portfolio_id, user_id=user_id),
+            net_contributions=PortfolioCalculator.get_net_contributions_for_portfolio(portfolio_id, user_id=user_id),
+            cash_transactions=PortfolioCalculator._cash_transactions(portfolio_id, user_id=user_id),
+            dividend_income=exact_sum(dividend_income_by_symbol.values()),
+            dividend_income_by_symbol=dividend_income_by_symbol,
+            transfer_in=transfer_in, transfer_out=transfer_out,
+        )
+
+    @staticmethod
+    @coherent_read
+    def get_financial_snapshot(user_id=None):
+        """Canonical global read model; every aggregate consumer uses this path."""
+        query = Portfolio.query
+        if user_id is not None:
+            query = query.filter_by(user_id=user_id)
+        return build_global_snapshot(
+            PortfolioCalculator.get_portfolio_snapshot(portfolio.id, user_id=user_id)
+            for portfolio in query.all()
+        )
 
     @staticmethod
     def get_portfolio_summary(user_id=None):
-        """Get summary for each portfolio."""
-        q = Portfolio.query
-        if user_id is not None:
-            q = q.filter_by(user_id=user_id)
-        portfolios = q.all()
-
-        portfolio_rows = []
-        total_portfolio_value = ZERO
-        for portfolio in portfolios:
-            total_contributed = PortfolioCalculator.get_total_deposits_for_portfolio(portfolio.id, user_id=user_id)
-            total_capital = PortfolioCalculator.get_total_capital_for_portfolio(portfolio.id, user_id=user_id)
-
-            realized_perf = PortfolioCalculator.get_realized_performance_for_portfolio(portfolio.id, user_id=user_id)
-            realized_pnl = realized_perf['realized_pnl']
-            total_income = realized_perf['total_income']
-
-            transactions_summary = PortfolioCalculator.get_portfolio_transactions_summary(portfolio.id, user_id=user_id)
-            cost_basis = _to_decimal(transactions_summary['cost_basis'] or 0)
-
-            cash = PortfolioCalculator.get_available_cash_for_portfolio(portfolio.id, user_id=user_id)
-            metrics = calculate_portfolio_metrics(
-                cash, cost_basis, realized_pnl, total_income, total_contributed,
-            )
-            total_portfolio_value += metrics['book_value']
-
-            portfolio_rows.append({
-                'portfolio': portfolio,
-                'total_contributed': total_contributed,
-                'total_capital': total_capital,
-                'realized_pnl': realized_pnl,
-                'cost_basis': cost_basis,
-                'positions': cost_basis,
-                'cash': cash,
-                'book_value': metrics['book_value'],
-                'return_amount': metrics['return_amount'],
-                'return_percent': metrics['return_percent'],
-                'return_display': metrics['return_display'],
-                'total_income': total_income,
-            })
-
-        summary = []
-        for row in portfolio_rows:
-            allocation = (row['book_value'] / abs(total_portfolio_value) * 100) if total_portfolio_value != 0 else ZERO
-
-            summary.append({
-                'name': row['portfolio'].name,
-                'total_contributed': row['total_contributed'],
-                'total_capital': row['total_capital'],
-                'allocation': Decimal(str(allocation)),
-                'id': row['portfolio'].id,
-                'realized_pnl': row['realized_pnl'],
-                'cost_basis': row['cost_basis'],
-                'positions': row['positions'],
-                'book_value': row['book_value'],
-                'cash': row['cash'],
-                'return_amount': row['return_amount'],
-                'return_percent': row['return_percent'],
-                'return_display': row['return_display'],
-                'total_income': row['total_income'],
-            })
-
-        return summary, total_portfolio_value
-
-    # ------------------------------------------------------------------
-    # Dividend helpers
-    # ------------------------------------------------------------------
-
-    @staticmethod
-    def get_dividend_total_for_portfolio(portfolio_id, *, user_id=None) -> Decimal:
-        """Return the sum of dividend income for a portfolio."""
-        query = (
-            Dividend.query
-            .with_entities(func.sum(Dividend.amount))
-            .filter(Dividend.portfolio_id == portfolio_id)
-        )
-        query = PortfolioCalculator._scope_to_user(query, Dividend, user_id)
-        result = query.scalar()
-        return _to_decimal(result) if result else ZERO
-
-    # ------------------------------------------------------------------
-    # Realized P&L helpers
-    # ------------------------------------------------------------------
-
-    @staticmethod
-    def get_realized_performance_for_portfolio(portfolio_id, *, user_id=None):
-        """Return trading-only realized P&L, cost basis, proceeds, and income.
-
-        Computed by walking the transactions table per symbol with the
-        average-cost method — no snapshot table involved, so deleting a
-        sell removes its contribution immediately.
-        """
-        sym_query = (
-            Transaction.query.with_entities(Transaction.symbol)
-            .filter_by(portfolio_id=portfolio_id)
-        )
-        sym_query = PortfolioCalculator._scope_to_user(sym_query, Transaction, user_id)
-        symbols = sym_query.distinct().all()
-
-        realized_pnl        = ZERO
-        realized_cost_basis = ZERO
-        realized_proceeds   = ZERO
-
-        for (sym,) in symbols:
-            sym_norm = PortfolioCalculator.normalize_symbol(sym)
-            if not sym_norm:
-                continue
-            s = PortfolioCalculator.get_symbol_transactions_summary(portfolio_id, sym_norm, user_id=user_id)
-            realized_pnl        += _to_decimal(s['realized_pnl'])
-            realized_cost_basis += _to_decimal(s['realized_cost_basis'])
-            realized_proceeds   += _to_decimal(s['realized_proceeds'])
-
-        total_income = PortfolioCalculator.get_dividend_total_for_portfolio(portfolio_id, user_id=user_id)
-
-        return {
-            'realized_pnl':        realized_pnl,
-            'realized_cost_basis': realized_cost_basis,
-            'realized_proceeds':   realized_proceeds,
-            'total_income':        total_income,
-            'return_amount':       realized_pnl + total_income,
-        }
-
-    # ------------------------------------------------------------------
-    # Dashboard totals
-    # ------------------------------------------------------------------
+        return PortfolioCalculator.get_financial_snapshot(user_id).as_portfolio_summary()
 
     @staticmethod
     def get_portfolio_dashboard_totals(user_id=None):
-        """Dashboard totals: investment, cash, return."""
-        q = Portfolio.query
-        if user_id is not None:
-            q = q.filter_by(user_id=user_id)
-        portfolios = q.all()
-
-        total_contributed = ZERO
-        total_capital = ZERO
-        total_cash = ZERO
-        total_cost_basis = ZERO
-        aggregate_realized_pnl = ZERO
-        total_income = ZERO
-
-        for portfolio in portfolios:
-            total_contributed += PortfolioCalculator.get_total_deposits_for_portfolio(portfolio.id, user_id=user_id)
-            total_capital += PortfolioCalculator.get_total_capital_for_portfolio(portfolio.id, user_id=user_id)
-            total_cash += PortfolioCalculator.get_available_cash_for_portfolio(portfolio.id, user_id=user_id)
-
-            tx_summary = PortfolioCalculator.get_portfolio_transactions_summary(portfolio.id, user_id=user_id)
-            total_cost_basis += _to_decimal(tx_summary['cost_basis'] or 0)
-
-            realized_perf = PortfolioCalculator.get_realized_performance_for_portfolio(portfolio.id, user_id=user_id)
-            aggregate_realized_pnl += realized_perf['realized_pnl']
-            total_income += realized_perf['total_income']
-
-        metrics = calculate_portfolio_metrics(
-            total_cash, total_cost_basis, aggregate_realized_pnl, total_income, total_contributed,
-        )
-
-        return {
-            'total_contributed': total_contributed,
-            'total_capital': total_capital,
-            'total_cash': total_cash,
-            'total_positions': total_cost_basis,
-            'realized_pnl': aggregate_realized_pnl,
-            'total_income': total_income,
-            'return_amount': metrics['return_amount'],
-            'total_value': metrics['book_value'],
-            'return_percent': metrics['return_percent'],
-            'return_display': metrics['return_display'],
-        }
-
-    # ------------------------------------------------------------------
-    # Symbol-level performance (across a user's portfolios)
-    # ------------------------------------------------------------------
+        return dict(PortfolioCalculator.get_financial_snapshot(user_id).totals)
 
     @staticmethod
-    def get_user_symbol_performance(user_id):
-        """Per-(portfolio, symbol) realized performance across a user's portfolios.
+    def get_realized_earnings_for_portfolio(portfolio_id, *, user_id=None):
+        return PortfolioCalculator.get_portfolio_snapshot(
+            portfolio_id, user_id=user_id,
+        ).as_realized_earnings()
 
-        Each row represents a single (portfolio, ticker) pair. A ticker held
-        in multiple portfolios surfaces as multiple rows by design — the
-        unique constraint on Symbol is per-portfolio, not per-user, and the
-        consequence of that duplication belongs to the user.
-
-        ``realized_pnl`` is trading P&L only. ``return_amount`` combines:
-          * trading P&L from Sells (average-cost method, computed per
-            (portfolio, symbol) so cross-portfolio lots stay independent), and
-          * income attributed to the symbol via Dividend.symbol.
-
-        Return uses ``total_buy_cost`` so symbol heatmaps match the Transactions
-        section summary and represent the whole symbol position, not only
-        the cost basis of closed lots.
-
-        Returns a flat list — sorting and Top-N aggregation are caller
-        concerns so this stays composable across views.
-        """
+    @staticmethod
+    def get_user_symbol_financials(user_id):
         if user_id is None:
             return []
-
-        portfolios = Portfolio.query.filter_by(user_id=user_id).all()
-        if not portfolios:
-            return []
-
-        portfolio_ids = [p.id for p in portfolios]
-        portfolios_by_id = {p.id: p for p in portfolios}
-
-        # One round-trip for all dividends grouped by (portfolio, symbol) —
-        # avoids an N×M lookup inside the symbol loop below.
-        dividend_rows = (
-            db.session.query(
-                Dividend.portfolio_id,
-                Dividend.symbol,
-                func.sum(Dividend.amount).label('total'),
-            )
-            .filter(Dividend.portfolio_id.in_(portfolio_ids))
-            .group_by(Dividend.portfolio_id, Dividend.symbol)
-            .all()
-        )
-        dividend_by_key = {
-            (r.portfolio_id, PortfolioCalculator.normalize_symbol(r.symbol)): _to_decimal(r.total)
-            for r in dividend_rows
-        }
-
-        rows = []
-        seen_keys = set()
-
-        for portfolio in portfolios:
-            sym_query = (
-                Transaction.query.with_entities(Transaction.symbol)
-                .filter_by(portfolio_id=portfolio.id)
-            )
-            sym_query = PortfolioCalculator._scope_to_user(sym_query, Transaction, user_id)
-            symbols = sym_query.distinct().all()
-            for (sym,) in symbols:
-                sym_norm = PortfolioCalculator.normalize_symbol(sym)
-                if not sym_norm:
-                    continue
-                key = (portfolio.id, sym_norm)
-                seen_keys.add(key)
-
-                summary = PortfolioCalculator.get_symbol_transactions_summary(portfolio.id, sym_norm, user_id=user_id)
-                rows.append(
-                    PortfolioCalculator._build_symbol_performance_row(
-                        portfolio=portfolio,
-                        symbol=sym_norm,
-                        trading_pnl=_to_decimal(summary['realized_pnl']),
-                        dividends=dividend_by_key.get(key, ZERO),
-                        total_buy_cost=_to_decimal(summary['total_buy_cost']),
-                        realized_cost_basis=_to_decimal(summary['realized_cost_basis']),
-                        held_cost_basis=_to_decimal(summary['cost_basis']),
-                    )
-                )
-
-        # Surface dividend-only symbols (Dividend rows with no matching
-        # Transaction history). Rare, but possible for transferred-in
-        # holdings recorded only as income.
-        for (pid, sym_norm), divs in dividend_by_key.items():
-            if (pid, sym_norm) in seen_keys:
-                continue
-            portfolio = portfolios_by_id.get(pid)
-            if portfolio is None:
-                continue
-            rows.append(
-                PortfolioCalculator._build_symbol_performance_row(
-                    portfolio=portfolio,
-                    symbol=sym_norm,
-                    trading_pnl=ZERO,
-                    dividends=divs,
-                    total_buy_cost=ZERO,
-                    realized_cost_basis=ZERO,
-                    held_cost_basis=ZERO,
-                )
-            )
-
-        return rows
-
-    @staticmethod
-    def _build_symbol_performance_row(*, portfolio, symbol, trading_pnl, dividends,
-                                      total_buy_cost, realized_cost_basis, held_cost_basis):
-        """Shape a single symbol-performance row with derived return fields."""
-        return_result = calculate_asset_return(trading_pnl, dividends, total_buy_cost)
-        return_base = total_buy_cost
-        return {
-            'portfolio_id':         portfolio.id,
-            'portfolio_name':       portfolio.name,
-            'symbol':               symbol,
-            'realized_pnl':         trading_pnl,
-            'total_income':         dividends,
-            'return_amount':        return_result['return_amount'],
-            'total_buy_cost':       total_buy_cost,
-            'realized_cost_basis':  realized_cost_basis,
-            'held_cost_basis':      held_cost_basis,
-            'return_base':          return_base,
-            'return_percent':       return_result['return_percent'],
-            'return_display':       return_result['return_display'],
-        }
-
-    # ------------------------------------------------------------------
-    # Transaction summaries
-    # ------------------------------------------------------------------
+        return PortfolioCalculator.get_financial_snapshot(user_id).as_symbol_financials()
 
     @staticmethod
     def get_portfolio_transactions_summary(portfolio_id, *, user_id=None):
-        """Get aggregated transaction summary for a portfolio (all symbols combined)."""
-        sym_query = (
-            Transaction.query.with_entities(Transaction.symbol)
-            .filter_by(portfolio_id=portfolio_id)
-        )
-        sym_query = PortfolioCalculator._scope_to_user(sym_query, Transaction, user_id)
-        symbols = sym_query.distinct().all()
+        snapshot = PortfolioCalculator.get_portfolio_snapshot(portfolio_id, user_id=user_id)
+        return dict(snapshot.transactions)
 
-        totals = {
-            'total_buy_cost': ZERO,
-            'total_buy_fees': ZERO,
-            'total_buy_quantity': ZERO,
-            'total_sell_cost': ZERO,
-            'total_sell_fees': ZERO,
-            'total_sell_quantity': ZERO,
-            'total_quantity_held': ZERO,
-            'realized_pnl': ZERO,
-            'cost_basis': ZERO,
-            'transaction_count': 0,
-        }
-
-        for (sym,) in symbols:
-            sym_norm = PortfolioCalculator.normalize_symbol(sym)
-            if not sym_norm:
-                continue
-            summary = PortfolioCalculator.get_symbol_transactions_summary(portfolio_id, sym_norm, user_id=user_id)
-            for key in totals:
-                if key == 'transaction_count':
-                    totals[key] += int(summary[key])
-                else:
-                    totals[key] += _to_decimal(summary[key])
-
-        avg_cost = ZERO
-        if totals['total_quantity_held'] > 0:
-            weighted_cost = ZERO
-            for (sym,) in symbols:
-                sym_norm = PortfolioCalculator.normalize_symbol(sym)
-                if not sym_norm:
-                    continue
-                s = PortfolioCalculator.get_symbol_transactions_summary(portfolio_id, sym_norm, user_id=user_id)
-                weighted_cost += _to_decimal(s['average_cost']) * _to_decimal(s['total_quantity_held'])
-            avg_cost = weighted_cost / totals['total_quantity_held']
-
-        return {**totals, 'average_cost': avg_cost}
+    @staticmethod
+    @coherent_read
+    def get_asset_snapshot(portfolio_id, symbol, *, user_id=None, dividend_income=None):
+        symbol = PortfolioCalculator.normalize_symbol(symbol)
+        query = Transaction.query.filter_by(portfolio_id=portfolio_id, symbol=symbol)
+        query = PortfolioCalculator._scope_to_user(query, Transaction, user_id)
+        if dividend_income is None:
+            dividend_income = PortfolioCalculator._dividend_income_by_symbol(
+                portfolio_id, user_id=user_id,
+            ).get(symbol, ZERO)
+        return build_asset_snapshot(symbol, query.all(), dividend_income)
 
     @staticmethod
     def get_symbol_transactions_summary(portfolio_id, symbol, *, user_id=None):
-        """Get aggregated transaction summary for a specific symbol."""
-        symbol = PortfolioCalculator.normalize_symbol(symbol)
-        buy_first = case((Transaction.transaction_type == 'Buy', 0), else_=1)
-        query = Transaction.query.filter_by(portfolio_id=portfolio_id, symbol=symbol)
-        query = PortfolioCalculator._scope_to_user(query, Transaction, user_id)
-        transactions = (
-            query.order_by(func.date(Transaction.date).asc(), buy_first, Transaction.id.asc())
-            .all()
-        )
-        return PortfolioCalculator.get_symbol_transactions_summary_from_list(transactions)
+        return dict(PortfolioCalculator.get_asset_snapshot(
+            portfolio_id, symbol, user_id=user_id,
+        ).transactions)
 
     @staticmethod
     def get_symbol_transactions_summary_from_list(transactions):
-        """Get aggregated summary from a pre-sorted list of transactions.
-
-        Uses average-cost method: each sell realizes P&L based on the
-        weighted-average cost of the remaining position at time of sale.
-        """
-        return calculate_symbol_transaction_summary(transactions)
-
-    # ------------------------------------------------------------------
-    # Recalculation (after add/edit/delete transaction)
-    # ------------------------------------------------------------------
+        """Pure list entry point shares the same canonical asset replay boundary."""
+        return dict(build_asset_snapshot('', transactions).transactions)
 
     @staticmethod
-    def recalculate_all_averages_for_symbol(portfolio_id, symbol, *, user_id=None):
-        """Recalculate average costs and net_amount for all transactions of a
-        (portfolio, symbol) pair. The caller is responsible for committing.
-        """
-        symbol = PortfolioCalculator.normalize_symbol(symbol)
-        buy_first = case((Transaction.transaction_type == 'Buy', 0), else_=1)
-        query = Transaction.query.filter_by(portfolio_id=portfolio_id, symbol=symbol)
-        query = PortfolioCalculator._scope_to_user(query, Transaction, user_id)
-        transactions = (
-            query.order_by(func.date(Transaction.date).asc(), buy_first, Transaction.id.asc())
-            .all()
+    def get_dividend_total_for_portfolio(portfolio_id, *, user_id=None) -> Decimal:
+        """Return Dividend Income for a portfolio."""
+        return exact_sum(PortfolioCalculator._dividend_income_by_symbol(portfolio_id, user_id=user_id).values())
+
+    @staticmethod
+    def _dividend_income_by_symbol(portfolio_id, *, user_id=None):
+        # Aggregate exact persisted Decimal rows, never SQL numeric coercion.
+        query = Dividend.query.with_entities(Dividend.symbol, Dividend.amount).filter_by(
+            portfolio_id=portfolio_id,
         )
-
-        running_quantity = ZERO
-        running_cost = ZERO
-
-        for transaction in transactions:
-            transaction.calculate_net_amount()
-
-            if transaction.transaction_type == 'Buy':
-                cost = (
-                    _to_decimal(transaction.price) * _to_decimal(transaction.quantity)
-                    + _to_decimal(transaction.fees)
-                )
-                running_cost += cost
-                running_quantity += _to_decimal(transaction.quantity)
-                transaction.average_cost = _safe_divide(running_cost, running_quantity)
-
-            elif transaction.transaction_type == 'Sell':
-                sell_qty = _to_decimal(transaction.quantity)
-                avg_cost = _safe_divide(running_cost, running_quantity)
-                transaction.average_cost = avg_cost
-                running_quantity -= sell_qty
-                running_cost     -= avg_cost * sell_qty
-
-        return transactions
+        query = PortfolioCalculator._scope_to_user(query, Dividend, user_id)
+        return sum_dividend_income_details(query.order_by(Dividend.id).all())

@@ -5,7 +5,8 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required
 from decimal import Decimal
 from sqlalchemy.exc import OperationalError
-from portfolio_app import db
+from portfolio_app.services.mutation import abort_mutation
+from portfolio_app.repositories.read_snapshot import coherent_read
 from portfolio_app.services import get_services, ValidationError
 from portfolio_app.calculators import PortfolioCalculator
 from portfolio_app.forms import (
@@ -21,10 +22,12 @@ from portfolio_app.utils import (
 # Service-layer exceptions on the *add* path map to inputs of the form
 # the user just submitted from. The edit path uses ``edit_*`` ids.
 _TX_ADD_FIELD_MAP = {
+    MESSAGES['PURCHASE_EXCEEDS_CASH']: 'quantity',
     MESSAGES['INSUFFICIENT_QUANTITY']: 'quantity',
     MESSAGES['FEES_EXCEED_PROCEEDS']: 'fees',
 }
 _TX_EDIT_FIELD_MAP = {
+    MESSAGES['PURCHASE_EXCEEDS_CASH']: 'edit_quantity',
     MESSAGES['INSUFFICIENT_QUANTITY']: 'edit_quantity',
     MESSAGES['FEES_EXCEED_PROCEEDS']: 'edit_fees',
     # Cash drift on edit usually traces back to quantity or price, but
@@ -37,7 +40,6 @@ _DIV_EDIT_FIELD_MAP = {
     MESSAGES['CASH_ALREADY_SPENT']:  'edit_amount',
 }
 from portfolio_app.utils.constants import safe_html_id
-from portfolio_app.utils.decimal_utils import ZERO, safe_divide
 from config import Config
 
 logger = logging.getLogger(__name__)
@@ -58,26 +60,7 @@ def _decimal_places(value) -> int:
     return len(fractional)
 
 
-def _apply_summary_roi(summary, income=ZERO):
-    """Attach asset return fields using total buy cost as the base."""
-    realized_pnl = Decimal(str(summary.get('realized_pnl', 0) or 0))
-    total_income = Decimal(str(income or 0))
-    total_spent = Decimal(str(summary.get('total_buy_cost', 0) or 0))
-
-    if total_spent == ZERO:
-        summary['return_amount'] = realized_pnl + total_income
-        summary['return_percent'] = None
-        summary['return_display'] = '—'
-        return summary
-
-    return_amount = realized_pnl + total_income
-    return_percent = safe_divide(return_amount, total_spent) * Decimal('100')
-    summary['return_amount'] = return_amount
-    summary['return_percent'] = return_percent
-    summary['return_display'] = f"{return_percent:+,.2f}%"
-    return summary
-
-
+@coherent_read
 def _get_transactions_page_context(portfolio_filter=''):
     """Build context data for the transactions page."""
     svc = get_services()
@@ -85,12 +68,19 @@ def _get_transactions_page_context(portfolio_filter=''):
     portfolio_filter = (portfolio_filter or '').strip()
     portfolios = portfolio_repo.get_all()
     holdings = []
+    snapshots = {}
 
     for portfolio in portfolios:
         if portfolio_filter and portfolio.name != portfolio_filter:
             continue
 
-        tracked_symbols = set()
+        snapshot = PortfolioCalculator.get_portfolio_snapshot(
+            portfolio.id, user_id=portfolio_repo.user_id,
+        )
+        snapshots[portfolio.id] = snapshot
+        # Include accepted dividend-only assets without inventing holdings or
+        # tracked-symbol records. Canonical assets already union trades/dividends.
+        tracked_symbols = set(snapshot.assets)
         tracked_by_ticker = {}
 
         try:
@@ -120,8 +110,9 @@ def _get_transactions_page_context(portfolio_filter=''):
             price_decimal_places = max((_decimal_places(t.price) for t in transactions), default=0)
             price_decimal_places = max(0, min(int(price_decimal_places), 10))
 
-            avg_cost_decimal_places = max(2, price_decimal_places)
-            summary = PortfolioCalculator.get_symbol_transactions_summary_from_list(transactions)
+            average_unit_cost_decimal_places = max(2, price_decimal_places)
+            asset = snapshot.asset(sym_norm)
+            summary = asset.as_assets_summary()
 
             html_group_id = safe_html_id(portfolio.id, sym_norm)
             tracked = tracked_by_ticker.get(sym_norm)
@@ -130,16 +121,21 @@ def _get_transactions_page_context(portfolio_filter=''):
                 'symbol': sym_norm,
                 'html_group_id': html_group_id,
                 'transactions': transactions_desc,
+                'transaction_projections': asset.transaction_projections,
                 'summary': summary,
                 'price_decimal_places': price_decimal_places,
-                'avg_cost_decimal_places': avg_cost_decimal_places,
+                'average_unit_cost_decimal_places': average_unit_cost_decimal_places,
                 'symbol_id': tracked.id if tracked else None,
             })
 
     # Load dividends grouped by (portfolio_id, symbol) — single query for all portfolios
     visible_portfolio_ids = [p.id for p in portfolios if not portfolio_filter or p.name == portfolio_filter]
     dividends_by_symbol: dict = {}
-    dividend_totals: dict = {}
+    dividend_totals = {
+        (pid, symbol): dividend_income
+        for pid, snapshot in snapshots.items()
+        for symbol, dividend_income in snapshot.dividend_income_by_symbol.items()
+    }
     for div in svc.dividend_repo.get_by_portfolio_ids(visible_portfolio_ids):
         sym = (div.symbol or '').upper()
         if not sym:
@@ -147,11 +143,6 @@ def _get_transactions_page_context(portfolio_filter=''):
             continue
         key = (div.portfolio_id, sym)
         dividends_by_symbol.setdefault(key, []).append(div)
-        dividend_totals[key] = dividend_totals.get(key, ZERO) + Decimal(str(div.amount))
-
-    for item in holdings:
-        key = (item['portfolio'].id, item['symbol'])
-        _apply_summary_roi(item['summary'], dividend_totals.get(key, ZERO))
 
     return {
         'holdings': holdings,
@@ -219,6 +210,7 @@ def transaction_add():
         return redirect(url_for('transactions.transaction_list'))
 
     except (ValueError, ValidationError) as e:
+        abort_mutation()
         if is_ajax_request():
             return field_error_response(get_error_message(e), _TX_ADD_FIELD_MAP)
         flash(get_error_message(e), 'error')
@@ -226,7 +218,7 @@ def transaction_add():
 
     except Exception:
         logger.exception('Failed to add transaction')
-        db.session.rollback()
+        abort_mutation()
         if is_ajax_request():
             return json_response(False, errors={'__all__': MESSAGES['TRANSACTION_ADD_FAILED']})
         flash(MESSAGES['TRANSACTION_ADD_FAILED'], 'error')
@@ -279,6 +271,7 @@ def transaction_edit(transaction_id):
         return redirect(url_for('transactions.transaction_list'))
 
     except (ValueError, ValidationError) as e:
+        abort_mutation()
         if is_ajax_request():
             return field_error_response(get_error_message(e), _TX_EDIT_FIELD_MAP)
         flash(get_error_message(e), 'error')
@@ -286,7 +279,7 @@ def transaction_edit(transaction_id):
 
     except Exception:
         logger.exception('Failed to edit transaction %s', transaction_id)
-        db.session.rollback()
+        abort_mutation()
         if is_ajax_request():
             return json_response(False, errors={'__all__': MESSAGES['TRANSACTION_UPDATE_FAILED']})
         flash(MESSAGES['TRANSACTION_UPDATE_FAILED'], 'error')
@@ -306,13 +299,14 @@ def transaction_delete(transaction_id):
         flash(MESSAGES['TRANSACTION_REMOVED'], 'success')
 
     except (ValueError, ValidationError) as e:
+        abort_mutation()
         if is_ajax_request():
             return json_response(False, errors={'__all__': get_error_message(e)})
         flash(get_error_message(e), 'error')
 
     except Exception:
         logger.exception('Failed to delete transaction %s', transaction_id)
-        db.session.rollback()
+        abort_mutation()
         if is_ajax_request():
             return json_response(False, errors={'__all__': MESSAGES['TRANSACTION_DELETE_FAILED']})
         flash(MESSAGES['TRANSACTION_DELETE_FAILED'], 'error')
@@ -323,7 +317,7 @@ def transaction_delete(transaction_id):
 @transactions_bp.route('/dividends/add', methods=['POST'])
 @login_required
 def dividend_add():
-    """Add a new dividend income record."""
+    """Add a new dividend dividend_income record."""
     try:
         svc = get_services()
         portfolios = svc.portfolio_repo.get_all()
@@ -358,6 +352,7 @@ def dividend_add():
         return redirect(url_for('transactions.transaction_list'))
 
     except (ValueError, ValidationError) as e:
+        abort_mutation()
         if is_ajax_request():
             return json_response(False, errors={'__all__': get_error_message(e)})
         flash(get_error_message(e), 'error')
@@ -365,7 +360,7 @@ def dividend_add():
 
     except Exception:
         logger.exception('Failed to add dividend')
-        db.session.rollback()
+        abort_mutation()
         if is_ajax_request():
             return json_response(False, errors={'__all__': MESSAGES['DIVIDEND_ADD_FAILED']})
         flash(MESSAGES['DIVIDEND_ADD_FAILED'], 'error')
@@ -418,6 +413,7 @@ def dividend_edit(dividend_id):
         return redirect(url_for('transactions.transaction_list'))
 
     except (ValueError, ValidationError) as e:
+        abort_mutation()
         if is_ajax_request():
             return field_error_response(get_error_message(e), _DIV_EDIT_FIELD_MAP)
         flash(get_error_message(e), 'error')
@@ -425,7 +421,7 @@ def dividend_edit(dividend_id):
 
     except Exception:
         logger.exception('Failed to edit dividend %s', dividend_id)
-        db.session.rollback()
+        abort_mutation()
         if is_ajax_request():
             return json_response(False, errors={'__all__': MESSAGES['DIVIDEND_UPDATE_FAILED']})
         flash(MESSAGES['DIVIDEND_UPDATE_FAILED'], 'error')
@@ -445,13 +441,14 @@ def dividend_delete(dividend_id):
         flash(MESSAGES['DIVIDEND_REMOVED'], 'success')
 
     except ValueError as e:
+        abort_mutation()
         if is_ajax_request():
             return json_response(False, errors={'__all__': get_error_message(e)})
         flash(get_error_message(e), 'error')
 
     except Exception:
         logger.exception('Failed to delete dividend %s', dividend_id)
-        db.session.rollback()
+        abort_mutation()
         if is_ajax_request():
             return json_response(False, errors={'__all__': MESSAGES['DIVIDEND_DELETE_FAILED']})
         flash(MESSAGES['DIVIDEND_DELETE_FAILED'], 'error')
@@ -493,6 +490,7 @@ def symbol_add():
         return redirect(url_for('transactions.transaction_list'))
 
     except ValueError as e:
+        abort_mutation()
         if is_ajax_request():
             return json_response(False, errors={'__all__': get_error_message(e)})
         flash(get_error_message(e), 'error')
@@ -500,7 +498,7 @@ def symbol_add():
 
     except Exception:
         logger.exception('Failed to track symbol')
-        db.session.rollback()
+        abort_mutation()
         if is_ajax_request():
             return json_response(False, errors={'__all__': MESSAGES['SYMBOL_ADD_FAILED']})
         flash(MESSAGES['SYMBOL_ADD_FAILED'], 'error')
@@ -532,13 +530,14 @@ def symbol_delete():
         flash(MESSAGES['SYMBOL_REMOVED'], 'success')
 
     except ValueError as e:
+        abort_mutation()
         if is_ajax_request():
             return json_response(False, errors={'__all__': get_error_message(e)})
         flash(get_error_message(e), 'error')
 
     except Exception:
         logger.exception('Failed to stop tracking symbol')
-        db.session.rollback()
+        abort_mutation()
         if is_ajax_request():
             return json_response(False, errors={'__all__': MESSAGES['SYMBOL_DELETE_FAILED']})
         flash(MESSAGES['SYMBOL_DELETE_FAILED'], 'error')

@@ -42,7 +42,7 @@ def _post_rename(client, portfolio_id, name):
     )
 
 
-def test_rename_service_commits_once_and_preserves_identity_and_children(app):
+def test_rename_service_commits_once_and_preserves_identity_and_children(app, monkeypatch):
     with app.app_context():
         user_id = _seed_user('rename_service')
         services = Services(user_id=user_id)
@@ -65,8 +65,8 @@ def test_rename_service_commits_once_and_preserves_identity_and_children(app):
         event_ids = [event.id for event in portfolio.events.all()]
         transaction_id = transaction.id
 
-        original_commit = services.portfolio_repo.commit
-        services.portfolio_repo.commit = Mock(wraps=original_commit)
+        commit = Mock(wraps=db.session().commit)
+        monkeypatch.setattr(db.session(), 'commit', commit)
 
         renamed = services.portfolio_service.rename_portfolio(
             portfolio_id,
@@ -75,7 +75,7 @@ def test_rename_service_commits_once_and_preserves_identity_and_children(app):
 
         assert renamed.id == portfolio_id
         assert renamed.name == 'Long Term'
-        services.portfolio_repo.commit.assert_called_once_with()
+        commit.assert_called_once_with()
 
         db.session.expire_all()
         stored = db.session.get(Portfolio, portfolio_id)

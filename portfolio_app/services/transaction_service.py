@@ -12,7 +12,13 @@ from portfolio_app.repositories.portfolio_repository import PortfolioRepository
 from portfolio_app.repositories.dividend_repository import DividendRepository
 from portfolio_app.calculators.portfolio_calculator import PortfolioCalculator
 from portfolio_app.calculators.transaction_manager import TransactionManager
-from portfolio_app.utils.decimal_utils import ZERO
+from portfolio_app.calculators.transaction_order import (
+    PENDING_TRANSACTION_ID, transaction_order_key,
+)
+from portfolio_app.utils.decimal_utils import ZERO, parse_financial_decimal
+from portfolio_app.utils.financial_arithmetic import exact_add, exact_subtract, exact_multiply
+from portfolio_app.services.cash_account import CashAccount, cash_fact, new_effective_date
+from portfolio_app.services.mutation import financial_mutation
 from portfolio_app.utils.messages import MESSAGES
 
 
@@ -35,7 +41,9 @@ class TransactionService:
         self.symbol_repo = symbol_repo
         self.portfolio_repo = portfolio_repo
         self.dividend_repo = dividend_repo
+        self.cash_account = CashAccount(portfolio_repo)
 
+    @financial_mutation
     def add_transaction(
         self,
         portfolio_id: int,
@@ -48,11 +56,14 @@ class TransactionService:
         date: Optional[Any] = None
     ) -> Transaction:
         """Add a new transaction."""
+        price, quantity, fees = map(parse_financial_decimal, (price, quantity, fees))
+        date = new_effective_date(date)
+        self._validate_trade_values(price, quantity, fees)
         if not self.portfolio_repo.get_by_id(portfolio_id):
             raise ValueError(MESSAGES['PORTFOLIO_NOT_FOUND'])
 
         if transaction_type == 'Sell':
-            gross = Decimal(str(price)) * Decimal(str(quantity))
+            gross = exact_multiply(price, quantity)
             if Decimal(str(fees)) > gross:
                 raise ValidationError(MESSAGES['FEES_EXCEED_PROCEEDS'])
             held = PortfolioCalculator.get_quantity_held_for_symbol(
@@ -92,16 +103,16 @@ class TransactionService:
             date=date
         )
 
+        self.cash_account.validate(
+            portfolio_id, add=(cash_fact(transaction),),
+            message=MESSAGES['PURCHASE_EXCEEDS_CASH'] if transaction_type == 'Buy' else None,
+        )
         self.transaction_repo.add(transaction)
         self.transaction_repo.flush()
 
-        PortfolioCalculator.recalculate_all_averages_for_symbol(
-            portfolio_id, symbol, user_id=self.portfolio_repo.user_id,
-        )
-
-        self.transaction_repo.commit()
         return transaction
 
+    @financial_mutation
     def update_transaction(
         self,
         transaction_id: int,
@@ -113,6 +124,10 @@ class TransactionService:
         date: Optional[Any] = None
     ) -> Transaction:
         """Update an existing transaction."""
+        price, quantity, fees = (
+            parse_financial_decimal(value) if value is not None else None
+            for value in (price, quantity, fees)
+        )
         transaction = self.transaction_repo.get_by_id(transaction_id)
         if not transaction:
             raise ValueError(MESSAGES['TRANSACTION_NOT_FOUND'])
@@ -122,6 +137,25 @@ class TransactionService:
 
         if self._has_no_changes(transaction, price, quantity, fees, notes, symbol, date):
             return transaction
+
+        # Metadata-only changes do not alter canonical accounting order.
+        same_accounting_date = date is None or (
+            transaction.date is not None and date.date() == transaction.date.date()
+        )
+        if same_accounting_date and self._has_no_changes(
+            transaction, price, quantity, fees, None, symbol, None,
+        ):
+            if notes is not None:
+                transaction.notes = notes
+            if date is not None:
+                transaction.date = date
+            return transaction
+
+        self._validate_trade_values(
+            price if price is not None else transaction.price,
+            quantity if quantity is not None else transaction.quantity,
+            fees if fees is not None else transaction.fees,
+        )
 
         # Validate post-mutation invariants BEFORE applying the change.
         # Mirrors the Sell-path checks from add_transaction (fees ≤ gross
@@ -139,34 +173,15 @@ class TransactionService:
             date=date,
         )
 
-        # Reject the edit if it would push available cash below zero —
-        # e.g. raising a Buy's quantity past current cash, lowering a
-        # Sell's proceeds below what's already been withdrawn.
-        new_price    = price    if price    is not None else transaction.price
-        new_quantity = quantity if quantity is not None else transaction.quantity
-        new_fees     = fees     if fees     is not None else transaction.fees
-        old_effect = self._cash_effect(transaction)
-        new_effect = self._proposed_cash_effect(
-            transaction.transaction_type, new_price, new_quantity, new_fees,
+        self.cash_account.validate(
+            transaction.portfolio_id, remove=(transaction,),
+            add=(cash_fact(transaction,
+                price=price if price is not None else transaction.price,
+                quantity=quantity if quantity is not None else transaction.quantity,
+                fees=fees if fees is not None else transaction.fees,
+                date=date if date is not None else transaction.date),),
+            message=MESSAGES['PURCHASE_EXCEEDS_CASH'] if transaction.transaction_type == 'Buy' else None,
         )
-        # Sell-lowered = clawing back proceeds the user has already spent
-        # ("Insufficient amount." reads as if the *new* value is wrong,
-        # which it isn't — that's why the message diverges by type).
-        # Buy-raised = genuinely asking the portfolio to spend more than
-        # it has, so the existing INSUFFICIENT_AMOUNT wording fits.
-        cash_msg = (
-            MESSAGES['CASH_ALREADY_SPENT']
-            if transaction.transaction_type == 'Sell'
-            else MESSAGES['INSUFFICIENT_AMOUNT']
-        )
-        self._assert_cash_after_delta(
-            transaction.portfolio_id,
-            new_effect - old_effect,
-            error_message=cash_msg,
-        )
-
-        old_symbol = transaction.symbol
-        portfolio_id = transaction.portfolio_id
 
         TransactionManager.update_transaction(
             transaction,
@@ -180,16 +195,9 @@ class TransactionService:
 
         self.transaction_repo.flush()
 
-        uid = self.portfolio_repo.user_id
-        if symbol and old_symbol != transaction.symbol:
-            PortfolioCalculator.recalculate_all_averages_for_symbol(portfolio_id, old_symbol, user_id=uid)
-            PortfolioCalculator.recalculate_all_averages_for_symbol(portfolio_id, transaction.symbol, user_id=uid)
-        else:
-            PortfolioCalculator.recalculate_all_averages_for_symbol(portfolio_id, transaction.symbol, user_id=uid)
-
-        self.transaction_repo.commit()
         return transaction
 
+    @financial_mutation
     def delete_transaction(self, transaction_id: int) -> int:
         """Delete a transaction. Returns portfolio_id of the deleted transaction."""
         transaction = self.transaction_repo.get_by_id(transaction_id)
@@ -216,26 +224,15 @@ class TransactionService:
             proposed_date=None,
         )
 
-        # Removing the row reverses its cash effect — deleting a Sell
-        # claws back inflow and may push cash below zero if the user
-        # has already withdrawn or spent it. (Deleting a Buy returns
-        # cash, so this check is a no-op for Buys.)
-        self._assert_cash_after_delta(
-            portfolio_id,
-            -self._cash_effect(transaction),
-            error_message=MESSAGES['CASH_ALREADY_SPENT'],
-        )
+        # Replaying the prospective daily path also covers historical clawbacks.
+        self.cash_account.validate(portfolio_id, remove=(transaction,))
 
         self.transaction_repo.delete(transaction)
         self.transaction_repo.flush()
 
-        PortfolioCalculator.recalculate_all_averages_for_symbol(
-            portfolio_id, symbol, user_id=self.portfolio_repo.user_id,
-        )
-
-        self.transaction_repo.commit()
         return portfolio_id
 
+    @financial_mutation
     def add_symbol(self, portfolio_id: int, symbol: str) -> Symbol:
         """Track a new symbol in a portfolio."""
         symbol = PortfolioCalculator.normalize_symbol(symbol)
@@ -249,10 +246,10 @@ class TransactionService:
 
         tracked = Symbol(portfolio_id=portfolio_id, symbol=symbol)
         self.symbol_repo.add(tracked)
-        self.symbol_repo.commit()
 
         return tracked
 
+    @financial_mutation
     def delete_symbol(self, portfolio_id: int, symbol: str) -> None:
         """Remove a tracked symbol and all of its financial records atomically."""
         symbol = PortfolioCalculator.normalize_symbol(symbol)
@@ -267,18 +264,9 @@ class TransactionService:
         transactions = self.transaction_repo.get_by_symbol(portfolio_id, symbol)
         dividends = self.dividend_repo.get_by_symbol(portfolio_id, symbol)
 
-        # Treat removal as one prospective financial mutation. Reversing
-        # matching Buy/Sell cash effects and removing matching income must
-        # not leave the portfolio with negative available cash.
-        cash_delta = sum((-self._cash_effect(tx) for tx in transactions), ZERO)
-        cash_delta -= sum(
-            (Decimal(str(dividend.amount)) for dividend in dividends), ZERO,
-        )
-        self._assert_cash_after_delta(
-            portfolio_id,
-            cash_delta,
-            error_message=MESSAGES['CASH_ALREADY_SPENT'],
-        )
+        # Treat all removed cash effects as one prospective history, including
+        # the central repair-safe rule for existing legacy deficits.
+        self.cash_account.validate(portfolio_id, remove=(*transactions, *dividends))
 
         for tx in transactions:
             self.transaction_repo.delete(tx)
@@ -286,56 +274,14 @@ class TransactionService:
             self.dividend_repo.delete(dividend)
 
         self.symbol_repo.delete(tracked)
-        # All matching records share the same SQLAlchemy session; this one
-        # commit is the atomic boundary for the complete asset removal.
-        self.symbol_repo.commit()
-
-    def _cash_effect(self, transaction):
-        """Signed contribution this transaction makes to available cash.
-
-        Buy → negative (price*qty + fees outflow).
-        Sell → positive (price*qty - fees inflow).
-        Removing a transaction reverses its effect; replacing it with a
-        new shape is ``new_effect - old_effect``.
-        """
-        price = Decimal(str(transaction.price))
-        quantity = Decimal(str(transaction.quantity))
-        fees = Decimal(str(transaction.fees))
-        gross = price * quantity
-        if transaction.transaction_type == 'Sell':
-            return gross - fees
-        return -(gross + fees)
 
     @staticmethod
-    def _proposed_cash_effect(transaction_type, price, quantity, fees):
-        """Same as :meth:`_cash_effect` but for a hypothetical row before
-        it is persisted (used by update_transaction to compute the delta
-        between the old and new shape)."""
-        gross = Decimal(str(price)) * Decimal(str(quantity))
-        f = Decimal(str(fees))
-        if transaction_type == 'Sell':
-            return gross - f
-        return -(gross + f)
-
-    def _assert_cash_after_delta(self, portfolio_id, delta_change, *, error_message=None):
-        """Reject the in-progress mutation if it would push available cash
-        below zero. ``delta_change`` is the signed change to the
-        portfolio's cash position the mutation would cause; if it raises
-        cash (≥ 0) the check is a no-op and saves a query.
-
-        ``error_message`` lets the caller pick the wording that fits its
-        context: ``CASH_ALREADY_SPENT`` for clawback paths (delete a Sell,
-        lower a Dividend), ``INSUFFICIENT_AMOUNT`` for over-spend paths
-        (raise a Buy). Default falls back to the generic over-spend
-        message so existing callers stay correct.
-        """
-        if delta_change >= ZERO:
-            return
-        current_cash = PortfolioCalculator.get_available_cash_for_portfolio(
-            portfolio_id, user_id=self.portfolio_repo.user_id,
-        )
-        if current_cash + delta_change < ZERO:
-            raise ValueError(error_message or MESSAGES['INSUFFICIENT_AMOUNT'])
+    def _validate_trade_values(price, quantity, fees):
+        # Former numeric CHECK policies now live at the Decimal service boundary.
+        if price <= ZERO or quantity <= ZERO:
+            raise ValidationError(MESSAGES['VALUE_POSITIVE'])
+        if fees < ZERO:
+            raise ValidationError(MESSAGES['VALUE_NON_NEGATIVE'])
 
     def _has_no_changes(self, transaction, price, quantity, fees, notes, symbol, date):
         """Check if the new values are identical to the existing transaction."""
@@ -359,9 +305,8 @@ class TransactionService:
         Mirrors the Sell-path checks performed in :meth:`add_transaction`
         (fees ≤ gross and quantity ≤ currently-held, both raising
         :class:`ValidationError` with the same canonical messages), and
-        additionally simulates the chronological recomputation that
-        :meth:`PortfolioCalculator.recalculate_all_averages_for_symbol`
-        performs — rejecting any edit that would drive the running
+        additionally simulates canonical chronological replay,
+        rejecting any edit that would drive the running
         quantity below zero at any point in the timeline.
         """
         new_price    = Decimal(str(price))    if price    is not None else Decimal(str(transaction.price))
@@ -376,7 +321,7 @@ class TransactionService:
 
         # Sell-path checks — same exceptions and messages as add_transaction.
         if transaction.transaction_type == 'Sell':
-            gross = new_price * new_quantity
+            gross = exact_multiply(new_price, new_quantity)
             if new_fees > gross:
                 raise ValidationError(MESSAGES['FEES_EXCEED_PROCEEDS'])
             held = PortfolioCalculator.get_quantity_held_for_symbol(
@@ -423,9 +368,8 @@ class TransactionService:
         it sorts after any same-date/same-type peer (matches the post-
         commit ordering it would have once auto-incremented).
 
-        Ordering matches the SQL ORDER BY in
-        :meth:`PortfolioCalculator.recalculate_all_averages_for_symbol`:
-        ``func.date(date) ASC, buy_first ASC, id ASC``.
+        Ordering uses the same canonical key as summaries and transaction
+        projections: calendar date, Buy before Sell, then ID.
 
         The query is scoped by the repo's user_id so a forged portfolio_id
         from another user simulates an empty existing-row set rather than
@@ -442,30 +386,23 @@ class TransactionService:
         rows = query.all()
 
         walk = [
-            (r.date, 0 if r.transaction_type == 'Buy' else 1, r.id,
-             r.transaction_type, Decimal(str(r.quantity)))
+            (r.date, r.id, r.transaction_type, Decimal(str(r.quantity)))
             for r in rows
         ]
 
         if proposed_type is not None:
             # New rows have no id yet — slot them after any existing
             # same-date/same-type peer so the simulation matches what
-            # ``recalculate_all_averages_for_symbol`` will do post-commit.
-            sort_id = edit_id if edit_id is not None else 2**63
+            # canonical financial replay will do after persistence.
+            sort_id = edit_id if edit_id is not None else PENDING_TRANSACTION_ID
             walk.append((
                 proposed_date,
-                0 if proposed_type == 'Buy' else 1,
                 sort_id,
                 proposed_type,
                 proposed_quantity,
             ))
 
-        def _key(item):
-            d = item[0]
-            d_only = d.date() if d is not None else datetime.min.date()
-            return (d_only, item[1], item[2])
-
-        walk.sort(key=_key)
+        walk.sort(key=lambda item: transaction_order_key(item[0], item[2], item[1]))
 
         # Identify the proposed row (if present) so we can distinguish two
         # very different dip causes:
@@ -475,16 +412,16 @@ class TransactionService:
         #     change/delete leaves that Sell uncovered (a much clearer
         #     message: "a later Sell depends on this Buy")
         if proposed_type is not None:
-            proposed_id = edit_id if edit_id is not None else 2**63
+            proposed_id = edit_id if edit_id is not None else PENDING_TRANSACTION_ID
         else:
             proposed_id = None  # delete, or old-stream check after symbol change
 
         running = Decimal('0')
-        for _date, _b, tid, ttype, qty in walk:
+        for _date, tid, ttype, qty in walk:
             if ttype == 'Buy':
-                running += qty
+                running = exact_add(running, qty)
             else:
-                running -= qty
+                running = exact_subtract(running, qty)
                 if running < 0:
                     if proposed_id is not None and tid == proposed_id:
                         raise ValidationError(MESSAGES['INSUFFICIENT_QUANTITY'])
@@ -494,6 +431,7 @@ class TransactionService:
     # Dividend operations
     # ------------------------------------------------------------------
 
+    @financial_mutation
     def add_dividend(
         self,
         portfolio_id: int,
@@ -503,6 +441,9 @@ class TransactionService:
         notes: str = '',
     ) -> Dividend:
         """Add a new dividend income record."""
+        amount = parse_financial_decimal(amount)
+        if amount <= ZERO:
+            raise ValidationError(MESSAGES['INVALID_AMOUNT'])
         portfolio = self.portfolio_repo.get_by_id(portfolio_id)
         if not portfolio:
             raise ValueError(MESSAGES['PORTFOLIO_NOT_FOUND'])
@@ -515,13 +456,14 @@ class TransactionService:
             portfolio_id=portfolio_id,
             symbol=normalized_symbol,
             amount=amount,
-            date=date,
+            date=new_effective_date(date),
             notes=notes or None,
         )
+        self.cash_account.validate(portfolio_id, add=(cash_fact(dividend),))
         self.dividend_repo.add(dividend)
-        self.dividend_repo.commit()
         return dividend
 
+    @financial_mutation
     def update_dividend(
         self,
         dividend_id: int,
@@ -530,27 +472,29 @@ class TransactionService:
         notes: Optional[str] = None,
     ) -> Dividend:
         """Update an existing dividend."""
+        if amount is not None:
+            amount = parse_financial_decimal(amount)
+            if amount <= ZERO:
+                raise ValidationError(MESSAGES['INVALID_AMOUNT'])
         dividend = self.dividend_repo.get_by_id(dividend_id)
         if not dividend or not self.portfolio_repo.get_by_id(dividend.portfolio_id):
             raise ValueError(MESSAGES['DIVIDEND_NOT_FOUND'])
 
-        # Lowering the amount reduces available cash; reject if the user
-        # has already spent the difference on Buys or withdrawn it.
+        self.cash_account.validate(
+            dividend.portfolio_id, remove=(dividend,),
+            add=(cash_fact(dividend, amount=amount if amount is not None else dividend.amount,
+                           date=date if date is not None else dividend.date),),
+        )
         if amount is not None:
-            delta = Decimal(str(amount)) - Decimal(str(dividend.amount))
-            self._assert_cash_after_delta(
-                dividend.portfolio_id, delta,
-                error_message=MESSAGES['CASH_ALREADY_SPENT'],
-            )
             dividend.amount = amount
         if date is not None:
             dividend.date = date
         if notes is not None:
             dividend.notes = notes or None
 
-        self.dividend_repo.commit()
         return dividend
 
+    @financial_mutation
     def delete_dividend(self, dividend_id: int) -> None:
         """Delete a dividend record."""
         dividend = self.dividend_repo.get_by_id(dividend_id)
@@ -560,10 +504,6 @@ class TransactionService:
         # Removing the dividend reverses the cash inflow it represented.
         # If a Buy or Withdrawal already consumed that money, refuse the
         # delete rather than letting available cash go negative.
-        self._assert_cash_after_delta(
-            dividend.portfolio_id, -Decimal(str(dividend.amount)),
-            error_message=MESSAGES['CASH_ALREADY_SPENT'],
-        )
+        self.cash_account.validate(dividend.portfolio_id, remove=(dividend,))
 
         self.dividend_repo.delete(dividend)
-        self.dividend_repo.commit()

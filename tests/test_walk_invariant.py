@@ -22,7 +22,6 @@ from portfolio_app import db
 from portfolio_app.models import Transaction
 from portfolio_app.models.user import User
 from tests._auth import authenticate_client
-from portfolio_app.calculators import PortfolioCalculator
 from portfolio_app.services import ValidationError
 from portfolio_app.services.factory import Services
 from portfolio_app.utils.messages import MESSAGES
@@ -48,16 +47,12 @@ def _seed_buy_then_sell(svc, portfolio_id, *, buy_qty=10, sell_qty=5):
         date=datetime(2026, 1, 1), symbol='AAPL',
         price=100, quantity=buy_qty, fees=0,
     )
-    buy.calculate_net_amount()
     sell = Transaction(
         portfolio_id=portfolio_id, transaction_type='Sell',
         date=datetime(2026, 1, 5), symbol='AAPL',
         price=120, quantity=sell_qty, fees=0,
     )
-    sell.calculate_net_amount()
     db.session.add_all([buy, sell])
-    db.session.commit()
-    PortfolioCalculator.recalculate_all_averages_for_symbol(portfolio_id, 'AAPL')
     db.session.commit()
     return buy, sell
 
@@ -129,7 +124,6 @@ def test_add_sell_exceeding_holdings_keeps_insufficient_quantity_message(app):
             date=datetime(2026, 1, 1), symbol='AAPL',
             price=100, quantity=10, fees=0,
         )
-        buy.calculate_net_amount()
         db.session.add(buy)
         db.session.commit()
 
@@ -288,7 +282,7 @@ def test_withdraw_route_accepts_grouped_amount_for_ajax(app):
         uid = _seed_user('withdraw_grouped')
         svc = Services(user_id=uid)
         p = svc.portfolio_service.create_portfolio('P', user_id=uid)
-        svc.portfolio_service.deposit_funds(p.id, _dec(1000))
+        svc.portfolio_service.deposit_funds(p.id, _dec(1000), date=datetime(2026, 1, 1))
         portfolio_id = p.id
 
     client = app.test_client()

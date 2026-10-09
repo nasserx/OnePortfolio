@@ -15,13 +15,14 @@
 
   var SAMPLE = {
     portfolios: [
-      { name: 'Stocks', bookValue: 18400, capital: 20000 },
-      { name: 'ETFs',   bookValue: 14200, capital: 16000 },
-      { name: 'Crypto', bookValue: 9580,  capital: 12000 }
+      { name: 'Stocks', bookValue: 18400, netContributions: 20000 },
+      { name: 'ETFs',   bookValue: 14200, netContributions: 16000 },
+      { name: 'Crypto', bookValue: 9580,  netContributions: 12000 }
     ],
-    cash: 6320,
-    income: 2410,
-    realizedPnl: 3640
+    cashBalance: 6320,
+    dividendIncome: 2410,
+    realizedTradingPnl: 3640,
+    releasedCostBasis: 28000
   };
 
   var display = window.OnePortfolioDisplay;
@@ -45,20 +46,22 @@
      --------------------------------------------------------------------- */
 
   function renderMetrics() {
-    var capital = total('capital');
+    var netContributions = total('netContributions');
 
     // Every figure in the preview is derived from SAMPLE, including the
     // headline return. Nothing is hand-typed into the template, so the
     // preview can never quietly contradict itself.
-    var returnPercent = capital > 0 ? (SAMPLE.realizedPnl / capital) * 100 : 0;
+    // Illustrative display-only data, never used by application accounting.
+    var realizedTradingReturn = SAMPLE.releasedCostBasis > 0
+      ? (SAMPLE.realizedTradingPnl / SAMPLE.releasedCostBasis) * 100 : null;
 
     var values = {
       bookValue: display.money(total('bookValue'), false),
-      totalCapital: display.money(capital, false),
-      totalCash: display.money(SAMPLE.cash, false),
-      totalIncome: display.money(SAMPLE.income, true),
-      realizedPnl: display.money(SAMPLE.realizedPnl, true),
-      returnPercent: display.percentage(returnPercent, 2, true)
+      netContributions: display.money(netContributions, false),
+      cashBalance: display.money(SAMPLE.cashBalance, false),
+      dividendIncome: display.money(SAMPLE.dividendIncome, true),
+      realizedTradingPnl: display.money(SAMPLE.realizedTradingPnl, true),
+      realizedTradingReturn: display.percentage(realizedTradingReturn, 2, true)
     };
 
     document.querySelectorAll('[data-landing-metric]').forEach(function (element) {

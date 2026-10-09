@@ -58,12 +58,12 @@
                         <span class="disclosure__name" title="{{ item.portfolio.name }}">{{ item.portfolio.name }}</span>
                     </span>
 
+
                     <span class="disclosure__metrics">
                         {% call metric('Entries') %}{{ item.events|length }}{% endcall %}
-                        {% call metric('Total Capital') %}{{ money(item.total_capital) }}{% endcall %}
-                        {% call metric('Total Cash') %}{{ money(item.withdrawable_cash) }}{% endcall %}
-                        {% call metric('Positions') %}{{ money(item.positions) }}{% endcall %}
-                        {% call metric('Book Value') %}{{ money(item.book_value) }}{% endcall %}
+                        {% call metric('Net Contributions') %}{{ money(item.net_contributions) }}{% endcall %}
+                        {% call metric('Cash') %}{{ money(item.cash_balance) }}{% endcall %}
+                        {% call metric('Cost Basis') %}{{ money(item.position_cost_basis) }}{% endcall %}
                     </span>
                 </button>
 
@@ -88,10 +88,15 @@
                     <li>
                         <button type="button" class="dropdown-item js-withdraw-funds-btn"
                                 data-portfolio-id="{{ item.portfolio.id }}"
-                                data-name="{{ item.portfolio.name|e }}"
-                                data-withdrawable-cash-input="{{ item.withdrawable_cash|fmt_money }}">
+                                data-name="{{ item.portfolio.name|e }}">
                             {{ icon('arrow-up-circle') }}
                             <span>Withdraw</span>
+                        </button>
+                    </li>
+                    <li>
+                        <button type="button" class="dropdown-item" data-transfer-action="create"
+                                data-transfer='{{ {"source_portfolio_id": item.portfolio.id}|tojson|e }}'>
+                            {{ icon('arrows-exchange') }}<span>Transfer</span>
                         </button>
                     </li>
                     <li><hr class="dropdown-divider"></li>
@@ -107,12 +112,12 @@
                 </div>
             </div>
 
-            <!-- Capital log (collapsed by default) -->
+            <!-- Funding log (collapsed by default) -->
             <div class="disclosure__panel portfolio-cash-events" id="{{ panel_id }}" hidden>
                     {% if item.events %}
                     <div class="table-responsive">
                         <table class="table records-table records-table--portfolio-events">
-                            <caption class="visually-hidden">Capital Events for {{ item.portfolio.name }}</caption>
+                            <caption class="visually-hidden">Entries for {{ item.portfolio.name }}</caption>
                             <colgroup>
                                 <col class="records-col records-col--date">
                                 <col class="records-col records-col--type">
@@ -135,6 +140,7 @@
                                     <td class="records-cell"><small>{{ event.date_short }}</small></td>
                                     <td class="records-cell">
                                         {{ record_type(event.event_type) }}
+                                        {% if event.transfer %}<small class="d-block text-muted text-truncate" title="{{ event.counterparty }}">{{ event.counterparty }}</small>{% endif %}
                                     </td>
                                     <td class="records-cell records-cell--number">
                                         {{ money(event.amount_delta, tone='sign', signed=true) }}
@@ -147,12 +153,19 @@
                                         <div class="row-actions">
                                             {% set event_label = event.event_type %}
                                             {% call action_menu('Actions for ' ~ event_label ~ ' entry on ' ~ event.date_short, small=true) %}
+                                            {% if event.transfer %}
+                                            <li><button type="button" class="dropdown-item" data-transfer-action="edit"
+                                                        data-transfer='{{ event.transfer|tojson|e }}'>{{ icon('edit') }}<span>Edit</span></button></li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li><button type="button" class="dropdown-item dropdown-item--danger" data-transfer-action="delete"
+                                                        data-transfer='{{ {"id": event.id}|tojson|e }}'>{{ icon('trash') }}<span>Remove</span></button></li>
+                                            {% else %}
                                             <li>
                                                 <button type="button" class="dropdown-item js-edit-portfolio-event-btn"
                                                     data-event='{{ {
                                                         "id": event.id,
                                                         "type": event.event_type,
-                                                        "amount": ("%.2f"|format(event.amount_delta|abs)),
+                                                        "amount": (event.amount_delta|abs|decimal_text),
                                                         "notes": (event.notes or ""),
                                                         "date": event.date_short
                                                     }|tojson|e }}'>
@@ -169,6 +182,7 @@
                                                     <span>Remove</span>
                                                 </button>
                                             </li>
+                                            {% endif %}
                                             {% endcall %}
                                         </div>
                                     </td>
@@ -178,7 +192,7 @@
                         </table>
                     </div>
                     <div class="pagination-bar" id="pgbar-ev-{{ item.portfolio.id }}"
-                         data-pagination-label="Capital Entries for {{ item.portfolio.name }}" hidden></div>
+                         data-pagination-label="Entries for {{ item.portfolio.name }}" hidden></div>
                     {% else %}
                     <p class="inline-empty">No entries yet. Use Deposit to add funds.</p>
                     {% endif %}
@@ -192,7 +206,7 @@
 
     {% else %}
     {% call empty_state('folder-plus', 'No Portfolios Yet',
-        'Create your first portfolio to start recording capital entries and asset activity.') %}
+        'Create your first portfolio to start recording funding entries and asset activity.') %}
         <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newPortfolioModal">
             {{ icon('plus') }}
             <span>Create Portfolio</span>
@@ -202,12 +216,15 @@
 
 </div>
 
+{% include 'partials/transfer_modals.html' %}
+
 <!-- ── Deposit Modal ───────────────────────────────────────────────── -->
 <div class="modal fade" id="depositFundsModal" tabindex="-1" aria-labelledby="depositFundsModalTitle">
     <div class="modal-dialog">
         <div class="modal-content">
             <form method="POST" id="depositFundsForm" autocomplete="off" novalidate>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="mutation_token" value="{{ mutation_token() }}">
                 <input type="hidden" name="user_timezone" value="">
                 <div class="modal-header">
                     <h5 class="modal-title" id="depositFundsModalTitle">Deposit</h5>
@@ -267,6 +284,7 @@
         <div class="modal-content">
             <form method="POST" id="withdrawFundsForm" autocomplete="off" novalidate>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="mutation_token" value="{{ mutation_token() }}">
                 <input type="hidden" name="user_timezone" value="">
                 <div class="modal-header">
                     <h5 class="modal-title" id="withdrawFundsModalTitle">Withdraw</h5>
@@ -331,6 +349,7 @@
         <div class="modal-content">
             <form method="POST" action="{{ url_for('portfolios.portfolios_add') }}" autocomplete="off" novalidate>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="mutation_token" value="{{ mutation_token() }}">
                 <div class="modal-header">
                     <h5 class="modal-title" id="newPortfolioModalTitle">New Portfolio</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -369,6 +388,7 @@
         <div class="modal-content">
             <form method="POST" id="renamePortfolioForm" autocomplete="off" novalidate>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="mutation_token" value="{{ mutation_token() }}">
                 <div class="modal-header">
                     <h5 class="modal-title" id="renamePortfolioModalTitle">Rename Portfolio</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -406,6 +426,7 @@
         <div class="modal-content">
             <form method="POST" id="deletePortfolioForm" novalidate>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="mutation_token" value="{{ mutation_token() }}">
                 <div class="modal-header">
                     <h5 class="modal-title" id="deletePortfolioModalTitle">
                         {{ icon('trash', class='modal-title-icon') }}
@@ -438,9 +459,10 @@
         <div class="modal-content">
             <form method="POST" id="editPortfolioEventForm" autocomplete="off" novalidate>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="mutation_token" value="{{ mutation_token() }}">
                 <input type="hidden" name="user_timezone" value="">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="editPortfolioEventModalTitle">Edit Capital Entry</h5>
+                    <h5 class="modal-title" id="editPortfolioEventModalTitle">Edit Funding Entry</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
@@ -507,10 +529,11 @@
         <div class="modal-content">
             <form method="POST" id="deletePortfolioEventForm" novalidate>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="mutation_token" value="{{ mutation_token() }}">
                 <div class="modal-header">
                     <h5 class="modal-title" id="deletePortfolioEventModalTitle">
                         {{ icon('trash', class='modal-title-icon') }}
-                        Remove Capital Entry
+                        Remove Funding Entry
                     </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
@@ -518,7 +541,7 @@
                     <p id="deletePortfolioEventDescription">Remove this <span class="text-emphasis" id="delete_event_type_name"></span> entry?</p>
                     <div class="alert alert-warning mb-0">
                         {{ icon('alert-triangle') }}
-                        This will reverse the effect on portfolio capital and cash.
+                        This will reverse the effect on Net Contributions and Cash.
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -720,7 +743,7 @@ function withdrawFunds(id, name, opts) {
     opts = opts || {};
     document.getElementById('withdrawFundsForm').action = `/portfolios/withdraw/${id}`;
     document.getElementById('withdraw_portfolio_name').value = name || '';
-    document.getElementById('withdraw_max_btn').dataset.maxAmount = opts.withdrawableCashInput || '';
+    document.getElementById('withdraw_max_btn').dataset.portfolioId = String(id);
     document.getElementById('withdraw_funds_amount').value = (opts.amount != null ? String(opts.amount) : '');
     document.getElementById('withdraw_date').value = (opts.date || todayStr());
     document.getElementById('withdraw_funds_notes').value = (opts.notes || '');
@@ -732,12 +755,33 @@ function withdrawFunds(id, name, opts) {
     const amountInput = document.getElementById('withdraw_funds_amount');
     if (!btn || !amountInput) return;
 
-    btn.addEventListener('click', function() {
-        const maxAmount = btn.dataset.maxAmount || '';
-        if (!maxAmount) return;
-        amountInput.value = maxAmount;
-        amountInput.dispatchEvent(new Event('input'));
+    btn.addEventListener('click', async function() {
+        const dateInput = document.getElementById('withdraw_date');
+        const date = dateInput.value;
+        const portfolioId = btn.dataset.portfolioId;
+        btn.disabled = true;
+        try {
+            const params = new URLSearchParams({date, user_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone});
+            const response = await fetch(`/portfolios/withdrawal-max/${portfolioId}?${params}`, {cache: 'no-store'});
+            const result = await response.json();
+            // A response for another date/portfolio must never populate this form.
+            if (dateInput.value !== date || btn.dataset.portfolioId !== portfolioId) return;
+            if (!response.ok || !result.success) {
+                amountInput.setCustomValidity(Object.values(result.errors || {}).join(' ') || 'Unable to calculate Max.');
+                amountInput.reportValidity();
+                return;
+            }
+            amountInput.setCustomValidity('');
+            amountInput.value = result.amount;
+            amountInput.dispatchEvent(new Event('input'));
+        } catch (error) {
+            amountInput.setCustomValidity('Unable to calculate Max. Please try again.');
+            amountInput.reportValidity();
+        } finally {
+            btn.disabled = false;
+        }
     });
+    amountInput.addEventListener('input', () => amountInput.setCustomValidity(''));
 })();
 
 function deletePortfolio(id, name) {
@@ -790,7 +834,6 @@ function deletePortfolioEvent(id, type) {
                     amount: {{ (_with_vals.get('amount_delta', '') if form_values and form_values.get('portfolios_withdraw') else '') | tojson }},
                     date:   {{ (_with_vals.get('withdraw_date', '') if form_values and form_values.get('portfolios_withdraw') else '') | tojson }},
                     notes:  {{ (_with_vals.get('notes', '') if form_values and form_values.get('portfolios_withdraw') else '') | tojson }},
-                    withdrawableCashInput: payload.withdrawable_cash_input || '',
                 });
             }
             if (which === 'newPortfolioModal') {
@@ -845,10 +888,7 @@ function deletePortfolioEvent(id, type) {
             ev.preventDefault(); ev.stopPropagation(); ev.stopImmediatePropagation();
             const id = parseInt(withBtn.getAttribute('data-portfolio-id') || '0', 10);
             const name = withBtn.getAttribute('data-name') || '';
-            const withdrawableCashInput = withBtn.getAttribute('data-withdrawable-cash-input') || '';
-            if (id) withdrawFunds(id, name, {
-                withdrawableCashInput: withdrawableCashInput,
-            });
+            if (id) withdrawFunds(id, name);
             return;
         }
 
@@ -890,4 +930,5 @@ function deletePortfolioEvent(id, type) {
    construction over the same element leaves an orphaned instance with live
    listeners, so pages do not mount their own. #}
 </script>
+<script src="{{ url_for('static', filename='js/portfolio_transfers.js', v=ASSET_VERSION) }}"></script>
 {% endblock %}

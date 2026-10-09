@@ -287,13 +287,13 @@ def test_capital_era_replay_carries_every_owned_row_through_the_renames(tmp_path
         app,
         'SELECT id, portfolio_id, event_type, amount_delta, notes '
         'FROM portfolio_event',
-    ) == [(1, 1, 'Deposit', 5000, 'seed capital')]
+    ) == [(1, 1, 'Deposit', '5000', 'seed capital')]
     # transaction.total_cost → net_amount, capital_id → portfolio_id.
     assert _rows(
         app,
         'SELECT id, portfolio_id, transaction_type, symbol, price, quantity, '
-        'net_amount, average_cost, notes FROM "transaction"',
-    ) == [(1, 1, 'Buy', 'AAPL', 100, 10, 1000, 100, 'opening buy')]
+        'fees, notes FROM "transaction"',
+    ) == [(1, 1, 'Buy', 'AAPL', '100', '10', '0', 'opening buy')]
     # asset → symbol, capital_id → portfolio_id.
     assert _rows(app, 'SELECT id, portfolio_id, symbol FROM symbol') == [
         (1, 1, 'AAPL'),
@@ -380,19 +380,19 @@ def test_fund_era_replay_carries_every_owned_row_through_the_renames(tmp_path):
         app,
         'SELECT id, portfolio_id, event_type, amount_delta, notes '
         'FROM portfolio_event',
-    ) == [(1, 1, 'Deposit', 5000, 'seed capital')]
+    ) == [(1, 1, 'Deposit', '5000', 'seed capital')]
     assert _rows(
         app,
         'SELECT id, portfolio_id, transaction_type, symbol, price, quantity, '
-        'net_amount, average_cost, notes FROM "transaction"',
-    ) == [(1, 1, 'Buy', 'AAPL', 100, 10, 1000, 100, 'opening buy')]
+        'fees, notes FROM "transaction"',
+    ) == [(1, 1, 'Buy', 'AAPL', '100', '10', '0', 'opening buy')]
     assert _rows(app, 'SELECT id, portfolio_id, symbol FROM symbol') == [
         (1, 1, 'AAPL'),
     ]
     # This era already had the per-symbol column, so the income row survives.
     assert _rows(
         app, 'SELECT id, portfolio_id, symbol, amount, notes FROM dividend'
-    ) == [(1, 1, 'AAPL', 75, 'q1')]
+    ) == [(1, 1, 'AAPL', '75', 'q1')]
 
 
 def test_fund_era_second_boot_changes_nothing(tmp_path):

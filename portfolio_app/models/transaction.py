@@ -1,10 +1,10 @@
 """Transaction model for buy/sell operations."""
 
 from datetime import datetime, timezone
-from decimal import Decimal
-from sqlalchemy import Numeric, CheckConstraint
+from sqlalchemy import CheckConstraint
 from portfolio_app import db
-from portfolio_app.utils.decimal_utils import ZERO, safe_divide
+from portfolio_app.utils.decimal_utils import decimal_text
+from portfolio_app.utils.exact_decimal import ExactDecimalText
 
 
 class Transaction(db.Model):
@@ -20,13 +20,9 @@ class Transaction(db.Model):
     )
     transaction_type = db.Column(db.String(10), nullable=False)  # 'Buy' or 'Sell'
     symbol = db.Column(db.String(20), nullable=True)
-    # Higher precision to support crypto-style pricing (e.g. 0.0002344)
-    price = db.Column(Numeric(20, 10), nullable=False)
-    quantity = db.Column(Numeric(20, 10), nullable=False)
-    fees = db.Column(Numeric(20, 10), nullable=False, default=0)
-    # Buy: gross + fees  |  Sell: gross - fees
-    net_amount = db.Column(Numeric(20, 10), nullable=False, default=0)
-    average_cost = db.Column(Numeric(20, 10), nullable=False, default=0)
+    price = db.Column(ExactDecimalText(), nullable=False)
+    quantity = db.Column(ExactDecimalText(), nullable=False)
+    fees = db.Column(ExactDecimalText(), nullable=False, default=0, server_default='0')
     date = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     notes = db.Column(db.Text, nullable=True)
 
@@ -43,67 +39,35 @@ class Transaction(db.Model):
         return self.date.strftime('%Y-%m-%d %H:%M')
 
     __table_args__ = (
-        CheckConstraint('price > 0', name='check_price_positive'),
-        CheckConstraint('quantity > 0', name='check_quantity_positive'),
-        CheckConstraint('fees >= 0', name='check_fees_non_negative'),
-        CheckConstraint('net_amount >= 0', name='check_net_amount_non_negative'),
+        CheckConstraint("typeof(price) = 'text'", name='check_price_text'),
+        CheckConstraint("typeof(quantity) = 'text'", name='check_quantity_text'),
+        CheckConstraint("typeof(fees) = 'text'", name='check_fees_text'),
     )
 
-    def calculate_net_amount(self):
-        """Calculate and store net_amount from price, quantity, and fees.
+    def to_dict(self, *, projection, portfolio_name):
+        """Serialize with explicit canonical history context, never legacy fields.
 
-        Buy:  net_amount = (price × quantity) + fees
-        Sell: net_amount = (price × quantity) - fees
+        Callers reuse the asset snapshot's projection map and portfolio name for
+        all rows. No query or replay occurs here. The snapshot must be fresh for
+        these records; it is a point-in-time read model, not a persistent cache.
         """
-        price = Decimal(str(self.price))
-        quantity = Decimal(str(self.quantity))
-        fees = Decimal(str(self.fees))
-        gross = price * quantity
-
-        if self.transaction_type == 'Sell':
-            self.net_amount = gross - fees
-        else:  # Buy
-            self.net_amount = gross + fees
-
-    @property
-    def net_pnl(self):
-        """Fee-adjusted realized P&L for a Sell row; blank for Buys."""
-        if self.transaction_type != 'Sell':
-            return None
-
-        price = Decimal(str(self.price))
-        quantity = Decimal(str(self.quantity))
-        fees = Decimal(str(self.fees))
-        average_cost = Decimal(str(self.average_cost))
-        return ((price - average_cost) * quantity) - fees
-
-    @property
-    def net_pnl_percent(self):
-        """Fee-adjusted realized return for a Sell row; blank for Buys."""
-        if self.transaction_type != 'Sell':
-            return None
-
-        quantity = Decimal(str(self.quantity))
-        average_cost = Decimal(str(self.average_cost))
-        base = average_cost * quantity
-        return safe_divide(self.net_pnl, base) * Decimal('100') if base != ZERO else None
-
-    def to_dict(self):
-        net_pnl = self.net_pnl
-        net_pnl_percent = self.net_pnl_percent
+        if projection.transaction_id != self.id or projection.portfolio_id != self.portfolio_id:
+            raise ValueError('Projection does not belong to this transaction.')
+        realized_trading_pnl = projection.realized_trading_pnl
+        realized_trading_return = projection.realized_trading_return
         return {
             'id': self.id,
             'portfolio_id': self.portfolio_id,
-            'portfolio_name': self.portfolio.name,
+            'portfolio_name': portfolio_name,
             'transaction_type': self.transaction_type,
             'symbol': (self.symbol or '').upper(),
-            'price': str(self.price),
-            'quantity': str(self.quantity),
-            'fees': str(self.fees),
-            'net_amount': str(self.net_amount),
-            'average_cost': str(self.average_cost),
-            'net_pnl': str(net_pnl) if net_pnl is not None else None,
-            'net_pnl_percent': str(net_pnl_percent) if net_pnl_percent is not None else None,
+            'price': decimal_text(self.price),
+            'quantity': decimal_text(self.quantity),
+            'fees': decimal_text(self.fees),
+            'transaction_amount': decimal_text(projection.transaction_amount),
+            'applicable_average_unit_cost': decimal_text(projection.applicable_average_unit_cost),
+            'realized_trading_pnl': decimal_text(realized_trading_pnl) if realized_trading_pnl is not None else None,
+            'realized_trading_return': decimal_text(realized_trading_return) if realized_trading_return is not None else None,
             'date': self.date.strftime('%Y-%m-%d %H:%M'),
             'date_short': self.date.strftime('%b %d, %Y'),
             'date_full': self.date.strftime('%B %d, %Y at %H:%M'),

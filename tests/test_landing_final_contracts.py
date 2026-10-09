@@ -57,9 +57,9 @@ def test_preview_composes_authenticated_overview_contracts():
     assert 'lp-shot__chrome' not in TEMPLATE + CSS
     assert TEMPLATE.count('fact supporting-item') == 4
     assert 'Book Value' in TEMPLATE
-    assert 'Total Capital' in TEMPLATE
-    assert 'Total Cash' in TEMPLATE
-    assert 'Total Income' in TEMPLATE
+    assert 'Net Contributions' in TEMPLATE
+    assert 'Cash' in TEMPLATE
+    assert 'Dividends' in TEMPLATE
     assert 'Realized P&amp;L' in TEMPLATE
     assert 'num--income' in TEMPLATE
     assert 'num--pos' in TEMPLATE
@@ -115,7 +115,7 @@ def test_informational_cards_are_shared_neutral_noninteractive_surfaces():
 def test_copy_is_title_case_and_avoids_unsupported_claims():
     expected = (
         'How It Works', 'What It Isn’t', 'Manual by Design',
-        'Cash Stays Visible', 'Average Cost, Done Properly',
+        'Cash Stays Visible', 'Avg. Cost, Done Properly',
         'Book Value, Not Guesswork', 'Create Your Portfolios',
         'Record as You Go', 'Read the Results',
         'Start With Your Own Numbers',
@@ -142,7 +142,7 @@ def test_landing_remains_synthetic_and_has_no_private_data_path():
         assert forbidden not in combined
     assert 'var SAMPLE = {' in SCRIPT
     assert "total('bookValue')" in SCRIPT
-    assert "total('capital')" in SCRIPT
+    assert "total('netContributions')" in SCRIPT
 
 
 def test_responsive_contracts_prevent_fixed_width_overflow():

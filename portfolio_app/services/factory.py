@@ -10,6 +10,7 @@ from portfolio_app.models import (
     Transaction,
     Symbol,
     Dividend,
+    PortfolioTransfer,
 )
 from portfolio_app.models.user import User
 from portfolio_app.repositories import (
@@ -29,6 +30,9 @@ from portfolio_app.services.portfolio_service import PortfolioService
 from portfolio_app.services.transaction_service import TransactionService
 from portfolio_app.services.overview_service import OverviewService
 from portfolio_app.services.auth_service import AuthService
+from portfolio_app.services.transfer_service import TransferService
+from portfolio_app.repositories.portfolio_transfer_repository import PortfolioTransferRepository
+from portfolio_app.repositories.financial_audit_repository import FinancialAuditRepository
 
 
 class Services:
@@ -40,14 +44,19 @@ class Services:
         'auth_challenge_repo',
         'portfolio_service', 'transaction_service', 'overview_service',
         'auth_service',
+        'transfer_repo', 'transfer_service',
+        'audit_repo',
     )
 
     def __init__(self, user_id: Optional[int] = None):
         self.portfolio_repo = PortfolioRepository(Portfolio, db, user_id=user_id)
+        self.audit_repo = FinancialAuditRepository(user_id)
         self.portfolio_event_repo = PortfolioEventRepository(PortfolioEvent, db, user_id=user_id)
         self.transaction_repo = TransactionRepository(Transaction, db, user_id=user_id)
         self.symbol_repo = SymbolRepository(Symbol, db, user_id=user_id)
         self.dividend_repo = DividendRepository(Dividend, db, user_id=user_id)
+        self.transfer_repo = PortfolioTransferRepository(PortfolioTransfer, db, user_id=user_id)
+        self.transfer_service = TransferService(self.portfolio_repo, self.transfer_repo)
         self.user_repo = UserRepository(User, db)
         self.pending_registration_repo = PendingRegistrationRepository(PendingRegistration, db)
         self.auth_challenge_repo = AuthChallengeRepository(AuthChallenge, db)

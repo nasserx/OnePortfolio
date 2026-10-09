@@ -1,36 +1,40 @@
 # OnePortfolio
 
-OnePortfolio is a Flask web app for manual portfolio record keeping. It tracks portfolios, capital entries, assets, buy/sell asset entries, and income records from data you enter yourself.
+OnePortfolio is a Flask web app for manual portfolio record keeping. It tracks portfolios, funding entries, assets, buy/sell asset entries, and Dividend Income records from data you enter yourself.
 
 It does not fetch live prices, calculate market value, calculate unrealized P&L, connect to brokers, or provide financial advice.
+
+OnePortfolio models a cash account, not margin or borrowing. Recorded funding must
+cover purchases and withdrawals at each effective day's close; same-day inflows
+and outflows are netted because execution times and settlement are not modeled.
+Legacy cash deficits remain visible and repairable. See the
+[cash-account policy](docs/FINANCIAL_READ_MODEL.md#cash-account-policy).
 
 ## What It Tracks
 
 - **Portfolios**: user-defined buckets such as Stocks, ETFs, Gold, or any other name.
-- **Capital entries**: deposits and withdrawals.
+- **Funding Entries**: deposits and withdrawals.
+- **Internal Transfers**: linked cash movements between your portfolios; excluded
+  from Net Contributions and Realized Return, with no currency conversion.
 - **Assets**: symbols tracked inside a portfolio.
 - **Asset entries**: buy and sell records with price, quantity, fees, date, and notes.
-- **Income**: income records attributed to an asset symbol.
+- **Dividend Income**: dividend/distribution income attributed to an asset symbol.
 
-## Current Terminology
+## Financial terminology
 
-- **TOTAL CAPITAL** = deposits - withdrawals.
-- **TOTAL CASH** = available cash.
-- **POSITIONS** = recorded cost basis of current positions.
-- **BOOK VALUE** = total cash + recorded cost basis of current positions.
-- **TOTAL INCOME** = income records.
-- **REALIZED P&L** = profit or loss from completed sales using the Average Cost Method and sell fees.
-- **RETURN** includes realized P&L plus income.
-
-For exact formulas, see [docs/DOMAIN_AND_CALCULATIONS.md](docs/DOMAIN_AND_CALCULATIONS.md).
+See the [canonical financial glossary](docs/DOMAIN_AND_CALCULATIONS.md) for all
+names and formulas. Book Value is cost-based. Realized Trading Return excludes
+Dividend Income, funding flows and open Position Cost Basis. Total Realized
+Earnings is monetary, not a percentage. No market performance, TWR, MWR or XIRR
+is implemented.
 
 ## Features
 
 - Manual multi-portfolio tracking.
-- Capital entry log with deposits and withdrawals.
+- Funding entry log with deposits and withdrawals.
 - Asset list with buy and sell entries.
 - Average Cost Method calculations for open positions and sells.
-- Separate income tracking.
+- Separate Dividend Income tracking.
 - Overview totals, portfolio summaries, assets page, and Overview allocation charts based on recorded data.
 - Multi-user accounts with per-user data scoping.
 - Passwordless email-code login, registration, and account settings.
@@ -146,6 +150,7 @@ OnePortfolio/
 
 - [Domain and calculations](docs/DOMAIN_AND_CALCULATIONS.md)
 - [Architecture](docs/ARCHITECTURE.md)
+- [Financial read models](docs/FINANCIAL_READ_MODEL.md)
 - [Development](docs/DEVELOPMENT.md)
 - [Design system](docs/DESIGN_SYSTEM.md)
 - [Migrations](docs/MIGRATIONS.md)
@@ -153,12 +158,19 @@ OnePortfolio/
 ## Testing
 
 ```bash
+python -m pip install -r requirements-dev.txt
 python -m pytest -v
 python -m compileall portfolio_app
-git diff --check
 ```
 
-Tests live in `tests/`.
+Tests live in `tests/` and use isolated databases. See
+[Development](docs/DEVELOPMENT.md#validation-commands) for all JavaScript assertion
+and syntax checks. Node.js is needed for those checks, not for application runtime.
+
+The current SQLite schema is 40. Its account-lifetime session identities
+intentionally invalidate pre-upgrade login cookies; existing users sign in again.
+See [Migrations](docs/MIGRATIONS.md#schema-40-account-lifetime-session-identity)
+for deployment compatibility and upgrade guarantees.
 
 ## Deployment Notes
 

@@ -8,7 +8,7 @@ from portfolio_app import db
 # Bumped whenever a new migration step is added below. Stored in the SQLite
 # header (PRAGMA user_version) after a successful migration so subsequent
 # boots can short-circuit the whole inspection pass.
-TARGET_SCHEMA_VERSION = 35
+TARGET_SCHEMA_VERSION = 40
 
 # Sidecar file that carries the startup schema lock, derived from the
 # application database path (``portfolio.db`` → ``portfolio.db.schema-lock``).
@@ -221,7 +221,11 @@ def _run_migration_pass(app):
             # PRAGMA reaches SQLite while it's still in autocommit mode.
             raw_conn.execute('PRAGMA foreign_keys=OFF')
             try:
-                _apply_migration_steps(conn, sa)
+                if current_version < 39:
+                    _apply_migration_steps(conn, sa)
+                    _migrate_mutation_receipts(conn, sa)
+                    _migrate_financial_audit(conn, sa)
+                _migrate_session_identity(conn, sa)
                 # End any residual migration transaction before changing the
                 # connection-level FK pragma. Individual historical steps may
                 # commit earlier, but inspection-only work can autobegin again.
@@ -240,6 +244,32 @@ def _run_migration_pass(app):
 
             # Mark this DB as up-to-date so future boots skip everything above.
             raw_conn.execute(f'PRAGMA user_version = {TARGET_SCHEMA_VERSION}')
+
+
+def _migrate_session_identity(conn, sa):
+    """Schema 40: additive account identities; no financial/history rewrites."""
+    from secrets import token_hex
+    if 'user' not in sa.inspect(conn).get_table_names():
+        return  # Fresh installations use the final User model.
+    conn.commit()
+    conn.exec_driver_sql('BEGIN IMMEDIATE')
+    try:
+        columns = {column['name'] for column in sa.inspect(conn).get_columns('user')}
+        if 'session_identity' not in columns:
+            # SQLite requires a constant default for an additive NOT NULL column.
+            # Empty is deliberately not an accepted login identity; application
+            # inserts supply a cryptographically random value via the ORM.
+            conn.exec_driver_sql("ALTER TABLE user ADD COLUMN session_identity VARCHAR(64) NOT NULL DEFAULT ''")
+        rows = conn.exec_driver_sql("SELECT id FROM user WHERE session_identity = ''").all()
+        for (identifier,) in rows:
+            conn.execute(sa.text('UPDATE user SET session_identity = :identity WHERE id = :id'),
+                         {'identity': token_hex(32), 'id': identifier})
+        conn.exec_driver_sql('CREATE UNIQUE INDEX IF NOT EXISTS ix_user_session_identity ON user (session_identity)')
+        conn.exec_driver_sql('PRAGMA user_version = 40')
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
 
 
 class _LiveInspector:
@@ -280,6 +310,19 @@ class _LiveInspector:
 
 
 def _apply_migration_steps(conn, sa):
+    if conn.exec_driver_sql('PRAGMA user_version').scalar() == 38:
+        return  # Only the append-only financial audit schema is new.
+    if conn.exec_driver_sql('PRAGMA user_version').scalar() == 37:
+        return  # Only the additive mutation-receipt step is needed.
+    if conn.exec_driver_sql('PRAGMA user_version').scalar() == 36:
+        _migrate_portfolio_transfers(conn, sa)
+        return
+    # Current-schema upgrades need only the atomic forward step. Do not replay
+    # historical commits (or auth/data cleanup) across this financial boundary.
+    if conn.exec_driver_sql('PRAGMA user_version').scalar() == 35:
+        _migrate_exact_decimal_storage(conn, sa)
+        _migrate_portfolio_transfers(conn, sa)
+        return
     inspector = _LiveInspector(conn, sa)
     tables = set(inspector.get_table_names())
 
@@ -849,6 +892,199 @@ def _apply_migration_steps(conn, sa):
     # Pending registrations are safe to reshape only when no live staged
     # signup would be discarded; expired rows carry no usable credential.
     _cut_over_passwordless_auth(conn, sa)
+
+    # Step 36: preserve application-observed Decimals as exact TEXT and remove
+    # obsolete transaction derivatives. This forward step has its own atomic
+    # boundary; historical steps retain their existing commit conventions.
+    _migrate_exact_decimal_storage(conn, sa)
+
+
+    # Step 37: one linked cash transfer; existing financial facts are untouched.
+    _migrate_portfolio_transfers(conn, sa)
+
+
+def _migrate_financial_audit(conn, sa):
+    """Atomic additive schema 39, including append-only triggers."""
+    from portfolio_app.models.financial_audit import FinancialAudit
+    if 'user' not in sa.inspect(conn).get_table_names():
+        return
+    conn.commit()
+    conn.exec_driver_sql('BEGIN IMMEDIATE')
+    try:
+        FinancialAudit.__table__.create(conn, checkfirst=True)
+        conn.exec_driver_sql('PRAGMA user_version = 39')
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+
+
+def _migrate_mutation_receipts(conn, sa):
+    """Atomic additive revision 38; financial rows are never rewritten."""
+    from portfolio_app.models.mutation_receipt import MutationReceipt
+    if 'user' not in sa.inspect(conn).get_table_names():
+        return  # Fresh databases use final models through create_all.
+    conn.commit()
+    conn.exec_driver_sql('BEGIN IMMEDIATE')
+    try:
+        MutationReceipt.__table__.create(conn, checkfirst=True)
+        conn.exec_driver_sql('PRAGMA user_version = 38')
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+
+
+def _migrate_portfolio_transfers(conn, sa):
+    """Forward-only, atomic table/index creation; no historical cash conversion."""
+    from portfolio_app.models.portfolio_transfer import PortfolioTransfer
+    if 'portfolio' not in sa.inspect(conn).get_table_names():
+        return  # Empty installs use the same final model through create_all.
+    conn.commit()
+    conn.exec_driver_sql('BEGIN IMMEDIATE')
+    try:
+        PortfolioTransfer.__table__.create(conn, checkfirst=True)
+        if conn.exec_driver_sql('PRAGMA foreign_key_check(portfolio_transfer)').fetchall():
+            raise RuntimeError('Invalid portfolio transfer foreign keys')
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+
+
+def _migrate_exact_decimal_storage(conn, sa):
+    """Atomically rebuild all financial tables from legacy ORM-observed values.
+
+    Numeric's result processor is the *old reader*, not a new float round trip.
+    A SQLite REAL may already be inexact; decoding it exactly as the old ORM did
+    is essential. Casting to TEXT in SQL would instead change observed values.
+    After this one legacy decode, only Decimal -> canonical text is used.
+    """
+    import re
+    from decimal import Decimal
+    from portfolio_app.utils.exact_decimal import canonical_decimal_text
+
+    specs = {
+        'transaction': (
+            {'price': 10, 'quantity': 10, 'fees': 10},
+            ['id', 'portfolio_id', 'transaction_type', 'symbol', 'price', 'quantity', 'fees', 'date', 'notes'],
+            '''id INTEGER NOT NULL PRIMARY KEY,
+               portfolio_id INTEGER NOT NULL REFERENCES portfolio(id) ON DELETE CASCADE,
+               transaction_type VARCHAR(10) NOT NULL, symbol VARCHAR(20),
+               price TEXT NOT NULL, quantity TEXT NOT NULL, fees TEXT NOT NULL DEFAULT '0',
+               date DATETIME, notes TEXT,
+               CONSTRAINT check_price_text CHECK (typeof(price) = 'text'),
+               CONSTRAINT check_quantity_text CHECK (typeof(quantity) = 'text'),
+               CONSTRAINT check_fees_text CHECK (typeof(fees) = 'text')''',
+        ),
+        'dividend': (
+            {'amount': 10},
+            ['id', 'portfolio_id', 'symbol', 'amount', 'date', 'notes', 'created_at'],
+            '''id INTEGER NOT NULL PRIMARY KEY,
+               portfolio_id INTEGER NOT NULL REFERENCES portfolio(id) ON DELETE CASCADE,
+               symbol VARCHAR(20) NOT NULL, amount TEXT NOT NULL, date DATETIME NOT NULL,
+               notes TEXT, created_at DATETIME NOT NULL,
+               CONSTRAINT check_dividend_amount_text CHECK (typeof(amount) = 'text')''',
+        ),
+        'portfolio_event': (
+            {'amount_delta': 2},
+            ['id', 'portfolio_id', 'event_type', 'amount_delta', 'date', 'notes'],
+            '''id INTEGER NOT NULL PRIMARY KEY,
+               portfolio_id INTEGER NOT NULL REFERENCES portfolio(id) ON DELETE CASCADE,
+               event_type VARCHAR(20) NOT NULL, amount_delta TEXT NOT NULL DEFAULT '0',
+               date DATETIME, notes TEXT,
+               CONSTRAINT check_amount_delta_text CHECK (typeof(amount_delta) = 'text')''',
+        ),
+    }
+    conn.commit()  # No DDL outside an explicit SQLite transaction below.
+    conn.exec_driver_sql('BEGIN IMMEDIATE')
+    try:
+        tables = set(sa.inspect(conn).get_table_names())
+        for table, (financial, columns, definition) in specs.items():
+            if table not in tables:
+                continue  # Fresh schemas are created directly from exact models.
+            info = {r[1]: r for r in conn.exec_driver_sql(f'PRAGMA table_info("{table}")')}
+            removed = {'average_cost', 'net_amount'} if table == 'transaction' else set()
+            if set(info) == set(columns) and all(info[name][2].upper() == 'TEXT' for name in financial):
+                continue
+            if set(info) != set(columns) | removed:
+                raise RuntimeError(f'Exact-decimal migration refuses unexpected columns in {table}.')
+            if any(r[3] == 'u' for r in conn.exec_driver_sql(f'PRAGMA index_list("{table}")')):
+                raise RuntimeError(f'Exact-decimal migration requires review of custom UNIQUE constraints in {table}.')
+            allowed_checks = {
+                'transaction': {'check_price_positive', 'check_quantity_positive',
+                                'check_fees_non_negative', 'check_net_amount_non_negative'},
+                'dividend': {'check_dividend_amount_positive'},
+                'portfolio_event': set(),
+            }
+            if any(check['name'] not in allowed_checks[table]
+                   for check in sa.inspect(conn).get_check_constraints(table)):
+                raise RuntimeError(f'Exact-decimal migration requires review of custom CHECK constraints in {table}.')
+            foreign_keys = conn.exec_driver_sql(f'PRAGMA foreign_key_list("{table}")').fetchall()
+            if (len(foreign_keys) != 1 or
+                    tuple(foreign_keys[0][2:8]) != ('portfolio', 'portfolio_id', 'id', 'NO ACTION', 'CASCADE', 'NONE')):
+                raise RuntimeError(f'Exact-decimal migration requires review of foreign keys in {table}.')
+            objects = conn.execute(sa.text(
+                "SELECT type, name, sql FROM sqlite_master WHERE tbl_name=:table "
+                "AND type IN ('index', 'trigger') AND sql IS NOT NULL ORDER BY name"
+            ), {'table': table}).fetchall()
+            for _, name, sql in objects:
+                if any(re.search(r'\b' + field + r'\b', sql, re.I) for field in removed):
+                    raise RuntimeError(f'Cannot drop derived column referenced by {name}; review required.')
+            existing_sql = conn.execute(sa.text(
+                "SELECT sql FROM sqlite_master WHERE type='table' AND name=:table"
+            ), {'table': table}).scalar()
+            sequence = None
+            if 'AUTOINCREMENT' in existing_sql.upper():
+                definition = definition.replace('PRIMARY KEY,', 'PRIMARY KEY AUTOINCREMENT,', 1)
+                sequence = conn.execute(sa.text('SELECT seq FROM sqlite_sequence WHERE name=:name'),
+                                        {'name': table}).scalar()
+            temporary = f'_exact36_{table}'
+            if temporary in tables:
+                raise RuntimeError(f'Unexpected migration staging table {temporary}; review required.')
+            conn.exec_driver_sql(f'CREATE TABLE "{temporary}" ({definition})')
+            names = ', '.join(f'"{column}"' for column in columns)
+            # Explicit legacy types reproduce Numeric(20,10)/Numeric(15,2)
+            # application reads. Other values (dates/notes/IDs) are copied raw.
+            source = sa.text(f'SELECT {names} FROM "{table}" ORDER BY id').columns(**{
+                name: sa.Numeric(15 if scale == 2 else 20, scale)
+                for name, scale in financial.items()
+            })
+            records = conn.execute(source)
+            copied = 0
+            insert = sa.text(f'INSERT INTO "{temporary}" ({names}) VALUES (' +
+                             ', '.join(f':{column}' for column in columns) + ')')
+            while True:
+                batch = records.fetchmany(500)
+                if not batch:
+                    break
+                values = []
+                for row in batch:
+                    item = dict(row._mapping)
+                    for name in financial:
+                        original = item[name]
+                        item[name] = canonical_decimal_text(original)
+                        if Decimal(item[name]) != original:
+                            raise RuntimeError(f'Decimal reconciliation failed: {table}.{name}')
+                    values.append(item)
+                conn.execute(insert, values)
+                copied += len(values)
+            if conn.exec_driver_sql(f'SELECT COUNT(*) FROM "{temporary}"').scalar() != copied:
+                raise RuntimeError(f'Row count reconciliation failed: {table}')
+            conn.exec_driver_sql(f'DROP TABLE "{table}"')
+            conn.exec_driver_sql(f'ALTER TABLE "{temporary}" RENAME TO "{table}"')
+            for _, _, sql in objects:
+                conn.exec_driver_sql(sql)
+            if sequence is not None:
+                conn.execute(sa.text('UPDATE sqlite_sequence SET seq=:seq WHERE name=:name'),
+                             {'seq': sequence, 'name': table})
+        if conn.exec_driver_sql('PRAGMA foreign_key_check').fetchall():
+            raise RuntimeError('Foreign-key reconciliation failed during exact-decimal migration.')
+        conn.exec_driver_sql('PRAGMA user_version = 36')
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
 
 
 def _cut_over_passwordless_auth(conn, sa):

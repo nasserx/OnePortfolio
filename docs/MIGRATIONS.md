@@ -4,7 +4,7 @@ OnePortfolio uses an in-app SQLite migration system in `portfolio_app/migrations
 
 ## Schema Version
 
-`TARGET_SCHEMA_VERSION` in `portfolio_app/migrations.py` defines the current expected SQLite schema version.
+`TARGET_SCHEMA_VERSION = 40` in `portfolio_app/migrations.py` defines the current expected SQLite schema version.
 
 Startup migration state is stored in SQLite through:
 
@@ -112,6 +112,155 @@ are removed. `db.create_all()` then creates the dedicated `auth_challenge`
 table. Legacy password reset/lockout columns and OAuth identity rows are
 preserved but have no production runtime caller, providing a bounded rollback
 window before a later separately approved destructive cleanup.
+
+## Schema 36: exact Decimal storage
+
+The forward `_migrate_exact_decimal_storage` step uses the existing startup
+schema lock/runner. A current schema-35 database goes directly to this step;
+older versions first use the unchanged historical migration sequence. Fresh
+databases receive the final models via `db.create_all()` under the same lock.
+
+| Table/column | Previous physical type | Schema 36 |
+| --- | --- | --- |
+| transaction.price, quantity, fees | NUMERIC(20,10) | TEXT, ExactDecimalText |
+| dividend.amount | NUMERIC(20,10) | TEXT, ExactDecimalText |
+| portfolio_event.amount_delta | NUMERIC(15,2) | TEXT, ExactDecimalText |
+| transaction.average_cost, net_amount | NUMERIC(20,10) | Removed |
+
+Canonical representation is ordinary decimal notation, no fractional trailing
+zeros, with every numerical zero stored as `0`. `1234567890.1234567890` stores
+as `1234567890.123456789`; `1E-11` stores as `0.00000000001`. Conversion does not
+use Decimal.normalize(), quantize(), or float. Reads expose finite Decimal;
+float binding and malformed/noncanonical stored text are rejected.
+
+For existing records, a typed SQLAlchemy SELECT uses the **old** Numeric reader
+(scale 10 for trades/income, 2 for funding). That matches the former application's
+observed Decimal. SQLite may already return a binary REAL to that legacy decoder;
+the migration neither adds a float conversion nor casts REAL to TEXT. It then
+converts the observed Decimal directly to canonical text, checks Decimal equality,
+and inserts strings into replacement tables. Original input digits already lost
+cannot be reconstructed. For example, legacy funding `0.006` observed as `0.01`
+stays `0.01`; a newly accepted `0.006` is now stored/read as exactly `0.006`.
+
+All three rebuilds plus `user_version=36` run under one explicit `BEGIN IMMEDIATE`.
+Failure rolls back this entire forward step. Historical earlier revisions retain
+their original per-step commits, so an upgrade starting before 35 is not claimed
+to be one atomic transaction. The runner restores FK enforcement after success
+or failure. IDs, row metadata, foreign keys/cascades, explicit indexes/triggers,
+and AUTOINCREMENT high-water marks are preserved; row counts and foreign keys
+are checked before commit. Unexpected columns, custom CHECK/UNIQUE constraints,
+foreign keys or derivative-dependent indexes/triggers stop for manual review.
+
+The old numeric positivity CHECKs would be misleading over TEXT. They are removed
+and replaced by `typeof(column)='text'` plus existing NOT NULL. Trade price/quantity
+positivity, fee nonnegativity and income positivity are enforced by forms/services;
+sale-fee/quantity/cash guards remain. Funding sign policy is unchanged. The type
+enforces finite exact representation, not business sign rules. Raw SQL bypasses
+the parser and must not be treated as a supported financial write boundary.
+
+No financial SQL SUM/AVG, numeric ordering, comparison, or CAST-to-REAL is used on
+these columns. Canonical loaders sum individual Decimal values in Python. Exact
+storage is independent of calculation and UI display precision. At schema 36's
+introduction the calculation context was still 28 digits; the current operand-sized
+arithmetic contract is documented in [Financial read models](FINANCIAL_READ_MODEL.md#phase-7-three-independent-precision-layers).
+
+Validation uses only disposable databases. `tests/test_exact_decimal_storage.py`
+compares legacy-decoded raw rows, every canonical asset/row/portfolio/global
+snapshot and return before/after upgrade, including BTC and corrupted derivatives;
+also tests physical TEXT, high precision, final schema, rollback and FK cascades.
+Before production deployment, back up the database and reconcile a disposable
+copy. This change does not migrate the developer's working `portfolio.db`.
+Rollback to older application code requires restoring a schema-35 backup, not
+running the old Numeric models against schema 36. A down-migration would be lossy
+for newly accepted precision and is deliberately not provided.
+
+## Schema 40: account-lifetime session identity
+
+Adds `user.session_identity` (64-character cryptographically random identity)
+and its unique index. The additive, writer-reserved step preserves numeric IDs,
+financial records, mutation receipts, audit records, and authentication generation.
+Existing accounts receive independent random identities; retries retain identities
+already installed by a successful migration. Failure rolls back the entire step.
+Fresh installations use the same final column/index through the User model.
+
+All old numeric and `v1` login cookies deliberately become invalid. Users must
+authenticate again after deployment. New `v2` cookies bind the random account
+identity and the existing generation counter, never a recyclable SQLite rowid.
+Deleting an account cannot authorize its surviving cookies as a new account.
+
+SQLite requires a constant default when adding a NOT NULL column to populated
+tables. The empty SQL default is an inert, invalid login identity; the migration
+backfills every existing row and application inserts always use the random ORM
+default. Direct SQL account creation must supply an identity explicitly.
+No historical migration or financial precision contract is changed.
+
+## Schema 39: append-only financial audit history
+
+The forward `_migrate_financial_audit` step adds `financial_audit`: owner and
+receipt foreign keys, entity type/ID (no live-entity FK), create/update/delete
+action, nullable exact before/after JSON TEXT, and UTC timestamp. Three indexes
+support account chronology, mutation grouping and entity history. CHECKs enforce
+the action and before/after null shape. SQLite triggers prevent UPDATE and
+individual DELETE while the owner account exists; account deletion cascades
+remain allowed. No financial column or existing row is changed. No historical
+audit backfill is fabricated.
+
+Table, indexes, triggers and version 39 commit in one SQLite writer-reserved
+transaction. Failure rolls back that forward step to schema 38; startup can
+retry. Fresh installs use the same model/DDL through the existing startup schema
+architecture. Earlier migration steps retain their own existing transaction
+boundaries. Tests cover fresh schema, upgrade, index/trigger failure and retry,
+unchanged raw financial rows and receipts, restart idempotency, and account
+lifetime retention. See `tests/test_financial_audit_migration.py` and
+`tests/test_financial_audit.py`.
+
+Snapshots preserve domain numbers as canonical decimal strings, dates as ISO
+microsecond strings and nulls as nulls. Audit rows never enter accounting or
+replace Phase 13 stale-write revisions. There is no audit pruning or individual
+audit CRUD operation during the account lifetime.
+
+## Schema 38: durable financial mutation receipts
+
+The additive `mutation_receipt` table stores a user-owned operation key, request
+digest, saved successful response and monotonic ID. Its unique user/key constraint
+enforces one receipt per intended submission. The user/revision index supports
+optimistic revision checks, and the foreign key cascades only with account
+deletion. No financial columns, records, types or formulas change.
+
+The forward step from version 37 creates the table/index and writes version 38
+in one explicit SQLite transaction. Failed creation rolls back and can be retried.
+Fresh installations use the same model through the existing serialized startup
+sequence. Receipts are necessary to recognize successful retries across processes
+and restarts; session cookies or JavaScript alone cannot guarantee this.
+
+## Schema 37: linked internal cash transfers
+
+The additive forward step `_migrate_portfolio_transfers` creates
+`portfolio_transfer` with id, source_portfolio_id, destination_portfolio_id,
+amount (ExactDecimalText / physical TEXT), date, notes, created_at and updated_at.
+Source and destination are distinct, nonnull foreign keys to Portfolio with
+ON DELETE RESTRICT. Each endpoint has a (portfolio ID, date) index. Exact amount
+representation is enforced by the persistence type; positivity and same-user
+ownership are authoritative service rules, not SQLite numeric coercion.
+
+Schema-36 upgrades run only this step. Earlier upgrades complete their historical
+steps first. Table and index creation share an explicit BEGIN IMMEDIATE and roll
+back together on failure. The runner advances user_version only after success
+and restores foreign-key enforcement. Fresh databases use the identical model
+DDL. Existing financial records, IDs, timestamps, foreign keys and indexes are
+not rebuilt or changed. This migration does not infer transfers from historical
+Withdrawal/Deposit pairs.
+
+Transfer mutation atomicity uses the Phase 10 write reservation. Individual
+portfolio deletion is blocked by service validation and restrictive FKs. A
+confirmed full-account removal explicitly deletes only wholly owned transfer
+links before the existing cascades in the same transaction.
+
+`tests/test_transfer_migration.py` verifies fresh/upgrade schema, existing-data
+reconciliation, failed DDL rollback, indexes, restrictive FKs and distinct endpoints
+using disposable databases. No working database is migrated during development.
+Do not run older application code on a database containing transfers: it would
+omit internal cash effects. Restore a coordinated backup if rollback is needed.
 
 ## Required Validation
 

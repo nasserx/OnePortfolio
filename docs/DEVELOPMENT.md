@@ -10,7 +10,7 @@ Use a branch per change and keep application behavior changes separate from docu
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
+python -m pip install -r requirements-dev.txt
 Copy-Item .env.example .env
 ```
 
@@ -20,7 +20,7 @@ Copy-Item .env.example .env
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
+python -m pip install -r requirements-dev.txt
 cp .env.example .env
 ```
 
@@ -58,6 +58,33 @@ Run the full test suite:
 python -m pytest -v
 ```
 
+Tests use disposable databases; do not point diagnostic application instances
+at the working database. Node.js is needed only for the frontend checks below,
+with no npm install or browser required:
+
+```bash
+node tests/precision_boundaries.js
+node tests/cash_account_max.js
+node tests/portfolio_transfers.js
+node tests/modal_form_errors.js
+node tests/overview_chart_ranges.js
+```
+
+Check syntax for every application and assertion script (PowerShell):
+
+```powershell
+Get-ChildItem portfolio_app/static/js/*.js, tests/*.js | ForEach-Object { node --check $_.FullName }
+```
+
+Or in a POSIX shell:
+
+```bash
+for file in portfolio_app/static/js/*.js tests/*.js; do node --check "$file" || exit; done
+```
+
+CI runs the complete Python suite on the declared Python versions plus these
+JavaScript assertions and syntax checks. No Python linter is configured.
+
 Compile Python files:
 
 ```bash
@@ -80,16 +107,99 @@ git status --short
 
 For behavior changes, manually exercise the affected page or route. For financial behavior, verify:
 
-- Realized P&L remains limited to completed sales.
-- Income remains separate.
-- Total Cash includes income.
-- Book Value is Total Cash plus the recorded cost basis of current positions.
-- Positions do not change because of income.
-- Return includes realized P&L plus income.
+- Realized Trading P&L remains limited to completed sales.
+- Dividend Income records represent investment dividends/distributions and remain separate from trading P&L.
+- Cash Balance includes Dividend Income.
+- Internal transfers add signed portfolio cash without changing external Net
+  Contributions. Validate both endpoints through the shared daily ledger; never
+  simulate a transfer with independent funding rows. Run
+  `node tests/portfolio_transfers.js` for exact edit-payload checks.
+- Cash-account service acceptance validates every recorded day's closing cash.
+  Seed raw legacy fixtures explicitly when testing negative-history reads;
+  new Buy/Withdrawal service tests must record funding on or before the spend.
+  Run `node tests/cash_account_max.js` for date-aware Max and stale-response checks.
+- Book Value is Cash Balance plus the recorded cost basis of current positions.
+- Position Cost Basis does not change because of Dividend Income.
+- Realized Trading Return is trading P&L / released cost basis × 100 at every scope.
+- Aggregate P&L and released basis first; never average percentages.
+- Funding, open positions and Dividend Income do not dilute or increase trading return.
+- Total Realized Earnings includes trading P&L plus Dividend Income as a money amount only.
+- No sales means undefined return (dash), not zero return. A break-even sale gives genuine 0%.
 
-For UI changes, check desktop and narrow viewports and confirm text does not overlap or overflow.
+Visual acceptance belongs to the user. Automated agents verify template,
+JavaScript and accessibility contracts without browser or screenshot review
+unless explicitly requested.
+
+## Testing financial mutations
+
+Use the `financial_mutation` service boundary, or `mutation_transaction()` when
+composing multiple services. Start with a clean session; never manually begin a
+deferred transaction before entering it. Repositories add/delete/flush only
+inside this boundary. Do not commit in nested services or swallow a failed
+sub-operation and continue writing. The owner commits validation, raw writes
+and durable retry receipt and audit revisions together; any failed sub-operation rolls back all of
+them. Existing nonfinancial authentication workflows retain their own commits.
+
+All financial HTTP POSTs (including confirmed account removal) require the
+hidden `mutation_token` issued with the rendered form, in addition to CSRF.
+Keep the token unchanged on a network retry. After success, the existing page
+reload issues new intents. Reusing a successful token with changed fields or a
+different action is a conflict. Edits/removals require the account revision from
+the form's render; a conflict uses the existing form-level error and asks for a
+refresh. No formatted numeric value serves as a concurrency token.
+
+`tests/_mutation_client.py` supplies fresh signed intents for existing route
+tests, as a newly rendered form would. Set `auto_mutation_tokens=False` for
+missing-token, stale-form and retry tests and reuse explicit tokens. This test
+helper never bypasses production token verification. Direct service tests may
+pass `expected_revision` when simulating an old read. Test concurrency with
+separate application contexts/connections and inject failures after SQL writes,
+not only before validation. Relevant groups:
+
+```bash
+pytest -q tests/test_mutation_integrity.py tests/test_mutation_migration.py tests/test_cash_account_policy.py tests/test_portfolio_transfers.py
+```
+
+The mutation receipt table has no automatic pruning: its history protects
+successful retries and its monotonic IDs provide revisions. A future retention
+change must preserve both contracts. Raw fixture seeding is for legacy/test
+states only and deliberately bypasses these application guards.
+
+Financial audit capture is automatic for the allowlisted ORM domain entities
+inside the mutation owner. Do not issue bulk SQL financial updates/deletes that
+bypass capture. Confirmed account removal is the deliberate exception: the
+account's entire lifetime history is removed. When adding a persisted domain
+field, review the audit allowlist; never serialize ORM internals or credentials.
+Read through `Services(user_id).audit_repo.history(...)` or `get_by_id(...)`,
+not an unscoped audit query. Returned revisions are immutable; JSON monetary
+values are exact decimal strings. Do not add an audit commit or mutate revisions.
+
+Test actual persisted before/after snapshots, no-op edits, receipt replay,
+compound child deletion and failure **after audit INSERT**, not just failures
+before business validation. Fixture cleanup deletes accounts to cascade lifetime
+audit/receipt records; it must not disable append-only triggers. Use only
+disposable database copies for migration tests.
+
+```bash
+pytest -q tests/test_financial_audit.py tests/test_financial_audit_migration.py tests/test_mutation_integrity.py
+```
 
 ## Repository Safety
+
+### Final-audit correction regressions
+
+Run `pytest -q tests/test_final_audit_corrections.py
+tests/test_session_identity_migration.py` and `node tests/overview_chart_ranges.js`.
+Read-consistency regressions use separate connections and deterministic
+interleaving. WAL is enabled only on disposable test databases so a writer can
+commit while the read snapshot remains open; production journal policy is unchanged.
+Session-identity migration tests preserve financial/audit rows and test failed
+upgrade retry. Authentication helpers resolve the current random identity; do not
+construct numeric/v1 sessions except when explicitly testing their rejection.
+
+Do not open a standalone reporting boundary with pending ORM work. Compose
+financial writes inside `mutation_transaction()` and let nested reporting join
+that existing database transaction without owning its commit or rollback.
 
 Never commit:
 

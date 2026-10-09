@@ -19,6 +19,12 @@
   ============================================================================
 #}
 {% from 'macros/icons.html' import icon %}
+{% set financial_hints = {
+  'Book Value': 'Book Value = Cash + Cost Basis',
+  'Net Contributions': 'Net Contributions = Deposits − Withdrawals',
+  'Realized P&L': 'Realized P&L = Net Sale Proceeds − Released Cost Basis',
+  'Realized Return': 'Realized Return = Realized P&L ÷ Released Cost Basis × 100'
+} %}
 
 
 {# Financial record type text: semantic foreground only, never a badge fill. #}
@@ -28,7 +34,9 @@
     'Deposit': 'positive',
     'Sell': 'negative',
     'Withdrawal': 'negative',
-    'Income': 'income'
+    'Transfer In': 'positive',
+    'Transfer Out': 'negative',
+    'Dividends': 'income'
   }.get(value, 'neutral') -%}
   <span class="record-type record-type--{{ role }}">{{ value }}</span>
 {%- endmacro -%}
@@ -89,7 +97,8 @@
   `hint` renders an accessible tooltip dot next to the label.
 #}
 {%- macro fact(label, hint=none) -%}
-  <div class="fact supporting-item">
+  {%- set hint = hint or financial_hints.get(label) -%}
+  <div class="fact">
     <p class="fact__label supporting-item__label">
       {{ label }}
       {%- if hint %} {{ info(hint) }}{% endif -%}
@@ -102,9 +111,8 @@
 {#
   A label/value pair in a disclosure row's summary strip.
 
-  Rendered with spans rather than block elements: these live inside the
-  row's <button>, which only accepts phrasing content. The block layout
-  comes from CSS instead.
+  Compact summary metrics live inside the disclosure button. Formula help is
+  intentionally limited to the Overview, not these dense summary strips.
 #}
 {%- macro metric(label) -%}
   <span class="metric">
@@ -114,15 +122,35 @@
 {%- endmacro -%}
 
 
-{# Tooltip dot. The text serves as both the visual tooltip and the a11y name. #}
+{# Formula names alone are emphasized; accessible/native text stays plain. #}
 {%- macro info(text) -%}
-  <span class="info-dot"
-        tabindex="0"
-        role="img"
-        aria-label="{{ text }}"
-        data-bs-toggle="tooltip"
-        data-bs-placement="top"
-        title="{{ text }}">{{ icon('info-circle') }}</span>
+  {%- set formatted -%}
+    <span class="tooltip-formulas">
+      {%- for line in text.split('\n') -%}
+        <span class="tooltip-formula">
+          {%- if '=' in line -%}
+            {%- set name, formula = line.split('=', 1) -%}
+            <strong>{{ name|trim }}</strong> = {{ formula|trim }}
+          {%- else -%}
+            {{ line }}
+          {%- endif -%}
+        </span>
+      {%- endfor -%}
+    </span>
+  {%- endset -%}
+  <button class="info-dot" type="button"
+          aria-label="{{ text }}"
+          data-bs-toggle="tooltip"
+          data-bs-trigger="hover focus"
+          data-bs-placement="top"
+          data-bs-html="true" data-bs-title="{{ formatted|trim|forceescape }}"
+          title="{{ text }}">{{ icon('info-circle') }}</button>
+{%- endmacro -%}
+
+
+{%- macro realized_info() -%}
+  {%- set lines = [financial_hints['Realized P&L'], financial_hints['Realized Return']] -%}
+  {{ info(lines|join('\n')) }}
 {%- endmacro -%}
 
 

@@ -6,6 +6,8 @@ strings elsewhere. Dynamic messages use ``str.format`` placeholders.
 
 
 MESSAGES = {
+    'MUTATION_STALE': 'Your financial records changed. Please refresh the page and try again.',
+    'MUTATION_REUSED': 'This submission was already used. Please refresh the page for a new operation.',
     # Generic errors. ``OPERATION_FAILED`` is a last-resort fallback only;
     # every interactive route should use one of the action-specific
     # ``*_FAILED`` keys below so users see what actually went wrong.
@@ -30,16 +32,16 @@ MESSAGES = {
     'TRANSACTION_ADD_FAILED':      "We couldn't add the asset entry. Please try again in a moment.",
     'TRANSACTION_UPDATE_FAILED':   "We couldn't update the asset entry. Please try again in a moment.",
     'TRANSACTION_DELETE_FAILED':   "We couldn't remove the asset entry. Please try again in a moment.",
-    'DIVIDEND_ADD_FAILED':         "We couldn't add the income. Please try again in a moment.",
-    'DIVIDEND_UPDATE_FAILED':      "We couldn't update the income. Please try again in a moment.",
-    'DIVIDEND_DELETE_FAILED':      "We couldn't remove the income. Please try again in a moment.",
+    'DIVIDEND_ADD_FAILED':         "We couldn't add the dividend income. Please try again in a moment.",
+    'DIVIDEND_UPDATE_FAILED':      "We couldn't update the dividend income. Please try again in a moment.",
+    'DIVIDEND_DELETE_FAILED':      "We couldn't remove the dividend income. Please try again in a moment.",
     'SYMBOL_ADD_FAILED':           "We couldn't track this asset. Please try again in a moment.",
     'SYMBOL_DELETE_FAILED':        "We couldn't stop tracking this asset. Please try again in a moment.",
     'EMAIL_UPDATE_FAILED':         "We couldn't update your email. Please try again in a moment.",
     # Not-found errors
     'PORTFOLIO_NOT_FOUND':         "This portfolio no longer exists.",
     'TRANSACTION_NOT_FOUND':       "This asset entry no longer exists.",
-    'DIVIDEND_NOT_FOUND':          "This income entry no longer exists.",
+    'DIVIDEND_NOT_FOUND':          "This dividend income entry no longer exists.",
     'CASH_EVENT_NOT_FOUND':        "This transaction no longer exists.",
     'SYMBOL_NOT_FOUND':            "This tracked symbol no longer exists.",
 
@@ -56,7 +58,16 @@ MESSAGES = {
 
     # Business rules
     'INSUFFICIENT_AMOUNT':         "Insufficient amount.",
-    'WITHDRAWAL_EXCEEDS_CASH':     "Withdrawal exceeds available cash.",
+    'WITHDRAWAL_EXCEEDS_CASH':     "Insufficient cash for this withdrawal.",
+    'PURCHASE_EXCEEDS_CASH':       "Insufficient cash for this purchase.",
+    'TRANSFER_EXCEEDS_CASH':       "Insufficient cash for this transfer change. Check both portfolios and the date.",
+    'TRANSFER_PORTFOLIO_INVALID':  "Select portfolios belonging to your account.",
+    'TRANSFER_SAME_PORTFOLIO':     "Choose two different portfolios.",
+    'TRANSFER_NOT_FOUND':         "Transfer not found.",
+    'PORTFOLIO_HAS_TRANSFERS':     "Remove linked transfers before removing this portfolio.",
+    'TRANSFER_SAVED':             "Transfer saved.",
+    'TRANSFER_REMOVED':           "Transfer removed.",
+    'TRANSFER_FAILED':            "Unable to save this transfer. Please try again.",
     'INSUFFICIENT_QUANTITY':       "Insufficient quantity.",
     # Surfaces when a delete/edit/symbol-change would leave a previously
     # covered Sell without enough holdings on its date — distinct from
@@ -91,13 +102,13 @@ MESSAGES = {
     'WITHDRAWAL_SUCCESSFUL':       "Withdrawal successful.",
 
     # Dividends
-    'DIVIDEND_ADDED':              "Income added.",
-    'DIVIDEND_UPDATED':            "Income updated.",
-    'DIVIDEND_REMOVED':            "Income removed.",
+    'DIVIDEND_ADDED':              "Dividends added.",
+    'DIVIDEND_UPDATED':            "Dividends updated.",
+    'DIVIDEND_REMOVED':            "Dividends removed.",
 
     # Remove confirmation prompts
     'CONFIRM_REMOVE_TRANSACTION':  "Remove this asset entry?",
-    'CONFIRM_REMOVE_DIVIDEND':     "Remove this income entry?",
+    'CONFIRM_REMOVE_DIVIDEND':     "Remove this dividend income entry?",
 
     # Form validation — generic
     'FIELD_REQUIRED':              "This field is required.",

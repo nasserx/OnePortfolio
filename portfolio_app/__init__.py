@@ -25,8 +25,7 @@ db = SQLAlchemy()
 csrf = CSRFProtect()
 login_manager = LoginManager()
 mail = Mail()
-_AUTH_IDENTITY_RE = re.compile(r'\Av1:([1-9][0-9]*):(0|[1-9][0-9]*)\Z')
-_LEGACY_AUTH_IDENTITY_RE = re.compile(r'\A[1-9][0-9]*\Z')
+_AUTH_IDENTITY_RE = re.compile(r'\Av2:([0-9a-f]{64}):(0|[1-9][0-9]*)\Z')
 # ``RATELIMIT_STORAGE_URI`` is owned by application configuration and consumed
 # by ``init_app``. No constructor value should override that deployment choice.
 limiter = Limiter(
@@ -106,23 +105,15 @@ def create_app(config_class=Config):
     def load_user(identity: str):
         from portfolio_app.models.user import User
 
-        # Current identities explicitly bind the database id to the user's
-        # authentication generation. Pre-cutover id-only identities represent
-        # generation zero and fail after migration 35 advances every retained
-        # account; malformed values also fail closed.
+        # Schema 40 deliberately invalidates all numeric/v1 sessions. A random
+        # account-lifetime identity cannot inherit a deleted account's cookies.
         if not isinstance(identity, str):
             return None
         match = _AUTH_IDENTITY_RE.fullmatch(identity)
-        if match:
-            user_id = int(match.group(1))
-            generation = int(match.group(2))
-        elif _LEGACY_AUTH_IDENTITY_RE.fullmatch(identity):
-            user_id = int(identity)
-            generation = 0
-        else:
+        if not match:
             return None
-
-        user = db.session.get(User, user_id)
+        generation = int(match.group(2))
+        user = User.query.filter_by(session_identity=match.group(1)).first()
         if (
             user is None
             or user.auth_generation != generation
@@ -174,6 +165,9 @@ def create_app(config_class=Config):
         return redirect(safe_referrer or url_for("dashboard.index"))
 
     # Template filters
+    from portfolio_app.utils.decimal_utils import decimal_text, withdrawal_max_text
+    app.jinja_env.filters['decimal_text'] = decimal_text
+    app.jinja_env.filters['withdrawal_max_text'] = withdrawal_max_text
     app.jinja_env.filters['fmt_decimal'] = fmt_decimal
     app.jinja_env.filters['fmt_display_decimal'] = fmt_display_decimal
     app.jinja_env.filters['fmt_display_money'] = fmt_display_money
@@ -185,7 +179,7 @@ def create_app(config_class=Config):
 
     # Static-asset cache buster. Bumped by hand when CSS/JS ships, so every
     # template can use `v=ASSET_VERSION` instead of carrying its own literal.
-    ASSET_VERSION = '20260815-6'
+    ASSET_VERSION = '20261004-precision'
 
     def _get_csp_nonce():
         """Return the single cryptographically random nonce for this request."""
@@ -334,6 +328,10 @@ def create_app(config_class=Config):
     # Register blueprints
     from portfolio_app.routes import register_blueprints
     register_blueprints(app)
+    from portfolio_app.utils.mutation_requests import register_mutation_requests
+    register_mutation_requests(app)
+    from portfolio_app.utils.financial_reads import register_financial_reads
+    register_financial_reads(app)
 
     # Bring the database to the target schema: incremental migrations first
     # (renames, column drops/adds), then create_all() for any new tables

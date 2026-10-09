@@ -144,7 +144,9 @@ def test_dynamic_icons_use_the_same_sprite_name_contract():
     main = (STATIC / 'js' / 'main.js').read_text(encoding='utf-8')
     assert "window.OnePortfolioIcons = Object.freeze({ create: createIcon });" in shell
     assert "use.setAttribute('href', '#op-icon-' + name);" in shell
-    assert "window.OnePortfolioIcons.create('alert-circle', 'me-2')" in main
+    assert "window.OnePortfolioIcons.create(icon)" in main
+    # Compact form-level errors no longer introduce a decorative alert icon.
+    assert "invalid-feedback d-block js-modal-banner" in main
     assert 'ICON_ALIASES' not in shell
 
 

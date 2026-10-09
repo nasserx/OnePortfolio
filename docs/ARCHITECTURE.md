@@ -33,7 +33,7 @@ generic responses for known and unknown addresses.
 
 Flask-Login continues to use signed client-side Flask sessions; no server-side
 session store or remember identity is used. Each serialized identity binds the
-user id to `User.auth_generation`, which remains the global revocation source
+random account-lifetime `User.session_identity` to `User.auth_generation`, the revocation source
 of truth. The signed session also carries authentication issue, last-seen, and
 recent-auth timestamps. Sessions fail closed without those timestamps, use a
 rolling seven-day inactivity timeout, have a 30-day absolute lifetime, and
@@ -66,54 +66,270 @@ Application users manage their own accounts and tenant-scoped portfolio data. Th
 
 Models live in `portfolio_app/models/`:
 
-- `User`: accounts, authentication generation, inert rollback password/reset/lockout state, and pending account-security state. The legacy application-admin column has no model field and is dropped from upgraded databases by migration Step 32.
+- `User`: accounts, random account-lifetime session identity, authentication generation, inert rollback password/reset/lockout state, and pending account-security state. The legacy application-admin column has no model field and is dropped from upgraded databases by migration Step 32.
 - `PendingRegistration`: staged passwordless signup state.
 - `AuthChallenge`: purpose-bound authentication-code digest, expiry, attempt, and atomic-consumption state.
 - `OAuthIdentity`: inert rollback data for a former external provider link; no tokens or secrets.
 - `Portfolio`: user-owned portfolio bucket.
-- `PortfolioEvent`: capital entries.
+- `PortfolioEvent`: funding entries.
+- `PortfolioTransfer`: one exact cash movement linking two same-owner portfolios;
+  restrictive foreign keys protect the other endpoint during portfolio deletion.
 - `Symbol`: tracked asset symbol per portfolio.
 - `Transaction`: buy/sell asset entries.
-- `Dividend`: current model name for income records.
+- `Dividend`: investment cash dividend/distribution records.
+- `MutationReceipt`: durable submission replay and account revision records.
+- `FinancialAudit`: append-only persisted-domain revisions linked to receipts.
 
 Pending email-change claims are bounded by their verification-code lifetime.
 Expired or incomplete pending-email state is non-reserving and is cleared when
 an account workflow encounters it, so it cannot indefinitely hold an address.
 
-The user-facing term is Income even though the model is still named `Dividend`.
+The concise user-facing label is Dividends. The `Dividend` model remains accurate
+for investment cash dividends/distributions, not generic income.
 
 ## Calculators
 
 `portfolio_app/calculators/portfolio_calculator.py` is the database-facing calculator facade. It derives totals from source records:
 
-- total capital
-- total cash
-- positions
+- Net Contributions
+- Cash Balance
+- Position Cost Basis
 - book value
-- realized P&L
-- total income
-- return amount and return percent
+- Realized Trading P&L
+- Dividend Income
+- total realized earnings (money) and realized trading return (percentage)
 - asset-level summaries
 
 `portfolio_app/calculators/financial_math.py` contains pure deterministic financial calculations, including Average Cost Method transaction-list math and return percentage/display math. It has no Flask, SQLAlchemy, repository, service, or model dependency.
 
 Calculators should use `Decimal` for financial math and should not introduce cached financial totals without a clear invalidation strategy.
 
+Phase 8 uses one `calculate_realized_trading_return(pnl, released_basis)` function
+for sale, asset, portfolio and global views. It divides summed trading P&L by
+summed released basis, never averages percentages. Dividend Income, funding and
+open basis are not inputs. `calculate_realized_earnings_metrics` separately
+exposes monetary `total_realized_earnings = realized_trading_pnl + dividend_income`.
+Zero basis is `None`/JSON null/dash, distinct from a break-even sale's Decimal zero.
+These are realized trading measures, not total performance, TWR, MWR or XIRR.
+
+Aggregate consumers now use immutable asset, portfolio, and global snapshots
+from `calculators/financial_snapshots.py`. `PortfolioCalculator` loads scoped
+inputs; the snapshot builders compose the existing pure arithmetic and canonical
+ordering helper. Routes consume snapshot adapters instead of defining financial
+formulas. See [Canonical financial reads](FINANCIAL_READ_MODEL.md) for the
+canonical API contracts, exact storage and remaining calculation limits.
+
+One `replay_symbol_transactions` call now produces both aggregate state and
+immutable per-transaction financial projections. Asset snapshots expose those
+projections by transaction ID; Assets uses them independently of presentation
+order. Schema 36 removes stored `Transaction.average_cost` and `net_amount`
+and their compatibility writers. Context-free model P&L properties are removed;
+transaction serialization requires an explicit canonical projection and portfolio
+name, with no hidden history/relationship queries. Raw edit inputs remain separate.
+
+Financial persistence uses `utils/exact_decimal.py::ExactDecimalText`: finite
+Decimal -> canonical ordinary decimal TEXT -> Decimal, without binary float or
+scale quantization. It covers transaction price/quantity/fees, Dividend amount,
+and PortfolioEvent amount_delta. Numeric sign CHECKs move to service validation;
+NOT NULL, TEXT storage checks and ownership foreign keys remain in SQLite.
+Services preserve quantity walks and cash validation without writing derived
+history. Financial aggregation stays in Python, never SQL arithmetic on TEXT.
+Calculation uses `utils/financial_arithmetic.py`, not the ambient Decimal context:
+finite sums/differences/products are exact in operand-sized private contexts,
+and each symbol replay fixes one deterministic half-even division budget from
+all raw operands. Division precision is `max(28, 2*S + C) + 28`, where `S` is
+the significant decimal-position span (including units) and `C` the operand-count
+carry digits. The minimum 56 digits retains the former 28-digit resolution plus
+28 guard digits; the dynamic term covers raw product widths and larger inputs.
+No process-wide context is changed. Snapshot aggregation and mutation validation
+share exact finite helpers; services do not silently round holdings/cash checks.
+
+Three independent contracts now apply: **persistence** stores exact raw decimal
+TEXT without a fixed scale; **calculation** preserves finite operations exactly
+and rounds divisions under the documented local policy; **display** keeps all
+existing visible precision/rounding/formatters. Recurring expansions remain
+approximate, and extreme input spans remain bounded by platform/resources.
+See [Calculation precision](FINANCIAL_READ_MODEL.md#phase-7-three-independent-precision-layers).
+See [schema 36 conversion and rollback](MIGRATIONS.md#schema-36-exact-decimal-storage).
+
 ## Forms
 
-Forms live in `portfolio_app/forms/`. They validate request payloads for auth, portfolios, capital entries, assets, asset entries, and income. They also normalize common inputs before service code receives them.
+Forms live in `portfolio_app/forms/`. They validate request payloads for auth, portfolios, funding entries, assets, asset entries, and Dividend Income. They also normalize common inputs before service code receives them.
 
 ## Main Data Flow
 
+Internal transfers use `TransferService`/`PortfolioTransferRepository`, the same
+cash mutation reservation and canonical daily ledger. A single row is projected
+into two portfolio histories by `portfolio_history.py`; it is never rewritten as
+Deposit/Withdrawal. Prospective edit/delete validation covers every old/new
+endpoint before one commit. Portfolio snapshots expose signed internal flows
+separately from external Net Contributions; global flows cancel. Schema 37 adds
+the raw transfer table without changing existing financial rows.
+
+Individual portfolio deletion is blocked while a transfer is linked. Confirmed
+whole-account deletion resolves only transfers with both endpoints owned by that
+account before the existing portfolio cascades, in the same transaction.
+
+Cash-account validation uses `services/cash_account.py` and the pure
+`calculators/daily_cash.py` ledger. All cash-affecting service mutations compare
+complete pre/prospective end-of-day paths before changing ORM records. This is
+separate from the unchanged canonical Buy-before-Sell cost-basis walk. Same-day
+inflows/outflows net together; there is no intraday or settlement model. Legacy
+deficits remain readable and can be repaired without worsening their historical
+minimum. See [cash policy](FINANCIAL_READ_MODEL.md#cash-account-policy).
+
 Typical asset-entry creation:
 
-1. Route receives POST data.
-2. Form validates and cleans fields.
-3. Route calls `TransactionService`.
+1. Authenticated, CSRF-protected POST supplies a signed form submission token.
+2. `utils/mutation_requests.py` reserves the SQLite writer, checks a durable retry
+   receipt, and checks the rendered account revision for edits/removals.
+3. Form validates and cleans fields; route calls `TransactionService`.
 4. Service checks ownership, cash, quantity, chronology, and business rules.
-5. Repository/model changes are written.
-6. Calculator recomputes average costs where needed.
-7. Route returns JSON or redirects.
+5. Repositories flush raw changes; the transaction owner saves the successful
+   response receipt and commits both together. Errors roll everything back.
+6. Subsequent reads replay raw facts into financial projections; no derived history is written.
+7. Route returns JSON or redirects. Repeating the same successful submission
+   returns its saved response without executing the service again.
+
+## Financial mutation ownership
+
+### Coherent financial reads
+
+`repositories/read_snapshot.py` owns a real deferred SQLite `BEGIN` around a
+complete report, rather than relying on SQLAlchemy's logical Session transaction.
+Asset/portfolio/global snapshots, Assets and Portfolios history contexts, and
+daily cash-ledger reads share this boundary. Nested reads join the same snapshot.
+Standalone reads require a clean Session, refresh cached ORM data, and use
+connection-local `query_only` protection. They release only their own physical
+read transaction; they never commit pending application work. Reads inside an
+existing database transaction join that owner without committing or rolling it
+back. Mutation validation therefore retains its existing writer reservation.
+
+No writer reservation or journal-mode change is introduced for reporting.
+In SQLite rollback-journal mode a reader may briefly delay a writer's commit;
+in WAL mode committed concurrent writes remain invisible to that read snapshot.
+Assets also includes canonical dividend-only symbols in its history groups,
+without persisting synthetic symbols, trades, or quantities.
+
+Allocation chart calculations and totals remain Decimal until final chart
+serialization. Values outside finite nonzero binary-number representation use
+the existing chart empty-state surface with a numeric-range message. Canonical
+metrics, exact API values, and the portfolio table are unaffected.
+
+### Account-lifetime authentication
+
+Schema 40 gives each account a unique random `session_identity`. Version-2
+Flask-Login identities bind it to `auth_generation`; numeric IDs are solely
+database relationships, not session authority. Existing sessions require a new
+login at upgrade. Generation-based invalidation and account deletion still apply.
+Protected financial submissions recheck that same lifetime identity under the
+writer reservation, so account deletion/rowid reuse between authentication and
+validation cannot retarget an in-flight request.
+Authenticated financial GET responses also recheck the account identity inside
+the read snapshot and retain that snapshot through response rendering. A read
+already authenticated before account deletion cannot reveal a replacement account.
+
+### Mutation owner
+
+`services/mutation.py` owns `BEGIN IMMEDIATE`, flush, commit and rollback for
+trades, dividends, funding, transfers, symbols, portfolios and confirmed account
+removal. A direct top-level service call owns its transaction; an HTTP submission
+owns the larger service-plus-receipt-plus-audit transaction. Nested services join that owner,
+never commit independently, and poison the whole operation on failure. An
+SQLAlchemy commit guard rejects accidental nested/helper commits. Entry requires
+a clean session and no manually opened database transaction.
+
+The SQLite reservation precedes current-state reads and lasts through commit.
+It serializes cash and quantity validation together, including historical edits
+and multi-record deletion. No financial mutation is performed by GET. Read-only
+snapshot/Max endpoints do not reserve the writer. Non-SQLite mutation backends
+are rejected until an equivalent locking contract is implemented.
+
+Schema 38 adds `MutationReceipt`, with a unique `(user_id, operation_key)` and a
+monotonic ID. It stores a payload digest and the successful HTTP response, not
+financial calculations. Receipts are committed with the financial writes and
+survive retries, separate workers and application restarts. Failed operations
+do not consume their token. A changed payload/path cannot reuse a consumed token.
+Each rendered form receives a new random signed intent, so intentionally
+identical records remain possible. CSRF and ownership checks remain independent.
+
+The latest receipt ID is the account's optimistic mutation revision. It is
+captured before page financial records are read, so a concurrent write during
+rendering cannot label stale fields with a newer revision. Edits and deletes
+compare that signed revision under the writer reservation. This is deliberately
+conservative: *any* intervening financial mutation in that account
+requires refreshing an old edit/confirmation, including metadata edits and bulk
+removals. Creates instead revalidate current cash/quantity and may coexist. A
+successful retry is recognized before the stale check. Direct scoped service
+calls advance the same revision and may pass `expected_revision`; without an
+HTTP submission token, each direct invocation is a distinct intended operation.
+
+Receipts are retained for the account lifetime and cascade on whole-account
+deletion. The existing one-time deletion challenge and authentication checks
+make retries after account removal ineffective. Individual portfolios linked to
+transfers still cannot be removed. Direct SQL/ORM writes outside these services
+remain unsupported application mutation paths and do not advance revisions.
+
+Audited mutation surface (all state-changing routes are POST):
+
+| Routes | Service | Records/repositories | Boundary |
+| --- | --- | --- | --- |
+| `/transactions/add`, `/edit/<id>`, `/delete/<id>` | TransactionService | TransactionRepository / Transaction | Shared mutation owner |
+| `/transactions/dividends/add`, `/edit/<id>`, `/delete/<id>` | TransactionService | DividendRepository / Dividend | Shared mutation owner |
+| `/transactions/symbols/add`, `/symbols/delete` | TransactionService | Symbol, Transaction, Dividend repositories | One atomic bulk operation |
+| `/portfolios/add`, `/rename/<id>`, `/delete/<id>` | PortfolioService | PortfolioRepository and child cascades | Shared owner; linked transfers restrict deletion |
+| `/portfolios/deposit/<id>`, `/withdraw/<id>`, `/events/edit/<id>`, `/events/delete/<id>` | PortfolioService | PortfolioEventRepository | Shared mutation owner |
+| `/portfolios/transfers/add`, `/transfers/edit/<id>`, `/transfers/delete/<id>` | TransferService | PortfolioTransferRepository | Both endpoint validations and one linked write |
+| `/settings/delete/verify` | AuthService | UserRepository, owned transfers and account cascades | OTP validation and complete removal under one owner |
+
+Initial Funding is a legacy funding-entry type, not a separate current create
+endpoint. Its edits/deletes use the same event service. The portfolio-summary,
+holdings and withdrawal-Max JSON endpoints are read-only; no alternate financial
+JSON write path bypasses these services. Registration/email/login/challenge
+operations are nonfinancial and retain their existing authentication boundaries.
+
+### Append-only financial history (schema 39)
+
+`FinancialAudit` records committed create/update/delete revisions for Portfolio,
+Transaction, PortfolioEvent (including Initial), Dividend, PortfolioTransfer and
+tracked Symbol records. `services/financial_audit.py` captures server-side
+persisted before values before the first ORM flush inside `mutation_transaction()`.
+After all financial writes, the owner reads final persisted values and appends
+audit rows against the same successful `MutationReceipt.id`, before committing.
+Financial writes, receipt and audit either all commit or all roll back. The
+audit writer never commits. Retry replay never invokes the financial services
+again and therefore never adds an audit row.
+
+Each revision contains owner ID, entity table/type, stable entity ID, action,
+UTC creation timestamp and nullable before/after JSON text. Entity IDs are not
+foreign keys: deleting a portfolio or symbol retains a separate before snapshot
+for each deleted child. One receipt groups all rows of a compound operation.
+Multiple changes to one entity within that transaction describe its original
+and final committed states, not uncommitted intermediate revisions.
+
+Snapshots use explicit persisted-domain field allowlists in
+`repositories/financial_audit_repository.py`: no ORM internals, credentials,
+submission/CSRF tokens or calculated financial metrics. JSON keys are sorted;
+Decimal values use canonical exact ordinary decimal strings, never floats or UI
+formatting. Stored DateTimes serialize with ISO microseconds; null stays null.
+Automatic `updated_at` differences alone do not create a revision; meaningful
+updates retain the full timestamps. Normalized no-op edits still follow Phase 13
+receipt/revision behavior but add no misleading audit event.
+
+`Services(user_id).audit_repo` exposes only tenant-filtered history and ID reads,
+returning immutable revision objects ordered by timestamp then ID, with bounded
+pagination. It has no ordinary update/delete interface. ORM guards and SQLite
+triggers reject audit updates and individual deletes. Confirmed whole-account
+deletion is the retention exception: its user cascade removes that account's
+audit rows and receipts atomically. It does not retain an account-deletion event.
+An individual portfolio deletion never deletes audit history.
+
+Audit is historical evidence, not accounting authority or stale-write control:
+calculators never read it; the latest Phase 13 receipt still controls stale
+edits. No pre-upgrade history is invented. Administrative SQL/imports outside the
+supported mutation boundary are not audited; future financial workflows must
+use the boundary and ORM writes (or explicitly extend capture for bulk SQL).
+This is account-lifetime application history, not tamper-proof external archival.
 
 Overview reads records through scoped services/repositories, then calls calculator helpers to build totals, portfolio summaries, and allocation chart data.
 
@@ -143,10 +359,10 @@ See [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md) for UI constraints.
 - `portfolio_app/migrations.py`: SQLite schema migration runner and migration steps.
 - `config.py`: environment-driven configuration.
 - `portfolio_app/services/factory.py`: per-request services container.
-- `portfolio_app/services/transaction_service.py`: asset entries, income, symbols, chronology, and cash/quantity rules.
-- `portfolio_app/services/portfolio_service.py`: portfolios and capital entries.
+- `portfolio_app/services/transaction_service.py`: asset entries, Dividend Income, symbols, chronology, and cash/quantity rules.
+- `portfolio_app/services/portfolio_service.py`: portfolios and funding entries.
 - `portfolio_app/calculators/portfolio_calculator.py`: database-backed financial aggregation.
-- `portfolio_app/calculators/allocation_charts.py`: Overview allocation chart data for By Book Value and By Capital.
+- `portfolio_app/calculators/allocation_charts.py`: Overview allocation chart data for By Book Value and By Net Contributions.
 - `portfolio_app/calculators/financial_math.py`: pure financial math.
 - `portfolio_app/routes/`: HTTP endpoints.
 - `tests/`: regression and behavior tests.
@@ -155,6 +371,23 @@ See [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md) for UI constraints.
 
 - `portfolio_app/__init__.py` is large because it still contains app wiring, extension setup, error handlers, security headers, and blueprint registration.
 - `PortfolioCalculator` is large because it owns portfolio, asset, cash, and return calculations.
-- `TransactionService` is large because it coordinates asset entries, income, symbols, validations, and recalculation.
+- `TransactionService` coordinates asset entries, Dividend Income, symbols and prospective cash/quantity validation; it does not persist recalculated projections.
 
 Safe future work should define boundaries first, add tests around existing behavior, then move one responsibility at a time. Avoid broad rewrites that mix behavior changes with file movement.
+
+## Final financial vocabulary and presentation
+
+All active financial read-model/JSON keys use the canonical names in
+[the glossary](DOMAIN_AND_CALCULATIONS.md). Temporary capital/cash/return aliases
+were removed in Phase 9; the complete API rename map is in
+[Financial reads](FINANCIAL_READ_MODEL.md#phase-9-api-and-identifier-changes).
+Dividend and PortfolioEvent remain valid persistence models. No schema change.
+Overview places Realized P&L and its Realized Return pill beneath the Book Value
+hero, followed by Net Contributions, Cash and Dividends, with no earnings card.
+Portfolios has no duplicated Book Value summary. The glossary defines concise
+display labels separately from precise internal/API identifiers. Overview has
+three hover/focus info dots: Book Value, Net Contributions, and one shared
+Realized P&L / Realized Return indicator after the return pill.
+Assets and Portfolios retain their original disclosure controls without help icons.
+Formatting functions and color roles remain
+unchanged. No financial policy or arithmetic precision change accompanies renaming.

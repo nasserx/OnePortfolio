@@ -26,7 +26,7 @@ def _login(client, user_id):
     authenticate_client(client, user_id)
 
 
-def test_deposit_and_withdraw_create_capital_entries_and_update_accounting(app):
+def test_deposit_and_withdraw_create_funding_entries_and_update_accounting(app):
     with app.app_context():
         uid = _seed_user()
         svc = Services(user_id=uid)
@@ -45,15 +45,15 @@ def test_deposit_and_withdraw_create_capital_entries_and_update_accounting(app):
         assert [event.event_type for event in events] == ['Deposit', 'Withdrawal']
         assert [event.amount_delta for event in events] == [_dec('1000.00'), _dec('-250.00')]
 
-        assert PortfolioCalculator.get_total_capital_for_portfolio(portfolio.id) == _dec('750.00')
-        assert PortfolioCalculator.get_available_cash_for_portfolio(portfolio.id) == _dec('750.00')
+        assert PortfolioCalculator.get_net_contributions_for_portfolio(portfolio.id) == _dec('750.00')
+        assert PortfolioCalculator.get_cash_balance_for_portfolio(portfolio.id) == _dec('750.00')
 
-        performance = PortfolioCalculator.get_realized_performance_for_portfolio(portfolio.id)
-        assert performance['realized_pnl'] == _dec('0')
-        assert performance['total_income'] == _dec('0')
+        performance = PortfolioCalculator.get_realized_earnings_for_portfolio(portfolio.id)
+        assert performance['realized_trading_pnl'] == _dec('0')
+        assert performance['dividend_income'] == _dec('0')
 
 
-def test_portfolios_page_renders_capital_metrics_and_log(app):
+def test_portfolios_page_renders_funding_metrics_and_log(app):
     with app.app_context():
         uid = _seed_user('render_user')
         svc = Services(user_id=uid)
@@ -80,8 +80,8 @@ def test_portfolios_page_renders_capital_metrics_and_log(app):
     for label in (
         # Shortened to 'Entries': the strip is already inside a portfolio
         # card, so 'Capital' was restating its own context.
-        'Entries', 'Total Capital', 'Total Cash',
-        'Positions', 'Book Value', 'Date', 'Type', 'Total Amount',
+        'Entries', 'Net Contributions', 'Cash',
+        'Cost Basis', 'Date', 'Type', 'Total Amount',
         'Notes', 'Actions',
     ):
         assert label in html
@@ -104,10 +104,10 @@ def test_portfolios_page_renders_capital_metrics_and_log(app):
     assert 'withdraw-available-hint' not in html
     assert 'withdraw_available_cash' not in html
     assert 'id="withdraw_max_btn">Max</button>' in html
-    assert 'data-withdrawable-cash-input="750.00"' in html
-    assert "document.getElementById('withdraw_max_btn').dataset.maxAmount" in html
+    assert 'data-withdrawable-cash-input' not in html
+    assert "document.getElementById('withdraw_max_btn').dataset.portfolioId" in html
     assert "btn.addEventListener('click'" in html
-    assert 'amountInput.value = maxAmount;' in html
+    assert 'amountInput.value = result.amount;' in html
 
     components = Path('portfolio_app/static/css/components.css').read_text(encoding='utf-8')
     assert '.withdraw-available-hint' not in components
@@ -149,8 +149,8 @@ def test_portfolio_routes_create_deposit_withdraw_and_recalculate_totals(app):
     assert withdraw_response.get_json()['success'] is True
 
     with app.app_context():
-        assert PortfolioCalculator.get_total_capital_for_portfolio(portfolio_id, user_id=uid) == _dec('750.00')
-        assert PortfolioCalculator.get_available_cash_for_portfolio(portfolio_id, user_id=uid) == _dec('750.00')
+        assert PortfolioCalculator.get_net_contributions_for_portfolio(portfolio_id, user_id=uid) == _dec('750.00')
+        assert PortfolioCalculator.get_cash_balance_for_portfolio(portfolio_id, user_id=uid) == _dec('750.00')
 
 
 def test_withdraw_exceeding_cash_fails_with_clear_amount_error(app):
@@ -186,14 +186,14 @@ def test_editing_and_deleting_capital_entries_update_summary(app):
 
         svc.portfolio_service.update_portfolio_event(
             deposit.id, amount_delta=_dec('1200'), notes='Edited deposit',
-            date=datetime(2024, 1, 3),
+            date=datetime(2024, 1, 1, 12),
         )
-        assert PortfolioCalculator.get_total_capital_for_portfolio(portfolio.id, user_id=uid) == _dec('950.00')
-        assert PortfolioCalculator.get_available_cash_for_portfolio(portfolio.id, user_id=uid) == _dec('950.00')
+        assert PortfolioCalculator.get_net_contributions_for_portfolio(portfolio.id, user_id=uid) == _dec('950.00')
+        assert PortfolioCalculator.get_cash_balance_for_portfolio(portfolio.id, user_id=uid) == _dec('950.00')
 
         svc.portfolio_service.delete_portfolio_event(withdrawal.id)
-        assert PortfolioCalculator.get_total_capital_for_portfolio(portfolio.id, user_id=uid) == _dec('1200.00')
-        assert PortfolioCalculator.get_available_cash_for_portfolio(portfolio.id, user_id=uid) == _dec('1200.00')
+        assert PortfolioCalculator.get_net_contributions_for_portfolio(portfolio.id, user_id=uid) == _dec('1200.00')
+        assert PortfolioCalculator.get_cash_balance_for_portfolio(portfolio.id, user_id=uid) == _dec('1200.00')
 
 
 def test_existing_portfolio_creation_and_listing_still_work(app):

@@ -62,7 +62,7 @@ def test_symbol_delete_rejects_negative_prospective_cash_without_partial_deletio
         _add_transaction(svc, portfolio.id, 'Sell', 'AAPL', '200')
         _add_transaction(svc, portfolio.id, 'Buy', 'MSFT', '200')
 
-        before_cash = PortfolioCalculator.get_available_cash_for_portfolio(
+        before_cash = PortfolioCalculator.get_cash_balance_for_portfolio(
             portfolio.id, user_id=user_id,
         )
         before_transaction_ids = {
@@ -73,7 +73,7 @@ def test_symbol_delete_rejects_negative_prospective_cash_without_partial_deletio
             svc.transaction_service.delete_symbol(portfolio.id, 'aapl')
 
         assert str(excinfo.value) == MESSAGES['CASH_ALREADY_SPENT']
-        assert PortfolioCalculator.get_available_cash_for_portfolio(
+        assert PortfolioCalculator.get_cash_balance_for_portfolio(
             portfolio.id, user_id=user_id,
         ) == before_cash == _dec('0')
         assert {
@@ -91,7 +91,7 @@ def test_rejected_symbol_delete_preserves_symbol_transactions_and_income(app):
         buy = _add_transaction(svc, portfolio.id, 'Buy', 'AAPL', '100')
         sell = _add_transaction(svc, portfolio.id, 'Sell', 'AAPL', '200')
         dividend = svc.transaction_service.add_dividend(
-            portfolio.id, 'AAPL', _dec('10'), datetime(2026, 1, 3),
+            portfolio.id, 'AAPL', _dec('10'), datetime(2026, 1, 2),
         )
         _add_transaction(svc, portfolio.id, 'Buy', 'MSFT', '210')
 
@@ -134,7 +134,7 @@ def test_valid_symbol_delete_removes_transactions_income_and_tracking_atomically
         assert db.session.get(Transaction, msft_tx_id) is not None
         assert db.session.get(Dividend, msft_dividend_id) is not None
         assert svc.symbol_repo.get_by_portfolio_and_ticker(portfolio.id, 'MSFT') is not None
-        assert PortfolioCalculator.get_available_cash_for_portfolio(
+        assert PortfolioCalculator.get_cash_balance_for_portfolio(
             portfolio.id, user_id=user_id,
         ) == _dec('955')
 
@@ -178,5 +178,5 @@ def test_assets_page_discloses_transaction_and_income_cascade_counts(app):
 
     assert response.status_code == 200
     assert 'data-tx-count="1"' in html
-    assert 'data-income-count="1"' in html
+    assert 'data-dividend-count="1"' in html
     assert "removalCounts.join(' and ')" in html

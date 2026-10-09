@@ -107,10 +107,10 @@ The only application colour extensions are:
 - `--financial-flat`
 
 They are permitted only when colour communicates real financial meaning:
-signed returns, realized profit/loss, signed income, financial delta
+signed returns, realized profit/loss, signed Dividend Income, financial delta
 indicators, financial record-type text, and the currently selected Buy/Sell
 transaction direction. Record types use the shared `record_type` Jinja macro:
-Buy and Deposit are positive, Sell and Withdrawal are negative, Income uses
+Buy and Deposit are positive, Sell and Withdrawal are negative, Dividend Income uses
 the income role, and Initial or unknown types remain neutral.
 Explicit signs, values, and selector labels remain the primary cue; colour is
 never the only cue.
@@ -181,10 +181,10 @@ Authoritative behavior remains:
 - quantity: variable precision with trailing zeros removed;
 - percentage: two decimals by default;
 - price: per-asset precision;
-- average cost: at least two decimals or price precision;
+- Average Unit Cost: at least two decimals or price precision;
 - fees: trailing zeros removed;
 - realized profit/loss: explicit sign plus financial semantic role;
-- income: financial income role;
+- Dividend Income: financial income role;
 - undefined: em dash.
 
 Internal Decimal precision and display precision remain separate. Do not
@@ -307,6 +307,32 @@ compact `px-3`/`py-2.5` spacing, and no shadow. It does not use Nova's separate
 muted-fill variant. Labels use `--muted-foreground`, values use `--foreground`,
 and only the nested formatted number may add a genuine financial semantic role.
 
+The authenticated Overview uses unboxed `.fact` pairs within its single Book
+Value card. Realized P&L sits immediately below the hero amount, alongside its
+signed return pill; that percentage is not a ratio of Book Value. Net
+Contributions and Cash share the first supporting row, with Dividends below.
+The saved Book Value reference guides this composition; shared money/percentage
+formatters and financial tokens remain unchanged. Marketing supporting items
+retain their existing outline treatment.
+Overview help is limited to three indicators: Book Value, Net Contributions,
+and one shared realized-metrics indicator after the return pill. The shared
+tooltip has two formula lines. In every Overview formula tooltip, only the
+metric name before the first equals sign is emphasized; the accessible label
+retains the formulas as plain text, without extra headings. The trigger adapts
+Nova's ghost `icon-xs` button with the preset's Tabler `IconInfoCircle`. The
+Bootstrap-owned tooltip uses Nova's foreground/background roles, compact
+`px-3`/`py-1.5` spacing, `--radius-md`, and rotated-square arrow; it deliberately
+has no extra panel shadow.
+
+Transfer creation fixes the source from the initiating portfolio menu and shows
+it in a readonly From Portfolio input. The submitted source ID stays hidden;
+the visible name is not submitted. Editing retains both endpoint selectors. Destination
+options exclude the selected source; server ownership and cash validation remain
+authoritative. Readonly inputs retain Nova's normal input appearance; only
+disabled controls receive muted opacity. Shared modal form-level errors reuse
+the preset-aligned field-error typography with `role="alert"`, rather than a
+separate large transfer banner.
+
 `.tx-preview` is the calculated form-output contract derived from Nova
 FieldDescription rather than validation/help styling. It uses text-sm type and
 shared field spacing; its label is muted while `.tx-preview__value` uses normal
@@ -329,7 +355,7 @@ Short interface headings, labels, buttons, menu items, table headers, and
 statuses use Title Case in their source strings. CSS capitalization is not part
 of the contract. Sentences, explanatory copy, validation text, natural ARIA
 descriptions, and user-entered content remain sentence case. Acronyms and
-notation such as P&L, ETF, OTP, and ROI retain their established spelling.
+notation such as P&L, ETF and OTP retain their established spelling.
 
 ### Accessibility and motion
 
@@ -366,8 +392,9 @@ portfolios. The grouped remainder uses the fifth allocation-visualization role.
 Full portfolio detail remains in the ledger, so presentation grouping does not
 change data.
 
-The public Landing preview uses deterministic sample data but shares the
-authenticated Overview's `.supporting-item`, `.allocation-legend`,
+The public Landing preview uses deterministic sample data and outline
+`.supporting-item` blocks; authenticated Overview facts are unboxed. Both use
+the shared `.allocation-legend`,
 `.allocation-legend__row`, swatch, name, value, percentage, financial-number,
 and visualization-token contracts. `static/js/display_formatters.js` is the
 single browser-side contract for fixed-two-decimal money, signed display, and

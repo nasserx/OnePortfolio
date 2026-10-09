@@ -131,21 +131,27 @@ for scanability. The mapping below is deliberate, not a second accounting model.
 | position_cost_basis | Cost Basis |
 | book_value | Book Value |
 
-Overview: Book Value with Realized Return; supporting facts are Net Contributions,
-Cash, Dividends and Realized P&L. Total Realized Earnings remains an internal/API
+Overview: Book Value hero, then Realized P&L with the Realized Return pill;
+supporting facts are Net Contributions, Cash and Dividends. Total Realized Earnings remains an internal/API
 monetary measure; there is no redundant earnings card.
 
-Portfolios: Funding Entries, Net Contributions, Cash and Cost Basis. No duplicated
+Portfolios: Entries, Net Contributions, Cash and Cost Basis. No duplicated
 Book Value summary and no help icons. Assets: Entries, Purchase Cost, Quantity,
 Avg. Cost, Realized P&L, Realized Return and Dividends, without help icons.
 
-Only Overview has help indicators, for Book Value, Net Contributions, Realized
-P&L and Realized Return. Their concise text is respectively:
+Expanded Assets transaction rows shorten Realized Return to Return; the summary
+keeps Realized Return. This is display copy only, not a different formula.
 
-- Book Value = Cash + Cost Basis
-- Net Contributions = Deposits − Withdrawals
-- Realized P&L = Net Sale Proceeds − Released Cost Basis
-- Realized Return = Realized P&L ÷ Released Cost Basis × 100
+Only Overview has help indicators: Book Value, Net Contributions and one shared
+Realized P&L / Realized Return indicator after the return pill. Their formulas are:
+
+- **Book Value** = Cash + Cost Basis
+- **Net Contributions** = Deposits − Withdrawals
+- **Realized P&L** = Net Sale Proceeds − Released Cost Basis
+- **Realized Return** = Realized P&L ÷ Released Cost Basis × 100
+
+The shared indicator contains the last two formula lines without separate
+headings. Only the leading metric names are bold, not the equals signs or formulas.
 
 Shared info dots preserve hover/focus tooltips, keyboard focusability and accessible
 labels. Cash and Dividends have no help icons. Number formatting, financial tones

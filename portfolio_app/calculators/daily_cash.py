@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal
+from typing import Tuple
 
 from portfolio_app.utils.decimal_utils import ZERO
 from portfolio_app.utils.financial_arithmetic import exact_add, exact_subtract, exact_sum
@@ -39,7 +40,7 @@ class DailyCash:
 
 @dataclass(frozen=True)
 class DailyCashLedger:
-    days: tuple[DailyCash, ...]
+    days: Tuple[DailyCash, ...]
 
     @property
     def closing_cash(self):

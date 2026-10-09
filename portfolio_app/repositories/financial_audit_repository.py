@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Optional
 
 from portfolio_app import db
 from portfolio_app.models.financial_audit import FinancialAudit
@@ -43,8 +44,8 @@ class AuditRevision:
     entity_type: str
     entity_id: int
     action: str
-    before_state: str | None
-    after_state: str | None
+    before_state: Optional[str]
+    after_state: Optional[str]
     created_at: datetime
 
 

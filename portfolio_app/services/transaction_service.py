@@ -368,8 +368,8 @@ class TransactionService:
         it sorts after any same-date/same-type peer (matches the post-
         commit ordering it would have once auto-incremented).
 
-        Ordering uses the same canonical key as summaries and persisted
-        average-cost replay: calendar date, Buy before Sell, then ID.
+        Ordering uses the same canonical key as summaries and transaction
+        projections: calendar date, Buy before Sell, then ID.
 
         The query is scoped by the repo's user_id so a forged portfolio_id
         from another user simulates an empty existing-row set rather than

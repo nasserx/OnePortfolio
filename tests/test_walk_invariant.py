@@ -22,7 +22,6 @@ from portfolio_app import db
 from portfolio_app.models import Transaction
 from portfolio_app.models.user import User
 from tests._auth import authenticate_client
-from portfolio_app.calculators import PortfolioCalculator
 from portfolio_app.services import ValidationError
 from portfolio_app.services.factory import Services
 from portfolio_app.utils.messages import MESSAGES

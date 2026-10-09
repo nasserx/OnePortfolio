@@ -4,7 +4,7 @@ OnePortfolio uses an in-app SQLite migration system in `portfolio_app/migrations
 
 ## Schema Version
 
-`TARGET_SCHEMA_VERSION` in `portfolio_app/migrations.py` defines the current expected SQLite schema version.
+`TARGET_SCHEMA_VERSION = 40` in `portfolio_app/migrations.py` defines the current expected SQLite schema version.
 
 Startup migration state is stored in SQLite through:
 
@@ -160,7 +160,9 @@ the parser and must not be treated as a supported financial write boundary.
 
 No financial SQL SUM/AVG, numeric ordering, comparison, or CAST-to-REAL is used on
 these columns. Canonical loaders sum individual Decimal values in Python. Exact
-storage is independent of unchanged 28-digit calculation and UI display precision.
+storage is independent of calculation and UI display precision. At schema 36's
+introduction the calculation context was still 28 digits; the current operand-sized
+arithmetic contract is documented in [Financial read models](FINANCIAL_READ_MODEL.md#phase-7-three-independent-precision-layers).
 
 Validation uses only disposable databases. `tests/test_exact_decimal_storage.py`
 compares legacy-decoded raw rows, every canonical asset/row/portfolio/global

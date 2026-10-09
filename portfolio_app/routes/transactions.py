@@ -40,7 +40,6 @@ _DIV_EDIT_FIELD_MAP = {
     MESSAGES['CASH_ALREADY_SPENT']:  'edit_amount',
 }
 from portfolio_app.utils.constants import safe_html_id
-from portfolio_app.utils.decimal_utils import ZERO
 from config import Config
 
 logger = logging.getLogger(__name__)

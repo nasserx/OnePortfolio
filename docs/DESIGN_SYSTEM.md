@@ -355,7 +355,7 @@ Short interface headings, labels, buttons, menu items, table headers, and
 statuses use Title Case in their source strings. CSS capitalization is not part
 of the contract. Sentences, explanatory copy, validation text, natural ARIA
 descriptions, and user-entered content remain sentence case. Acronyms and
-notation such as P&L, ETF, OTP, and ROI retain their established spelling.
+notation such as P&L, ETF and OTP retain their established spelling.
 
 ### Accessibility and motion
 
@@ -392,8 +392,9 @@ portfolios. The grouped remainder uses the fifth allocation-visualization role.
 Full portfolio detail remains in the ledger, so presentation grouping does not
 change data.
 
-The public Landing preview uses deterministic sample data but shares the
-authenticated Overview's `.supporting-item`, `.allocation-legend`,
+The public Landing preview uses deterministic sample data and outline
+`.supporting-item` blocks; authenticated Overview facts are unboxed. Both use
+the shared `.allocation-legend`,
 `.allocation-legend__row`, swatch, name, value, percentage, financial-number,
 and visualization-token contracts. `static/js/display_formatters.js` is the
 single browser-side contract for fixed-two-decimal money, signed display, and

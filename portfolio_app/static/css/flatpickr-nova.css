@@ -3,6 +3,9 @@
    or specificity escalation. Flatpickr continues to own all behavior. */
 
 .op-flatpickr.flatpickr-calendar {
+  --calendar-cell: 1.75rem;
+  width: calc(7 * var(--calendar-cell) + 1rem);
+  padding: var(--space-2);
   z-index: var(--z-datepicker);
   border: 0;
   border-radius: var(--radius-xl);
@@ -12,6 +15,58 @@
   font-family: var(--font-sans);
   font-size: var(--text-sm);
   color-scheme: light;
+}
+
+/* Modal calendars are portalled inside the trap, outside clipped form bodies. */
+.modal > .op-flatpickr.flatpickr-calendar {
+  max-height: calc(100dvh - 1rem);
+  overflow-y: auto;
+}
+
+/* Flatpickr retains its six-week layout and all date behavior. Translate
+   Calendar's 28px cells, p-2 and mt-2 week rhythm without vendor geometry. */
+.op-flatpickr .flatpickr-days,
+.op-flatpickr .dayContainer {
+  width: calc(7 * var(--calendar-cell));
+  min-width: calc(7 * var(--calendar-cell));
+  max-width: calc(7 * var(--calendar-cell));
+}
+
+.op-flatpickr .dayContainer { padding: 0; row-gap: var(--space-2); }
+.op-flatpickr .flatpickr-months { position: relative; margin-bottom: var(--space-4); }
+.op-flatpickr .flatpickr-month { height: var(--calendar-cell); }
+.op-flatpickr .flatpickr-current-month {
+  height: var(--calendar-cell);
+  padding: 0;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  line-height: var(--calendar-cell);
+}
+
+.op-flatpickr .flatpickr-current-month .flatpickr-monthDropdown-months {
+  margin: 0;
+  padding: 0;
+  font-weight: inherit;
+}
+
+/* Vendor year/static-month weights differ; both share the caption role. */
+.op-flatpickr .flatpickr-current-month input.cur-year,
+.op-flatpickr .flatpickr-current-month span.cur-month { font-weight: inherit; }
+
+@media (max-width: 47.999rem) {
+  .op-flatpickr .flatpickr-current-month input.cur-year,
+  .op-flatpickr .flatpickr-current-month .flatpickr-monthDropdown-months { font-size: 1rem; }
+}
+
+.op-flatpickr .flatpickr-prev-month,
+.op-flatpickr .flatpickr-next-month {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--calendar-cell);
+  height: var(--calendar-cell);
+  padding: 0;
+  border-radius: var(--radius-lg);
 }
 
 .op-flatpickr .flatpickr-months,
@@ -29,12 +84,18 @@
 .op-flatpickr .flatpickr-next-month,
 .op-flatpickr .flatpickr-prev-month svg,
 .op-flatpickr .flatpickr-next-month svg {
-  color: var(--muted-foreground);
-  fill: currentColor;
+  color: var(--foreground);
+  fill: none;
 }
 
+.op-flatpickr .flatpickr-prev-month svg,
+.op-flatpickr .flatpickr-next-month svg { width: 1rem; height: 1rem; }
+
 .op-flatpickr .flatpickr-prev-month:hover,
-.op-flatpickr .flatpickr-next-month:hover { color: var(--popover-foreground); }
+.op-flatpickr .flatpickr-next-month:hover {
+  background-color: var(--ghost-hover);
+  color: var(--foreground);
+}
 
 .op-flatpickr .flatpickr-current-month input.cur-year,
 .op-flatpickr .flatpickr-current-month .numInputWrapper,
@@ -59,11 +120,15 @@
 .op-flatpickr span.flatpickr-weekday {
   background-color: transparent;
   color: var(--muted-foreground);
-  font-size: var(--text-2xs);
-  font-weight: var(--weight-medium);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-regular);
 }
 
 .op-flatpickr .flatpickr-day {
+  width: var(--calendar-cell);
+  max-width: var(--calendar-cell);
+  height: var(--calendar-cell);
+  line-height: var(--calendar-cell);
   border-radius: var(--radius-md);
   background-color: transparent;
   color: var(--popover-foreground);
@@ -78,7 +143,11 @@
   color: var(--accent-foreground);
 }
 
-.op-flatpickr .flatpickr-day.today { border-color: var(--ring); }
+.op-flatpickr .flatpickr-day.today {
+  border-color: transparent;
+  background-color: var(--muted);
+  color: var(--foreground);
+}
 
 .op-flatpickr .flatpickr-day:focus-visible {
   outline: none;
@@ -93,13 +162,25 @@
   color: var(--primary-foreground);
 }
 
-.op-flatpickr .flatpickr-day.flatpickr-disabled,
-.op-flatpickr .flatpickr-day.flatpickr-disabled:hover,
 .op-flatpickr .flatpickr-day.prevMonthDay,
 .op-flatpickr .flatpickr-day.nextMonthDay {
+  color: var(--muted-foreground);
+}
+
+.op-flatpickr .flatpickr-day.selected:is(.prevMonthDay, .nextMonthDay) {
+  color: var(--primary-foreground);
+}
+
+.op-flatpickr .flatpickr-day.flatpickr-disabled,
+.op-flatpickr .flatpickr-day.flatpickr-disabled:hover {
   background-color: transparent;
   color: var(--muted-foreground);
   opacity: 0.5;
+}
+
+@media (forced-colors: active) {
+  .op-flatpickr .flatpickr-day:focus-visible { outline: 2px solid CanvasText; }
+  .op-flatpickr .flatpickr-day.selected { border-color: Highlight; }
 }
 
 @media (prefers-color-scheme: dark) {

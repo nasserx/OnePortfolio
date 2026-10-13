@@ -1,7 +1,7 @@
-"""Phase 1 characterization: current behavior, including named known defects.
+"""Financial regressions promoted from the original characterization suite.
 
-Remaining defect tests assert observed behavior without xfail markers. The
-Assets ordering characterization became a correctness regression in Phase 2.
+These checks enforce corrected accounting, ordering and precision contracts,
+including compatibility with legacy financial history.
 All persistence uses the existing isolated ``app`` fixture.
 """
 

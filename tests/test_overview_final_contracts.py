@@ -52,11 +52,12 @@ def test_book_value_and_supporting_metric_contracts_are_preserved():
 
 
 def test_allocation_chart_and_shared_legend_keep_strict_role_boundaries():
-    assert "cssVar('--portfolio-chart-' + i)" in CHART
+    assert "cssVar('--chart-' + i)" in CHART
     for index in range(1, 6):
-        assert f'var(--portfolio-chart-{index})' in COMPONENTS
+        assert f'var(--chart-{index})' in COMPONENTS
     assert '--financial-' not in CHART
-    assert not re.search(r'--chart-(?:[1-9]|other)', CHART)
+    assert '--portfolio-chart-' not in CHART
+    assert not re.search(r'--chart-(?:[6-9]|other)', CHART)
 
     assert "toggle.className = 'allocation-legend__row allocation-legend__toggle'" in CHART
     for semantic_part in ('name', 'value', 'pct'):
@@ -96,7 +97,7 @@ def test_portfolio_ledger_uses_neutral_shared_table_semantics():
     hover = _rule(COMPONENTS, '.table-row-interactive:is(:hover, :focus-within)')
     number = _rule(APP, '.ledger__num')
     assert 'background-color: transparent' in header
-    assert 'color: var(--muted-foreground)' in header
+    assert 'color: var(--foreground)' in header
     assert row.count('border-bottom: 1px solid var(--border)') == 1
     assert 'background-color: var(--muted-half)' in hover
     assert 'font-variant-numeric: tabular-nums' in number

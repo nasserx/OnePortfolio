@@ -26,7 +26,7 @@ def _sources(root, suffixes):
 def test_all_shells_load_only_geist_required_weights():
     expected = (
         'https://fonts.googleapis.com/css2?'
-        'family=Geist:wght@400;500;600&display=swap'
+        'family=Geist:wght@400;500;600;700&display=swap'
     )
     for name in ('base.html', 'auth_base.html', 'landing.html'):
         source = (TEMPLATES / name).read_text(encoding='utf-8')
@@ -145,8 +145,12 @@ def test_dynamic_icons_use_the_same_sprite_name_contract():
     assert "window.OnePortfolioIcons = Object.freeze({ create: createIcon });" in shell
     assert "use.setAttribute('href', '#op-icon-' + name);" in shell
     assert "window.OnePortfolioIcons.create(icon)" in main
-    # Compact form-level errors no longer introduce a decorative alert icon.
-    assert "invalid-feedback d-block js-modal-banner" in main
+    # Shared general feedback uses semantic Alert markup without adding a
+    # decorative icon or introducing an alternative icon renderer.
+    feedback = (STATIC / 'js' / 'form_feedback.js').read_text(encoding='utf-8')
+    assert "node.className = 'alert alert-danger mb-3 d-none'" in feedback
+    assert "node.setAttribute('role', 'alert')" in feedback
+    assert 'OnePortfolioIcons.create' not in feedback
     assert 'ICON_ALIASES' not in shell
 
 

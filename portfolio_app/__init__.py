@@ -179,7 +179,7 @@ def create_app(config_class=Config):
 
     # Static-asset cache buster. Bumped by hand when CSS/JS ships, so every
     # template can use `v=ASSET_VERSION` instead of carrying its own literal.
-    ASSET_VERSION = '20261010-financial-cleanup'
+    ASSET_VERSION = '20261013-ui-alignment-final'
 
     def _get_csp_nonce():
         """Return the single cryptographically random nonce for this request."""
@@ -262,8 +262,7 @@ def create_app(config_class=Config):
             return redirect(url_for('auth.verify_code'))
 
         if endpoint == 'auth.delete_account_verify':
-            flash(message, 'warning')
-            return redirect(url_for('auth.settings', tab='account', deletion_sent='1'))
+            return redirect(url_for('auth.settings', tab='account', deletion_sent='1', deletion_error=message))
 
         # Generic fallback — keep the message inside a real page so the
         # user still sees navigation, branding, and a way out.

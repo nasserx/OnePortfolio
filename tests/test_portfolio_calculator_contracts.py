@@ -123,7 +123,6 @@ def test_average_cost_partial_sell_contract_from_list():
     _assert_decimal(summary['realized_trading_pnl'], '5.6')
     _assert_decimal(summary['released_cost_basis'], '23.4')
     _assert_decimal(summary['net_sale_proceeds'], '29')
-    _assert_decimal(summary['net_sale_proceeds'], '29')
     _assert_decimal(summary['total_sell_fees'], '1')
     _assert_decimal(summary['total_quantity_held'], '3')
     _assert_decimal(summary['position_cost_basis'], '35.1')

@@ -155,14 +155,14 @@ def test_expanded_financial_tables_share_nova_row_contract():
     assert 'vertical-align: middle' in cells
 
 
-def test_command_input_is_flat_and_independent_from_standalone_fields():
+def test_command_input_has_one_preset_input_group_edge():
     components = COMPONENTS.read_text(encoding='utf-8')
     app = APP.read_text(encoding='utf-8')
     base = BASE.read_text(encoding='utf-8')
     template = (TEMPLATES / 'base.html').read_text(encoding='utf-8')
 
     command = _rule(components, '.command-input-group')
-    command_focus = _rule(components, '.command-input-group:focus-within')
+    command_focus = _rule(components, '.command-input-group:has(.command-input-control:focus-visible)')
     inner = _rule(components, '.command-input-control')
     assert 'border: 0' in inner
     assert 'border-radius: 0' in inner
@@ -170,28 +170,20 @@ def test_command_input_is_flat_and_independent_from_standalone_fields():
     assert 'outline: 0' in inner
 
     assert 'height: var(--control-h)' in command
-    assert 'border: 0' in command
-    assert 'background-color: transparent' in command
+    assert 'border: 1px solid color-mix(in oklch, var(--input) 30%, transparent)' in command
+    assert 'background-color: color-mix(in oklch, var(--input) 30%, transparent)' in command
     assert 'border-radius: var(--radius-lg)' in command
     assert 'box-shadow: none' in command
     assert 'outline: 0' in command
-    assert 'border: 0' in command_focus
-    assert 'background-color: var(--accent)' in command_focus
-    assert 'box-shadow: none' in command_focus
+    assert 'border-color: var(--ring)' in command_focus
+    assert 'box-shadow: 0 0 0 3px var(--focus-ring-soft)' in command_focus
     assert 'outline: 0' in command_focus
-    assert not re.search(r'var\(--(?:ring|focus-ring)', command_focus)
     placeholder = _rule(
         components,
         '.command-input-control::placeholder',
     )
     assert 'color: var(--muted-foreground)' in placeholder
-    focus_icon = _rule(components, '.command-input-group:focus-within > .icon')
-    focus_control = _rule(
-        components,
-        '.command-input-group:focus-within > .command-input-control',
-    )
-    assert 'color: var(--accent-foreground)' in focus_icon
-    assert 'color: var(--accent-foreground)' in focus_control
+    assert 'color: var(--muted-foreground)' in _rule(components, '.command-input-group > .icon')
     assert '@media (forced-colors: active)' in base
 
     assert 'class="palette__search"' in template

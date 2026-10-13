@@ -1,4 +1,6 @@
 {% extends 'base.html' %}
+{% from 'macros/forms.html' import field_attrs, field_error, form_errors_summary %}
+
 {% from 'macros/icons.html' import icon %}
 
 {% block title %}Update Email — OnePortfolio{% endblock %}
@@ -14,13 +16,8 @@
                 <h2 class="auth-inner-title">Update Email Address</h2>
             </header>
 
-            {% if form_errors.get('__all__') %}
-                <div class="alert alert-danger">
-                    {{ icon('alert-circle') }}{{ form_errors['__all__'] }}
-                </div>
-            {% endif %}
-
             <form class="form-stack" method="POST" action="{{ url_for('auth.update_email') }}" novalidate>
+                {{ form_errors_summary(form_errors, ['email']) }}
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
                 <!-- New email -->
@@ -29,10 +26,8 @@
                     <input type="email" id="email" name="email"
                            class="form-control {% if form_errors.get('email') %}is-invalid{% endif %}"
                            value="{{ form_values.get('email', '') }}"
-                           placeholder="New Email Address" autofocus>
-                    {% if form_errors.get('email') %}
-                        <div class="invalid-feedback">{{ form_errors['email'] }}</div>
-                    {% endif %}
+                           placeholder="New Email Address" autofocus {{ field_attrs('email', form_errors.get('email')) }} required>
+                    {{ field_error('email', form_errors.get('email')) }}
                 </div>
 
                 <p class="form-text">You’ll verify this new address with a separate code.</p>

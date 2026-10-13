@@ -134,8 +134,7 @@ def test_system_and_explicit_dark_roles_cannot_drift(tokens_css):
     assert system and explicit
     system_roles = declarations(system.group(1))
     explicit_roles = declarations(explicit.group(1))
-    for role in (*DARK, *(f'portfolio-chart-{index}' for index in range(1, 6))):
-        assert system_roles[role] == explicit_roles[role]
+    assert system_roles == explicit_roles
 
 
 def test_no_invented_or_legacy_palette_tokens_exist(tokens_css):
@@ -153,7 +152,8 @@ def test_no_invented_or_legacy_palette_tokens_exist(tokens_css):
 def test_chart_tokens_are_visualization_only():
     components = COMPONENTS_PATH.read_text(encoding='utf-8')
     for selector, body in re.findall(r'([^{}]+)\{([^{}]*)\}', components):
-        assert not re.search(r'var\(--chart-[1-5]\)', body), selector
+        if re.search(r'var\(--chart-[1-5]\)', body):
+            assert 'allocation-legend' in selector and 'swatch' in selector
 
     for path in CSS_PATHS:
         if path == TOKENS_PATH or path == COMPONENTS_PATH:
@@ -165,26 +165,16 @@ def test_chart_tokens_are_visualization_only():
     )
     assert 'var PALETTE_SIZE = 5;' in overview_js
     assert "cssVar('--chart-other'" not in overview_js
-    assert "cssVar('--portfolio-chart-' + i)" in overview_js
+    assert "cssVar('--chart-' + i)" in overview_js
     assert "name === 'Other Portfolios') return this.colors[4]" in overview_js
 
 
-def test_portfolio_chart_extension_is_separate_and_visualization_only(tokens_css):
+def test_all_chart_consumers_use_the_official_five_roles(tokens_css):
     light = theme_tokens(tokens_css, 'light')
     dark = theme_tokens(tokens_css, 'dark')
-    assert [light[f'portfolio-chart-{i}'] for i in range(1, 6)] == [
-        'var(--chart-3)',
-        'oklch(0.58 0.12 210)',
-        'oklch(0.55 0.16 300)',
-        'oklch(0.56 0.12 165)',
-        'oklch(0.64 0.14 70)',
-    ]
-    assert [dark[f'portfolio-chart-{i}'] for i in range(1, 6)] == [
-        'var(--chart-2)',
-        'oklch(0.72 0.12 210)',
-        'oklch(0.70 0.14 300)',
-        'oklch(0.70 0.12 165)',
-        'oklch(0.76 0.13 75)',
+    assert '--portfolio-chart-' not in tokens_css
+    assert [light[f'chart-{i}'] for i in range(1, 6)] == [
+        dark[f'chart-{i}'] for i in range(1, 6)
     ]
 
     allowed = ('allocation-legend', 'swatch')
@@ -193,14 +183,16 @@ def test_portfolio_chart_extension_is_separate_and_visualization_only(tokens_css
             continue
         css = path.read_text(encoding='utf-8')
         for selector, body in re.findall(r'([^{}]+)\{([^{}]*)\}', css):
-            if re.search(r'var\(--portfolio-chart-[1-5]\)', body):
+            if re.search(r'var\(--chart-[1-5]\)', body):
                 assert all(part in selector for part in allowed), (
                     f'{path}: {selector.strip()}'
                 )
 
     allowed_js = {'overview_charts.js', 'landing.js'}
     for path in Path('portfolio_app/static/js').glob('*.js'):
-        if '--portfolio-chart-' in path.read_text(encoding='utf-8'):
+        source = path.read_text(encoding='utf-8')
+        assert '--portfolio-chart-' not in source
+        if '--chart-' in source:
             assert path.name in allowed_js
 
 

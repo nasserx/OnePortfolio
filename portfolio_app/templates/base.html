@@ -41,7 +41,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     {# tokens.css declares the cascade layers and pulls Bootstrap into
        `vendor`, so it must stay first. #}
@@ -71,6 +71,9 @@
             <button type="button" class="icon-button sidenav__collapse d-none d-lg-inline-flex"
                     data-sidebar-toggle aria-label="Collapse navigation">
                 {{ icon('chevron-left') }}
+            </button>
+            <button type="button" class="icon-button sidenav__close" data-nav-close aria-label="Close navigation">
+                {{ icon('x') }}
             </button>
         </div>
 
@@ -173,11 +176,14 @@
                 {{ icon('search') }}
                 <input type="text" class="palette__input command-input-control" id="commandPaletteInput"
                        placeholder="Jump to a page or action…" autocomplete="off"
-                       aria-controls="commandPaletteList">
+                       role="combobox" aria-label="Search commands" aria-autocomplete="list"
+                       aria-expanded="false" aria-controls="commandPaletteList">
             </div>
         </div>
         <ul class="palette__list" id="commandPaletteList" role="listbox"
             aria-label="Commands"></ul>
+        <p class="palette__empty" id="commandPaletteEmpty" hidden>No matches</p>
+        <span class="visually-hidden" id="commandPaletteStatus" role="status" aria-live="polite" aria-atomic="true"></span>
     </div>
 </div>
 
@@ -220,7 +226,9 @@
         integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz"
         crossorigin="anonymous"></script>
 <script src="{{ url_for('static', filename='js/display_formatters.js', v=ASSET_VERSION) }}"></script>
+<script src="{{ url_for('static', filename='js/overlays.js', v=ASSET_VERSION) }}"></script>
 <script src="{{ url_for('static', filename='js/shell.js', v=ASSET_VERSION) }}"></script>
+<script src="{{ url_for('static', filename='js/form_feedback.js', v=ASSET_VERSION) }}"></script>
 <script src="{{ url_for('static', filename='js/main.js', v=ASSET_VERSION) }}"></script>
 
 {% block extra_js %}{% endblock %}

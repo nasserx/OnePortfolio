@@ -14,7 +14,7 @@ const document = {
     },
 };
 const context = vm.createContext({
-    document, window: {}, Event: class {},
+    document, window: {OnePortfolioForms: {prepare() {}}, OnePortfolioDialogs: {show() {}}}, Event: class {},
     bootstrap: { Modal: class { show() {} } },
 });
 vm.runInContext(read('portfolio_app/static/js/main.js') + '\nglobalThis.utils = Utils;', context);

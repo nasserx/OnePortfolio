@@ -149,7 +149,7 @@ def test_rename_rejects_case_insensitive_duplicate(app):
     response = _post_rename(client, portfolio_id, '  iNcOmE  ')
 
     assert response.status_code == 400
-    assert response.get_json()['errors']['name'] == MESSAGES['PORTFOLIO_NAME_TAKEN']
+    assert response.get_json()['errors'] == {'__all__': MESSAGES['PORTFOLIO_NAME_TAKEN']}
 
 
 def test_rename_to_same_normalized_name_is_a_no_op(app):

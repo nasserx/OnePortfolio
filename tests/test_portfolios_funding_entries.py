@@ -153,7 +153,7 @@ def test_portfolio_routes_create_deposit_withdraw_and_recalculate_totals(app):
         assert PortfolioCalculator.get_cash_balance_for_portfolio(portfolio_id, user_id=uid) == _dec('750.00')
 
 
-def test_withdraw_exceeding_cash_fails_with_clear_amount_error(app):
+def test_withdraw_exceeding_cash_returns_general_financial_error(app):
     with app.app_context():
         uid = _seed_user('overdraw_user')
         svc = Services(user_id=uid)
@@ -170,7 +170,7 @@ def test_withdraw_exceeding_cash_fails_with_clear_amount_error(app):
     )
 
     assert response.status_code == 400
-    assert response.get_json()['errors']['amount_delta'] == MESSAGES['WITHDRAWAL_EXCEEDS_CASH']
+    assert response.get_json()['errors'] == {'__all__': MESSAGES['WITHDRAWAL_EXCEEDS_CASH']}
 
 
 def test_editing_and_deleting_capital_entries_update_summary(app):

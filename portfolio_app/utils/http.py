@@ -8,19 +8,14 @@ def is_ajax_request():
     return request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json
 
 
-def field_error_response(message, field_map, default_field='__all__'):
-    """AJAX error response that places a service-layer message on its field.
+def form_error_response(message):
+    """Report submission/state failures without guessing a responsible input.
 
-    Service-layer ``ValueError`` / ``ValidationError`` messages (e.g.
-    "Insufficient amount.", "Insufficient quantity.") originate from a
-    specific business rule that ties to a specific input. The message
-    itself doesn't carry that mapping, so each route declares which of
-    its own input names a given message belongs to. Anything not in the
-    map falls through to ``default_field`` (typically ``__all__``, which
-    surfaces as a modal-level banner).
+    Forms classify intrinsic input errors by field before calling services.
+    Service failures depend on account/history state or multiple inputs and
+    belong to the form. Classification must never depend on message wording.
     """
-    field = field_map.get(message, default_field)
-    return json_response(False, errors={field: message})
+    return json_response(False, errors={'__all__': message})
 
 
 def json_response(success, message=None, error=None, errors=None, **kwargs):

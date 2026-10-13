@@ -102,6 +102,8 @@
 
   function SideNav() {
     this.shell = document.querySelector('.shell');
+    this.drawer = document.getElementById('sidenav');
+    this.mobile = window.matchMedia('(max-width: 62rem)');
   }
 
   SideNav.prototype.mount = function () {
@@ -109,6 +111,18 @@
 
     var shell = this.shell;
     var self = this;
+    var syncViewport = function () {
+      var hadDrawerFocus = self.drawer.contains(document.activeElement);
+      if (!self.mobile.matches) self.setOpen(false);
+      self.drawer.inert = self.mobile.matches && shell.getAttribute('data-nav-open') !== 'true';
+      if (hadDrawerFocus && !window.OnePortfolioOverlays.available(document.activeElement)) {
+        var target = self.mobile.matches ? document.querySelector('[data-nav-open-toggle]') :
+          self.drawer.querySelector('.navlink.active') || self.drawer.querySelector('[data-palette-open]');
+        if (target) target.focus();
+      }
+    };
+    this.mobile.addEventListener('change', syncViewport);
+    syncViewport();
 
     // Collapse state lives on <html> rather than .shell so the inline head
     // script can restore it before the first paint.
@@ -126,7 +140,7 @@
 
     document.querySelectorAll('[data-nav-open-toggle]').forEach(function (button) {
       button.addEventListener('click', function () {
-        self.setOpen(shell.getAttribute('data-nav-open') !== 'true');
+        self.setOpen(shell.getAttribute('data-nav-open') !== 'true', button);
       });
     });
 
@@ -141,19 +155,36 @@
       link.addEventListener('click', function () { self.setOpen(false); });
     });
 
-    document.addEventListener('keydown', function (event) {
-      if (event.key === 'Escape') self.setOpen(false);
+    shell.querySelectorAll('[data-nav-close]').forEach(function (button) {
+      button.addEventListener('click', function () { self.setOpen(false); });
     });
   };
 
-  SideNav.prototype.setOpen = function (open) {
-    if (!this.shell) return;
-    this.shell.setAttribute('data-nav-open', open ? 'true' : 'false');
-    document.body.style.overflow = open ? 'hidden' : '';
-
-    document.querySelectorAll('[data-nav-open-toggle]').forEach(function (button) {
-      button.setAttribute('aria-expanded', open ? 'true' : 'false');
-    });
+  SideNav.prototype.setOpen = function (open, opener) {
+    if (!this.shell || !this.drawer) return;
+    var self = this;
+    var paint = function (expanded) {
+      self.shell.setAttribute('data-nav-open', expanded ? 'true' : 'false');
+      self.drawer.inert = self.mobile.matches && !expanded;
+      if (expanded) {
+        self.drawer.setAttribute('role', 'dialog');
+        self.drawer.setAttribute('aria-modal', 'true');
+      } else {
+        self.drawer.removeAttribute('role');
+        self.drawer.removeAttribute('aria-modal');
+      }
+      document.querySelectorAll('[data-nav-open-toggle]').forEach(function (button) {
+        button.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+      });
+    };
+    if (open && this.mobile.matches) {
+      if (!window.OnePortfolioOverlays.open(this.drawer, function () { paint(false); }, opener)) return;
+      paint(true);
+      this.drawer.querySelector('[data-nav-close]').focus();
+    } else {
+      window.OnePortfolioOverlays.close(this.drawer, this.mobile.matches);
+      paint(false);
+    }
   };
 
   /* ======================================================================
@@ -250,10 +281,11 @@
     this.root = document.getElementById('commandPalette');
     this.input = document.getElementById('commandPaletteInput');
     this.list = document.getElementById('commandPaletteList');
+    this.status = document.getElementById('commandPaletteStatus');
+    this.empty = document.getElementById('commandPaletteEmpty');
     this.items = [];
     this.matches = [];
     this.activeIndex = 0;
-    this.lastFocused = null;
   }
 
   CommandPalette.prototype.mount = function () {
@@ -265,15 +297,15 @@
     document.addEventListener('keydown', function (event) {
       var isOpenShortcut = (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k';
       if (isOpenShortcut) {
+        if (window.OnePortfolioOverlays.blocked()) return;
         event.preventDefault();
         self.toggle();
         return;
       }
-      if (event.key === 'Escape' && !self.root.hidden) self.close();
     });
 
     document.querySelectorAll('[data-palette-open]').forEach(function (button) {
-      button.addEventListener('click', function () { self.open(); });
+      button.addEventListener('click', function () { self.open(button); });
     });
 
     this.root.addEventListener('mousedown', function (event) {
@@ -283,6 +315,7 @@
     this.input.addEventListener('input', function () { self.render(); });
 
     this.input.addEventListener('keydown', function (event) {
+      if (event.isComposing) return;
       if (event.key === 'ArrowDown') {
         event.preventDefault();
         self.move(1);
@@ -331,9 +364,15 @@
     else this.close();
   };
 
-  CommandPalette.prototype.open = function () {
-    this.lastFocused = document.activeElement;
+  CommandPalette.prototype.open = function (opener) {
+    var self = this;
+    if (!window.OnePortfolioOverlays.open(this.root, function () {
+      self.root.hidden = true;
+      self.input.setAttribute('aria-expanded', 'false');
+      self.input.removeAttribute('aria-activedescendant');
+    }, opener)) return;
     this.root.hidden = false;
+    this.input.setAttribute('aria-expanded', 'true');
     this.input.value = '';
     this.activeIndex = 0;
     this.render();
@@ -341,8 +380,7 @@
   };
 
   CommandPalette.prototype.close = function () {
-    this.root.hidden = true;
-    if (this.lastFocused && this.lastFocused.focus) this.lastFocused.focus();
+    window.OnePortfolioOverlays.close(this.root);
   };
 
   CommandPalette.prototype.move = function (delta) {
@@ -355,9 +393,11 @@
   CommandPalette.prototype.run = function (item) {
     if (!item) return;
     this.close();
+    if (item.element && !window.OnePortfolioOverlays.available(item.element)) return;
     if (item.href) {
       window.location.href = item.href;
     } else if (item.element) {
+      item.element.focus();
       item.element.click();
     }
   };
@@ -365,21 +405,24 @@
   CommandPalette.prototype.render = function () {
     var query = this.input.value.trim().toLowerCase();
 
-    this.matches = query
-      ? this.items.filter(function (item) {
-          return item.label.toLowerCase().indexOf(query) !== -1
-            || (item.group || '').toLowerCase().indexOf(query) !== -1;
-        })
-      : this.items.slice();
+    this.matches = this.items.filter(function (item) {
+      // Background inertness belongs to the palette, so eligibility uses the
+      // control's own disabled/hidden state instead of overlay availability.
+      if (item.element && (item.element.disabled || !item.element.isConnected ||
+          item.element.getAttribute('aria-disabled') === 'true' ||
+          item.element.closest('[hidden]') || !item.element.getClientRects().length ||
+          window.getComputedStyle(item.element).visibility === 'hidden')) return false;
+      return !query || item.label.toLowerCase().indexOf(query) !== -1 ||
+        (item.group || '').toLowerCase().indexOf(query) !== -1;
+    });
 
     this.activeIndex = 0;
     this.list.replaceChildren();
+    this.input.removeAttribute('aria-activedescendant');
+    this.empty.hidden = this.matches.length > 0;
+    this.status.textContent = this.matches.length ? this.matches.length + ' commands available' : 'No matches';
 
     if (!this.matches.length) {
-      var empty = document.createElement('li');
-      empty.className = 'palette__empty';
-      empty.textContent = 'No matches';
-      this.list.appendChild(empty);
       return;
     }
 
@@ -390,6 +433,7 @@
       row.className = 'palette__item';
       row.dataset.index = String(index);
       row.setAttribute('role', 'option');
+      row.id = 'command-option-' + index;
 
       var icon = createIcon(item.icon);
 
@@ -413,6 +457,7 @@
     this.list.querySelectorAll('[data-index]').forEach(function (row, index) {
       var selected = index === self.activeIndex;
       row.setAttribute('aria-selected', selected ? 'true' : 'false');
+      if (selected) self.input.setAttribute('aria-activedescendant', row.id);
       // Explicitly instant: this follows a keypress, so it has to be where
       // the caret is by the next one, not easing towards it.
       if (selected && row.scrollIntoView) {

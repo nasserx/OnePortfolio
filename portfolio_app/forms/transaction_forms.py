@@ -24,7 +24,7 @@ class TransactionAddForm(BaseForm):
             else:
                 portfolio = next((p for p in self.portfolios if p.id == portfolio_id), None)
                 if not portfolio:
-                    self.errors['portfolio_id'] = MESSAGES['PORTFOLIO_NOT_FOUND']
+                    self.errors['__all__'] = MESSAGES['PORTFOLIO_NOT_FOUND']
                 else:
                     self.cleaned_data['portfolio_id'] = portfolio_id
                     self.cleaned_data['portfolio'] = portfolio
@@ -137,7 +137,7 @@ class DividendAddForm(BaseForm):
             else:
                 portfolio = next((p for p in self.portfolios if p.id == portfolio_id), None)
                 if not portfolio:
-                    self.errors['portfolio_id'] = MESSAGES['PORTFOLIO_NOT_FOUND']
+                    self.errors['__all__'] = MESSAGES['PORTFOLIO_NOT_FOUND']
                 else:
                     self.cleaned_data['portfolio_id'] = portfolio_id
         except (ValueError, TypeError):
@@ -212,7 +212,7 @@ class SymbolAddForm(BaseForm):
             else:
                 portfolio = next((p for p in self.portfolios if p.id == portfolio_id), None)
                 if not portfolio:
-                    self.errors['symbol_portfolio_id'] = MESSAGES['PORTFOLIO_NOT_FOUND']
+                    self.errors['__all__'] = MESSAGES['PORTFOLIO_NOT_FOUND']
                 else:
                     self.cleaned_data['portfolio_id'] = portfolio_id
         except (ValueError, TypeError):

@@ -19,7 +19,7 @@ from portfolio_app.calculators.portfolio_history import build_portfolio_entries
 from portfolio_app.forms.transfer_form import TransferForm
 from portfolio_app.utils import (
     get_error_message, get_first_form_error, MESSAGES,
-    is_ajax_request, json_response, field_error_response,
+    is_ajax_request, json_response, form_error_response,
 )
 
 logger = logging.getLogger(__name__)
@@ -193,8 +193,7 @@ def portfolios_rename(portfolio_id):
         abort_mutation()
         message = get_error_message(e)
         if is_ajax_request():
-            field = 'name' if message == MESSAGES['PORTFOLIO_NAME_TAKEN'] else '__all__'
-            return json_response(False, errors={field: message})
+            return form_error_response(message)
 
         flash(message, 'error')
         return redirect(url_for('portfolios.portfolios_list'))
@@ -334,16 +333,7 @@ def portfolios_withdraw(portfolio_id):
     except ValueError as e:
         abort_mutation()
         if is_ajax_request():
-            # Withdrawal business-rule errors belong under Amount rather
-            # than as a modal-level banner.
-            return field_error_response(
-                get_error_message(e),
-                {
-                    MESSAGES['INSUFFICIENT_AMOUNT']: 'amount_delta',
-                    MESSAGES['WITHDRAWAL_EXCEEDS_CASH']: 'amount_delta',
-                    MESSAGES['CASH_ALREADY_SPENT']:  'amount_delta',
-                },
-            )
+            return form_error_response(get_error_message(e))
 
         flash(get_error_message(e), 'error')
         return redirect(url_for('portfolios.portfolios_list'))
@@ -411,15 +401,7 @@ def portfolios_event_edit(event_id):
     except ValueError as e:
         abort_mutation()
         if is_ajax_request():
-            # Event-edit's input is named ``edit_cash_event_amount`` —
-            # surface insufficient/clawback messages under it.
-            return field_error_response(
-                get_error_message(e),
-                {
-                    MESSAGES['INSUFFICIENT_AMOUNT']: 'edit_cash_event_amount',
-                    MESSAGES['CASH_ALREADY_SPENT']:  'edit_cash_event_amount',
-                },
-            )
+            return form_error_response(get_error_message(e))
         flash(get_error_message(e), 'error')
 
     except Exception:
@@ -463,8 +445,17 @@ def portfolios_transfer_save(transfer_id=None):
         if not form.validate():
             if is_ajax_request():
                 return json_response(False, errors=form.errors)
-            flash(get_first_form_error(form.errors), 'error')
-            return redirect(url_for('portfolios.portfolios_list'))
+            return render_template(
+                'portfolios.html', **_get_portfolios_page_context(),
+                form_errors={'portfolio_transfer': form.errors},
+                restored_transfer={
+                    'id': transfer_id,
+                    **{field: request.form.get(field, '') for field in (
+                        'source_portfolio_id', 'destination_portfolio_id',
+                        'amount', 'date', 'notes',
+                    )},
+                },
+            ), 400
         values = form.get_cleaned_data()
         transfer = svc.transfer_service.create(**values) if transfer_id is None else svc.transfer_service.update(transfer_id, **values)
         if is_ajax_request():

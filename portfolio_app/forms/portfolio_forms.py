@@ -18,7 +18,7 @@ class _PortfolioNameForm(BaseForm):
             if len(name) > 20:
                 self.errors['name'] = MESSAGES['NAME_TOO_LONG']
             elif name.lower() in self._existing_lower:
-                self.errors['name'] = MESSAGES['PORTFOLIO_NAME_TAKEN']
+                self.errors['__all__'] = MESSAGES['PORTFOLIO_NAME_TAKEN']
             else:
                 self.cleaned_data['name'] = name
 

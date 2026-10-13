@@ -31,11 +31,12 @@ def test_settings_shell_uses_shared_panels_and_independent_tab_navigation():
 
     css = APP_CSS.read_text(encoding='utf-8')
     sidebar = _rule(css, '.settings-sidebar-link')
-    assert 'color: var(--muted-foreground)' in sidebar
-    assert 'border-radius: var(--radius-lg)' in sidebar
+    assert 'color: var(--tab-foreground)' in sidebar
+    assert 'border-radius: var(--radius-md)' in sidebar
     active = _rule(css, '.settings-sidebar-link.active')
-    assert 'background-color: var(--accent)' in active
-    assert 'color: var(--accent-foreground)' in active
+    assert 'background-color: var(--tab-active-background)' in active
+    assert 'color: var(--foreground)' in active
+    assert 'border-color: var(--tab-active-border)' in active
     assert not re.search(r'financial-|chart-|destructive', sidebar + active)
 
 

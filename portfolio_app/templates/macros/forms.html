@@ -1,0 +1,23 @@
+{# Shared server feedback. JavaScript uses the same IDs, roles, and markers.
+   components.css adapts Nova FieldError and Alert without owning validation. #}
+{% macro field_attrs(id, error=none, help_id=none) -%}
+{% if error %}aria-invalid="true"{% endif %}
+{% if error or help_id %}aria-describedby="{% if help_id %}{{ help_id }}{% endif %}{% if error %}{% if help_id %} {% endif %}{{ id }}-error{% endif %}"{% endif %}
+{%- endmacro %}
+
+{% macro field_error(id, error=none) -%}
+<div id="{{ id }}-error" data-field-error="{{ id }}" role="alert"
+     class="invalid-feedback{% if error %} d-block{% endif %}"{% if not error %} hidden{% endif %}>{{ error or '' }}</div>
+{%- endmacro %}
+
+{% macro form_error(message=none) -%}
+<div class="alert alert-danger mb-3{% if not message %} d-none{% endif %}" data-form-error role="alert" tabindex="-1"{% if not message %} hidden{% endif %}>{{ message or '' }}</div>
+{%- endmacro %}
+
+{% macro form_errors_summary(errors, fields=[]) -%}
+{% set messages = [] %}
+{% for key, message in errors.items() if key not in fields %}
+{% set _ = messages.append(message) %}
+{% endfor %}
+{{ form_error(messages | unique(case_sensitive=true) | join(' ')) }}
+{%- endmacro %}

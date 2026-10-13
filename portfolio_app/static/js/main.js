@@ -106,30 +106,7 @@ const Utils = {
         return sign + left + (right ? '.' + right : '');
     },
 
-    findFieldContainer(element) {
-        return element.closest('.mb-3') ||
-               element.closest('.form-group') ||
-               element.parentElement;
-    },
 
-    ensureFeedbackElement(inputElement) {
-        const container = this.findFieldContainer(inputElement);
-        if (!container) return null;
-
-        let feedback = container.querySelector('.invalid-feedback');
-        if (!feedback) {
-            feedback = document.createElement('div');
-            feedback.className = 'invalid-feedback';
-            container.appendChild(feedback);
-        }
-        return feedback;
-    },
-
-    escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
 };
 
 
@@ -230,16 +207,69 @@ function applyBrowserTimeZone(root) {
 }
 
 class ActionMenuManager {
+    static nextId = 0;
+
     constructor(root) {
         if (!window.bootstrap || !window.bootstrap.Dropdown) return;
 
         const scope = root || document;
         scope.querySelectorAll('.action-menu__trigger').forEach(function(trigger) {
-            window.bootstrap.Dropdown.getOrCreateInstance(trigger, {
+            if (trigger.dataset.menuMounted) return;
+            const menu = trigger.closest('.action-menu').querySelector('.action-menu__menu');
+            if (!menu) return;
+            trigger.dataset.menuMounted = 'true';
+            const dropdown = window.bootstrap.Dropdown.getOrCreateInstance(trigger, {
                 boundary: 'viewport',
                 popperConfig: function(defaultConfig) {
                     return Object.assign({}, defaultConfig, { strategy: 'fixed' });
                 }
+            });
+            const id = ++ActionMenuManager.nextId;
+            trigger.id = trigger.id || 'action-trigger-' + id;
+            menu.id = menu.id || 'action-menu-' + id;
+            trigger.setAttribute('aria-haspopup', 'menu');
+            trigger.setAttribute('aria-controls', menu.id);
+            menu.setAttribute('role', 'menu');
+            menu.setAttribute('aria-labelledby', trigger.id);
+            menu.querySelectorAll('li').forEach(item => item.setAttribute('role', 'none'));
+            menu.querySelectorAll('.dropdown-divider').forEach(item => item.setAttribute('role', 'separator'));
+            menu.querySelectorAll('.dropdown-item').forEach(item => {
+                item.setAttribute('role', 'menuitem');
+                item.tabIndex = -1;
+            });
+            const items = () => Array.from(menu.querySelectorAll('.dropdown-item')).filter(item =>
+                !item.disabled && !item.classList.contains('disabled') &&
+                item.getAttribute('aria-disabled') !== 'true' && item.getClientRects().length);
+            trigger.addEventListener('keydown', event => {
+                if (!['Enter', ' '].includes(event.key) || trigger.disabled) return;
+                event.preventDefault();
+                dropdown.show();
+                const first = items()[0];
+                if (first) first.focus();
+            });
+            let search = '';
+            let lastKeyAt = 0;
+            trigger.addEventListener('hidden.bs.dropdown', () => { search = ''; });
+            menu.addEventListener('keydown', event => {
+                // Bootstrap alone owns arrows, Escape and Tab dismissal.
+                if (event.altKey || event.ctrlKey || event.metaKey || event.isComposing ||
+                    event.target.matches('input, textarea, select')) return;
+                const choices = items();
+                if (!choices.length) return;
+                let next;
+                if (event.key === 'Home') next = choices[0];
+                else if (event.key === 'End') next = choices[choices.length - 1];
+                else if (event.key.length === 1 && event.key !== ' ') {
+                    const now = Date.now();
+                    search = now - lastKeyAt > 700 ? event.key.toLowerCase() : search + event.key.toLowerCase();
+                    lastKeyAt = now;
+                    const query = Array.from(search).every(letter => letter === search[0]) ? search[0] : search;
+                    const start = choices.indexOf(document.activeElement);
+                    const ordered = choices.slice(start + 1).concat(choices.slice(0, start + 1));
+                    next = ordered.find(item => item.textContent.trim().toLowerCase().startsWith(query));
+                } else return;
+                event.preventDefault();
+                if (next) next.focus();
             });
         });
     }
@@ -264,17 +294,54 @@ function initDateField(el) {
         el.type = 'text';
     }
 
+    const modal = el.closest('.modal');
+    const positionInModal = function(fp) {
+        const calendar = fp.calendarContainer;
+        const bounds = el.getBoundingClientRect();
+        const container = modal.getBoundingClientRect();
+        const height = calendar.offsetHeight;
+        const width = calendar.offsetWidth;
+        const above = bounds.bottom + height + 8 > window.innerHeight && bounds.top > height;
+        const top = Math.max(8, Math.min(above ? bounds.top - height - 2 : bounds.bottom + 2,
+            window.innerHeight - height - 8));
+        const left = Math.max(8, Math.min(bounds.left, document.documentElement.clientWidth - width - 8));
+        calendar.style.top = (top - container.top + modal.scrollTop) + 'px';
+        calendar.style.left = (left - container.left + modal.scrollLeft) + 'px';
+        calendar.style.right = 'auto';
+    };
     const instance = window.flatpickr(el, {
         dateFormat: 'Y-m-d',
+        shorthandCurrentMonth: true,
         allowInput: true,
         clickOpens: !el.disabled && !el.readOnly,
-        appendTo: document.body,
+        appendTo: modal || document.body,
+        position: modal ? positionInModal : 'auto',
         disableMobile: true,
         static: false,
+        prevArrow: '<svg class="icon" aria-hidden="true"><use href="#op-icon-chevron-left"></use></svg>',
+        nextArrow: '<svg class="icon" aria-hidden="true"><use href="#op-icon-chevron-right"></use></svg>',
         onReady: function(selectedDates, dateStr, fp) {
             fp.calendarContainer.classList.add('op-flatpickr');
         }
     });
+
+    if (modal) {
+        // Keep the calendar inside Bootstrap's existing trap, outside the
+        // scrolling form. Flatpickr remains the date/selection owner.
+        modal.addEventListener('scroll', event => {
+            if (!instance.isOpen || instance.calendarContainer.contains(event.target)) return;
+            if (instance.calendarContainer.contains(document.activeElement)) el.focus();
+            instance.close();
+        }, true);
+        modal.addEventListener('keydown', event => {
+            if (event.key !== 'Escape' || !instance.isOpen ||
+                (event.target !== el && !instance.calendarContainer.contains(event.target))) return;
+            event.preventDefault();
+            event.stopPropagation();
+            el.focus();
+            instance.close();
+        }, true);
+    }
 
     if (currentValue && el.value !== currentValue) {
         el.value = currentValue;
@@ -293,196 +360,6 @@ function closeDatePickers(root) {
     scope.querySelectorAll('[data-datepicker="flatpickr"]').forEach(function(el) {
         if (el._flatpickr) el._flatpickr.close();
     });
-}
-
-class FormValidator {
-    constructor(formElement, rules) {
-        this.form = formElement;
-        this.rules = rules;
-        this.touched = new Set();
-        this.submittedOnce = false;
-
-        if (this.form) {
-            this.initialize();
-        }
-    }
-
-    initialize() {
-        this.disableNativeValidation();
-        this.attachFieldListeners();
-        this.attachSubmitListener();
-        this.hideFeedbackPlaceholders();
-    }
-
-    disableNativeValidation() {
-        this.form.noValidate = true;
-        this.form.setAttribute('novalidate', 'novalidate');
-    }
-
-    shouldShowError(fieldName) {
-        return this.submittedOnce || this.touched.has(fieldName);
-    }
-
-    getFieldElement(rule) {
-        if (rule.getEl) {
-            return rule.getEl(this.form);
-        }
-        return rule.selector ? this.form.querySelector(rule.selector) : null;
-    }
-
-    validateRule(rule) {
-        const element = this.getFieldElement(rule);
-        if (!element) return { ok: true };
-
-        const rawValue = (element.value != null) ? element.value : '';
-        const result = rule.validate(rawValue, element, this.form);
-
-        if (result && result.ok === false) {
-            return {
-                ok: false,
-                message: result.message || 'Invalid input.',
-                element
-            };
-        }
-
-        return { ok: true, element };
-    }
-
-    validateFieldByName(fieldName) {
-        const rule = this.rules.find(r => r.name === fieldName);
-        if (!rule) return true;
-
-        const result = this.validateRule(rule);
-
-        if (!this.shouldShowError(fieldName)) {
-            return result.ok;
-        }
-
-        if (!result.ok) {
-            this.setFieldError(result.element, result.message);
-        } else {
-            this.clearFieldError(result.element);
-        }
-
-        return result.ok;
-    }
-
-    validateAll() {
-        let firstInvalidField = null;
-        let allValid = true;
-
-        for (const rule of this.rules) {
-            const result = this.validateRule(rule);
-
-            if (!result.ok) {
-                allValid = false;
-                if (!firstInvalidField) {
-                    firstInvalidField = result;
-                }
-
-                if (this.shouldShowError(rule.name)) {
-                    this.setFieldError(result.element, result.message);
-                }
-            } else {
-                if (this.shouldShowError(rule.name)) {
-                    this.clearFieldError(result.element);
-                }
-            }
-        }
-
-        if (!allValid && firstInvalidField && firstInvalidField.element) {
-            this.focusElement(firstInvalidField.element);
-        }
-
-        return allValid;
-    }
-
-    setFieldError(inputElement, message) {
-        if (!inputElement) return;
-
-        inputElement.classList.add('is-invalid');
-        const feedback = Utils.ensureFeedbackElement(inputElement);
-
-        if (feedback) {
-            feedback.textContent = String(message || 'Invalid input.');
-            feedback.style.display = 'block';
-        }
-    }
-
-    clearFieldError(inputElement) {
-        if (!inputElement) return;
-
-        inputElement.classList.remove('is-invalid');
-        const feedback = Utils.ensureFeedbackElement(inputElement);
-
-        if (feedback) {
-            feedback.textContent = '';
-            feedback.style.display = 'none';
-        }
-    }
-
-    focusElement(element) {
-        if (typeof element.focus === 'function') {
-            try {
-                element.focus();
-            } catch (e) {
-                // Ignore focus errors
-            }
-        }
-    }
-
-    attachFieldListeners() {
-        for (const rule of this.rules) {
-            const element = this.getFieldElement(rule);
-            if (!element) continue;
-
-            element.addEventListener('blur', () => {
-                this.touched.add(rule.name);
-                this.validateFieldByName(rule.name);
-            });
-
-            element.addEventListener('input', () => {
-                if (this.touched.has(rule.name) || this.submittedOnce) {
-                    this.validateFieldByName(rule.name);
-                }
-            });
-
-            element.addEventListener('change', (event) => {
-                if (event && event.isTrusted) {
-                    this.touched.add(rule.name);
-                }
-                if (this.touched.has(rule.name) || this.submittedOnce) {
-                    this.validateFieldByName(rule.name);
-                }
-            });
-        }
-    }
-
-    attachSubmitListener() {
-        this.form.addEventListener('submit', (event) => {
-            this.submittedOnce = true;
-
-            if (!this.validateAll()) {
-                event.preventDefault();
-                event.stopImmediatePropagation();
-            }
-        });
-    }
-
-    hideFeedbackPlaceholders() {
-        for (const rule of this.rules) {
-            const element = this.getFieldElement(rule);
-            if (!element) continue;
-
-            const feedback = Utils.ensureFeedbackElement(element);
-
-            if (feedback &&
-                !feedback.textContent.trim() &&
-                !element.classList.contains('is-invalid')) {
-                feedback.style.display = 'none';
-            }
-        }
-    }
 }
 
 class DecimalInputHandler {
@@ -573,7 +450,6 @@ class TransactionFormHandler {
 
     initialize() {
         this.attachPreviewCalculation();
-        this.enforceTypeSelection();
         this.attachBuySelectors();
     }
 
@@ -612,18 +488,6 @@ class TransactionFormHandler {
         this.calculateTotal();
     }
 
-    enforceTypeSelection() {
-        if (!this.typeInput) return;
-
-        // Clear the type error once a valid type is selected
-        this.typeInput.addEventListener('change', () => {
-            if (String(this.typeInput.value || '').trim()) {
-                const validator = new FormValidator(this.form, []);
-                validator.clearFieldError(this.typeInput);
-            }
-        });
-    }
-
     attachBuySelectors() {
         const buyButton = document.getElementById('add_tx_type_buy_btn');
         const sellButton = document.getElementById('add_tx_type_sell_btn');
@@ -638,62 +502,6 @@ class TransactionFormHandler {
 
         buyButton?.addEventListener('click', triggerChange);
         sellButton?.addEventListener('click', triggerChange);
-    }
-}
-
-class ModalManager {
-    constructor() {
-        this.initialize();
-    }
-
-    initialize() {
-        this.markUserOpenedModals();
-        this.clearErrorsOnModalEvents();
-    }
-
-    markUserOpenedModals() {
-        document.addEventListener('click', (event) => {
-            const trigger = event.target?.closest?.(
-                '[data-bs-toggle="modal"],[data-bs-target]'
-            );
-
-            if (!trigger) return;
-
-            const targetSelector = trigger.getAttribute('data-bs-target');
-            if (!targetSelector) return;
-
-            const modalElement = document.querySelector(targetSelector);
-            if (modalElement) {
-                modalElement.dataset.clearOnOpen = '1';
-            }
-        });
-    }
-
-    clearErrorsOnModalEvents() {
-        document.querySelectorAll('.modal').forEach(modalElement => {
-            modalElement.addEventListener('hidden.bs.modal', () => {
-                this.clearModalErrors(modalElement);
-            });
-
-            modalElement.addEventListener('show.bs.modal', () => {
-                if (modalElement.dataset.clearOnOpen === '1') {
-                    this.clearModalErrors(modalElement);
-                    delete modalElement.dataset.clearOnOpen;
-                }
-            });
-        });
-    }
-
-    clearModalErrors(modalElement) {
-        if (!modalElement) return;
-
-        modalElement.querySelectorAll('.is-invalid')
-            .forEach(element => element.classList.remove('is-invalid'));
-
-        modalElement.querySelectorAll('.invalid-feedback').forEach(feedback => {
-            feedback.textContent = '';
-            feedback.style.display = 'none';
-        });
     }
 }
 
@@ -718,7 +526,7 @@ class AlertManager {
 
         // Auto-dismiss existing server-rendered alerts (skip alerts inside modals)
         document.querySelectorAll('.alert:not(.alert-info):not(.alert-warning)').forEach(alert => {
-            if (alert.closest('.modal')) return;
+            if (alert.closest('.modal') || alert.hasAttribute('data-form-error')) return;
             const isError = alert.classList.contains('alert-danger');
             const delay = isError ? AppConfig.errorDismissDelay : AppConfig.successDismissDelay;
             setTimeout(() => {
@@ -1026,32 +834,10 @@ class FormValidatorsInitializer {
     initValidator(formSelector, rules) {
         const formElement = document.querySelector(formSelector);
         if (formElement) {
-            new FormValidator(formElement, rules);
+            window.OnePortfolioForms.register(formElement, rules);
         }
     }
 }
-
-class NativeValidationDisabler {
-    constructor() {
-        this.disableForAllForms();
-        this.removeRequiredAttributes();
-    }
-
-    disableForAllForms() {
-        document.querySelectorAll('form').forEach(form => {
-            form.noValidate = true;
-            form.setAttribute('novalidate', 'novalidate');
-        });
-    }
-
-    removeRequiredAttributes() {
-        document.querySelectorAll('input[required], select[required], textarea[required]')
-            .forEach(element => {
-                element.removeAttribute('required');
-            });
-    }
-}
-
 
 /**
  * Live character counter for `.js-notes-input` textareas. Turns red within
@@ -1133,143 +919,62 @@ class ModalAjaxHandler {
             const modal = document.getElementById(modalId);
             if (form && modal) {
                 this.handleForm(form, modal);
-                // Wipe any leftover banner / inline error markers when
-                // the user closes the modal — otherwise reopening it
-                // (or opening it for a different row) shows the last
-                // attempt's red state until the next submit clears it.
-                modal.addEventListener('hidden.bs.modal', () => this.clearErrors(modal));
             }
         });
     }
 
     handleForm(form, modal) {
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-
-            // Clear previous errors
-            this.clearErrors(modal);
-
-            // Show loading state
+        const feedback = window.OnePortfolioForms.register(form);
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            feedback.pending = true;
+            const session = feedback.session;
             const submitBtn = form.querySelector('button[type="submit"]');
             const originalText = submitBtn ? submitBtn.innerHTML : '';
+            const originallyDisabled = submitBtn ? submitBtn.disabled : false;
             if (submitBtn) {
                 submitBtn.disabled = true;
                 submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Processing...';
             }
 
-            const formData = new FormData(form);
-
             try {
+                const formData = new FormData(form);
                 const response = await fetch(form.action, {
                     method: 'POST',
                     headers: { 'X-Requested-With': 'XMLHttpRequest' },
                     body: formData
                 });
-
                 const data = await response.json();
-
                 if (data.success) {
+                    if (feedback.session === session) feedback.clearErrors();
+                    // Reflect successful financial mutations even after closing.
                     sessionStorage.setItem('flashMessage', data.message || 'Success');
                     sessionStorage.setItem('flashType', 'success');
                     window.location.reload();
                     return;
                 }
-
-                // Restore button before showing errors
-                if (submitBtn) {
-                    submitBtn.disabled = false;
-                    submitBtn.innerHTML = originalText;
-                }
-
-                if (data.errors && typeof data.errors === 'object') {
-                    this.applyFieldErrors(modal, data.errors);
+                if (feedback.session !== session) return;
+                if (data.errors && typeof data.errors === 'object' && Object.keys(data.errors).length) {
+                    feedback.applyErrors(data.errors);
                 } else {
-                    // Legacy single-string error → just put it in the banner.
-                    this.showModalBanner(
-                        modal,
-                        data.error || 'We couldn\'t save your changes. Please try again.'
-                    );
+                    feedback.applyErrors({__all__: data.message || data.error || "We couldn't save your changes. Please try again."});
                 }
             } catch (error) {
+                console.error('Form submission error:', error);
+                if (feedback.session === session) {
+                    feedback.showGeneral('Network error', false, 'request');
+                    feedback.focusErrors();
+                }
+            } finally {
+                feedback.pending = false;
                 if (submitBtn) {
-                    submitBtn.disabled = false;
+                    submitBtn.disabled = originallyDisabled;
                     submitBtn.innerHTML = originalText;
                 }
-                console.error('Form submission error:', error);
-                this.showModalBanner(modal, 'Network error');
             }
         });
     }
 
-    /**
-     * Apply per-field errors inline. The `__all__` key (if present) goes
-     * into a modal-level banner instead of any single field.
-     */
-    applyFieldErrors(modal, errors) {
-        let unrecognized = [];
-        for (const [field, msg] of Object.entries(errors)) {
-            if (field === '__all__') continue;
-            const input = this.findFieldInput(modal, field);
-            if (input) {
-                input.classList.add('is-invalid');
-                const feedback = Utils.ensureFeedbackElement(input);
-                if (feedback) {
-                    feedback.textContent = msg;
-                    feedback.style.display = 'block';
-                }
-            } else {
-                // No matching input — collect for the banner so the user
-                // still sees the message somewhere.
-                unrecognized.push(msg);
-            }
-        }
-        const bannerMsg = errors.__all__ || (unrecognized.length ? unrecognized.join(' ') : '');
-        if (bannerMsg) {
-            this.showModalBanner(modal, bannerMsg);
-        }
-    }
-
-    /**
-     * Resolve the input element for a server-side field name. Tries:
-     *   1. exact ``name="..."`` match
-     *   2. exact ``id="..."`` match
-     *   3. ``name="<field>"`` after prefixing with common edit/add naming
-     *      conventions used in this codebase (edit_, add_, ...).
-     */
-    findFieldInput(modal, fieldName) {
-        const escapeAttr = (s) => (window.CSS && CSS.escape ? CSS.escape(s) : s.replace(/"/g, '\\"'));
-        return (
-            modal.querySelector(`[name="${escapeAttr(fieldName)}"]`)
-            || modal.querySelector(`#${escapeAttr(fieldName)}`)
-            || null
-        );
-    }
-
-    showModalBanner(modal, message) {
-        const existing = modal.querySelector('.js-modal-banner');
-        if (existing) existing.remove();
-        const banner = document.createElement('div');
-        // Reuse field-validation typography for form-level errors too. One
-        // shared owner keeps transfers and other financial dialogs consistent.
-        banner.className = 'invalid-feedback d-block js-modal-banner mb-3';
-        banner.setAttribute('role', 'alert');
-        banner.textContent = message;
-        const body = modal.querySelector('.modal-body');
-        if (body) {
-            body.insertBefore(banner, body.firstChild);
-        }
-    }
-
-    clearErrors(modal) {
-        modal.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
-        modal.querySelectorAll('.invalid-feedback').forEach(el => {
-            el.textContent = '';
-            el.style.display = 'none';
-        });
-        modal.querySelectorAll('.tx-preview .text-danger').forEach(el => el.remove());
-        const banner = modal.querySelector('.js-modal-banner');
-        if (banner) banner.remove();
-    }
 }
 
 
@@ -1279,7 +984,6 @@ class InvestmentPortfolioApp {
     }
 
     initialize() {
-        new NativeValidationDisabler();
         new DecimalInputHandler();
         new ActionMenuManager(document);
         initDateFields(document);
@@ -1287,7 +991,6 @@ class InvestmentPortfolioApp {
         new TooltipManager();
         new FormValidatorsInitializer();
         new TransactionFormHandler();
-        new ModalManager();
         new ModalAjaxHandler();
         new NotesCounterHandler();
 

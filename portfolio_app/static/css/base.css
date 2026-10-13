@@ -32,6 +32,7 @@
     color: var(--foreground);
     font-family: var(--font-sans);
     font-size: var(--text-md);
+    font-weight: var(--weight-regular);
     line-height: var(--leading-normal);
     letter-spacing: var(--tracking-tight);
     -webkit-font-smoothing: antialiased;
@@ -44,19 +45,20 @@
   }
 
   /* ---------------------------------------------------------------------
-     Headings — tight, quiet, never heavier than 600
+     Headings: Nova title weight with compact application sizes
      --------------------------------------------------------------------- */
   h1, h2, h3, h4, h5, h6 {
     margin: 0;
     color: var(--foreground);
     font-family: var(--font-heading);
-    font-weight: var(--weight-semibold);
     line-height: var(--leading-tight);
     letter-spacing: -0.018em;
   }
 
-  h1 { font-size: var(--text-2xl); }
-  h2 { font-size: var(--text-xl); }
+  h1 { font-size: var(--text-2xl); font-weight: var(--weight-medium); }
+  h2 { font-size: var(--text-xl); font-weight: var(--weight-medium); }
+  h3, h4, h5, h6 { font-weight: var(--weight-medium); }
+
   h3 { font-size: var(--text-lg); }
   h4, h5, h6 { font-size: var(--text-md); }
 

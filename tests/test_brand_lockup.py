@@ -19,7 +19,7 @@ _PARTIAL = _TEMPLATES / 'components' / 'logo_mark.html'
 # Dimensions the lockup owns, and the value each is expected to resolve to.
 # Named rather than measured so a change here is a decision someone typed.
 _OWNED = {
-    'font-size': 'var(--text-xl)',
+    'font-size': 'var(--brand-font-size)',
     'font-weight': 'var(--weight-semibold)',
     'gap': 'var(--space-2)',
 }

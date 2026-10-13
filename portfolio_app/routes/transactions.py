@@ -15,30 +15,10 @@ from portfolio_app.forms import (
 )
 from portfolio_app.utils import (
     get_error_message, MESSAGES,
-    is_ajax_request, json_response, field_error_response,
+    is_ajax_request, json_response, form_error_response,
 )
 
 
-# Service-layer exceptions on the *add* path map to inputs of the form
-# the user just submitted from. The edit path uses ``edit_*`` ids.
-_TX_ADD_FIELD_MAP = {
-    MESSAGES['PURCHASE_EXCEEDS_CASH']: 'quantity',
-    MESSAGES['INSUFFICIENT_QUANTITY']: 'quantity',
-    MESSAGES['FEES_EXCEED_PROCEEDS']: 'fees',
-}
-_TX_EDIT_FIELD_MAP = {
-    MESSAGES['PURCHASE_EXCEEDS_CASH']: 'edit_quantity',
-    MESSAGES['INSUFFICIENT_QUANTITY']: 'edit_quantity',
-    MESSAGES['FEES_EXCEED_PROCEEDS']: 'edit_fees',
-    # Cash drift on edit usually traces back to quantity or price, but
-    # with no further info point the user at the most likely culprit.
-    MESSAGES['INSUFFICIENT_AMOUNT']: 'edit_quantity',
-    MESSAGES['CASH_ALREADY_SPENT']:  'edit_quantity',
-}
-_DIV_EDIT_FIELD_MAP = {
-    MESSAGES['INSUFFICIENT_AMOUNT']: 'edit_amount',
-    MESSAGES['CASH_ALREADY_SPENT']:  'edit_amount',
-}
 from portfolio_app.utils.constants import safe_html_id
 from config import Config
 
@@ -212,7 +192,7 @@ def transaction_add():
     except (ValueError, ValidationError) as e:
         abort_mutation()
         if is_ajax_request():
-            return field_error_response(get_error_message(e), _TX_ADD_FIELD_MAP)
+            return form_error_response(get_error_message(e))
         flash(get_error_message(e), 'error')
         return redirect(url_for('transactions.transaction_list'))
 
@@ -273,7 +253,7 @@ def transaction_edit(transaction_id):
     except (ValueError, ValidationError) as e:
         abort_mutation()
         if is_ajax_request():
-            return field_error_response(get_error_message(e), _TX_EDIT_FIELD_MAP)
+            return form_error_response(get_error_message(e))
         flash(get_error_message(e), 'error')
         return redirect(url_for('transactions.transaction_list'))
 
@@ -415,7 +395,7 @@ def dividend_edit(dividend_id):
     except (ValueError, ValidationError) as e:
         abort_mutation()
         if is_ajax_request():
-            return field_error_response(get_error_message(e), _DIV_EDIT_FIELD_MAP)
+            return form_error_response(get_error_message(e))
         flash(get_error_message(e), 'error')
         return redirect(url_for('transactions.transaction_list'))
 

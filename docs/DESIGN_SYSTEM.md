@@ -6,8 +6,70 @@ ledger character. Its visual source of truth is the official shadcn preset
 Geist typography, a `0.625rem` radius, subtle menu accent, and default menu
 colour.
 
+Phases 1–4 of the UI alignment have user approval, including final visual
+acceptance of compact typography and the large Book Value. The
+[coverage and ownership register](UI_ALIGNMENT.md) records the current source
+inventory, verified contracts, historical baselines, and Phase 5 final audit.
+Source/rendered-response and DOM-model checks are distinct from browser and
+assistive-technology acceptance; final Phase 5 approval remains with the user.
+
 This document separates four contracts. They must not be blended into a
 second, application-specific brand palette.
+
+## Reference provenance and semantic roles
+
+Inspected on **2026-10-10**, using HTTP source retrieval without browser-based
+visual verification:
+
+- [Canonical preset](https://ui.shadcn.com/create?preset=b1YmpWHpo).
+- [Exact preset initialization](https://ui.shadcn.com/init?preset=b1YmpWHpo):
+  `base-nova`, neutral base/theme, `font-geist`, Tabler, subtle menu accent,
+  default menu colour, blue chart roles, and `radius: 0.625rem`.
+- Official Nova recipes: [Card](https://ui.shadcn.com/r/styles/base-nova/card.json),
+  [Item](https://ui.shadcn.com/r/styles/base-nova/item.json),
+  [Table](https://ui.shadcn.com/r/styles/base-nova/table.json),
+  [Button](https://ui.shadcn.com/r/styles/base-nova/button.json),
+  [Dropdown Menu](https://ui.shadcn.com/r/styles/base-nova/dropdown-menu.json),
+  [Dialog](https://ui.shadcn.com/r/styles/base-nova/dialog.json),
+  [Field](https://ui.shadcn.com/r/styles/base-nova/field.json),
+  [Label](https://ui.shadcn.com/r/styles/base-nova/label.json),
+  [Input](https://ui.shadcn.com/r/styles/base-nova/input.json),
+  [Native Select](https://ui.shadcn.com/r/styles/base-nova/native-select.json),
+  [Textarea](https://ui.shadcn.com/r/styles/base-nova/textarea.json),
+  [Input Group](https://ui.shadcn.com/r/styles/base-nova/input-group.json),
+  [Tabs](https://ui.shadcn.com/r/styles/base-nova/tabs.json),
+  [Badge](https://ui.shadcn.com/r/styles/base-nova/badge.json),
+  [Tooltip](https://ui.shadcn.com/r/styles/base-nova/tooltip.json),
+  [Alert](https://ui.shadcn.com/r/styles/base-nova/alert.json),
+  [Empty](https://ui.shadcn.com/r/styles/base-nova/empty.json),
+  [Pagination](https://ui.shadcn.com/r/styles/base-nova/pagination.json),
+  [Calendar](https://ui.shadcn.com/r/styles/base-nova/calendar.json),
+  [Command](https://ui.shadcn.com/r/styles/base-nova/command.json), and
+  [Sidebar](https://ui.shadcn.com/r/styles/base-nova/sidebar.json).
+
+These live sources define the reference; local classes, comments, and tests
+are implementation evidence, not independent proof of compliance. Reinspect
+the corresponding recipe before a later phase materially changes it. If a
+source becomes inaccessible, report the specific limitation and do not invent
+replacement visual rules. No task-specific screenshot was supplied for this
+audit; existing product composition is retained.
+
+| Semantic role | Reference contract | Application mapping |
+|---|---|---|
+| Card title | Card foreground; 16px, medium; small Card variant uses 14px | Titles identify a card, not a muted annotation |
+| Card description | 14px, muted foreground | Supporting descriptions below titles |
+| Supporting metric label | Closest reference is descriptive Card/Item text; Item title itself is foreground | Financial label/value composition is an application adaptation: muted supporting label, foreground value, financial tone only where meaningful |
+| Table header | Foreground, medium; Table inherits 14px text, header height 40px | Both native records tables and the Overview ledger; no blanket muted-header rule |
+| Field label | 14px, medium, inherited foreground | Labels retain required semantics and control associations |
+| Field description/error | 14px muted description; 14px destructive error with alert semantics | Help and validation have separate roles and timing |
+| Readonly input | Input recipe has no separate readonly fill or opacity | Preserve focus, selection, copying, and submission behavior |
+| Disabled control | Use the control's own recipe and native disabled semantics | Input/textarea and native select must not be assumed to have identical fills |
+| Financial value | Existing number macro, formatting, signs, and approved financial roles | Never derive an accounting or precision change from typography |
+
+Default `text-sm` in the inspected recipes means 14px. Phase 4's explicitly
+requested compact font-size exception is documented under Typography below;
+the reference sizes in this table remain the official baseline. Component
+weights and foreground/muted roles continue to follow their own recipes.
 
 ## A. Official preset contract
 
@@ -50,23 +112,13 @@ The preset supplies exactly five visualization roles:
 --chart-5: oklch(0.424 0.199 265.638);
 ```
 
-The official chart roles remain immutable preset truth. OnePortfolio adds a
-separate visualization-only categorical contract for the allocation chart:
-
-| Role | Light | Dark |
-|---|---|---|
-| `--portfolio-chart-1` | `var(--chart-3)` | `var(--chart-2)` |
-| `--portfolio-chart-2` | `oklch(0.58 0.12 210)` | `oklch(0.72 0.12 210)` |
-| `--portfolio-chart-3` | `oklch(0.55 0.16 300)` | `oklch(0.70 0.14 300)` |
-| `--portfolio-chart-4` | `oklch(0.56 0.12 165)` | `oklch(0.70 0.12 165)` |
-| `--portfolio-chart-5` | `oklch(0.64 0.14 70)` | `oklch(0.76 0.13 75)` |
-
-This restrained blue, cyan, violet, teal, and single amber palette is a
-OnePortfolio extension, not part of `b1YmpWHpo`. It is allowed only in Chart.js
-datasets and their corresponding legend swatches. Neither official chart roles
-nor the extension may style portfolio initials, avatars, buttons, navigation,
-generic badges, or entity UI. There is no `--chart-6`, `--chart-7`, or
-`--chart-other`; the existing top-four-plus-Other behavior uses five slots.
+Phase 3 uses these roles directly in both Chart.js consumers and the shared
+legend. The old categorical `--portfolio-chart-*` palette has no remaining
+runtime consumers and was removed. Chart roles never style portfolio initials,
+avatars, buttons, navigation, generic badges, or entity UI. There is no
+`--chart-6`, `--chart-7`, or `--chart-other`; existing top-four-plus-Other
+behavior uses five slots. Values, ordering, legend interaction, numeric
+formatting, and theme redraw behavior are unchanged.
 
 ### Radius
 
@@ -99,7 +151,7 @@ not react to CSS custom properties.
 
 ## B. OnePortfolio financial extensions
 
-The only application colour extensions are:
+The approved financial colour extensions are:
 
 - `--financial-positive`
 - `--financial-negative`
@@ -117,8 +169,8 @@ never the only cue.
 
 They are forbidden on portfolio markers, ordinary buttons, navigation,
 generic badges, chart categories, generic notifications, and decorative
-surfaces. The selected transaction-direction control is the sole workflow
-exception. `--destructive` remains distinct from `--financial-negative`, even
+surfaces. Selected transaction direction retains its approved financial
+colour exception under the Phase 3 preservation requirement. `--destructive` remains distinct from `--financial-negative`, even
 where their appearance is close.
 
 ## C. Compatibility boundary
@@ -129,8 +181,9 @@ directly. Names such as `--bg-canvas`, `--fg-default`, `--line-default`, and
 
 The `--bs-*` declarations at the bottom of `tokens.css` are the only controlled
 compatibility bridge. They are vendor inputs, not OnePortfolio component API.
-Bootstrap remains in the `vendor` layer for modal, dropdown, Popper, validation,
-and utility behavior; semantic CSS owns the final appearance.
+Bootstrap remains in the `vendor` layer for modal, dropdown, Popper, and utility
+behavior; semantic CSS owns the final appearance. Application JavaScript and
+server forms own validation.
 
 ## D. Structural application rules
 
@@ -163,14 +216,67 @@ bridge, and keep Bootstrap's runtime attributes and lifecycle intact.
 The canonical API is `--font-sans`, `--font-heading`, and `--font-mono`.
 The sans token names Geist followed by the system sans stack, and the heading
 token inherits that same contract. The authenticated, authentication, and
-public shells load only the 400, 500, and 600 weights from the existing Google
+public shells load the 400, 500, 600, and 700 weights from the existing Google
 Fonts origins. Components and Chart.js consume the tokens rather than naming a
-face independently. Body text is compact and readable, headings use the heading
-token, and financial columns preserve tabular numbers through the shared root
-feature settings.
+face independently. Component typography follows the inspected semantic roles
+above. The user explicitly requested compact font sizes while restoring exact
+preset component weights; this supersedes the earlier lightweight refinement.
+Headings use the
+heading token, and financial columns preserve tabular numbers through the
+shared root feature settings.
 
 Numeric typography is separate from display precision. Changing a font size or
 weight must never alter financial rendering rules.
+
+Phase 4's final correction re-inspected the exact preset initialization and
+21 official Nova recipes over HTTP on **2026-10-13**: Button, Card, Item, Table,
+Dialog, Label, Input, Textarea, Native Select, Tabs, Sidebar, Dropdown Menu,
+Command, Badge, Calendar, Empty, Alert, Tooltip, Pagination, Avatar and Chart.
+Recipes without an explicit weight inherit regular text; they must not inherit
+a blanket control or heading weight. Custom page headings use the closest
+Card/Item title role; financial display values use the emphasized value role.
+
+| Application role | Final weight | Semantic mapping |
+|---|---|---|
+| Card/dialog/section/page/auth/empty titles, table headers, field labels | 500 (`--weight-medium`) | Title, TableHead and Label recipes; titles remain foreground |
+| Buttons, tabs, badges, pagination, calendar captions, active navigation, menu/group headings | 500 | Corresponding control/title recipes; pagination composes Button |
+| Body, descriptions, supporting metric labels, inputs/selects, table cells, normal navigation, menu items, initials, calendar days/weekdays, tooltip prose | 400 (`--weight-regular`) | Inherited regular text; supporting descriptions retain muted roles |
+| Emphasized financial display values and chart tooltip title/numeric value | 500 | Emphasized value and Chart recipes; ordinary financial table cells stay 400 |
+| Chart centre labels and legends | 400 | Descriptive labels |
+| Native semantic `strong`/`b` | Native bolder | Removed the application-wide weight cap; 700 is available for native emphasis |
+| Brand/logo | Existing 600 | Explicit user preservation exception; existing 18px, Geist, tracking, artwork and geometry unchanged |
+
+No 300 token or blanket lighter override remains. Shared recipes consume their
+weight directly; tokens retain their literal numeric meaning. Font sizes are
+the intentional application exception, not weights or semantic colours.
+
+| Size role / token | Desktop at 16px root | Narrow screens below 768px |
+|---|---|---|
+| Auxiliary labels, badges, tooltips (`text-2xs`, `text-xs`) | 11px | 12px |
+| Controls, table text, navigation, descriptions (`text-sm`) | 12px | 13px |
+| Reading/body (`text-md`) | 13px | 13px |
+| Card/dialog titles (`text-lg`) | 14px | 14px |
+| Intermediate title (`text-xl`) / page/auth title (`text-2xl`) | 16px / 18px | Same |
+| Financial table/detail text (`num-sm`, `text-detail`) | 12px | 13px |
+| Supporting metric value (`num-lg`) | 15px | 15px |
+| Landing hero / section headings | Responsive 28–40px / 18–24px | Same fluid scale |
+| Landing preview figure (`num-display`) | Responsive 22–28px | Same fluid scale |
+| Primary Overview Book Value (`num-hero`) | **Original responsive 32–52px** | Original `clamp(2rem, 1.2rem + 2.6vw, 3.25rem)` |
+| Chart labels / centre value | 11px / 14px | 12px / 15px |
+
+The primary Book Value is explicitly exempt from compact sizing. Its 500 weight,
+formatters, count-up source, full-value title and responsive clamp are preserved.
+The brand has its own unchanged 18px token, decoupled from the compact title scale.
+OTP text remains 16px; mobile input, textarea, native select, command input and
+calendar month/year controls use 16px for practical readability and focus zoom.
+Control heights, padding, spacing, row geometry and numerical precision are
+unchanged. Chart font callbacks read shared tokens at draw time so responsive
+sizes apply after resizing. User visual acceptance must assess actual text fit,
+wrapping and readability; source checks do not establish those outcomes.
+
+Settings' static account values are description lists, not imitation inputs;
+the verified marker consumes the shared secondary Badge. Genuine readonly and
+disabled input recipes and validation states are unchanged.
 
 ### Numbers in templates
 
@@ -194,10 +300,11 @@ reproduce sign/format conditionals in individual templates.
 
 Keep one hero number per screen and demote supporting figures. Comparative
 numeric columns are right-aligned with tabular numbers. The application has one
-fixed compact/readable geometry: two-rem controls, 2.5rem financial rows,
-0.5rem vertical cell padding, and the canonical card/page spacing tokens.
-There is no density preference, alternate token scale, or `data-density`
-rendering mode.
+geometry governed by the corresponding preset recipes: default controls are
+two rem high, while tables, compact buttons, cards, and supporting text retain
+their own recipe dimensions. The compact typography exception above changes
+text sizes without reducing component geometry. There is one shared scale with
+responsive readability floors, no density preference or `data-density` mode.
 
 The application skeleton remains recognizable:
 
@@ -258,7 +365,7 @@ only. The contracts are:
 - `.dropdown-menu`: popover roles, `--radius-lg`, menu shadow, and one hairline
   ring. Bootstrap supplies its runtime behavior; this shared recipe owns its
   presentation.
-- `.surface-dialog`: popover roles, `--radius-xl`, dialog shadow, and one
+- `.surface-dialog`: popover roles, `--radius-xl`, no elevation shadow, and one
   hairline ring. Bootstrap modals and the command palette consume it.
 
 Overview hero, allocation card, ledger, disclosure cards, authentication
@@ -269,19 +376,24 @@ restacked; that is a structural exception, not a second desktop surface recipe.
 
 #### Standalone and compound inputs
 
-`.form-control` and `.form-select` are standalone fields and own their complete
-input edge and focus recipe. The command palette instead uses the authoritative
-`.command-input-group` / `.command-input-control` composition based on Nova
-CommandInput geometry: it rests flat and transparent on the popover with no
-border, outline, ring, or shadow. Focus uses only an `--accent` background plus
-stronger icon, text, and placeholder emphasis; the native input remains
-edge-free. Forced-colors mode may supply the operating system outline. This is
-not a generic input variant and must not be applied to normal fields or the
-sidebar Search trigger.
+`.form-control` and `.form-select` own their complete input edge and focus
+recipe. Input/Textarea, Native Select and Command use 16px text below 768px
+and compact 12px text above. Readonly inputs retain their fill, copying, focus and
+submission semantics. Disabled input/textarea use input/50 (dark input/80)
+and 50% opacity; disabled selects keep their normal fill with 50% opacity.
+Invalid fields retain their normal fill and gain the destructive border and
+three-pixel ring (20% light, 40% dark). CSS never uses native `:invalid` to
+bypass the shared submit gate.
+
+Command's `.command-input-group` uses the inspected input/30 fill and border,
+32px height, and one focus-visible ring on the group. The inner input remains
+edge-free. Icon and placeholder retain their own muted roles during focus.
+There is no additional JavaScript focus handler. Forced-colors outlines live
+in the final utility layer so component declarations cannot hide them.
 
 #### Transaction direction
 
-`.tx-type-tabs` and `.tx-type-tab` form the reusable neutral segmented contract
+The current `.tx-type-tabs` and `.tx-type-tab` form the reusable neutral segmented contract
 for transaction direction. Only `.tx-tab-buy.active` and
 `.tx-tab-sell.active` extend it: the selected Buy uses the financial-positive
 soft surface/line/foreground, and selected Sell uses the corresponding
@@ -293,6 +405,13 @@ and `aria-pressed` states. The soft roles mix 6% positive or 12% negative into
 semantic colour approaches the neutral surface. Selected hover and focus keep
 the semantic surface; the shared focus-visible contract remains responsible
 for keyboard indication.
+
+Phase 3 aligns the selector geometry and focus/invalid treatment while retaining
+the selected Buy/Sell colours under the latest explicit requirement to preserve
+approved financial colours. This is an intentional financial exception to
+neutral Tabs; ordinary view/settings tabs use the preset selected surface.
+The positive/negative/income/flat palette, financial value/record colours,
+selected transaction type and calculations remain intact.
 
 #### Context labels and supporting items
 
@@ -330,9 +449,9 @@ it in a readonly From Portfolio input. The submitted source ID stays hidden;
 the visible name is not submitted. Editing retains both endpoint selectors. Destination
 options exclude the selected source; server ownership and cash validation remain
 authoritative. Readonly inputs retain Nova's normal input appearance; only
-disabled controls receive muted opacity. Shared modal form-level errors reuse
-the preset-aligned field-error typography with `role="alert"`, rather than a
-separate large transfer banner.
+disabled controls receive disabled treatment. AJAX and server-rendered general
+errors use one shared form-level Alert treatment immediately below the dialog header, before
+fields; inline field errors retain the separate FieldError treatment.
 
 `.tx-preview` is the calculated form-output contract derived from Nova
 FieldDescription rather than validation/help styling. It uses text-sm type and
@@ -383,9 +502,9 @@ never valid selection colours. In forced-colours mode, system `Highlight`,
 ### Overview allocation contract
 
 The allocation ring retains current dataset values and switching behavior.
-Chart.js reads `--portfolio-chart-1` through `--portfolio-chart-5` from computed
-styles. The HTML legend uses the same roles. The official `--chart-*` values
-remain unchanged as preset reference roles. Portfolio ledger initials remain
+Chart.js reads `--chart-1` through `--chart-5` from computed styles, and the
+HTML legend uses the same roles, preserving category mapping, values,
+formatting, and theme redraw behavior. Portfolio ledger initials remain
 neutral and are intentionally not tied to slice colours.
 
 The current product behavior groups the allocation tail after the first four
@@ -415,8 +534,11 @@ canonical roles. Flatpickr uses popover, foreground, muted, accent, primary,
 border, ring, radius, and shadow roles for explicit and system dark modes; its
 adapter is deliberately unlayered and loaded after Flatpickr because unlayered
 vendor declarations outrank normal declarations inside named cascade layers.
-Its locale, values, limits, and lifecycle remain untouched. Native selects set
-`color-scheme` per theme and explicitly style option foreground/background as
+Its date format, values, limits, and lifecycle remain untouched. Month captions
+use the preset's abbreviated month treatment. The adapter maps 28px day cells,
+8px week gaps, today/selected/outside/disabled states, and sprite chevrons to
+Flatpickr. The existing six-week grid and keyboard owner are retained.
+Native selects set `color-scheme` per theme and use Canvas/CanvasText options as
 the safest platform-compatible dark-popup contract. Native popup geometry
 remains browser/OS-owned; a future custom select, if required, must be a shared
 progressive enhancement that preserves the native control as authoritative.
@@ -486,10 +608,125 @@ the light, dark, raster, or ICO outputs.
 
 ### Modal and behavior ownership
 
-Bootstrap continues to own modal focus lifecycle, backdrop behavior, reopening,
-dropdown positioning, and validation hooks. Shared CSS changes surfaces and
-spacing only. Global tooltip management and command-palette behavior remain in
-their existing JavaScript owners; pages must not mount duplicates.
+Bootstrap 5.3.0 owns financial modal focus containment, backdrops, and dismissal,
+and dropdown positioning and its existing keyboard behavior. It does not own
+the application's validators, AJAX errors, custom command palette, or custom
+mobile navigation. Modal trigger restoration also depends on how the modal was
+opened; programmatic `.show()` calls do not inherit the data-API trigger's
+restoration callback. See the verified ownership register before changing focus.
+
+Phase 4 uses `OnePortfolioDialogs.show(element, optionalOpener)` for programmatic
+financial dialogs. It reuses the Bootstrap instance and adds only a one-shot
+hidden-event return path; data-API dialogs retain Bootstrap's own callback.
+Menu actions return to the visible three-dot trigger. Hidden, disabled or removed
+openers are skipped. No Bootstrap private API or trap override is used.
+
+Flatpickr owns dates and selection. Modal calendars append to the owning `.modal`,
+outside its scrolling form, with viewport-clamped positions translated to that
+container. Page calendars still append to `document.body`. This adapts the
+documented [appendTo option](https://flatpickr.js.org/options/) and the positioning
+hook in [the installed 4.6.13 source](https://raw.githubusercontent.com/flatpickr/flatpickr/v4.6.13/src/index.ts).
+Scrolling the form closes an open picker; scrolling the calendar itself does not.
+Escape inside an open picker closes that picker first. The next Escape belongs
+to Bootstrap. Modal dismissal still closes its pickers. No second focus loop.
+
+`OnePortfolioOverlays` owns only the custom drawer and command palette. They
+share one active slot, background inertness, scroll-lock restoration, Tab
+containment, Escape and focus return. A Bootstrap modal's show event releases
+that slot before Bootstrap locks scrolling/activates its trap; custom overlays
+cannot open during its lifecycle. Mobile navigation resets its semantics and
+focus at the same 62rem breakpoint as CSS. Settings tab orientation follows its
+56rem composition breakpoint; Bootstrap remains its selection/keyboard owner.
+
+Command uses a named combobox with a controlled listbox, stable option IDs,
+active descendant, selected states and a polite result status. Empty feedback
+is outside the listbox. Disabled/hidden actions are excluded and activation
+ignores IME composition. Arrow selection and Enter remain Command's own handlers.
+
+ActionMenuManager supplies menu/trigger/item associations and removes menu items
+from the ordinary Tab sequence. It supplements Bootstrap with Enter/Space entry,
+Home/End and typeahead only. Bootstrap retains ArrowUp/Down, Escape, Tab/outside
+dismissal, expanded state and viewport-safe Popper positioning. Repeated mounting
+does not register duplicate handlers.
+
+Keep one focus owner per overlay and one submission owner per form. Global
+tooltips are mounted only by `TooltipManager`; pages must not mount duplicates.
+
+### Validation interaction contract (Phase 2)
+
+- Before final submit, opening, prefilling, focusing, blurring, and changing a
+  field must not reveal validation errors. After a failed final submit, supported
+  client validation updates while correcting input.
+- Server-only business validation stays authoritative. Changing a field may
+  clear its stale server error; it does not establish server acceptance.
+- Fresh dialog sessions reset validation state; failed server-rendered POSTs
+  retain submitted values and errors. General errors appear at the top of the
+  dialog body, below its header; field errors stay beside their fields.
+- Use form-level native-validation suppression where needed. Retain meaningful
+  `required`, labels, help associations, and required-field accessibility
+  semantics; do not strip them globally. Associate errors with stable IDs and
+  `aria-describedby`, and maintain `aria-invalid` with the actual error state.
+- Verification-code auto-submit after six digits is the approved exception.
+  CSRF, mutation tokens, authentication protections, and server validation remain
+  unchanged. Auxiliary actions such as Max use action-level feedback without
+  marking untouched fields invalid.
+- Coordinate error focus with the existing overlay owner; no second focus trap.
+
+`static/js/form_feedback.js` owns one controller per form, accessible field and
+general feedback, submit gating, and session reset. It loads before `main.js`
+and also loads in the authentication shell. `FormValidatorsInitializer` supplies
+the existing financial input rules; `ModalAjaxHandler` alone sends financial
+form POSTs and owns loading. Account forms retain normal server POSTs. The
+feedback module does not send requests. Jinja's `macros/forms.html` renders the
+same stable error IDs, alert roles, and associations used by the controller.
+
+Programmatic record openers call `OnePortfolioForms.prepare(modalId)` before
+prefilling, including when an already-open dialog changes records. The controller
+resets on fresh show, hidden, and native form reset. Initial failed-POST feedback
+is preserved through prefill and focused only after Bootstrap's `shown` event.
+Existing help IDs survive error clearing. Visible proxy controls can declare
+`data-feedback-for` for a hidden logical field; inaccessible or unknown server
+errors go to the general summary. Validation alerts are not auto-dismissed.
+
+Correction feedback runs after existing input normalization. Pending AJAX
+submissions cannot be duplicated; failures from an earlier dialog session do
+not paint errors or move focus. Successful mutations still reload authoritative
+data even if their dialog has closed. Max errors use general feedback without
+starting field validation. These changes preserve server rules, request tokens,
+financial calculations, formatting, and overlay containment ownership.
+
+Phase 2 re-inspected the canonical Nova Field and Alert source recipes on
+**2026-10-12** for feedback semantics. The user approved Phase 2, including
+visual acceptance. Phases 3 and 4 aligned component recipes and interactions
+without changing feedback behavior; both have user visual acceptance.
+
+### Phase 2 error classification and lifetime
+
+Classify at the source of the failure, never by matching message text:
+
+- Input validators attach required, format, range, and length failures to the
+  responsible field. Only that field receives `aria-invalid` and its error ID.
+- Service/account/history failures use `errors.__all__`. Cash shortages,
+  overselling, fees exceeding proceeds, historical cash violations, unavailable
+  records, duplicate names, stale submissions, conflicts, and unexpected save
+  failures are form-level, even if changing an amount might resolve them.
+- Authentication format failures are field-level. Opaque invalid/expired OTP
+  results and email/account-state failures are general; do not split security
+  messages to infer whether a code, account, or challenge exists.
+
+`form_error_response` is the shared service-failure adapter. The old message-to-
+field maps are removed. Preserve meaningful messages and existing safe generic
+messages for unexpected exceptions. Do not change server acceptance, ownership,
+CSRF, replay protection, or financial rules to simplify presentation.
+
+General server errors persist while correcting fields, when local validation
+blocks a retry, and while a request is pending. Only an authoritative response
+or a session reset replaces them. Auxiliary-action and network feedback have
+separate source entries in the same region, so Max cannot erase a financial
+failure. Summaries deduplicate messages, and inaccessible field feedback is
+moved to the summary rather than displayed twice. Repeated focus must not
+duplicate its content. Field correction still follows the final-submit gate;
+six-digit OTP auto-submit remains the sole approved exception.
 
 ## Avoid
 

@@ -161,7 +161,7 @@ def verify_code():
                 session.permanent = True
                 establish_auth_session(session)
                 return redirect(next_page or url_for('dashboard.index'))
-            errors['code'] = MESSAGES['VERIFICATION_CODE_INVALID_OR_EXPIRED']
+            errors['__all__'] = MESSAGES['VERIFICATION_CODE_INVALID_OR_EXPIRED']
         else:
             errors = form.errors
     return _render_code_page(form_errors=errors)
@@ -213,6 +213,7 @@ def reauthenticate():
     next_page = safe_local_redirect(request.args.get('next'))
     if next_page:
         session[_REAUTH_NEXT_KEY] = next_page
+    form_error = None
     if request.method == 'POST':
         try:
             issue = get_services().auth_service.begin_recent_authentication(current_user)
@@ -222,8 +223,8 @@ def reauthenticate():
             return redirect(url_for('auth.reauthenticate_verify'))
         except Exception:
             logger.warning('Recent-auth challenge creation failed')
-            flash(MESSAGES['AUTH_REQUEST_FAILED'], 'warning')
-    return render_template('auth/reauthenticate.html')
+            form_error = MESSAGES['AUTH_REQUEST_FAILED']
+    return render_template('auth/reauthenticate.html', submission_error=form_error)
 
 
 @auth_bp.route('/reauthenticate/verify', methods=['GET', 'POST'])
@@ -256,7 +257,7 @@ def reauthenticate_verify():
                     safe_local_redirect(session.pop(_REAUTH_NEXT_KEY, None))
                     or url_for('auth.settings', tab='security')
                 )
-            errors['code'] = MESSAGES['VERIFICATION_CODE_INVALID_OR_EXPIRED']
+            errors['__all__'] = MESSAGES['VERIFICATION_CODE_INVALID_OR_EXPIRED']
         else:
             errors = form.errors
     return _render_code_page(recent=True, form_errors=errors)
@@ -304,7 +305,7 @@ def update_email():
                 send_verification_email(new_email, code)
                 return redirect(url_for('auth.verify_email_change'))
             except ValueError as exc:
-                errors['email'] = str(exc)
+                errors['__all__'] = str(exc)
             except Exception:
                 logger.warning('Email update initiation failed')
                 errors['__all__'] = MESSAGES['EMAIL_UPDATE_FAILED']
@@ -340,7 +341,7 @@ def verify_email_change():
             if success:
                 flash(MESSAGES['EMAIL_UPDATED'], 'success')
                 return redirect(url_for('auth.settings', tab='security'))
-            errors['code'] = message
+            errors['__all__'] = message
         else:
             errors = form.errors
     return render_template(
@@ -403,11 +404,10 @@ def delete_account_cancel():
 )
 def delete_account_verify():
     form = VerifyCodeForm(request.form)
-    fallback = url_for('auth.settings', tab='account', deletion_sent='1')
     if not form.validate():
         return redirect(url_for(
             'auth.settings', tab='account', deletion_sent='1',
-            deletion_error=MESSAGES['DELETION_INVALID_CODE'],
+            deletion_error=form.errors['code'], deletion_field='code',
         ))
     try:
         success, message = get_services().auth_service.confirm_account_deletion(
@@ -423,5 +423,7 @@ def delete_account_verify():
         session['_remember'] = 'clear'
         flash(MESSAGES['DELETION_CONFIRMED'], 'success')
         return redirect(url_for('auth.login'))
-    flash(message or MESSAGES['DELETION_INVALID_CODE'], 'warning')
-    return redirect(fallback)
+    return redirect(url_for(
+        'auth.settings', tab='account', deletion_sent='1',
+        deletion_error=message or MESSAGES['DELETION_INVALID_CODE'],
+    ))

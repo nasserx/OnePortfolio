@@ -55,7 +55,7 @@
 
                     <!-- Name (read-only) -->
                     <dl class="settings-field">
-                        <dt class="form-label">Name</dt>
+                        <dt class="form-label text-muted">Name</dt>
                         <dd class="settings-field-value">
                             {{ icon('user') }}
                             <span>{{ current_user.username }}</span>
@@ -64,7 +64,7 @@
 
                     <!-- Email (read-only) -->
                     <dl class="settings-field">
-                        <dt class="form-label">Email Address</dt>
+                        <dt class="form-label text-muted">Email Address</dt>
                         <dd class="settings-field-value">
                             {{ icon('mail') }}
                             <span>{{ current_user.email or '—' }}</span>
@@ -78,7 +78,7 @@
 
                     <!-- Member since -->
                     <dl class="settings-field">
-                        <dt class="form-label">Member Since</dt>
+                        <dt class="form-label text-muted">Member Since</dt>
                         <dd class="settings-field-value">
                             {{ icon('calendar') }}
                             <span>{{ current_user.created_at.strftime('%B %d, %Y') if current_user.created_at else '—' }}</span>

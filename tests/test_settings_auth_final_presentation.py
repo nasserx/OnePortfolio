@@ -3,6 +3,10 @@
 from pathlib import Path
 import re
 
+from portfolio_app import db
+from portfolio_app.models.user import User
+from tests._auth import authenticate_client
+
 
 ROOT = Path(__file__).resolve().parents[1]
 TEMPLATES = ROOT / 'portfolio_app' / 'templates'
@@ -81,6 +85,51 @@ def test_settings_content_heading_icons_inherit_the_shared_fixed_icon_size():
     assert 'flex: none' in shared_icon
     assert 'width: 100%' not in shared_icon
     assert '.settings-sidebar-link .icon' not in app
+
+
+def test_settings_profile_mutes_only_static_labels_in_rendered_page(app):
+    with app.app_context():
+        user = User(username='settings_hierarchy', email='hierarchy@example.com', is_verified=True)
+        db.session.add(user)
+        db.session.commit()
+        user_id = user.id
+        member_since = user.created_at.strftime('%B %d, %Y')
+    client = app.test_client()
+    authenticate_client(client, user_id)
+    response = client.get('/settings?tab=account&deletion_sent=1')
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    rows = re.findall(r'<dl class="settings-field">(.*?)</dl>', html, re.S)
+    assert len(rows) == 3
+    for row, label, value in zip(rows, ('Name', 'Email Address', 'Member Since'),
+                                 ('settings_hierarchy', 'hierarchy@example.com', member_since)):
+        assert f'<dt class="form-label text-muted">{label}</dt>' in row
+        assert '<dd class="settings-field-value">' in row
+        assert f'<span>{value}</span>' in row
+    # The color utility must not spread to values, action titles or real fields.
+    assert html.count('text-muted') == 3
+    assert 'class="badge badge--secondary settings-verified-badge"' in rows[1]
+    assert '<label for="delete-code" class="form-label">Confirmation Code</label>' in html
+
+
+def test_settings_text_roles_preserve_values_actions_and_feedback_colors():
+    css = APP_CSS.read_text(encoding='utf-8')
+    for selector, role in {
+        '.settings-field-value': 'foreground',
+        '.settings-action-title': 'foreground',
+        '.settings-action-desc': 'muted-foreground',
+        '.settings-group-label': 'muted-foreground',
+        '.settings-danger-desc': 'muted-foreground',
+        '.settings-danger-header': 'destructive',
+        '.settings-danger-warning': 'destructive',
+    }.items():
+        assert f'color: var(--{role})' in _rule(css, selector)
+    components = COMPONENTS_CSS.read_text(encoding='utf-8')
+    assert 'color: var(--foreground)' in _rule(components, 'label.form-label')
+    assert 'color: var(--secondary-foreground)' in _rule(components, '.badge--secondary')
+    assert 'color: var(--muted-foreground)' in _rule(components, '.form-text--ok')
+    tokens = (APP_CSS.parent / 'tokens.css').read_text(encoding='utf-8')
+    assert '--bs-secondary-color: var(--muted-foreground);' in tokens
 
 
 def test_settings_forms_keep_routes_names_csrf_and_destructive_description():

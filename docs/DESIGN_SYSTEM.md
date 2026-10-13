@@ -281,8 +281,14 @@ sizes apply after resizing. User visual acceptance must assess actual text fit,
 wrapping and readability; source checks do not establish those outcomes.
 
 Settings' static account values are description lists, not imitation inputs;
-the verified marker consumes the shared secondary Badge. Genuine readonly and
-disabled input recipes and validation states are unchanged.
+their Profile information labels use the existing `text-muted` utility, mapped
+through `--bs-secondary-color` to `--muted-foreground`, while values retain
+`--foreground`. This adapts the inspected Nova supporting-text role to static
+metadata; it does not mute real form labels or action titles. Security titles
+remain foreground and descriptions muted. Account destructive warnings, status
+feedback and the shared secondary Verified Badge retain their own color roles.
+Compact sizing, 450/550 weights, spacing and icons are unchanged. Genuine readonly
+and disabled input recipes and validation states are unchanged.
 
 ### Numbers in templates
 

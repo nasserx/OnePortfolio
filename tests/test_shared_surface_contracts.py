@@ -131,7 +131,7 @@ def test_expanded_financial_tables_share_nova_row_contract():
     header = _rule(components, '.table thead th')
     assert 'background-color: transparent' in header
     assert 'color: var(--foreground)' in header
-    assert 'font-weight: var(--weight-medium)' in header
+    assert 'font-weight: var(--weight-emphasis)' in header
     assert 'border-bottom: 1px solid var(--border)' in header
 
     panel = _rule(app, '.disclosure__panel')

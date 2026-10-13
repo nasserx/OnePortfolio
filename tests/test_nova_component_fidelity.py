@@ -151,7 +151,7 @@ def test_table_uses_nova_neutral_rows_and_single_separator_recipe():
     header = _rule(css, '.table thead th')
     assert 'background-color: transparent' in header
     assert 'color: var(--foreground)' in header
-    assert 'font-weight: var(--weight-medium)' in header
+    assert 'font-weight: var(--weight-emphasis)' in header
 
     cells = _rule(css, '.table tbody tr > *')
     assert 'background-color: transparent' in cells

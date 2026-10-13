@@ -47,8 +47,10 @@ def test_overview_groups_return_with_pnl_not_book_value(pair, app, sale_price, t
     for formula in ('Book Value = Cash + Cost Basis', 'Net Contributions = Deposits − Withdrawals'):
         assert f'aria-label="{formula}"' in hero
     assert realized.count('class="info-dot"') == 1
-    label = realized.split('class="hero-figure__pnl-label">', 1)[1].split('</span>', 1)[0]
-    assert label == 'Cumulative P&amp;L'
+    assert '<span class="visually-hidden">Cumulative P&amp;L</span>' in realized
+    assert 'hero-figure__pnl-label' not in realized
+    assert realized.index('Cumulative P&amp;L') < realized.index('hero-figure__pnl-value')
+    assert realized.index('hero-figure__pnl-value') < realized.index('hero-figure__return')
     assert realized.index('class="info-dot"') > realized.index('class="delta ')
     # Same indicator, exactly two consolidated formulas and no extra headings.
     hint, _ = FinancialPage(realized).help[0]
@@ -61,6 +63,26 @@ def test_overview_groups_return_with_pnl_not_book_value(pair, app, sale_price, t
         'Return = Cumulative P&L ÷ Gross External Deposits × 100'
     )
     assert not FinancialPage(facts.split('Cash', 1)[1]).help
+
+
+def test_overview_undefined_return_keeps_accessible_pnl_label_and_amount(app):
+    with app.app_context():
+        user = User(username='undefined_overview_return', email='undefined-overview@example.com', is_verified=True)
+        db.session.add(user)
+        db.session.commit()
+        uid = user.id
+    client = app.test_client()
+    authenticate_client(client, uid)
+    response = client.get('/')
+    assert response.status_code == 200
+    row = response.get_data(as_text=True).split('<div class="hero-figure__realized">', 1)[1].split('<div class="hero-figure__facts">', 1)[0]
+    assert '<span class="visually-hidden">Cumulative P&amp;L</span>' in row
+    assert 'hero-figure__pnl-label' not in row
+    amount = row.split('class="hero-figure__pnl-value">', 1)[1].split('class="hero-figure__return"', 1)[0]
+    assert '0.00' in amount and 'num--flat' in amount
+    assert 'class="delta delta--flat">—</span>' in row
+    assert '<span class="visually-hidden">Return</span>' in row
+    assert row.count('class="info-dot"') == 1
 
 
 def test_transfer_menu_and_context_are_scoped_and_non_destructive(pair, app):
@@ -109,6 +131,7 @@ def test_transfer_errors_retain_shared_form_and_field_contracts(pair, app):
 
 def test_pnl_wraps_without_shrinking_or_new_financial_styles():
     css = Path('portfolio_app/static/css/app.css').read_text(encoding='utf-8')
+    assert '.hero-figure__pnl-label' not in css
     block = css.split('.hero-figure__realized {', 1)[1].split('}', 1)[0]
     assert 'flex-wrap: wrap' in block
     assert '.hero-figure__return' in css

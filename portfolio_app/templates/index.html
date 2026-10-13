@@ -26,7 +26,7 @@
                title="{{ totals.book_value|fmt_money }}">{{ totals.book_value|fmt_display_money }}</p>
 
             <div class="hero-figure__realized">
-                <span class="hero-figure__pnl-label">Cumulative P&amp;L</span>
+                <span class="visually-hidden">Cumulative P&amp;L</span>
                 <span class="hero-figure__pnl-value">{{ money(totals.total_realized_earnings, tone='sign', signed=true) }}</span>
                 <span class="hero-figure__return">
                 <span class="visually-hidden">Return</span>

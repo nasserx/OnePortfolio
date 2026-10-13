@@ -6,12 +6,13 @@ ledger character. Its visual source of truth is the official shadcn preset
 Geist typography, a `0.625rem` radius, subtle menu accent, and default menu
 colour.
 
-Phases 1–4 of the UI alignment have user approval, including final visual
+Phases 1–5 of the UI alignment have user approval, including final visual
 acceptance of compact typography and the large Book Value. The
 [coverage and ownership register](UI_ALIGNMENT.md) records the current source
 inventory, verified contracts, historical baselines, and Phase 5 final audit.
 Source/rendered-response and DOM-model checks are distinct from browser and
-assistive-technology acceptance; final Phase 5 approval remains with the user.
+assistive-technology acceptance. The subsequent typography and Book Value polish
+is documented below; its visual acceptance remains with the user.
 
 This document separates four contracts. They must not be blended into a
 second, application-specific brand palette.
@@ -69,7 +70,8 @@ audit; existing product composition is retained.
 Default `text-sm` in the inspected recipes means 14px. Phase 4's explicitly
 requested compact font-size exception is documented under Typography below;
 the reference sizes in this table remain the official baseline. Component
-weights and foreground/muted roles continue to follow their own recipes.
+foreground/muted roles continue to follow their own recipes. The subsequent
+approved 450/550 weight exception is also documented under Typography.
 
 ## A. Official preset contract
 
@@ -216,13 +218,14 @@ bridge, and keep Bootstrap's runtime attributes and lifecycle intact.
 The canonical API is `--font-sans`, `--font-heading`, and `--font-mono`.
 The sans token names Geist followed by the system sans stack, and the heading
 token inherits that same contract. The authenticated, authentication, and
-public shells load the 400, 500, 600, and 700 weights from the existing Google
-Fonts origins. Components and Chart.js consume the tokens rather than naming a
-face independently. Component typography follows the inspected semantic roles
-above. The user explicitly requested compact font sizes while restoring exact
-preset component weights; this supersedes the earlier lightweight refinement.
-Headings use the
-heading token, and financial columns preserve tabular numbers through the
+public shells load the variable 400–700 range from the existing Google
+Fonts origins, including real intermediate 450/550 weights. Components and
+Chart.js consume the tokens rather than naming a face independently.
+Component typography follows the inspected semantic roles
+above. Following acceptance of compact sizing and preset weights, the user
+approved a modest 450/550 weight adjustment in both themes. This is an explicit
+font-weight exception to the official 400/500 recipes, preserving their hierarchy.
+Headings use the heading token, and financial columns preserve tabular numbers through the
 shared root feature settings.
 
 Numeric typography is separate from display precision. Changing a font size or
@@ -238,17 +241,19 @@ Card/Item title role; financial display values use the emphasized value role.
 
 | Application role | Final weight | Semantic mapping |
 |---|---|---|
-| Card/dialog/section/page/auth/empty titles, table headers, field labels | 500 (`--weight-medium`) | Title, TableHead and Label recipes; titles remain foreground |
-| Buttons, tabs, badges, pagination, calendar captions, active navigation, menu/group headings | 500 | Corresponding control/title recipes; pagination composes Button |
-| Body, descriptions, supporting metric labels, inputs/selects, table cells, normal navigation, menu items, initials, calendar days/weekdays, tooltip prose | 400 (`--weight-regular`) | Inherited regular text; supporting descriptions retain muted roles |
-| Emphasized financial display values and chart tooltip title/numeric value | 500 | Emphasized value and Chart recipes; ordinary financial table cells stay 400 |
-| Chart centre labels and legends | 400 | Descriptive labels |
+| Card/dialog/section/page/auth/empty titles, table headers, field labels | 550 (`--weight-emphasis`) | Title, TableHead and Label roles; titles remain foreground |
+| Buttons, tabs, badges, pagination, calendar captions, active navigation, menu/group headings | 550 | Corresponding control/title roles; pagination composes Button |
+| Body, descriptions, supporting metric labels, inputs/selects, table cells, normal navigation, menu items, initials, calendar days/weekdays, tooltip prose | 450 (`--weight-body`) | Inherited body text; supporting descriptions retain muted roles |
+| Emphasized financial display values and chart tooltip title/numeric value | 550 | Emphasized value and Chart roles; ordinary financial table cells use 450 |
+| Chart centre labels and legends | 450 | Descriptive labels |
 | Native semantic `strong`/`b` | Native bolder | Removed the application-wide weight cap; 700 is available for native emphasis |
 | Brand/logo | Existing 600 | Explicit user preservation exception; existing 18px, Geist, tracking, artwork and geometry unchanged |
 
 No 300 token or blanket lighter override remains. Shared recipes consume their
-weight directly; tokens retain their literal numeric meaning. Font sizes are
-the intentional application exception, not weights or semantic colours.
+weight through the shared application-role tokens. Preset primitives retain
+their literal 400/500/600 meaning; the brand still uses 600 directly. Compact
+font sizes and the approved 450/550 weights are intentional typography exceptions.
+Colours, sizes, smoothing, line heights and spacing do not change in this follow-up.
 
 | Size role / token | Desktop at 16px root | Narrow screens below 768px |
 |---|---|---|
@@ -264,8 +269,9 @@ the intentional application exception, not weights or semantic colours.
 | Primary Overview Book Value (`num-hero`) | **Original responsive 32–52px** | Original `clamp(2rem, 1.2rem + 2.6vw, 3.25rem)` |
 | Chart labels / centre value | 11px / 14px | 12px / 15px |
 
-The primary Book Value is explicitly exempt from compact sizing. Its 500 weight,
-formatters, count-up source, full-value title and responsive clamp are preserved.
+The primary Book Value is explicitly exempt from compact sizing. It uses the
+550 emphasis role; formatters, count-up source, full-value title and its original
+32–52px responsive clamp are preserved.
 The brand has its own unchanged 18px token, decoupled from the compact title scale.
 OTP text remains 16px; mobile input, textarea, native select, command input and
 calendar month/year controls use 16px for practical readability and focus zoom.
@@ -427,8 +433,10 @@ muted-fill variant. Labels use `--muted-foreground`, values use `--foreground`,
 and only the nested formatted number may add a genuine financial semantic role.
 
 The authenticated Overview uses unboxed `.fact` pairs within its single Book
-Value card. Cumulative P&L sits immediately below the hero amount, alongside its
-signed return pill; that percentage is not a ratio of Book Value. Net
+Value card. The Cumulative P&L amount sits immediately below the hero amount,
+alongside its signed return pill. Its label is visually hidden but remains
+available to screen readers; the shared formula tooltip is retained. The
+percentage is not a ratio of Book Value. Net
 Contributions and Cash share the first supporting row, with Dividends below.
 The saved Book Value reference guides this composition; shared money/percentage
 formatters and financial tokens remain unchanged. Marketing supporting items

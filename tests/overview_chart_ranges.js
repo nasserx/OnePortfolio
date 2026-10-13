@@ -12,7 +12,7 @@ const empty = element();
 const status = element();
 const elements = {allocationChart: canvas, allocationLegend: legend, allocationChartStatus: status};
 const paletteReads = [];
-const typeTokens = {'--weight-regular': '400', '--weight-medium': '500', '--font-sans': 'Geist',
+const typeTokens = {'--weight-body': '450', '--weight-emphasis': '550', '--font-sans': 'Geist',
     '--chart-text-size': '11', '--chart-value-size': '14'};
 const context = vm.createContext({
     window: {OnePortfolioDisplay: {}},
@@ -62,23 +62,23 @@ const drawing = {
     ctx: {save() {}, restore() {}, fillText(text) { painted.push({text, font: this.font, color: this.fillStyle}); }},
 };
 context.window.TestCentreText.afterDraw(drawing);
-assert.equal(painted[0].font, '400 11px Geist');
-assert.equal(painted[1].font, '500 14px Geist');
+assert.equal(painted[0].font, '450 11px Geist');
+assert.equal(painted[1].font, '550 14px Geist');
 assert.equal(painted[0].text, 'Book Value');
 assert.equal(painted[1].text, '12.34K');
 assert.equal(painted[0].color, '--muted-foreground');
 assert.equal(painted[1].color, '--foreground');
 typeTokens['--chart-text-size'] = '12'; typeTokens['--chart-value-size'] = '15';
 context.window.TestCentreText.afterDraw(drawing);
-assert.equal(painted[2].font, '400 12px Geist');
-assert.equal(painted[3].font, '500 15px Geist');
+assert.equal(painted[2].font, '450 12px Geist');
+assert.equal(painted[3].font, '550 15px Geist');
 let tooltipChecks = 0;
 for (const name of ['overview_charts.js', 'landing.js']) {
     const code = fs.readFileSync('portfolio_app/static/js/' + name, 'utf8');
     for (const role of ['titleFont', 'bodyFont']) {
         const fn = code.match(new RegExp(role + ': (function \\(\\) \\{ return \\{[^}]+\\}; \\})'))[1];
         const font = vm.runInNewContext('(' + fn + ')', {cssVar: name => typeTokens[name]});
-        assert.equal(font().weight, '500');
+        assert.equal(font().weight, '550');
         assert.equal(font().size, 12);
         typeTokens['--chart-text-size'] = '11';
         assert.equal(font().size, 11);

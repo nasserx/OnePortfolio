@@ -10,13 +10,15 @@ let checks = 0;
 async function run() {
     const handlers = {};
     const button = {dataset: {portfolioId: '7'}, addEventListener: (name, fn) => handlers[name] = fn};
-    const input = {value: '', setCustomValidity(value) { this.error = value; }, reportValidity() {},
+    const feedback = {session: 0, clearGeneral() { this.error = ''; }, showGeneral(message) { this.error = message; }};
+    const input = {value: '',
         dispatchEvent() {}, addEventListener() {}};
     const date = {value: '2024-01-02'};
     let respond;
     let requested;
     const context = vm.createContext({
         document: {getElementById: id => ({withdraw_max_btn: button, withdraw_funds_amount: input, withdraw_date: date})[id]},
+        window: {OnePortfolioForms: {register() { return feedback; }}},
         URLSearchParams, Intl, Event: class {},
         fetch: (url) => { requested = url; return new Promise(resolve => { respond = resolve; }); },
     });
@@ -29,7 +31,7 @@ async function run() {
     assert.equal(input.value, '1234567890.12'); checks++;
     assert.equal(button.disabled, false); checks++;
 
-    for (const mutate of [() => { date.value = '2024-01-03'; }, () => { button.dataset.portfolioId = '8'; }]) {
+    for (const mutate of [() => { date.value = '2024-01-03'; }, () => { button.dataset.portfolioId = '8'; }, () => { feedback.session++; }]) {
         pending = handlers.click();
         mutate();
         respond({ok: true, json: async () => ({success: true, amount: '999'})});
@@ -43,7 +45,7 @@ async function run() {
     pending = handlers.click();
     respond({ok: false, json: async () => ({success: false, errors: {withdraw_date: 'Invalid date'}})});
     await pending;
-    assert.equal(input.error, 'Invalid date'); checks++;
+    assert.equal(feedback.error, 'Invalid date'); checks++;
     assert.equal(input.value, '0.00'); checks++;
     console.log(`${checks} cash-account Max assertions passed`);
 }

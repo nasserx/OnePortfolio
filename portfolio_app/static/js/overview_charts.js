@@ -25,7 +25,7 @@
   function palette() {
     var colors = [];
     for (var i = 1; i <= PALETTE_SIZE; i += 1) {
-      colors.push(cssVar('--portfolio-chart-' + i));
+      colors.push(cssVar('--chart-' + i));
     }
     return colors;
   }
@@ -77,13 +77,9 @@
       var arc = chart.getDatasetMeta(0).data[0];
       if (!arc) return;
 
-      /* The ring is not a fixed size — it grows with the panel. Sizing the
-         centre label off the hole it sits in keeps the type in proportion
-         instead of leaving a 15px figure marooned in a large ring. The
-         bounds reproduce the previous sizes at the previous diameter. */
-      var hole = arc.innerRadius || 49;
-      var valueSize = Math.max(15, Math.min(22, Math.round(hole * 0.30)));
-      var labelSize = Math.max(11, Math.min(14, Math.round(hole * 0.20)));
+      // CSS owns the compact type scale independently of chart diameter.
+      var valueSize = Number(cssVar('--chart-value-size'));
+      var labelSize = Number(cssVar('--chart-text-size'));
 
       var ctx = chart.ctx;
       ctx.save();
@@ -91,11 +87,11 @@
       ctx.textBaseline = 'middle';
 
       ctx.fillStyle = cssVar('--muted-foreground');
-      ctx.font = '500 ' + labelSize + 'px ' + cssVar('--font-sans');
+      ctx.font = cssVar('--weight-regular') + ' ' + labelSize + 'px ' + cssVar('--font-sans');
       ctx.fillText(options.label, arc.x, arc.y - Math.round(valueSize * 0.72));
 
       ctx.fillStyle = cssVar('--foreground');
-      ctx.font = '600 ' + valueSize + 'px ' + cssVar('--font-sans');
+      ctx.font = cssVar('--weight-medium') + ' ' + valueSize + 'px ' + cssVar('--font-sans');
       ctx.fillText(options.value, arc.x, arc.y + Math.round(valueSize * 0.55));
 
       ctx.restore();
@@ -302,6 +298,8 @@
             borderColor: cssVar('--border'),
             borderWidth: 1,
             titleColor: cssVar('--popover-foreground'),
+            titleFont: function () { return { weight: cssVar('--weight-medium'), size: Number(cssVar('--chart-text-size')) }; },
+            bodyFont: function () { return { weight: cssVar('--weight-medium'), size: Number(cssVar('--chart-text-size')) }; },
             bodyColor: cssVar('--muted-foreground'),
             padding: 10,
             displayColors: false,

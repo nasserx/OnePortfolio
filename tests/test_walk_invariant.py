@@ -251,8 +251,7 @@ def test_withdraw_more_than_available_uses_available_cash_message(app):
 
 
 def test_withdraw_route_returns_available_cash_error_for_ajax(app):
-    """The Withdraw modal should place over-withdrawal under Amount with
-    clear wording about available cash, not a generic banner."""
+    """Available cash depends on account history, so it is a form error."""
     with app.app_context():
         uid = _seed_user('withdraw_ajaxer')
         svc = Services(user_id=uid)
@@ -273,7 +272,7 @@ def test_withdraw_route_returns_available_cash_error_for_ajax(app):
     assert resp.is_json
     body = resp.get_json()
     assert body['success'] is False
-    assert body['errors']['amount_delta'] == MESSAGES['WITHDRAWAL_EXCEEDS_CASH']
+    assert body['errors'] == {'__all__': MESSAGES['WITHDRAWAL_EXCEEDS_CASH']}
 
 
 def test_withdraw_route_accepts_grouped_amount_for_ajax(app):

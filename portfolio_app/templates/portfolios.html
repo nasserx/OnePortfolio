@@ -1,7 +1,5 @@
 {% extends "base.html" %}
-{% from 'macros/ui.html' import money, metric, marker, empty_state, action_menu, record_type %}
-{% from 'macros/icons.html' import icon %}
-
+{% from 'macros/forms.html' import field_attrs, field_error, form_error, form_errors_summary %}
 {% set _add_errs = (form_errors.get('portfolios_add', {}) if form_errors else {}) %}
 {% set _add_vals = (form_values.get('portfolios_add', {}) if form_values else {}) %}
 {% set _rename_errs = (form_errors.get('portfolio_rename', {}) if form_errors else {}) %}
@@ -10,6 +8,11 @@
 {% set _dep_vals = (form_values.get('portfolios_deposit', {}) if form_values else {}) %}
 {% set _with_errs = (form_errors.get('portfolios_withdraw', {}) if form_errors else {}) %}
 {% set _with_vals = (form_values.get('portfolios_withdraw', {}) if form_values else {}) %}
+{% set _ev_errs = (form_errors.get('portfolio_event_edit', {}) if form_errors else {}) %}
+{% set _ev_vals = (form_values.get('portfolio_event_edit', {}) if form_values else {}) %}
+{% from 'macros/ui.html' import money, metric, marker, empty_state, action_menu, record_type %}
+{% from 'macros/icons.html' import icon %}
+
 
 {% block title %}Portfolios - OnePortfolio{% endblock %}
 
@@ -228,9 +231,10 @@
                 <input type="hidden" name="user_timezone" value="">
                 <div class="modal-header">
                     <h5 class="modal-title" id="depositFundsModalTitle">Deposit</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">{{ icon('x') }}</button>
                 </div>
                 <div class="modal-body">
+                    {{ form_errors_summary(_dep_errs, ['amount_delta', 'deposit_date', 'notes']) }}
                     <div class="mb-3">
                         <label for="deposit_portfolio_name" class="form-label">Portfolio</label>
                         <input type="text" class="form-control" id="deposit_portfolio_name" readonly>
@@ -243,10 +247,8 @@
                                        class="form-control {% if _dep_errs.get('amount_delta') %}is-invalid{% endif %}"
                                        id="add_funds_amount" name="amount_delta"
                                        placeholder="0.00"
-                                       value="{{ _dep_vals.get('amount_delta', '') }}">
-                                {% if _dep_errs.get('amount_delta') %}
-                                <div class="invalid-feedback">{{ _dep_errs.get('amount_delta') }}</div>
-                                {% endif %}
+                                       value="{{ _dep_vals.get('amount_delta', '') }}" {{ field_attrs('add_funds_amount', _dep_errs.get('amount_delta')) }} required>
+                                {{ field_error('add_funds_amount', _dep_errs.get('amount_delta')) }}
                             </div>
                         </div>
                         <div class="col-6">
@@ -256,18 +258,17 @@
                                        class="form-control {% if _dep_errs.get('deposit_date') %}is-invalid{% endif %}"
                                        id="deposit_date" name="deposit_date" placeholder="YYYY-MM-DD"
                                        data-datepicker="flatpickr"
-                                       value="{{ _dep_vals.get('deposit_date', '') }}">
-                                {% if _dep_errs.get('deposit_date') %}
-                                <div class="invalid-feedback d-block">{{ _dep_errs.get('deposit_date') }}</div>
-                                {% endif %}
+                                       value="{{ _dep_vals.get('deposit_date', '') }}" {{ field_attrs('deposit_date', _dep_errs.get('deposit_date')) }} required>
+                                {{ field_error('deposit_date', _dep_errs.get('deposit_date')) }}
                             </div>
                         </div>
                     </div>
                     <div class="mb-3">
                         <label for="add_funds_notes" class="form-label">Notes (Optional)</label>
                         <textarea class="form-control js-notes-input" id="add_funds_notes" name="notes"
-                                  rows="2" maxlength="300">{{ _dep_vals.get('notes', '') }}</textarea>
+                                  rows="2" maxlength="300" {{ field_attrs('add_funds_notes', _dep_errs.get('notes')) }}>{{ _dep_vals.get('notes', '') }}</textarea>
                         <small class="notes-counter">0 / 300</small>
+                        {{ field_error('add_funds_notes', _dep_errs.get('notes')) }}
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -288,9 +289,10 @@
                 <input type="hidden" name="user_timezone" value="">
                 <div class="modal-header">
                     <h5 class="modal-title" id="withdrawFundsModalTitle">Withdraw</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">{{ icon('x') }}</button>
                 </div>
                 <div class="modal-body">
+                    {{ form_errors_summary(_with_errs, ['amount_delta', 'withdraw_date', 'notes']) }}
                     <div class="mb-3">
                         <label for="withdraw_portfolio_name" class="form-label">Portfolio</label>
                         <input type="text" class="form-control" id="withdraw_portfolio_name" readonly>
@@ -304,14 +306,12 @@
                                            class="form-control {% if _with_errs.get('amount_delta') %}is-invalid{% endif %} pe-5"
                                            id="withdraw_funds_amount" name="amount_delta"
                                            placeholder="0.00"
-                                           value="{{ _with_vals.get('amount_delta', '') }}">
+                                           value="{{ _with_vals.get('amount_delta', '') }}" {{ field_attrs('withdraw_funds_amount', _with_errs.get('amount_delta')) }} required>
                                     <span class="sell-max-inline">
                                         <button type="button" class="btn btn-link btn-sm sell-max-btn" id="withdraw_max_btn">Max</button>
                                     </span>
                                 </div>
-                                {% if _with_errs.get('amount_delta') %}
-                                <div class="invalid-feedback">{{ _with_errs.get('amount_delta') }}</div>
-                                {% endif %}
+                                {{ field_error('withdraw_funds_amount', _with_errs.get('amount_delta')) }}
                             </div>
                         </div>
                         <div class="col-6">
@@ -321,18 +321,17 @@
                                        class="form-control {% if _with_errs.get('withdraw_date') %}is-invalid{% endif %}"
                                        id="withdraw_date" name="withdraw_date" placeholder="YYYY-MM-DD"
                                        data-datepicker="flatpickr"
-                                       value="{{ _with_vals.get('withdraw_date', '') }}">
-                                {% if _with_errs.get('withdraw_date') %}
-                                <div class="invalid-feedback d-block">{{ _with_errs.get('withdraw_date') }}</div>
-                                {% endif %}
+                                       value="{{ _with_vals.get('withdraw_date', '') }}" {{ field_attrs('withdraw_date', _with_errs.get('withdraw_date')) }} required>
+                                {{ field_error('withdraw_date', _with_errs.get('withdraw_date')) }}
                             </div>
                         </div>
                     </div>
                     <div class="mb-3">
                         <label for="withdraw_funds_notes" class="form-label">Notes (Optional)</label>
                         <textarea class="form-control js-notes-input" id="withdraw_funds_notes" name="notes"
-                                  rows="2" maxlength="300">{{ _with_vals.get('notes', '') }}</textarea>
+                                  rows="2" maxlength="300" {{ field_attrs('withdraw_funds_notes', _with_errs.get('notes')) }}>{{ _with_vals.get('notes', '') }}</textarea>
                         <small class="notes-counter">0 / 300</small>
+                        {{ field_error('withdraw_funds_notes', _with_errs.get('notes')) }}
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -352,14 +351,11 @@
                 <input type="hidden" name="mutation_token" value="{{ mutation_token() }}">
                 <div class="modal-header">
                     <h5 class="modal-title" id="newPortfolioModalTitle">New Portfolio</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">{{ icon('x') }}</button>
                 </div>
                 <div class="modal-body">
-                    {% if _add_errs.get('__all__') %}
-                    <div class="alert alert-danger d-flex align-items-center mb-3">
-                        {{ icon('alert-circle') }}{{ _add_errs.get('__all__') }}
-                    </div>
-                    {% endif %}
+                    {{ form_errors_summary(_add_errs, ['name']) }}
+                    
                     <div class="mb-3">
                         <label for="portfolio_name" class="form-label">Portfolio Name</label>
                         <input type="text"
@@ -368,10 +364,8 @@
                                placeholder="e.g., Stocks, Crypto, Technology"
                                maxlength="20"
                                value="{{ _add_vals.get('name', '') }}"
-                               autofocus>
-                        {% if _add_errs.get('name') %}
-                        <div class="invalid-feedback">{{ _add_errs.get('name') }}</div>
-                        {% endif %}
+                               autofocus {{ field_attrs('portfolio_name', _add_errs.get('name')) }} required>
+                        {{ field_error('portfolio_name', _add_errs.get('name')) }}
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -391,24 +385,19 @@
                 <input type="hidden" name="mutation_token" value="{{ mutation_token() }}">
                 <div class="modal-header">
                     <h5 class="modal-title" id="renamePortfolioModalTitle">Rename Portfolio</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">{{ icon('x') }}</button>
                 </div>
                 <div class="modal-body">
-                    {% if _rename_errs.get('__all__') %}
-                    <div class="alert alert-danger d-flex align-items-center mb-3">
-                        {{ icon('alert-circle') }}{{ _rename_errs.get('__all__') }}
-                    </div>
-                    {% endif %}
+                    {{ form_errors_summary(_rename_errs, ['name']) }}
+                    
                     <div class="mb-3">
                         <label for="rename_portfolio_name" class="form-label">Portfolio Name</label>
                         <input type="text"
                                class="form-control {% if _rename_errs.get('name') %}is-invalid{% endif %}"
                                id="rename_portfolio_name" name="name"
                                maxlength="20"
-                               value="{{ _rename_vals.get('name', '') }}">
-                        {% if _rename_errs.get('name') %}
-                        <div class="invalid-feedback">{{ _rename_errs.get('name') }}</div>
-                        {% endif %}
+                               value="{{ _rename_vals.get('name', '') }}" {{ field_attrs('rename_portfolio_name', _rename_errs.get('name')) }} required>
+                        {{ field_error('rename_portfolio_name', _rename_errs.get('name')) }}
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -432,9 +421,10 @@
                         {{ icon('trash', class='modal-title-icon') }}
                         Remove Portfolio
                     </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">{{ icon('x') }}</button>
                 </div>
                 <div class="modal-body">
+                    {{ form_error() }}
                     <p id="deletePortfolioDescription">Remove portfolio <span class="text-emphasis" id="delete_portfolio_name"></span>?</p>
                     <div class="alert alert-warning mb-0">
                         {{ icon('alert-triangle') }}
@@ -453,7 +443,6 @@
 </div>
 
 <!-- ── Edit Portfolio Event Modal ─────────────────────────────────── -->
-{% set _ev_errs = (form_errors.get('portfolio_event_edit', {}) if form_errors else {}) %}
 <div class="modal fade" id="editPortfolioEventModal" tabindex="-1" aria-labelledby="editPortfolioEventModalTitle">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -463,14 +452,11 @@
                 <input type="hidden" name="user_timezone" value="">
                 <div class="modal-header">
                     <h5 class="modal-title" id="editPortfolioEventModalTitle">Edit Funding Entry</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">{{ icon('x') }}</button>
                 </div>
                 <div class="modal-body">
-                    {% if _ev_errs.get('__all__') %}
-                    <div class="alert alert-danger d-flex align-items-center mb-3">
-                        {{ icon('alert-circle') }}{{ _ev_errs.get('__all__') }}
-                    </div>
-                    {% endif %}
+                    {{ form_errors_summary(_ev_errs, ['edit_cash_event_amount', 'date', 'edit_cash_event_notes']) }}
+                    
                     <div class="mb-3">
                         <label class="form-label">Type</label>
                         <input type="text" class="form-control" id="edit_event_type_display" readonly>
@@ -482,11 +468,9 @@
                                 <label for="edit_cash_event_amount" class="form-label">Amount</label>
                                 <input type="text" inputmode="decimal"
                                        class="form-control {% if _ev_errs.get('edit_cash_event_amount') %}is-invalid{% endif %}"
-                                       id="edit_cash_event_amount" name="edit_cash_event_amount"
-                                       placeholder="0.00">
-                                {% if _ev_errs.get('edit_cash_event_amount') %}
-                                <div class="invalid-feedback">{{ _ev_errs.get('edit_cash_event_amount') }}</div>
-                                {% endif %}
+                                       value="{{ _ev_vals.get('edit_cash_event_amount', '') }}" id="edit_cash_event_amount" name="edit_cash_event_amount"
+                                       placeholder="0.00" {{ field_attrs('edit_cash_event_amount', _ev_errs.get('edit_cash_event_amount')) }} required>
+                                {{ field_error('edit_cash_event_amount', _ev_errs.get('edit_cash_event_amount')) }}
                             </div>
                         </div>
                         <div class="col-6">
@@ -494,12 +478,10 @@
                                 <label for="edit_event_date" class="form-label">Date</label>
                                 <input type="text"
                                        class="form-control {% if _ev_errs.get('date') %}is-invalid{% endif %}"
-                                       id="edit_event_date" name="date"
+                                       value="{{ _ev_vals.get('date', '') }}" id="edit_event_date" name="date"
                                        data-datepicker="flatpickr"
-                                       placeholder="YYYY-MM-DD">
-                                {% if _ev_errs.get('date') %}
-                                <div class="invalid-feedback d-block">{{ _ev_errs.get('date') }}</div>
-                                {% endif %}
+                                       placeholder="YYYY-MM-DD" {{ field_attrs('edit_event_date', _ev_errs.get('date')) }} required>
+                                {{ field_error('edit_event_date', _ev_errs.get('date')) }}
                             </div>
                         </div>
                     </div>
@@ -507,11 +489,9 @@
                         <label for="edit_cash_event_notes" class="form-label">Notes (Optional)</label>
                         <textarea class="form-control js-notes-input {% if _ev_errs.get('edit_cash_event_notes') %}is-invalid{% endif %}"
                                   id="edit_cash_event_notes" name="edit_cash_event_notes"
-                                  rows="2" maxlength="300"></textarea>
+                                  rows="2" maxlength="300" {{ field_attrs('edit_cash_event_notes', _ev_errs.get('edit_cash_event_notes')) }}>{{ _ev_vals.get('edit_cash_event_notes', '') }}</textarea>
                         <small class="notes-counter">0 / 300</small>
-                        {% if _ev_errs.get('edit_cash_event_notes') %}
-                        <div class="invalid-feedback">{{ _ev_errs.get('edit_cash_event_notes') }}</div>
-                        {% endif %}
+                        {{ field_error('edit_cash_event_notes', _ev_errs.get('edit_cash_event_notes')) }}
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -535,9 +515,10 @@
                         {{ icon('trash', class='modal-title-icon') }}
                         Remove Funding Entry
                     </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">{{ icon('x') }}</button>
                 </div>
                 <div class="modal-body">
+                    {{ form_error() }}
                     <p id="deletePortfolioEventDescription">Remove this <span class="text-emphasis" id="delete_event_type_name"></span> entry?</p>
                     <div class="alert alert-warning mb-0">
                         {{ icon('alert-triangle') }}
@@ -722,32 +703,35 @@
 
 // ── Rename / Deposit / Withdraw / Delete Portfolio ────────────────
 function renamePortfolio(id, name, opts) {
+    window.OnePortfolioForms.prepare('renamePortfolioModal');
     opts = opts || {};
     document.getElementById('renamePortfolioForm').action = `/portfolios/rename/${id}`;
     document.getElementById('rename_portfolio_name').value =
         (opts.name != null ? String(opts.name) : (name || ''));
-    new bootstrap.Modal(document.getElementById('renamePortfolioModal')).show();
+    window.OnePortfolioDialogs.show(document.getElementById('renamePortfolioModal'));
 }
 
 function depositFunds(id, name, opts) {
+    window.OnePortfolioForms.prepare('depositFundsModal');
     opts = opts || {};
     document.getElementById('depositFundsForm').action = `/portfolios/deposit/${id}`;
     document.getElementById('deposit_portfolio_name').value = name || '';
     document.getElementById('add_funds_amount').value = (opts.amount != null ? String(opts.amount) : '');
-    document.getElementById('deposit_date').value = (opts.date || todayStr());
+    document.getElementById('deposit_date').value = (opts.date != null ? String(opts.date) : todayStr());
     document.getElementById('add_funds_notes').value = (opts.notes || '');
-    new bootstrap.Modal(document.getElementById('depositFundsModal')).show();
+    window.OnePortfolioDialogs.show(document.getElementById('depositFundsModal'));
 }
 
 function withdrawFunds(id, name, opts) {
+    window.OnePortfolioForms.prepare('withdrawFundsModal');
     opts = opts || {};
     document.getElementById('withdrawFundsForm').action = `/portfolios/withdraw/${id}`;
     document.getElementById('withdraw_portfolio_name').value = name || '';
     document.getElementById('withdraw_max_btn').dataset.portfolioId = String(id);
     document.getElementById('withdraw_funds_amount').value = (opts.amount != null ? String(opts.amount) : '');
-    document.getElementById('withdraw_date').value = (opts.date || todayStr());
+    document.getElementById('withdraw_date').value = (opts.date != null ? String(opts.date) : todayStr());
     document.getElementById('withdraw_funds_notes').value = (opts.notes || '');
-    new bootstrap.Modal(document.getElementById('withdrawFundsModal')).show();
+    window.OnePortfolioDialogs.show(document.getElementById('withdrawFundsModal'));
 }
 
 (function setupWithdrawMax() {
@@ -756,6 +740,9 @@ function withdrawFunds(id, name, opts) {
     if (!btn || !amountInput) return;
 
     btn.addEventListener('click', async function() {
+        const feedback = window.OnePortfolioForms.register(amountInput.form);
+        const session = feedback.session;
+        feedback.clearGeneral('action');
         const dateInput = document.getElementById('withdraw_date');
         const date = dateInput.value;
         const portfolioId = btn.dataset.portfolioId;
@@ -765,29 +752,28 @@ function withdrawFunds(id, name, opts) {
             const response = await fetch(`/portfolios/withdrawal-max/${portfolioId}?${params}`, {cache: 'no-store'});
             const result = await response.json();
             // A response for another date/portfolio must never populate this form.
-            if (dateInput.value !== date || btn.dataset.portfolioId !== portfolioId) return;
+            if (feedback.session !== session || dateInput.value !== date || btn.dataset.portfolioId !== portfolioId) return;
             if (!response.ok || !result.success) {
-                amountInput.setCustomValidity(Object.values(result.errors || {}).join(' ') || 'Unable to calculate Max.');
-                amountInput.reportValidity();
+                feedback.showGeneral(Object.values(result.errors || {}).join(' ') || 'Unable to calculate Max.', true, 'action');
                 return;
             }
-            amountInput.setCustomValidity('');
             amountInput.value = result.amount;
             amountInput.dispatchEvent(new Event('input'));
         } catch (error) {
-            amountInput.setCustomValidity('Unable to calculate Max. Please try again.');
-            amountInput.reportValidity();
+            if (feedback.session === session && dateInput.value === date && btn.dataset.portfolioId === portfolioId) {
+                feedback.showGeneral('Unable to calculate Max. Please try again.', true, 'action');
+            }
         } finally {
             btn.disabled = false;
         }
     });
-    amountInput.addEventListener('input', () => amountInput.setCustomValidity(''));
 })();
 
 function deletePortfolio(id, name) {
+    window.OnePortfolioForms.prepare('deletePortfolioModal');
     document.getElementById('deletePortfolioForm').action = `/portfolios/delete/${id}`;
     document.getElementById('delete_portfolio_name').textContent = name || '';
-    new bootstrap.Modal(document.getElementById('deletePortfolioModal')).show();
+    window.OnePortfolioDialogs.show(document.getElementById('deletePortfolioModal'));
 }
 
 // ── Edit / Delete Portfolio Event ─────────────────────────────────
@@ -798,19 +784,21 @@ function portfolioEventTypeLabel(type) {
 }
 
 function editPortfolioEvent(id, type, amount, notes, date) {
+    window.OnePortfolioForms.prepare('editPortfolioEventModal');
     document.getElementById('editPortfolioEventForm').action = `/portfolios/events/edit/${id}`;
     document.getElementById('edit_event_type_display').value = portfolioEventTypeLabel(type);
     document.getElementById('edit_event_type_hidden').value = type || '';
     document.getElementById('edit_cash_event_amount').value = amount || '';
     document.getElementById('edit_cash_event_notes').value = notes || '';
     document.getElementById('edit_event_date').value = date || todayStr();
-    new bootstrap.Modal(document.getElementById('editPortfolioEventModal')).show();
+    window.OnePortfolioDialogs.show(document.getElementById('editPortfolioEventModal'));
 }
 
 function deletePortfolioEvent(id, type) {
+    window.OnePortfolioForms.prepare('deletePortfolioEventModal');
     document.getElementById('deletePortfolioEventForm').action = `/portfolios/events/delete/${id}`;
     document.getElementById('delete_event_type_name').textContent = portfolioEventTypeLabel(type) || 'portfolio';
-    new bootstrap.Modal(document.getElementById('deletePortfolioEventModal')).show();
+    window.OnePortfolioDialogs.show(document.getElementById('deletePortfolioEventModal'));
 }
 
 // ── Re-open modal after server-side validation errors ────────────
@@ -837,7 +825,7 @@ function deletePortfolioEvent(id, type) {
                 });
             }
             if (which === 'newPortfolioModal') {
-                new bootstrap.Modal(document.getElementById('newPortfolioModal')).show();
+                window.OnePortfolioDialogs.show(document.getElementById('newPortfolioModal'));
             }
             if (which === 'renamePortfolioModal' && payload && payload.portfolio_id) {
                 renamePortfolio(payload.portfolio_id, payload.name || '', {
@@ -852,7 +840,7 @@ function deletePortfolioEvent(id, type) {
                     document.getElementById('editPortfolioEventForm').action =
                         '/portfolios/events/edit/' + payload.event_id;
                 }
-                new bootstrap.Modal(document.getElementById('editPortfolioEventModal')).show();
+                window.OnePortfolioDialogs.show(document.getElementById('editPortfolioEventModal'));
             }
         } catch (e) {}
     });

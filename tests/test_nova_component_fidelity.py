@@ -42,7 +42,7 @@ def test_inputs_and_native_select_follow_nova_and_theme_contract():
     assert 'border-radius: var(--radius-lg)' in fields
     assert 'background-color: var(--control-background)' in fields
 
-    focus = _rule(css, '.form-control:focus,\n  .form-select:focus')
+    focus = _rule(css, '.form-control:focus-visible,\n  .form-select:focus-visible')
     assert 'border-color: var(--ring)' in focus
     assert 'box-shadow: 0 0 0 3px var(--focus-ring-soft)' in focus
     assert 'focus-indicator' not in focus
@@ -52,8 +52,8 @@ def test_inputs_and_native_select_follow_nova_and_theme_contract():
     select = select_rules[-1]
     assert 'color-scheme: light' in select
     options = _rule(css, '.form-select option,\n  .form-select optgroup')
-    assert 'background-color: var(--popover)' in options
-    assert 'color: var(--popover-foreground)' in options
+    assert 'background-color: Canvas' in options
+    assert 'color: CanvasText' in options
     assert ':root[data-theme="dark"] .form-select { color-scheme: dark; }' in css
     assert ':root:not([data-theme="light"]) .form-select { color-scheme: dark; }' in css
     disabled = _rule(css, '.form-control:disabled,\n  .form-select:disabled')

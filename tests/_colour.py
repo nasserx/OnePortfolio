@@ -10,46 +10,6 @@ import pytest
 
 
 TEXT_MIN = 4.5
-NON_TEXT_MIN = 3.0
-
-
-def parse_veil(value):
-    """`rgb(r g b / a)` -> ((r, g, b), a)."""
-    match = re.fullmatch(
-        r'rgb\(\s*(\d+)\s+(\d+)\s+(\d+)\s*/\s*([\d.]+)\s*\)', value.strip()
-    )
-    assert match, f'expected rgb(r g b / a), got {value!r}'
-    r, g, b, alpha = match.groups()
-    return (int(r), int(g), int(b)), float(alpha)
-
-
-def composite(colour, veil):
-    """Paint a translucent veil over an opaque colour, as the browser does.
-
-    `colour` may be a hex string or an (r, g, b) tuple; the return matches
-    the input form.
-    """
-    (vr, vg, vb), alpha = veil
-    as_hex = isinstance(colour, str)
-    parts = to_rgb(colour) if as_hex else colour
-    blended = tuple(
-        round(c * (1 - alpha) + v * alpha)
-        for c, v in zip(parts, (vr, vg, vb))
-    )
-    return '#' + ''.join(f'{c:02x}' for c in blended) if as_hex else blended
-
-
-def stack(*veils):
-    """Alpha-composite several veils of the same colour into one.
-
-    Transparency multiplies, so `n` veils leave `Π(1 - aᵢ)` of the picture
-    showing. Checking either layer alone would be wrong in opposite
-    directions.
-    """
-    remaining = 1.0
-    for _, alpha in veils:
-        remaining *= (1 - alpha)
-    return veils[0][0], 1 - remaining
 
 
 def _linear_to_srgb(channel):

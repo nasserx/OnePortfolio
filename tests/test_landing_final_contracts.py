@@ -20,7 +20,7 @@ def _rule(source, selector):
 
 def test_public_shell_reuses_logo_theme_typography_and_icon_contracts():
     assert "include 'components/logo_mark.html'" in TEMPLATE
-    assert 'family=Geist:wght@400;500;600' in TEMPLATE
+    assert 'family=Geist:wght@400;500;600;700' in TEMPLATE
     assert "include 'components/icon_sprite.html'" in TEMPLATE
     assert "from 'macros/icons.html' import icon" in TEMPLATE
 
@@ -76,7 +76,7 @@ def test_preview_uses_one_formatter_palette_and_accessible_text_status():
     assert 'new Intl.NumberFormat' not in SCRIPT
     assert "new Intl.NumberFormat('en-US'" in FORMATTERS
     assert "filename='js/display_formatters.js'" in TEMPLATE
-    assert "['--portfolio-chart-1', '--portfolio-chart-2', '--portfolio-chart-3']" in SCRIPT
+    assert "['--chart-1', '--chart-2', '--chart-3']" in SCRIPT
     assert '--chart-6' not in SCRIPT
     assert '--chart-7' not in SCRIPT
     assert '--chart-other' not in SCRIPT

@@ -60,15 +60,21 @@ python -m pytest -v
 
 Tests use disposable databases; do not point diagnostic application instances
 at the working database. Node.js is needed only for the frontend checks below,
-with no npm install or browser required:
+with no npm install or browser required. Run all six assertion scripts using
+the same `tests/*.js` discovery pattern as CI (POSIX shell):
 
 ```bash
-node tests/precision_boundaries.js
-node tests/cash_account_max.js
-node tests/portfolio_transfers.js
-node tests/modal_form_errors.js
-node tests/overview_chart_ranges.js
+for file in tests/*.js; do node "$file" || exit; done
 ```
+
+Or in PowerShell:
+
+```powershell
+Get-ChildItem tests/*.js | ForEach-Object { node $_.FullName; if ($LASTEXITCODE -ne 0) { throw "JavaScript assertions failed: $($_.Name)" } }
+```
+
+This includes precision boundaries, cash-account Max, portfolio transfers,
+form feedback, chart contracts, and overlay/keyboard contracts.
 
 Check syntax for every application and assertion script (PowerShell):
 

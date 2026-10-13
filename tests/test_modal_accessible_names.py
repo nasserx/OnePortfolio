@@ -1,8 +1,8 @@
 """RCR-12: every production modal names itself and its close control.
 
-Bootstrap's ``.btn-close`` renders as an empty button whose glyph is a CSS
-background image, so without ``aria-label`` a screen reader announces an
-unnamed button. And a ``.modal`` with no ``aria-labelledby`` is announced as a
+The adapted ``.btn-close`` has a decorative Tabler X, so without ``aria-label``
+a screen reader announces an unnamed button. A ``.modal`` with no
+``aria-labelledby`` is announced as a
 bare dialog, even though every modal here has a visible ``<h5 class="modal-title">``
 sitting right there.
 

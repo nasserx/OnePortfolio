@@ -91,7 +91,9 @@ def test_transfer_menu_and_context_are_scoped_and_non_destructive(pair, app):
     assert '<select id="transfer_destination_portfolio_id"' in modal
     assert 'aria-labelledby="transferModalTitle"' in modal
     assert 'aria-label="Close"' in modal
-    assert 'transfer-error' not in modal and 'alert-danger' not in modal
+    assert 'transfer-error' not in modal
+    assert modal.count('data-form-error') == 1
+    assert 'data-form-error role="alert" tabindex="-1" hidden' in modal
 
 
 def test_transfer_errors_retain_shared_form_and_field_contracts(pair, app):

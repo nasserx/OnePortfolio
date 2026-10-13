@@ -191,9 +191,11 @@ def test_pagination_css_is_one_canonical_token_driven_contract():
         '.pagination__control:disabled',
     ):
         assert selector in section
-    assert 'var(--accent)' in section
+    assert 'var(--ghost-hover)' in section
     assert 'var(--accent-foreground)' in section
-    assert 'var(--muted-foreground)' in section
+    assert 'var(--foreground)' in section
+    assert 'var(--outline-background)' in section
+    assert 'var(--outline-border)' in section
     assert 'var(--radius-lg)' in section
     assert '--fg-' not in section
     assert '--bg-' not in section

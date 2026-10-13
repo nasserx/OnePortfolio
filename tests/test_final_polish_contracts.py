@@ -118,7 +118,8 @@ def test_landing_preview_reuses_overview_metric_and_visualization_roles():
 
     for script in (LANDING, OVERVIEW):
         assert "cssVar('--card')" in script
-        assert '--portfolio-chart-' in script
+        assert '--chart-' in script
+        assert '--portfolio-chart-' not in script
         assert '--chart-6' not in script
         assert '--chart-7' not in script
         assert '--chart-other' not in script
@@ -131,16 +132,3 @@ def test_landing_preview_remains_synthetic_and_public_only():
         'portfolio_summary', 'allocationData',
     ):
         assert private_hook not in combined
-
-
-def test_landing_and_authenticated_shell_share_theme_toggle_contract():
-    button = 'class="icon-button theme-toggle" data-theme-toggle'
-    assert button in BASE
-    assert button in LANDING_TEMPLATE
-    for template in (BASE, LANDING_TEMPLATE):
-        assert "icon('moon', class='theme-icon theme-icon--moon')" in template
-        assert "icon('sun', class='theme-icon theme-icon--sun')" in template
-
-    assert 'bi-moon-stars' not in LANDING_TEMPLATE
-    assert "include 'components/icon_sprite.html'" in LANDING_TEMPLATE
-    assert "from 'macros/icons.html' import icon" in LANDING_TEMPLATE

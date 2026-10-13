@@ -1,4 +1,15 @@
 {% extends "base.html" %}
+{% from 'macros/forms.html' import field_attrs, field_error, form_error, form_errors_summary %}
+{% set _symbol_errs = (form_errors.get('symbol_add', {}) if form_errors else {}) %}
+{% set _symbol_vals = (form_values.get('symbol_add', {}) if form_values else {}) %}
+{% set _tx_add_errs = (form_errors.get('transaction_add', {}) if form_errors else {}) %}
+{% set _tx_add_vals = (form_values.get('transaction_add', {}) if form_values else {}) %}
+{% set _tx_edit_errs = (form_errors.get('transaction_edit', {}) if form_errors else {}) %}
+{% set _tx_edit_vals = (form_values.get('transaction_edit', {}) if form_values else {}) %}
+{% set _div_add_vals = (form_values.get('dividend_add', {}) if form_values else {}) %}
+{% set _div_edit_vals = (form_values.get('dividend_edit', {}) if form_values else {}) %}
+{% set _div_add_errs = (form_errors.get('dividend_add', {}) if form_errors else {}) %}
+{% set _div_edit_errs = (form_errors.get('dividend_edit', {}) if form_errors else {}) %}
 {% from 'macros/ui.html' import money, percent, quantity, metric, empty_state, action_menu, record_type %}
 {% from 'macros/icons.html' import icon %}
 
@@ -311,16 +322,15 @@
                 <input type="hidden" name="mutation_token" value="{{ mutation_token() }}">
                 <div class="modal-header">
                     <h5 class="modal-title" id="addSymbolModalTitle">Add Asset</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">{{ icon('x') }}</button>
                 </div>
                 <div class="modal-body">
+                    {{ form_errors_summary(_symbol_errs, ['symbol_portfolio_id', 'symbol_ticker']) }}
                     <div class="row g-2">
                         <div class="col-6">
                             <div class="mb-3">
                                 <label for="symbol_portfolio_id" class="form-label">Portfolio</label>
-                                {% set _symbol_errs = (form_errors.get('symbol_add', {}) if form_errors else {}) %}
-                                {% set _symbol_vals = (form_values.get('symbol_add', {}) if form_values else {}) %}
-                                <select class="form-select {% if _symbol_errs.get('symbol_portfolio_id') %}is-invalid{% endif %}" id="symbol_portfolio_id" name="symbol_portfolio_id">
+                                <select class="form-select {% if _symbol_errs.get('symbol_portfolio_id') %}is-invalid{% endif %}" id="symbol_portfolio_id" name="symbol_portfolio_id" {{ field_attrs('symbol_portfolio_id', _symbol_errs.get('symbol_portfolio_id')) }} required>
                                     <option value="">Select Portfolio…</option>
                                     {% for portfolio in portfolios %}
                                     <option value="{{ portfolio.id }}" {% if (_symbol_vals.get('symbol_portfolio_id') and _symbol_vals.get('symbol_portfolio_id')|int == portfolio.id) or (not _symbol_vals.get('symbol_portfolio_id') and selected_portfolio == portfolio.name) %}selected{% endif %}>
@@ -328,19 +338,15 @@
                                     </option>
                                     {% endfor %}
                                 </select>
-                                {% if _symbol_errs.get('symbol_portfolio_id') %}
-                                <div class="invalid-feedback">{{ _symbol_errs.get('symbol_portfolio_id') }}</div>
-                                {% endif %}
+                                {{ field_error('symbol_portfolio_id', _symbol_errs.get('symbol_portfolio_id')) }}
                             </div>
                         </div>
                         <div class="col-6">
                             <div class="mb-3">
                                 <label for="symbol_ticker" class="form-label">Asset Symbol</label>
-                                <input type="text" class="form-control {% if _symbol_errs.get('symbol_ticker') %}is-invalid{% endif %}" id="symbol_ticker" name="symbol_ticker" maxlength="20"
-                                    placeholder="e.g., AAPL" data-uppercase-input>
-                                {% if _symbol_errs.get('symbol_ticker') %}
-                                <div class="invalid-feedback">{{ _symbol_errs.get('symbol_ticker') }}</div>
-                                {% endif %}
+                                <input type="text" class="form-control {% if _symbol_errs.get('symbol_ticker') %}is-invalid{% endif %}" id="symbol_ticker" name="symbol_ticker" value="{{ _symbol_vals.get('symbol_ticker', '') }}" maxlength="20"
+                                    placeholder="e.g., AAPL" data-uppercase-input {{ field_attrs('symbol_ticker', _symbol_errs.get('symbol_ticker')) }} required>
+                                {{ field_error('symbol_ticker', _symbol_errs.get('symbol_ticker')) }}
                             </div>
                         </div>
                     </div>
@@ -367,24 +373,21 @@
                 <input type="hidden" name="user_timezone" value="">
                 <div class="modal-header">
                     <h5 class="modal-title" id="add_tx_modal_title">Add Asset Entry</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">{{ icon('x') }}</button>
                 </div>
                 <div class="modal-body">
-                    {% set _tx_add_errs = (form_errors.get('transaction_add', {}) if form_errors else {}) %}
+                    {{ form_errors_summary(_tx_add_errs, ['portfolio_id', 'symbol', 'price', 'quantity', 'fees', 'date', 'notes', 'transaction_type']) }}
                     <div class="row g-2">
                         <div class="col-6">
                             <div class="mb-3" id="add_tx_portfolio_group">
                                 <label for="portfolio_id" class="form-label">Portfolio</label>
-                                {% set _tx_add_vals = (form_values.get('transaction_add', {}) if form_values else {}) %}
-                                <select class="form-select {% if _tx_add_errs.get('portfolio_id') %}is-invalid{% endif %}" id="portfolio_id" name="portfolio_id">
+                                <select class="form-select {% if _tx_add_errs.get('portfolio_id') %}is-invalid{% endif %}" id="portfolio_id" name="portfolio_id" {{ field_attrs('portfolio_id', _tx_add_errs.get('portfolio_id')) }} required>
                                     <option value="">Select Portfolio…</option>
                                     {% for portfolio in portfolios %}
                                     <option value="{{ portfolio.id }}">{{ portfolio.name }}</option>
                                     {% endfor %}
                                 </select>
-                                {% if _tx_add_errs.get('portfolio_id') %}
-                                <div class="invalid-feedback">{{ _tx_add_errs.get('portfolio_id') }}</div>
-                                {% endif %}
+                                {{ field_error('portfolio_id', _tx_add_errs.get('portfolio_id')) }}
                             </div>
                         </div>
 
@@ -392,10 +395,8 @@
                             <div class="mb-3" id="add_tx_symbol_group">
                                 <label for="symbol" class="form-label">Asset Symbol</label>
                                     <input type="text" class="form-control {% if _tx_add_errs.get('symbol') %}is-invalid{% endif %}" id="symbol" name="symbol" maxlength="20"
-                                       placeholder="e.g., AAPL" data-uppercase-input>
-                                {% if _tx_add_errs.get('symbol') %}
-                                <div class="invalid-feedback">{{ _tx_add_errs.get('symbol') }}</div>
-                                {% endif %}
+                                       placeholder="e.g., AAPL" data-uppercase-input {{ field_attrs('symbol', _tx_add_errs.get('symbol')) }} required value="{{ _tx_add_vals.get('symbol', '') }}">
+                                {{ field_error('symbol', _tx_add_errs.get('symbol')) }}
                             </div>
                         </div>
                     </div>
@@ -403,20 +404,21 @@
                     <div class="mb-3" id="add_tx_type_group">
                         <label for="transaction_type" class="form-label visually-hidden">Entry Type</label>
                         <div class="tx-type-tabs">
-                            <button type="button" class="tx-type-tab tx-tab-buy" id="add_tx_type_buy_btn">
+                            <button type="button" class="tx-type-tab tx-tab-buy" id="add_tx_type_buy_btn" data-feedback-for="transaction_type">
                                 Buy
                             </button>
-                            <button type="button" class="tx-type-tab tx-tab-sell" id="add_tx_type_sell_btn">
+                            <button type="button" class="tx-type-tab tx-tab-sell" id="add_tx_type_sell_btn" data-feedback-for="transaction_type">
                                 Sell
                             </button>
                         </div>
 
                         <!-- Hidden select for Buy/Sell form submission -->
-                        <select class="form-select visually-hidden" id="transaction_type" name="transaction_type" tabindex="-1" aria-hidden="true">
+                        <select class="form-select visually-hidden" id="transaction_type" name="transaction_type" tabindex="-1" aria-hidden="true" {{ field_attrs('transaction_type', _tx_add_errs.get('transaction_type')) }} required>
                             <option value="" selected></option>
                             <option value="Buy">Buy</option>
                             <option value="Sell">Sell</option>
                         </select>
+                        {{ field_error('transaction_type', _tx_add_errs.get('transaction_type')) }}
 
                     </div>
 
@@ -427,10 +429,8 @@
                                 <div class="mb-3">
                                     <label for="price" class="form-label">Price (Per Unit)</label>
                                     <input type="text" inputmode="decimal" class="form-control {% if _tx_add_errs.get('price') %}is-invalid{% endif %}" id="price" name="price"
-                                        placeholder="0.0000">
-                                    {% if _tx_add_errs.get('price') %}
-                                    <div class="invalid-feedback">{{ _tx_add_errs.get('price') }}</div>
-                                    {% endif %}
+                                        placeholder="0.0000" {{ field_attrs('price', _tx_add_errs.get('price')) }} required value="{{ _tx_add_vals.get('price', '') }}">
+                                    {{ field_error('price', _tx_add_errs.get('price')) }}
                                 </div>
                             </div>
                             <div class="col-6">
@@ -438,14 +438,12 @@
                                     <label for="quantity" class="form-label">Quantity</label>
                                     <div class="position-relative">
                                         <input type="text" inputmode="decimal" class="form-control {% if _tx_add_errs.get('quantity') %}is-invalid{% endif %} pe-5" id="quantity" name="quantity"
-                                            placeholder="0.0000">
+                                            placeholder="0.0000" {{ field_attrs('quantity', _tx_add_errs.get('quantity')) }} required value="{{ _tx_add_vals.get('quantity', '') }}">
                                         <span id="add_sell_max_row" class="d-none sell-max-inline">
                                             <button type="button" class="btn btn-link btn-sm sell-max-btn" id="add_sell_max_btn">Max</button>
                                         </span>
                                     </div>
-                                    {% if _tx_add_errs.get('quantity') %}
-                                    <div class="invalid-feedback d-block">{{ _tx_add_errs.get('quantity') }}</div>
-                                    {% endif %}
+                                    {{ field_error('quantity', _tx_add_errs.get('quantity')) }}
                                 </div>
                             </div>
                         </div>
@@ -455,20 +453,16 @@
                                 <div class="mb-3">
                                     <label for="fees" class="form-label">Fee (Optional)</label>
                                     <input type="text" inputmode="decimal" autocomplete="off" class="form-control {% if _tx_add_errs.get('fees') %}is-invalid{% endif %}" id="fees" name="fees"
-                                        placeholder="0.00">
-                                    {% if _tx_add_errs.get('fees') %}
-                                    <div class="invalid-feedback">{{ _tx_add_errs.get('fees') }}</div>
-                                    {% endif %}
+                                        placeholder="0.00" {{ field_attrs('fees', _tx_add_errs.get('fees')) }} value="{{ _tx_add_vals.get('fees', '') }}">
+                                    {{ field_error('fees', _tx_add_errs.get('fees')) }}
                                     <div id="transaction_amount_preview" class="tx-preview" aria-live="polite"></div>
                                 </div>
                             </div>
                             <div class="col-6">
                                 <div class="mb-3">
                                     <label for="add_tx_date" class="form-label">Date</label>
-                                    <input type="text" class="form-control {% if _tx_add_errs.get('date') %}is-invalid{% endif %}" id="add_tx_date" name="date" placeholder="YYYY-MM-DD" data-datepicker="flatpickr">
-                                    {% if _tx_add_errs.get('date') %}
-                                    <div class="invalid-feedback d-block">{{ _tx_add_errs.get('date') }}</div>
-                                    {% endif %}
+                                    <input type="text" class="form-control {% if _tx_add_errs.get('date') %}is-invalid{% endif %}" id="add_tx_date" name="date" placeholder="YYYY-MM-DD" data-datepicker="flatpickr" {{ field_attrs('add_tx_date', _tx_add_errs.get('date')) }} required value="{{ _tx_add_vals.get('date', '') }}">
+                                    {{ field_error('add_tx_date', _tx_add_errs.get('date')) }}
                                 </div>
                             </div>
                         </div>
@@ -476,8 +470,9 @@
 
                     <div class="mb-3">
                         <label for="notes" class="form-label">Notes (Optional)</label>
-                        <textarea class="form-control js-notes-input" id="notes" name="notes" rows="2" maxlength="300"></textarea>
+                        <textarea class="form-control js-notes-input" id="notes" name="notes" rows="2" maxlength="300" {{ field_attrs('notes', _tx_add_errs.get('notes')) }}>{{ _tx_add_vals.get('notes', '') }}</textarea>
                         <small class="notes-counter">0 / 300</small>
+                        {{ field_error('notes', _tx_add_errs.get('notes')) }}
                     </div>
                 </div>
 
@@ -499,15 +494,11 @@
                 <input type="hidden" name="user_timezone" value="">
                 <div class="modal-header">
                     <h5 class="modal-title" id="editTransactionModalTitle">Edit Asset Entry</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">{{ icon('x') }}</button>
                 </div>
                 <div class="modal-body">
-                    {% set _tx_edit_errs = (form_errors.get('transaction_edit', {}) if form_errors else {}) %}
-                    {% if _tx_edit_errs.get('__all__') %}
-                    <div class="alert alert-danger mb-3">
-                        {{ icon('alert-circle') }}{{ _tx_edit_errs.get('__all__') }}
-                    </div>
-                    {% endif %}
+                    {{ form_errors_summary(_tx_edit_errs, ['edit_price', 'edit_quantity', 'edit_fees', 'edit_date', 'edit_notes']) }}
+                    
                     <div class="row g-2">
                         <div class="col-6">
                             <div class="mb-3">
@@ -543,23 +534,17 @@
                         <div class="col-6">
                             <div class="mb-3">
                                 <label for="edit_price" class="form-label">Price (Per Unit)</label>
-                                {% set _tx_edit_errs = (form_errors.get('transaction_edit', {}) if form_errors else {}) %}
-                                {% set _tx_edit_vals = (form_values.get('transaction_edit', {}) if form_values else {}) %}
                                 <input type="text" inputmode="decimal" class="form-control {% if _tx_edit_errs.get('edit_price') %}is-invalid{% endif %}" id="edit_price" name="edit_price"
-                                    placeholder="0.0000">
-                                {% if _tx_edit_errs.get('edit_price') %}
-                                <div class="invalid-feedback">{{ _tx_edit_errs.get('edit_price') }}</div>
-                                {% endif %}
+                                    placeholder="0.0000" {{ field_attrs('edit_price', _tx_edit_errs.get('edit_price')) }} required value="{{ _tx_edit_vals.get('edit_price', '') }}">
+                                {{ field_error('edit_price', _tx_edit_errs.get('edit_price')) }}
                             </div>
                         </div>
                         <div class="col-6">
                             <div class="mb-3">
                                 <label for="edit_quantity" class="form-label">Quantity</label>
                                 <input type="text" inputmode="decimal" class="form-control {% if _tx_edit_errs.get('edit_quantity') %}is-invalid{% endif %}" id="edit_quantity" name="edit_quantity"
-                                    placeholder="0.0000">
-                                {% if _tx_edit_errs.get('edit_quantity') %}
-                                <div class="invalid-feedback">{{ _tx_edit_errs.get('edit_quantity') }}</div>
-                                {% endif %}
+                                    placeholder="0.0000" {{ field_attrs('edit_quantity', _tx_edit_errs.get('edit_quantity')) }} required value="{{ _tx_edit_vals.get('edit_quantity', '') }}">
+                                {{ field_error('edit_quantity', _tx_edit_errs.get('edit_quantity')) }}
                             </div>
                         </div>
                     </div>
@@ -569,20 +554,16 @@
                             <div class="mb-3">
                                 <label for="edit_fees" class="form-label">Fee (Optional)</label>
                                 <input type="text" inputmode="decimal" autocomplete="off" class="form-control {% if _tx_edit_errs.get('edit_fees') %}is-invalid{% endif %}" id="edit_fees" name="edit_fees"
-                                    placeholder="0.00">
-                                {% if _tx_edit_errs.get('edit_fees') %}
-                                <div class="invalid-feedback">{{ _tx_edit_errs.get('edit_fees') }}</div>
-                                {% endif %}
+                                    placeholder="0.00" {{ field_attrs('edit_fees', _tx_edit_errs.get('edit_fees')) }} value="{{ _tx_edit_vals.get('edit_fees', '') }}">
+                                {{ field_error('edit_fees', _tx_edit_errs.get('edit_fees')) }}
                                 <div id="edit_transaction_amount_preview" class="tx-preview" aria-live="polite"></div>
                             </div>
                         </div>
                         <div class="col-6">
                             <div class="mb-3">
                                 <label for="edit_date" class="form-label">Date</label>
-                                <input type="text" class="form-control {% if _tx_edit_errs.get('edit_date') %}is-invalid{% endif %}" id="edit_date" name="edit_date" placeholder="YYYY-MM-DD" data-datepicker="flatpickr">
-                                {% if _tx_edit_errs.get('edit_date') %}
-                                <div class="invalid-feedback">{{ _tx_edit_errs.get('edit_date') }}</div>
-                                {% endif %}
+                                <input type="text" class="form-control {% if _tx_edit_errs.get('edit_date') %}is-invalid{% endif %}" id="edit_date" name="edit_date" placeholder="YYYY-MM-DD" data-datepicker="flatpickr" {{ field_attrs('edit_date', _tx_edit_errs.get('edit_date')) }} required value="{{ _tx_edit_vals.get('edit_date', '') }}">
+                                {{ field_error('edit_date', _tx_edit_errs.get('edit_date')) }}
                             </div>
                         </div>
                     </div>
@@ -590,11 +571,9 @@
                     <div class="mb-3">
                         <label for="edit_notes" class="form-label">Notes (Optional)</label>
                         <textarea class="form-control js-notes-input {% if _tx_edit_errs.get('edit_notes') %}is-invalid{% endif %}"
-                                  id="edit_notes" name="edit_notes" rows="2" maxlength="300"></textarea>
+                                  id="edit_notes" name="edit_notes" rows="2" maxlength="300" {{ field_attrs('edit_notes', _tx_edit_errs.get('edit_notes')) }}>{{ _tx_edit_vals.get('edit_notes', '') }}</textarea>
                         <small class="notes-counter">0 / 300</small>
-                        {% if _tx_edit_errs.get('edit_notes') %}
-                        <div class="invalid-feedback">{{ _tx_edit_errs.get('edit_notes') }}</div>
-                        {% endif %}
+                        {{ field_error('edit_notes', _tx_edit_errs.get('edit_notes')) }}
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -618,9 +597,10 @@
                         {{ icon('trash', class='modal-title-icon') }}
                         Remove Asset Entry
                     </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">{{ icon('x') }}</button>
                 </div>
                 <div class="modal-body">
+                    {{ form_error() }}
                     <p id="deleteTransactionDescription">{{ MESSAGES['CONFIRM_REMOVE_TRANSACTION'] }}</p>
                     <div class="alert alert-warning">
                         {{ icon('alert-triangle') }}
@@ -653,9 +633,10 @@
                         {{ icon('trash', class='modal-title-icon') }}
                         Remove Asset
                     </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">{{ icon('x') }}</button>
                 </div>
                 <div class="modal-body">
+                    {{ form_error() }}
                     <p class="mb-2" id="deleteSymbolDescription">Remove <span class="text-emphasis" id="delete_symbol_name"></span>?</p>
                     <div id="delete_symbol_warning" class="alert alert-warning mb-2 d-none">
                         {{ icon('alert-triangle') }}
@@ -675,37 +656,29 @@
 
 <!-- Add Dividends Modal (standalone — opened from the $ button on each asset row) -->
 <div class="modal fade" id="addDividendModal" tabindex="-1" aria-labelledby="addDividendModalTitle">
-    {% set _div_add_errs = (form_errors.get('dividend_add', {}) if form_errors else {}) %}
     <div class="modal-dialog">
         <div class="modal-content">
             <form method="POST" action="{{ url_for('transactions.dividend_add') }}" autocomplete="off" novalidate>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="mutation_token" value="{{ mutation_token() }}">
                 <input type="hidden" name="user_timezone" value="">
-                <input type="hidden" name="portfolio_id" id="add_div_portfolio_id">
-                <input type="hidden" name="div_symbol" id="add_div_symbol">
+                <input type="hidden" name="portfolio_id" id="add_div_portfolio_id" value="{{ _div_add_vals.get('portfolio_id', '') }}">
+                <input type="hidden" name="div_symbol" id="add_div_symbol" value="{{ _div_add_vals.get('div_symbol', '') }}">
                 <div class="modal-header">
                     <h5 class="modal-title" id="addDividendModalTitle">Add Dividends</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">{{ icon('x') }}</button>
                 </div>
                 <div class="modal-body">
-                    {% if _div_add_errs.get('__all__') %}
-                    <div class="alert alert-danger mb-3">
-                        {{ icon('alert-circle') }}{{ _div_add_errs.get('__all__') }}
-                    </div>
-                    {% endif %}
+                    {{ form_errors_summary(_div_add_errs, ['amount', 'date', 'notes']) }}
+                    
                     <div class="row g-2">
                         <div class="col-6">
                             <div class="mb-3">
                                 <label for="add_div_amount" class="form-label">Amount</label>
                                 <input type="text" inputmode="decimal" autocomplete="off"
                                        class="form-control {% if _div_add_errs.get('amount') %}is-invalid{% endif %}"
-                                       id="add_div_amount" name="amount" placeholder="0.00">
-                                {% if _div_add_errs.get('amount') %}
-                                <div class="invalid-feedback">{{ _div_add_errs.get('amount') }}</div>
-                                {% else %}
-                                <div id="add_div_amount_error" class="invalid-feedback"></div>
-                                {% endif %}
+                                       id="add_div_amount" name="amount" placeholder="0.00" {{ field_attrs('add_div_amount', _div_add_errs.get('amount')) }} required value="{{ _div_add_vals.get('amount', '') }}">
+                                {{ field_error('add_div_amount', _div_add_errs.get('amount')) }}
                             </div>
                         </div>
                         <div class="col-6">
@@ -714,21 +687,17 @@
                                 <input type="text"
                                        class="form-control {% if _div_add_errs.get('date') %}is-invalid{% endif %}"
                                        id="add_div_date" name="date" placeholder="YYYY-MM-DD"
-                                       data-datepicker="flatpickr">
-                                {% if _div_add_errs.get('date') %}
-                                <div class="invalid-feedback d-block">{{ _div_add_errs.get('date') }}</div>
-                                {% endif %}
+                                       data-datepicker="flatpickr" {{ field_attrs('add_div_date', _div_add_errs.get('date')) }} required value="{{ _div_add_vals.get('date', '') }}">
+                                {{ field_error('add_div_date', _div_add_errs.get('date')) }}
                             </div>
                         </div>
                     </div>
                     <div class="mb-3">
                         <label for="add_div_notes" class="form-label">Notes (Optional)</label>
                         <textarea class="form-control js-notes-input {% if _div_add_errs.get('notes') %}is-invalid{% endif %}"
-                                  id="add_div_notes" name="notes" rows="2" maxlength="300"></textarea>
+                                  id="add_div_notes" name="notes" rows="2" maxlength="300" {{ field_attrs('add_div_notes', _div_add_errs.get('notes')) }}>{{ _div_add_vals.get('notes', '') }}</textarea>
                         <small class="notes-counter">0 / 300</small>
-                        {% if _div_add_errs.get('notes') %}
-                        <div class="invalid-feedback">{{ _div_add_errs.get('notes') }}</div>
-                        {% endif %}
+                        {{ field_error('add_div_notes', _div_add_errs.get('notes')) }}
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -740,7 +709,6 @@
 </div>
 
 <!-- Edit Dividends Modal -->
-{% set _div_edit_errs = (form_errors.get('dividend_edit', {}) if form_errors else {}) %}
 <div class="modal fade" id="editDividendModal" tabindex="-1" aria-labelledby="editDividendModalTitle">
     <div class="modal-dialog modal-dialog-scrollable">
         <div class="modal-content">
@@ -750,26 +718,19 @@
                 <input type="hidden" name="user_timezone" value="">
                 <div class="modal-header">
                     <h5 class="modal-title" id="editDividendModalTitle">Edit Dividends</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">{{ icon('x') }}</button>
                 </div>
                 <div class="modal-body">
-                    {% if _div_edit_errs.get('__all__') %}
-                    <div class="alert alert-danger mb-3">
-                        {{ icon('alert-circle') }}{{ _div_edit_errs.get('__all__') }}
-                    </div>
-                    {% endif %}
+                    {{ form_errors_summary(_div_edit_errs, ['edit_amount', 'edit_date', 'edit_notes']) }}
+                    
                     <div class="row g-2">
                         <div class="col-6">
                             <div class="mb-3">
                                 <label for="edit_amount" class="form-label">Amount</label>
                                 <input type="text" inputmode="decimal" autocomplete="off"
                                        class="form-control {% if _div_edit_errs.get('edit_amount') %}is-invalid{% endif %}"
-                                       id="edit_amount" name="edit_amount" placeholder="0.00">
-                                {% if _div_edit_errs.get('edit_amount') %}
-                                <div class="invalid-feedback">{{ _div_edit_errs.get('edit_amount') }}</div>
-                                {% else %}
-                                <div id="edit_amount_error" class="invalid-feedback"></div>
-                                {% endif %}
+                                       id="edit_amount" name="edit_amount" placeholder="0.00" {{ field_attrs('edit_amount', _div_edit_errs.get('edit_amount')) }} required value="{{ _div_edit_vals.get('edit_amount', '') }}">
+                                {{ field_error('edit_amount', _div_edit_errs.get('edit_amount')) }}
                             </div>
                         </div>
                         <div class="col-6">
@@ -778,23 +739,17 @@
                                 <input type="text"
                                        class="form-control {% if _div_edit_errs.get('edit_date') %}is-invalid{% endif %}"
                                        id="edit_dividend_date" name="edit_date" placeholder="YYYY-MM-DD"
-                                       data-datepicker="flatpickr">
-                                {% if _div_edit_errs.get('edit_date') %}
-                                <div class="invalid-feedback">{{ _div_edit_errs.get('edit_date') }}</div>
-                                {% else %}
-                                <div id="edit_dividend_date_error" class="invalid-feedback"></div>
-                                {% endif %}
+                                       data-datepicker="flatpickr" {{ field_attrs('edit_dividend_date', _div_edit_errs.get('edit_date')) }} required value="{{ _div_edit_vals.get('edit_date', '') }}">
+                                {{ field_error('edit_dividend_date', _div_edit_errs.get('edit_date')) }}
                             </div>
                         </div>
                     </div>
                     <div class="mb-3">
                         <label for="edit_dividend_notes" class="form-label">Notes (Optional)</label>
                         <textarea class="form-control js-notes-input {% if _div_edit_errs.get('edit_notes') %}is-invalid{% endif %}"
-                                  id="edit_dividend_notes" name="edit_notes" rows="2" maxlength="300"></textarea>
+                                  id="edit_dividend_notes" name="edit_notes" rows="2" maxlength="300" {{ field_attrs('edit_dividend_notes', _div_edit_errs.get('edit_notes')) }}>{{ _div_edit_vals.get('edit_notes', '') }}</textarea>
                         <small class="notes-counter">0 / 300</small>
-                        {% if _div_edit_errs.get('edit_notes') %}
-                        <div class="invalid-feedback">{{ _div_edit_errs.get('edit_notes') }}</div>
-                        {% endif %}
+                        {{ field_error('edit_dividend_notes', _div_edit_errs.get('edit_notes')) }}
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -818,9 +773,10 @@
                         {{ icon('trash', class='modal-title-icon') }}
                         Remove Dividends
                     </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">{{ icon('x') }}</button>
                 </div>
                 <div class="modal-body">
+                    {{ form_error() }}
                     <p id="deleteDividendDescription">{{ MESSAGES['CONFIRM_REMOVE_DIVIDEND'] }}</p>
                 </div>
                 <div class="modal-footer">
@@ -873,10 +829,11 @@ function filterBySymbol(query) {
 }());
 
 function openAddSymbolModal() {
+    window.OnePortfolioForms.prepare('addSymbolModal');
     const modalEl = document.getElementById('addSymbolModal');
     const symbolInput = document.getElementById('symbol_ticker');
     if (symbolInput) symbolInput.value = '';
-    new bootstrap.Modal(modalEl).show();
+    window.OnePortfolioDialogs.show(modalEl);
 }
 
 
@@ -922,7 +879,7 @@ function openAddSymbolModal() {
                 if (notesEl && vals.notes != null) notesEl.value = String(vals.notes);
 
                 const dateEl = document.getElementById('add_tx_date');
-                dateEl.value = vals.date ? String(vals.date) : todayStr();
+                dateEl.value = vals.date != null ? String(vals.date) : todayStr();
 
                 if (priceEl) priceEl.dispatchEvent(new Event('input'));
                 if (qtyEl) qtyEl.dispatchEvent(new Event('input'));
@@ -937,7 +894,7 @@ function openAddSymbolModal() {
                 if (symbolGroup) symbolGroup.classList.toggle('d-none', locked);
 
                 const modalEl = document.getElementById('addTransactionModal');
-                if (modalEl) new bootstrap.Modal(modalEl).show();
+                if (modalEl) window.OnePortfolioDialogs.show(modalEl);
             }
 
             if (which === 'deleteTransactionModal' && payload && payload.tx_id) {
@@ -954,7 +911,16 @@ function openAddSymbolModal() {
                 if (portfolioInput) portfolioInput.value = portfolioId ? String(portfolioId) : '';
                 if (symbolInput) symbolInput.value = (symbol || '').toUpperCase();
 
-                new bootstrap.Modal(document.getElementById('deleteSymbolModal')).show();
+                window.OnePortfolioDialogs.show(document.getElementById('deleteSymbolModal'));
+            }
+
+            if (which === 'addDividendModal') {
+                // Values and errors are already rendered from the failed POST.
+                window.OnePortfolioDialogs.show(document.getElementById('addDividendModal'));
+            }
+            if (which === 'editDividendModal' && payload.dividend_id) {
+                document.getElementById('editDividendForm').action = '/transactions/dividends/edit/' + payload.dividend_id;
+                window.OnePortfolioDialogs.show(document.getElementById('editDividendModal'));
             }
 
             if (which === 'editTransactionModal' && payload && payload.id) {
@@ -1140,6 +1106,7 @@ function openAddSymbolModal() {
 }());
 
 function openAddTransactionModal(portfolioId, portfolioName, symbol, forcedType) {
+    window.OnePortfolioForms.prepare('addTransactionModal');
     const modalEl = document.getElementById('addTransactionModal');
     const portfolioGroup = document.getElementById('add_tx_portfolio_group');
     const symbolGroup = document.getElementById('add_tx_symbol_group');
@@ -1197,10 +1164,11 @@ function openAddTransactionModal(portfolioId, portfolioName, symbol, forcedType)
     if (feesInput) feesInput.dispatchEvent(new Event('input'));
     if (typeSelect) typeSelect.dispatchEvent(new Event('change'));
 
-    new bootstrap.Modal(modalEl).show();
+    window.OnePortfolioDialogs.show(modalEl);
 }
 
 function editTransaction(id, portfolioId, type, symbol, price, quantity, fees, notes, dateShort) {
+    window.OnePortfolioForms.prepare('editTransactionModal');
     document.getElementById('editTransactionForm').action = `/transactions/edit/${id}`;
 
     function trimTrailingZeros(v) {
@@ -1241,7 +1209,7 @@ function editTransaction(id, portfolioId, type, symbol, price, quantity, fees, n
     if (feesInput) feesInput.dispatchEvent(new Event('input'));
     if (typeSelect) typeSelect.dispatchEvent(new Event('change'));
 
-    new bootstrap.Modal(document.getElementById('editTransactionModal')).show();
+    window.OnePortfolioDialogs.show(document.getElementById('editTransactionModal'));
 }
 
 // Submit handling for #deleteTransactionForm is wired by ModalAjaxHandler
@@ -1250,15 +1218,17 @@ function editTransaction(id, portfolioId, type, symbol, price, quantity, fees, n
 // injected at the top of .modal-body. This wrapper just sets the form
 // action for the row the user clicked and shows the modal.
 window.deleteTransaction = function(id) {
+    window.OnePortfolioForms.prepare('deleteTransactionModal');
     var form = document.getElementById('deleteTransactionForm');
     form.action = '/transactions/delete/' + id;
-    bootstrap.Modal.getOrCreateInstance(document.getElementById('deleteTransactionModal')).show();
+    window.OnePortfolioDialogs.show(document.getElementById('deleteTransactionModal'));
 };
 
 // Submit handling for #deleteSymbolForm is wired by ModalAjaxHandler
 // (main.js). This wrapper just primes the hidden inputs + warning copy
 // for the row the user clicked, then opens the modal.
 window.openDeleteSymbolModal = function(portfolioId, portfolioName, symbol, txCount, dividendCount) {
+    window.OnePortfolioForms.prepare('deleteSymbolModal');
     var portfolioInput = document.getElementById('delete_symbol_portfolio_id');
     var symbolInput = document.getElementById('delete_symbol_ticker');
     if (portfolioInput) portfolioInput.value = portfolioId ? String(portfolioId) : '';
@@ -1286,7 +1256,7 @@ window.openDeleteSymbolModal = function(portfolioId, portfolioName, symbol, txCo
         warningDiv.classList.add('d-none');
     }
 
-    bootstrap.Modal.getOrCreateInstance(document.getElementById('deleteSymbolModal')).show();
+    window.OnePortfolioDialogs.show(document.getElementById('deleteSymbolModal'));
 };
 
 (function setupAddSellMax() {
@@ -1386,10 +1356,6 @@ window.openDeleteSymbolModal = function(portfolioId, portfolioName, symbol, txCo
 
     refresh();
 
-    modalEl.addEventListener('show.bs.modal', function() {
-        modalEl.querySelectorAll('.is-invalid').forEach(function(el) { el.classList.remove('is-invalid'); });
-        modalEl.querySelectorAll('.invalid-feedback').forEach(function(el) { el.textContent = ''; el.classList.remove('d-block'); });
-    });
 
     modalEl.addEventListener('hidden.bs.modal', function() {
         typeSelect.value = 'Buy';
@@ -1497,6 +1463,7 @@ window.openDeleteSymbolModal = function(portfolioId, portfolioName, symbol, txCo
 // Standalone Add Dividends Modal (opened from the $ button on asset rows)
 // -----------------------------------------------------------------------
 function openStandaloneDividendModal(portfolioId, symbol) {
+    window.OnePortfolioForms.prepare('addDividendModal');
     // Pre-fill the modal and reset any leftover validation state, then
     // open it. Submission itself is handled by ModalAjaxHandler.
     const portfolioInput = document.getElementById('add_div_portfolio_id');
@@ -1508,12 +1475,12 @@ function openStandaloneDividendModal(portfolioId, symbol) {
 
     if (portfolioInput) portfolioInput.value = portfolioId ? String(portfolioId) : '';
     if (symInput)       symInput.value       = (symbol || '').toUpperCase();
-    if (amountEl)       { amountEl.value = ''; amountEl.classList.remove('is-invalid'); }
+    if (amountEl)       { amountEl.value = ''; }
     if (dateEl)         dateEl.value = todayStr();
     if (notesEl)        notesEl.value = '';
     if (submitBtn)      submitBtn.disabled = false;
 
-    bootstrap.Modal.getOrCreateInstance(document.getElementById('addDividendModal')).show();
+    window.OnePortfolioDialogs.show(document.getElementById('addDividendModal'));
 }
 
 // ModalAjaxHandler in static/js/main.js is the sole submit owner. Do not add
@@ -1524,6 +1491,7 @@ function openStandaloneDividendModal(portfolioId, symbol) {
 // Edit Dividend Modal
 // -----------------------------------------------------------------------
 function openEditDividendModal(id, amount, dateShort, notes) {
+    window.OnePortfolioForms.prepare('editDividendModal');
     function trimTrailingZeros(v) {
         if (v == null) return '';
         let s = String(v).trim();
@@ -1544,23 +1512,24 @@ function openEditDividendModal(id, amount, dateShort, notes) {
     if (dateEl)   dateEl.value   = dateShort || '';
     if (notesEl)  notesEl.value  = notes || '';
 
-    new bootstrap.Modal(document.getElementById('editDividendModal')).show();
+    window.OnePortfolioDialogs.show(document.getElementById('editDividendModal'));
 }
 
 // ModalAjaxHandler in static/js/main.js is the sole submit owner here too.
 // Field validation (#edit_amount, #edit_dividend_date) is owned by
-// FormValidator, which runs first and calls
-// stopImmediatePropagation() on invalid input, and inline/banner error
-// state is cleared by ModalAjaxHandler on hidden.bs.modal.
+// OnePortfolioForms, which runs first and calls
+// stopImmediatePropagation() on invalid input. The same shared controller
+// resets inline/general feedback on hidden.bs.modal.
 
 // Submit handling for #deleteDividendForm is wired by ModalAjaxHandler
 // (main.js). This wrapper just sets the form action for the row the
 // user clicked and shows the modal.
 window.deleteDividend = function(id) {
+    window.OnePortfolioForms.prepare('deleteDividendModal');
     var form = document.getElementById('deleteDividendForm');
     if (!form) return;
     form.action = '/transactions/dividends/delete/' + id;
-    bootstrap.Modal.getOrCreateInstance(document.getElementById('deleteDividendModal')).show();
+    window.OnePortfolioDialogs.show(document.getElementById('deleteDividendModal'));
 };
 </script>
 {% endblock %}

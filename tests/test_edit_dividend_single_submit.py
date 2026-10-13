@@ -105,7 +105,7 @@ def test_no_template_or_side_js_owns_form_submission():
     """main.js is the single authoritative submit owner across the frontend."""
     offenders = []
     for path in list(TEMPLATES_DIR.rglob('*.html')) + list(JS_DIR.rglob('*.js')):
-        if path == MAIN_JS:
+        if path in (MAIN_JS, JS_DIR / 'form_feedback.js'):
             continue
         if SUBMIT_LISTENER_RE.search(path.read_text(encoding='utf-8')):
             offenders.append(str(path.relative_to(TEMPLATES_DIR.parent.parent)))
@@ -113,6 +113,10 @@ def test_no_template_or_side_js_owns_form_submission():
     assert offenders == [], (
         f'Competing submit owners found outside main.js: {offenders} (RCR-07).'
     )
+    feedback = (JS_DIR / 'form_feedback.js').read_text(encoding='utf-8')
+    assert 'fetch(' not in feedback
+    assert 'XMLHttpRequest' not in feedback
+    assert 'new FormData' not in feedback
 
 
 def test_edit_income_form_registered_once_with_modal_ajax_handler():
@@ -126,7 +130,7 @@ def test_edit_income_form_registered_once_with_modal_ajax_handler():
 
 
 def test_edit_income_client_validation_preserved():
-    """FormValidator still guards amount/date and runs before the AJAX owner."""
+    """Shared feedback guards amount/date and runs before the AJAX owner."""
     source = MAIN_JS.read_text(encoding='utf-8')
 
     assert source.count("this.initValidator('#editDividendForm'") == 1
@@ -141,7 +145,8 @@ def test_edit_income_client_validation_preserved():
         source.index('new FormValidatorsInitializer()')
         < source.index('new ModalAjaxHandler()')
     )
-    assert 'stopImmediatePropagation' in source
+    assert 'stopImmediatePropagation' in (JS_DIR / 'form_feedback.js').read_text(encoding='utf-8')
+    assert 'window.OnePortfolioForms.register(formElement, rules)' in source
 
 
 def test_rendered_edit_income_form_is_unique_and_csrf_protected(app):

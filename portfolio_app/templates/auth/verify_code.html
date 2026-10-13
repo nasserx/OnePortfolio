@@ -1,4 +1,6 @@
 {% extends 'auth_base.html' %}
+{% from 'macros/forms.html' import field_attrs, field_error, form_errors_summary %}
+
 {% from 'macros/icons.html' import icon %}
 {% block title %}Verification Code — OnePortfolio{% endblock %}
 {% block auth_content %}
@@ -11,21 +13,20 @@
     {% for category, message in messages %}
         <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
             {{ message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close">{{ icon('x') }}</button>
         </div>
     {% endfor %}
 {% endwith %}
-{% if form_errors.get('__all__') %}
-    <div class="alert alert-danger" role="alert">{{ icon('alert-circle') }}{{ form_errors['__all__'] }}</div>
-{% endif %}
+
 <form class="auth-form" method="post" action="{{ url_for(verify_endpoint) }}" novalidate>
+    {{ form_errors_summary(form_errors, ['code']) }}
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="field-group">
         <label class="form-label auth-code-label" for="code">Verification Code</label>
         <input type="text" name="code" id="code"
                class="form-control otp-input {% if form_errors.get('code') %}is-invalid{% endif %}"
-               placeholder="000000" maxlength="6" inputmode="numeric" autocomplete="one-time-code" autofocus required>
-        {% if form_errors.get('code') %}<div class="invalid-feedback text-center">{{ form_errors['code'] }}</div>{% endif %}
+               placeholder="000000" maxlength="6" inputmode="numeric" autocomplete="one-time-code" autofocus required {{ field_attrs('code', form_errors.get('code')) }}>
+        {{ field_error('code', form_errors.get('code')) }}
     </div>
     <button type="submit" class="btn btn-primary w-100">{{ 'Update Email' if submit_label == 'Update email' else submit_label }}</button>
 </form>

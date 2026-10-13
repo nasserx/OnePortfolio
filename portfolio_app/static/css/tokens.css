@@ -19,18 +19,27 @@
     --font-heading: var(--font-sans);
     --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
 
-    --text-3xs: 0.625rem;
     --text-2xs: 0.6875rem;
-    --text-xs: 0.75rem;
-    --text-sm: 0.8125rem;
-    --text-md: 0.875rem;
-    --text-lg: 1rem;
-    --text-xl: 1.125rem;
-    --text-2xl: 1.375rem;
+    /* Compact application sizes; weights still follow Nova component roles. */
+    --text-xs: 0.6875rem;
+    --text-sm: 0.75rem;
+    --text-md: 0.8125rem;
+    --text-lg: 0.875rem;
+    --text-xl: 1rem;
+    --text-2xl: 1.125rem;
+    --text-display: clamp(1.75rem, 1.2rem + 2vw, 2.5rem);
+    --text-section: clamp(1.125rem, 0.95rem + 0.8vw, 1.5rem);
     --text-detail: 0.75rem;
-    --num-sm: 0.8125rem;
-    --num-lg: 1.125rem;
+    --num-sm: 0.75rem;
+    --num-lg: 0.9375rem;
+    /* Primary Book Value keeps its original responsive display size. */
     --num-hero: clamp(2rem, 1.2rem + 2.6vw, 3.25rem);
+    --num-display: clamp(1.375rem, 1rem + 1.2vw, 1.75rem);
+    --brand-font-size: 1.125rem;
+    /* Unitless CSS-pixel sizes for Chart.js, resolved again on each draw. */
+    --chart-text-size: 11;
+    --chart-value-size: 14;
+    --weight-regular: 400;
     --weight-medium: 500;
     --weight-semibold: 600;
     --leading-tight: 1.2;
@@ -67,7 +76,7 @@
     --control-pad-x: 0.625rem;
     --row-h: 2.5rem;
     --cell-pad-y: 0.5rem;
-    --cell-pad-x: 0.75rem;
+    --cell-pad-x: 0.5rem;
     --card-pad: 1rem;
     --sidebar-w: 15rem;
     --sidebar-w-collapsed: 4rem;
@@ -119,14 +128,6 @@
     --chart-4: oklch(0.488 0.243 264.376);
     --chart-5: oklch(0.424 0.199 265.638);
 
-    /* OnePortfolio visualization extension. These are intentionally not
-       official preset roles and may be used only by charts and legends. */
-    --portfolio-chart-1: var(--chart-3);
-    --portfolio-chart-2: oklch(0.58 0.12 210);
-    --portfolio-chart-3: oklch(0.55 0.16 300);
-    --portfolio-chart-4: oklch(0.56 0.12 165);
-    --portfolio-chart-5: oklch(0.64 0.14 70);
-
     --sidebar: oklch(0.985 0 0);
     --sidebar-foreground: oklch(0.145 0 0);
     --sidebar-primary: oklch(0.205 0 0);
@@ -164,8 +165,17 @@
     --control-background: transparent;
     --control-background-hover: transparent;
     --control-background-disabled: color-mix(in oklch, var(--input) 50%, transparent);
+    --control-invalid-border: var(--destructive);
+    --control-invalid-ring: color-mix(in oklch, var(--destructive) 20%, transparent);
+    --outline-background: var(--background);
+    --outline-hover: var(--muted);
+    --outline-border: var(--border);
+    --ghost-hover: var(--muted);
+    --tab-foreground: color-mix(in oklch, var(--foreground) 60%, transparent);
+    --tab-active-background: var(--background);
+    --tab-active-border: transparent;
+    --shadow-tab: 0 1px 3px 0 oklch(0 0 0 / 10%), 0 1px 2px -1px oklch(0 0 0 / 10%);
     --bg-backdrop: oklch(0 0 0 / 10%);
-    --shadow-raised: 0 0 0 1px color-mix(in oklch, var(--foreground) 10%, transparent);
     --shadow-menu: 0 4px 6px -1px oklch(0 0 0 / 10%), 0 2px 4px -2px oklch(0 0 0 / 10%);
     --shadow-dialog: 0 10px 15px -3px oklch(0 0 0 / 12%), 0 4px 6px -4px oklch(0 0 0 / 12%);
     --select-caret: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3e%3cpath fill='none' stroke='%23737373' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M8 9l4-4l4 4m0 6l-4 4l-4-4'/%3e%3c/svg%3e");
@@ -200,11 +210,6 @@
       --chart-3: oklch(0.546 0.245 262.881);
       --chart-4: oklch(0.488 0.243 264.376);
       --chart-5: oklch(0.424 0.199 265.638);
-      --portfolio-chart-1: var(--chart-2);
-      --portfolio-chart-2: oklch(0.72 0.12 210);
-      --portfolio-chart-3: oklch(0.70 0.14 300);
-      --portfolio-chart-4: oklch(0.70 0.12 165);
-      --portfolio-chart-5: oklch(0.76 0.13 75);
       --sidebar: oklch(0.205 0 0);
       --sidebar-foreground: oklch(0.985 0 0);
       --sidebar-primary: oklch(0.488 0.243 264.376);
@@ -222,6 +227,15 @@
       --control-background: color-mix(in oklch, var(--input) 30%, transparent);
       --control-background-hover: color-mix(in oklch, var(--input) 50%, transparent);
       --control-background-disabled: color-mix(in oklch, var(--input) 80%, transparent);
+      --control-invalid-border: color-mix(in oklch, var(--destructive) 50%, transparent);
+      --control-invalid-ring: color-mix(in oklch, var(--destructive) 40%, transparent);
+      --outline-background: var(--control-background);
+      --outline-hover: var(--control-background-hover);
+      --outline-border: var(--input);
+      --ghost-hover: var(--muted-half);
+      --tab-foreground: var(--muted-foreground);
+      --tab-active-background: var(--control-background);
+      --tab-active-border: var(--input);
       --bg-backdrop: oklch(0 0 0 / 10%);
       --select-caret: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3e%3cpath fill='none' stroke='%23a1a1aa' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M8 9l4-4l4 4m0 6l-4 4l-4-4'/%3e%3c/svg%3e");
     }
@@ -253,11 +267,6 @@
     --chart-3: oklch(0.546 0.245 262.881);
     --chart-4: oklch(0.488 0.243 264.376);
     --chart-5: oklch(0.424 0.199 265.638);
-    --portfolio-chart-1: var(--chart-2);
-    --portfolio-chart-2: oklch(0.72 0.12 210);
-    --portfolio-chart-3: oklch(0.70 0.14 300);
-    --portfolio-chart-4: oklch(0.70 0.12 165);
-    --portfolio-chart-5: oklch(0.76 0.13 75);
     --sidebar: oklch(0.205 0 0);
     --sidebar-foreground: oklch(0.985 0 0);
     --sidebar-primary: oklch(0.488 0.243 264.376);
@@ -275,6 +284,15 @@
     --control-background: color-mix(in oklch, var(--input) 30%, transparent);
     --control-background-hover: color-mix(in oklch, var(--input) 50%, transparent);
     --control-background-disabled: color-mix(in oklch, var(--input) 80%, transparent);
+    --control-invalid-border: color-mix(in oklch, var(--destructive) 50%, transparent);
+    --control-invalid-ring: color-mix(in oklch, var(--destructive) 40%, transparent);
+    --outline-background: var(--control-background);
+    --outline-hover: var(--control-background-hover);
+    --outline-border: var(--input);
+    --ghost-hover: var(--muted-half);
+    --tab-foreground: var(--muted-foreground);
+    --tab-active-background: var(--control-background);
+    --tab-active-border: var(--input);
     --bg-backdrop: oklch(0 0 0 / 10%);
     --select-caret: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3e%3cpath fill='none' stroke='%23a1a1aa' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M8 9l4-4l4 4m0 6l-4 4l-4-4'/%3e%3c/svg%3e");
   }
@@ -386,5 +404,17 @@
     --bs-dark-rgb: 250, 250, 250;
     --bs-link-color-rgb: 229, 229, 229;
     --bs-link-hover-color-rgb: 229, 229, 229;
+  }
+  /* Compact desktop metadata never becomes tiny mobile text. */
+  @media (max-width: 47.999rem) {
+    :root {
+      --text-2xs: 0.75rem;
+      --text-xs: 0.75rem;
+      --text-sm: 0.8125rem;
+      --text-detail: 0.8125rem;
+      --num-sm: 0.8125rem;
+      --chart-text-size: 12;
+      --chart-value-size: 15;
+    }
   }
 }

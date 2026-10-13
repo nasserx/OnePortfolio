@@ -334,4 +334,4 @@ def test_purchase_error_is_returned_to_ajax_form(ledger, app):
         'price': '555', 'quantity': '1', 'fees': '0', 'date': '2024-01-01',
     }, headers={'X-Requested-With': 'XMLHttpRequest'})
     assert response.status_code == 400
-    assert response.json['errors']['quantity'] == 'Insufficient cash for this purchase.'
+    assert response.json['errors'] == {'__all__': 'Insufficient cash for this purchase.'}

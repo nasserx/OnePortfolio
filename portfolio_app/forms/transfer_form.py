@@ -14,6 +14,12 @@ class TransferForm(BaseForm):
             value = self._validate_choice(field, self.portfolio_ids, MESSAGES['TRANSFER_PORTFOLIO_INVALID'])
             if value is not None:
                 self.cleaned_data[field] = int(value)
+            else:
+                supplied = str(self.data.get(field, '')).strip()
+                if supplied.isascii() and supplied.isdecimal() and supplied.strip('0'):
+                    # A well-formed endpoint is unavailable to this account.
+                    # Missing/malformed selections remain local field errors.
+                    self.errors['__all__'] = self.errors.pop(field)
         amount = self._validate_decimal('amount')
         if amount is not None:
             self.cleaned_data['amount'] = amount

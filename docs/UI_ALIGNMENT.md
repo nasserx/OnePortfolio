@@ -2,9 +2,9 @@
 
 ## Status and execution boundaries
 
-Phases 1–4 approved, including user visual acceptance of the final compact
-typography and large Book Value exception. Phase 5 final verification and cleanup
-on **2026-10-13** is recorded below; final user approval is pending.
+Phases 1–5 approved, including user visual acceptance of the final compact
+typography and large Book Value exception. The subsequent typography and Book
+Value polish is recorded below; its visual acceptance is pending.
 The reference source inspection began on **2026-10-10**. Recipe links and
 semantic contracts are in [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md).
 
@@ -14,7 +14,7 @@ semantic contracts are in [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md).
 | 2 | Submit-gated validation and accessible shared feedback | Approved; user visual acceptance complete |
 | 3 | Shared component recipes and preset chart palette | Approved; user visual acceptance complete |
 | 4 | Page integration, interaction corrections and final typography | Approved; user visual acceptance complete |
-| 5 | Broader regression verification and acceptance handoff | Implemented; final approval pending |
+| 5 | Broader regression verification and acceptance handoff | Approved |
 
 After each phase, report changed components, actual checks, and material risks;
 pause for user review before proceeding. The user owns all Git operations and
@@ -27,7 +27,9 @@ isolation, persistence, routes, form/API contracts, CSRF, and mutation tokens.
 Retain Flask/Jinja, Bootstrap, Flatpickr, and Chart.js. No dependencies or schema
 changes are planned. Financial/brand exceptions remain. The earlier custom
 chart palette was superseded by Phase 3; compact font sizes and the original
-large Book Value are explicit, approved Phase 4 typography exceptions.
+large Book Value are explicit, approved Phase 4 typography exceptions. The later
+450/550 weight adjustment is an approved exception to the preset weight values;
+it retains the component-role hierarchy and is documented in DESIGN_SYSTEM.md.
 Field errors become visible after final submit and then update
 while correcting. Six-digit verification-code auto-submit remains an exception.
 
@@ -51,7 +53,7 @@ not run a browser, real Bootstrap focus traps, or assistive technology.
 | Verification: `templates/auth/verify_code.html` | Field/Input, Alert, Button | Six-digit auto-submit retained, invalid/expired/challenge/general failures and resend protections: `test_form_feedback.py`, `test_error_classification.py`, `test_auth.py` |
 | Email update: `templates/auth/update_email.html` | Card, Field/Input, Button, Alert | Shared size/feedback, retained email and verification/security workflow: `test_settings_auth_final_presentation.py`, `test_error_classification.py`, `test_auth.py` |
 | Rate limit: `templates/errors/rate_limit.html` | Auth Card, text, Button, brand | Shared shell/typography and rate-limit response contract: source inspection, `test_rate_limit_storage_config.py`, `test_auth.py`; actual wrapping not browser-tested |
-| Shared shells/macros: `templates/auth_base.html`, `templates/macros/`, `templates/components/` | Numbers, Empty, icons, logo/favicon | Exact weights/compact sizes, financial precision, semantic colours, named/decorative icons and preserved brand: `test_phase3_component_contracts.py`, `test_phase4_page_contracts.py`, `test_formatting.py`, `test_design_tokens_contrast.py`, `test_geist_tabler_contracts.py`, `test_brand_lockup.py`, `test_brand_assets.py` |
+| Shared shells/macros: `templates/auth_base.html`, `templates/macros/`, `templates/components/` | Numbers, Empty, icons, logo/favicon | Approved role weights/compact sizes, financial precision, semantic colours, named/decorative icons and preserved brand: `test_phase3_component_contracts.py`, `test_phase4_page_contracts.py`, `test_formatting.py`, `test_design_tokens_contrast.py`, `test_geist_tabler_contracts.py`, `test_brand_lockup.py`, `test_brand_assets.py` |
 
 Global coverage for every applicable row: light, dark, system theme, narrow and
 wide layouts, keyboard/focus, hover/active/expanded, disabled/readonly, reduced
@@ -736,3 +738,70 @@ is retained; the agent performed no browser-based visual verification.
 
 **Phase 5 complete and paused for final user approval. No Git commands, commits,
 merges or branch cleanup were performed.**
+
+## Follow-up: typography and Book Value polish — 2026-10-13
+
+Phases 1–5 have since received user approval. This subsequent, narrowly scoped
+follow-up implements the approved modest weight increase and Overview label
+removal; it does not reopen the earlier layout or component alignment work.
+
+### Changes and reference
+
+- Re-inspected the exact preset initialization and official Nova Card, Table,
+  Button, Field and Chart source over HTTP. Ordinary and emphasized component
+  roles retain their hierarchy, with the explicitly approved application
+  exception of **450 body / 550 emphasis** instead of the preset's 400/500.
+  Numeric preset primitives remain 400/500/600. No task-specific screenshot or
+  browser-based visual inspection was used.
+- Shared semantic weight tokens cover all page families, forms, calendars,
+  navigation, tables, menus and overlays in both themes. Chart defaults, centre
+  labels/values and tooltip text use the same roles. The three document shells
+  load Geist's variable 400–700 range from the existing font origins; a modern
+  browser User-Agent HTTP response confirmed variable WOFF2 font declarations.
+- Compact sizes, mobile readability rules, colours, spacing, line heights and
+  component dimensions remain unchanged. The brand remains 18px/600 with its
+  original family, tracking and artwork. Book Value retains its original
+  responsive 32–52px display size, with the shared emphasis weight.
+- Only the Overview Book Value card's visible Cumulative P&L label is hidden
+  with the existing accessible utility. Its signed amount, return percentage,
+  undefined-return handling, directional indicators and explanatory tooltip
+  remain directly below Book Value. The obsolete visible-label selector is
+  removed; other Cumulative P&L labels remain visible.
+- Financial calculations, numeric formatters, validation, focus ownership,
+  authentication and security code are unchanged. Asset cache version updated.
+
+### Changed files
+
+- `portfolio_app/static/css/tokens.css`, `base.css`, `components.css`, `app.css`,
+  `landing.css`, `flatpickr-nova.css`.
+- `portfolio_app/static/js/overview_charts.js`, `landing.js`.
+- `portfolio_app/templates/base.html`, `auth_base.html`, `landing.html`,
+  `index.html`.
+- `portfolio_app/__init__.py` (asset version only).
+- `tests/test_phase4_page_contracts.py`, `test_phase3_component_contracts.py`,
+  `test_nova_component_fidelity.py`, `test_shared_surface_contracts.py`,
+  `test_geist_tabler_contracts.py`, `test_landing_final_contracts.py`,
+  `test_overview_transfer_ui.py`, `overview_chart_ranges.js`.
+- `docs/DESIGN_SYSTEM.md`, `docs/UI_ALIGNMENT.md`.
+
+### Verification and acceptance limits
+
+- Focused Python: **167 passed in 18.25 seconds**, including shared typography,
+  variable-font loading, brand, compact/mobile sizes, contrast, formatting and
+  Overview positive, negative, zero and undefined returns. One new rendered
+  regression covers the undefined-return label and amount; existing financial
+  assertions remain intact.
+- Complete Python: **1,087 passed in 140.25 seconds**, using
+  `.\venv\Scripts\python.exe -m pytest -q`. The full financial/accounting,
+  persistence, isolation, authentication, mutation-security and UI suites pass.
+- All six JavaScript scripts: **289 assertions passed** (precision 18,
+  transfers 29, chart ranges 36, overlays 110, form feedback 86, cash Max 10).
+- Syntax checks passed for all eight production and six test JavaScript files.
+- All six CSS files match their pre-change normalized fingerprints after
+  excluding comments, weight declarations/tokens and the obsolete label
+  selector. This verifies that size, colour and geometry declarations did not
+  change; it does not establish rendered fit.
+- User visual review remains necessary in light/dark themes and narrow/wide
+  layouts, especially dense tables, chart text and the revised Book Value row.
+  Variable-font rendering and fallback weight selection depend on the browser
+  and font availability. No Git commands or browser verification were performed.

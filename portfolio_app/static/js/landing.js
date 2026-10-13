@@ -53,6 +53,7 @@
     }
 
     window.Chart.defaults.font.family = cssVar('--font-sans');
+    window.Chart.defaults.font.weight = cssVar('--weight-body');
 
     var grandTotal = total('bookValue');
     var colors = ['--chart-1', '--chart-2', '--chart-3'].map(function (name) {
@@ -87,8 +88,8 @@
             borderColor: cssVar('--border'),
             borderWidth: 1,
             titleColor: cssVar('--popover-foreground'),
-            titleFont: function () { return { weight: cssVar('--weight-medium'), size: Number(cssVar('--chart-text-size')) }; },
-            bodyFont: function () { return { weight: cssVar('--weight-medium'), size: Number(cssVar('--chart-text-size')) }; },
+            titleFont: function () { return { weight: cssVar('--weight-emphasis'), size: Number(cssVar('--chart-text-size')) }; },
+            bodyFont: function () { return { weight: cssVar('--weight-emphasis'), size: Number(cssVar('--chart-text-size')) }; },
             bodyColor: cssVar('--muted-foreground'),
             padding: 10,
             displayColors: false,

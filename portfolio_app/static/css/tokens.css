@@ -20,7 +20,7 @@
     --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
 
     --text-2xs: 0.6875rem;
-    /* Compact application sizes; weights still follow Nova component roles. */
+    /* Compact application sizes; Nova roles use the approved weight adjustment. */
     --text-xs: 0.6875rem;
     --text-sm: 0.75rem;
     --text-md: 0.8125rem;
@@ -42,6 +42,10 @@
     --weight-regular: 400;
     --weight-medium: 500;
     --weight-semibold: 600;
+    /* Application exception: slightly stronger than Nova's 400/500 roles.
+       Both themes share these weights; the brand keeps literal semibold. */
+    --weight-body: 450;
+    --weight-emphasis: 550;
     --leading-tight: 1.2;
     --leading-snug: 1.35;
     --leading-normal: 1.5;

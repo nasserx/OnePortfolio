@@ -20,7 +20,7 @@ def _rule(source, selector):
 
 def test_public_shell_reuses_logo_theme_typography_and_icon_contracts():
     assert "include 'components/logo_mark.html'" in TEMPLATE
-    assert 'family=Geist:wght@400;500;600;700' in TEMPLATE
+    assert 'family=Geist:wght@400..700' in TEMPLATE
     assert "include 'components/icon_sprite.html'" in TEMPLATE
     assert "from 'macros/icons.html' import icon" in TEMPLATE
 

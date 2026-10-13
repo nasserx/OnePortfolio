@@ -23,10 +23,10 @@ def _sources(root, suffixes):
     ]
 
 
-def test_all_shells_load_only_geist_required_weights():
+def test_all_shells_load_geist_variable_range_for_intermediate_weights():
     expected = (
         'https://fonts.googleapis.com/css2?'
-        'family=Geist:wght@400;500;600;700&display=swap'
+        'family=Geist:wght@400..700&display=swap'
     )
     for name in ('base.html', 'auth_base.html', 'landing.html'):
         source = (TEMPLATES / name).read_text(encoding='utf-8')

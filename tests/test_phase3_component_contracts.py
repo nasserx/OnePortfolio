@@ -95,7 +95,7 @@ def test_dialog_alert_and_empty_recipes_keep_distinct_surface_and_type_roles():
     assert 'border-bottom: 0' in rule(CSS, '.modal-header')
     title = rule(CSS, '.modal-title')
     assert 'font-size: var(--text-lg)' in title
-    assert 'font-weight: var(--weight-medium)' in title
+    assert 'font-weight: var(--weight-emphasis)' in title
     assert 'var(--muted-half)' in rule(CSS, '.modal-footer')
     assert 'column-reverse' in CSS
     assert 'min-height: 0' in rule(CSS, '.modal-dialog-scrollable .modal-content > form')

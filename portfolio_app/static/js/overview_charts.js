@@ -87,11 +87,11 @@
       ctx.textBaseline = 'middle';
 
       ctx.fillStyle = cssVar('--muted-foreground');
-      ctx.font = cssVar('--weight-regular') + ' ' + labelSize + 'px ' + cssVar('--font-sans');
+      ctx.font = cssVar('--weight-body') + ' ' + labelSize + 'px ' + cssVar('--font-sans');
       ctx.fillText(options.label, arc.x, arc.y - Math.round(valueSize * 0.72));
 
       ctx.fillStyle = cssVar('--foreground');
-      ctx.font = cssVar('--weight-medium') + ' ' + valueSize + 'px ' + cssVar('--font-sans');
+      ctx.font = cssVar('--weight-emphasis') + ' ' + valueSize + 'px ' + cssVar('--font-sans');
       ctx.fillText(options.value, arc.x, arc.y + Math.round(valueSize * 0.55));
 
       ctx.restore();
@@ -298,8 +298,8 @@
             borderColor: cssVar('--border'),
             borderWidth: 1,
             titleColor: cssVar('--popover-foreground'),
-            titleFont: function () { return { weight: cssVar('--weight-medium'), size: Number(cssVar('--chart-text-size')) }; },
-            bodyFont: function () { return { weight: cssVar('--weight-medium'), size: Number(cssVar('--chart-text-size')) }; },
+            titleFont: function () { return { weight: cssVar('--weight-emphasis'), size: Number(cssVar('--chart-text-size')) }; },
+            bodyFont: function () { return { weight: cssVar('--weight-emphasis'), size: Number(cssVar('--chart-text-size')) }; },
             bodyColor: cssVar('--muted-foreground'),
             padding: 10,
             displayColors: false,
@@ -409,6 +409,7 @@
     if (!window.Chart || !chartData) return;
     window.Chart.defaults.color = cssVar('--muted-foreground');
     window.Chart.defaults.font.family = cssVar('--font-sans');
+    window.Chart.defaults.font.weight = cssVar('--weight-body');
     new AllocationChart(chartData).mount();
   };
 }());

@@ -38,12 +38,18 @@ def test_typography_preserves_brand_and_removes_lightweight_overrides():
     assert '--weight-semibold: 600;' in tokens
     for file in ('tokens.css', 'app.css', 'base.css', 'components.css', 'landing.css', 'flatpickr-nova.css'):
         assert '--weight-light' not in source('static/css/' + file)
+    # One shared mapping for both themes; numeric preset primitives stay intact.
+    all_css = '\n'.join(path.read_text(encoding='utf-8') for path in (ROOT / 'static/css').glob('*.css'))
+    for role, value in (('body', '450'), ('emphasis', '550')):
+        assert re.findall(r'--weight-' + role + r':\s*([^;]+);', all_css) == [value]
+    assert 'var(--weight-regular)' not in all_css
+    assert 'var(--weight-medium)' not in all_css
     # Native semantic strong/b regain their normal bolder weight, as in the
     # reference reset; no application-wide lighter emphasis override remains.
     assert 'strong, b {' not in source('static/css/base.css')
 
 
-def test_component_weights_follow_inspected_nova_roles():
+def test_component_weights_preserve_nova_hierarchy_with_approved_adjustment():
     def weight(file, selector):
         css = source('static/css/' + file)
         body = re.search(r'^\s*' + re.escape(selector) + r'\s*\{([^}]+)', css, re.M)[1]
@@ -62,7 +68,7 @@ def test_component_weights_follow_inspected_nova_roles():
         'flatpickr-nova.css': ['.op-flatpickr .flatpickr-current-month'],
     }.items():
         for selector in selectors:
-            assert weight(file, selector) == '--weight-medium', selector
+            assert weight(file, selector) == '--weight-emphasis', selector
 
     for file, selectors in {
         'base.css': ['body'],
@@ -72,7 +78,7 @@ def test_component_weights_follow_inspected_nova_roles():
         'flatpickr-nova.css': ['.op-flatpickr span.flatpickr-weekday'],
     }.items():
         for selector in selectors:
-            assert weight(file, selector) == '--weight-regular', selector
+            assert weight(file, selector) == '--weight-body', selector
 
 
 def test_compact_scale_preserves_mobile_readability_and_control_geometry():
@@ -84,6 +90,7 @@ def test_compact_scale_preserves_mobile_readability_and_control_geometry():
         'text-2xl': '1.125rem', 'num-sm': '0.75rem', 'num-lg': '0.9375rem',
         'control-h': '2rem', 'control-h-sm': '1.75rem', 'row-h': '2.5rem',
         'weight-regular': '400', 'weight-medium': '500',
+        'weight-body': '450', 'weight-emphasis': '550',
         'num-hero': 'clamp(2rem, 1.2rem + 2.6vw, 3.25rem)',
     }.items():
         assert f'--{name}: {value};' in root
@@ -98,7 +105,7 @@ def test_compact_scale_preserves_mobile_readability_and_control_geometry():
     assert 'font-size: var(--text-xs)' in re.search(r'\.btn-sm\s*\{([^}]+)', components)[1]
     hero = re.search(r'\.hero-figure__value\s*\{([^}]+)', source('static/css/app.css'))[1]
     assert 'font-size: var(--num-hero)' in hero
-    assert 'font-weight: var(--weight-medium)' in hero
+    assert 'font-weight: var(--weight-emphasis)' in hero
     overview = source('templates/index.html')
     assert 'title="{{ totals.book_value|fmt_money }}">{{ totals.book_value|fmt_display_money }}' in overview
     for selector in ('.lp-title', '.lp-head h2', '.lp-close__panel h2', '.lp-shot__value'):
@@ -106,11 +113,12 @@ def test_compact_scale_preserves_mobile_readability_and_control_geometry():
         assert 'font-size: var(--' in body
 
 
-def test_chart_tooltips_use_reference_medium_weights_and_responsive_size_tokens():
+def test_chart_typography_uses_shared_weights_and_responsive_size_tokens():
     for file in ('overview_charts.js', 'landing.js'):
         chart = source('static/js/' + file)
+        assert "window.Chart.defaults.font.weight = cssVar('--weight-body');" in chart
         for role in ('titleFont', 'bodyFont'):
-            assert role + ": function () { return { weight: cssVar('--weight-medium'), size: Number(cssVar('--chart-text-size')) }; }" in chart
+            assert role + ": function () { return { weight: cssVar('--weight-emphasis'), size: Number(cssVar('--chart-text-size')) }; }" in chart
 
 
 def test_settings_responsive_rule_follows_desktop_and_changes_orientation():

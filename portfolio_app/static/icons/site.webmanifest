@@ -4,13 +4,13 @@
   "description": "A clear record of every portfolio you manage. Capital, asset activity, income, and realized results — from your own entries.",
   "icons": [
     {
-      "src": "/static/icons/android-chrome-192x192.png",
+      "src": "/static/icons/android-chrome-192x192.png?v=d02be9bb5f2e",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/static/icons/android-chrome-512x512.png",
+      "src": "/static/icons/android-chrome-512x512.png?v=d02be9bb5f2e",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"

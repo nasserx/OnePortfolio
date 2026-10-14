@@ -8,6 +8,12 @@ from flask import render_template
 
 EXPECTED_ICONS = [
     {
+        "href": "/static/icons/favicon.ico",
+        "type": "image/x-icon",
+        "sizes": "16x16 32x32 48x48",
+        "media": None,
+    },
+    {
         "href": "/static/icons/favicon.svg",
         "type": "image/svg+xml",
         "sizes": "any",
@@ -76,7 +82,13 @@ def test_every_rendered_head_uses_the_shared_favicon_declarations(app):
         rendered.append(render_template("base.html"))
 
     for html in rendered:
-        assert _icons(html) == EXPECTED_ICONS
+        actual = _icons(html)
+        assert all('?v=' in icon['href'] for icon in actual)
+        for icon in actual:
+            response = client.get(icon['href'])
+            assert response.status_code == 200
+            icon['href'] = icon['href'].split('?')[0]
+        assert actual == EXPECTED_ICONS
 
     for name in ("base.html", "auth_base.html", "landing.html"):
         source = Path("portfolio_app/templates", name).read_text(encoding="utf-8")
@@ -108,7 +120,7 @@ def test_brand_component_uses_one_neutral_current_color_mark(app):
     assert logos == [
         {
             "class": "brand-logo",
-            "viewbox": "8 8 48 48",
+            "viewbox": "2 2 60 60",
             "fill": "currentColor",
             "focusable": "false",
             "aria-hidden": "true",
@@ -131,7 +143,7 @@ def test_brand_component_honours_class_and_accessibility_overrides(app):
 
     assert logos == [{
         'class': 'brand-logo auth-logo',
-        'viewbox': '8 8 48 48',
+        'viewbox': '2 2 60 60',
         'fill': 'currentColor',
         'focusable': 'false',
         'role': 'img',
@@ -162,17 +174,17 @@ def test_every_brand_surface_uses_the_same_shared_mark(app):
 def test_brand_assets_and_metadata_follow_neutral_theme_policy():
     icon_root = Path('portfolio_app/static/icons')
     expected = {
-        'favicon.svg': '#757575',
-        'favicon-light.svg': '#0A0A0A',
-        'favicon-dark.svg': '#FAFAFA',
+        'favicon.svg': '#FFFFFF',
+        'favicon-light.svg': '#FFFFFF',
+        'favicon-dark.svg': '#000000',
     }
     for name, colour in expected.items():
         source = (icon_root / name).read_text(encoding='utf-8')
-        assert f'data-brand-mark="oneportfolio-quarter-pie" fill="{colour}"' in source
+        assert f'data-brand-mark="oneportfolio-growth" fill="{colour}"' in source
         assert 'viewBox="0 0 64 64"' in source
         assert source.count('<path ') == 1
-        assert '<rect' not in source
-        assert 'data-brand-background' not in source
+        assert source.count('<rect') == 1
+        assert 'data-brand-background' in source
         assert '<mask' not in source
         assert '<image' not in source
         assert not re.search(r'#(?:6A55E8|5B45E8|9D88FF)', source, re.IGNORECASE)
@@ -186,3 +198,20 @@ def test_brand_assets_and_metadata_follow_neutral_theme_policy():
         source = Path('portfolio_app/templates', name).read_text(encoding='utf-8')
         assert '<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">' in source
         assert '<meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)">' in source
+
+
+def test_platform_links_and_manifest_assets_are_versioned_and_served(app):
+    client = app.test_client()
+    with app.test_request_context('/'):
+        html = render_template('components/favicon_links.html')
+    for name in ('apple-touch-icon.png', 'site.webmanifest'):
+        href = re.search(r'href="([^" ]*' + re.escape(name) + r'\?v=[^" ]+)"', html).group(1)
+        response = client.get(href)
+        assert response.status_code == 200
+        if name == 'site.webmanifest':
+            manifest = json.loads(response.get_data(as_text=True))
+            for icon in manifest['icons']:
+                assert '?v=' in icon['src']
+                image = client.get(icon['src'])
+                assert image.status_code == 200
+                assert image.mimetype == 'image/png'

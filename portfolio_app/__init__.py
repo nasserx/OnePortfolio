@@ -179,7 +179,7 @@ def create_app(config_class=Config):
 
     # Static-asset cache buster. Bumped by hand when CSS/JS ships, so every
     # template can use `v=ASSET_VERSION` instead of carrying its own literal.
-    ASSET_VERSION = '20261014-numeric-c'
+    ASSET_VERSION = '20261014-brand-20px'
 
     def _get_csp_nonce():
         """Return the single cryptographically random nonce for this request."""

@@ -1,4 +1,4 @@
-"""Integrity contracts for the monochrome hollow quarter-pie brand assets."""
+"""Integrity contracts for the monochrome ascending-bar and arrow brand assets."""
 
 from __future__ import annotations
 
@@ -6,6 +6,7 @@ import importlib.util
 import json
 from pathlib import Path
 import re
+import pytest
 from xml.etree import ElementTree as ET
 
 
@@ -45,78 +46,41 @@ def _logo_css_rules():
                 yield path, selectors.strip(), declarations
 
 
-def test_master_is_one_clean_hollow_quarter_pie_mark():
+def test_master_is_clean_vector_growth_symbol_on_tile():
     source = (ICONS / 'favicon.svg').read_text(encoding='utf-8')
     root, paths, backgrounds = _svg_elements()
-
-    assert root.attrib == {
-        'width': '64',
-        'height': '64',
-        'viewBox': '0 0 64 64',
-        'preserveAspectRatio': 'xMidYMid meet',
-    }
-    assert len(paths) == 1
-    assert backgrounds == []
-    mark = paths[0]
-    assert mark.attrib['data-brand-mark'] == 'oneportfolio-quarter-pie'
-    assert mark.attrib['fill'] == GENERATOR.DEFAULT_SURFACE_ARTWORK
-    assert mark.attrib['fill-rule'] == 'evenodd'
-    assert mark.attrib.get('stroke') is None
-    assert len(list(root)) == 1
-
-    path = mark.attrib['d']
-    commands = re.findall(r'[A-Za-z]', path)
-    assert commands == [
-        'M', 'A', 'Q', 'H', 'Q', 'V', 'Q', 'Z',
-        'M', 'A', 'Q', 'H', 'Q', 'V', 'Q', 'Z',
-    ]
-    assert re.search(r'A44 44 0 0 1', path)
-    assert re.search(r'A26 26 0 0 1', path)
-    assert path.count('A') == 2
-    assert path.count('Z') == 2
-    assert not re.search(r'[CST]', path)
-
-    contours = GENERATOR._path_contours(path)
-    assert len(contours) == 2
-    contour = contours[0]
-    xs = [point[0] for point in contour]
-    ys = [point[1] for point in contour]
-    assert min(xs) == 8
-    assert max(xs) == 56
-    assert min(ys) == 8
-    assert max(ys) == 56
-    assert (8, 12) in contour
-    assert (8, 52) in contour
-    assert (12, 56) in contour
-    assert (52, 56) in contour
-
-    interior = contours[1]
-    interior_xs = [point[0] for point in interior]
-    interior_ys = [point[1] for point in interior]
-    assert min(interior_xs) == 16
-    assert max(interior_xs) == 46
-    assert min(interior_ys) == 18
-    assert max(interior_ys) == 48
-
-    assert not re.search(
-        r'<(?:image|mask|clipPath|filter|metadata)\b|base64|display\s*:\s*none',
-        source,
-        re.IGNORECASE,
-    )
+    info = GENERATOR.inspect_svg(ICONS / 'favicon.svg')
+    assert root.attrib['viewBox'] == '0 0 64 64'
+    assert len(paths) == len(backgrounds) == 1
+    assert len(list(root)) == 2
+    assert paths[0].attrib['data-brand-mark'] == 'oneportfolio-growth'
+    assert paths[0].attrib.get('stroke') is None
+    assert info['artwork_fill'] == '#FFFFFF'
+    assert info['background_fill'] == '#000000'
+    contours = GENERATOR._path_contours(info['path_data'])
+    bounds = [(min(x for x, y in c), min(y for x, y in c),
+               max(x for x, y in c), max(y for x, y in c)) for c in contours]
+    assert len(bounds) == 3
+    assert bounds[0][1] > bounds[1][1] > bounds[2][1]
+    assert {b[3] for b in bounds} == {52}
+    assert bounds[0][2] < bounds[1][0]
+    # The arrowhead extends left above the second bar, never into its body.
+    assert all(2 < x < 62 and 2 < y < 62 for c in contours for x, y in c)
+    assert not re.search(r'<(?:image|mask|clipPath|filter|metadata)\b|base64', source)
 
 
-def test_svg_favicon_variants_are_exact_transparent_derivatives_from_master():
+def test_svg_favicon_variants_invert_both_regions_from_master():
     master = (ICONS / 'favicon.svg').read_text(encoding='utf-8')
     for path, artwork in GENERATOR.SVG_VARIANTS.items():
         source = path.read_text(encoding='utf-8')
         _root, marks, backgrounds = _svg_elements(path)
         assert len(marks) == 1
-        assert backgrounds == []
+        assert len(backgrounds) == 1
         assert marks[0].attrib['d'] == _svg_elements()[1][0].attrib['d']
         assert marks[0].attrib['fill'] == artwork
         assert marks[0].attrib['fill-rule'] == 'evenodd'
-        assert '<rect' not in source
-        assert 'data-brand-background' not in source
+        assert source.count('<rect') == 1
+        assert 'data-brand-background' in source
         assert source == GENERATOR.svg_variant(master, artwork)
         assert min(
             GENERATOR.contrast_ratio(artwork, surface)
@@ -126,75 +90,33 @@ def test_svg_favicon_variants_are_exact_transparent_derivatives_from_master():
         assert red == green == blue
 
 
-def test_raster_derivatives_are_deterministic_light_icon_compositions():
-    expected = {
-        'apple-touch-icon.png': 180,
-        'android-chrome-192x192.png': 192,
-        'android-chrome-512x512.png': 512,
-    }
-    for name, size in expected.items():
+def test_raster_derivatives_are_deterministic_platform_compositions():
+    for name, size in GENERATOR.APP_PNGS.items():
         asset = ICONS / name
-        assert asset.read_bytes() == GENERATOR.render_app_icon_png_bytes(size)
-        result = GENERATOR.validate_png(asset, size)
-        assert result['size'] == f'{size}x{size}'
-        assert all(margin > 0 for margin in result['margins'])
-        assert all(margin > 0 for margin in result['mark_margins'])
-        assert result['center_delta'] <= size * 0.08
-        probe = result['interior_probe'][2]
-        assert probe[:3] == GENERATOR._hex_rgb(GENERATOR.LIGHT_ICON_BACKGROUND)
-        assert probe[3] == 255
-        assert all(
-            pixel[:3] == GENERATOR._hex_rgb(GENERATOR.LIGHT_SURFACE_ARTWORK)
-            and pixel[3] == 255
-            for _x, _y, pixel in result['band_probes']
-        )
+        opaque = name == 'apple-touch-icon.png'
+        assert asset.read_bytes() == GENERATOR.render_app_icon_png_bytes(size, opaque=opaque)
+        result = GENERATOR.validate_png(asset, size, opaque=opaque)
+        assert result['opaque'] == opaque
+        assert (result['transparent_pixels'] == 0) == opaque
 
 
 def test_ico_frames_match_the_canonical_geometry_at_small_sizes(tmp_path):
     inventory = GENERATOR.inspect_ico(ICONS / 'favicon.ico')
-    assert [(entry['width'], entry['height']) for entry in inventory] == [
-        (16, 16),
-        (32, 32),
-        (48, 48),
-    ]
-    extracted = GENERATOR.extract_ico_pngs(ICONS / 'favicon.ico', tmp_path)
-    source = ICONS / 'favicon-light.svg'
-    for size, path in extracted.items():
-        assert path.read_bytes() == GENERATOR.render_png_bytes(source, size)
-        result = GENERATOR.validate_png(
-            path,
-            size,
-            expected_background=None,
-        )
-        assert result['opaque_background_rgb'] is None
-        assert result['transparent_pixels'] > 0
-        assert result['interior_probe'][2][3] <= 32
-        assert all(
-            pixel[3] >= 192
-            for _x, _y, pixel in result['band_probes']
-        )
-        assert result['mark_bbox_size'][0] >= size * 0.68
-        assert result['mark_bbox_size'][1] >= size * 0.68
+    assert [(e['width'], e['height']) for e in inventory] == [(16, 16), (32, 32), (48, 48)]
+    for size, path in GENERATOR.extract_ico_pngs(ICONS / 'favicon.ico', tmp_path).items():
+        assert path.read_bytes() == GENERATOR.render_png_bytes(ICONS / 'favicon-light.svg', size)
+        assert GENERATOR.validate_png(path, size)['transparent_pixels'] > 0
 
 
-def test_reference_sizes_keep_the_arc_centered_and_clear(tmp_path):
-    source = ICONS / 'favicon-light.svg'
-    for size in GENERATOR.REFERENCE_SIZES:
-        output = tmp_path / f'brand-{size}.png'
-        output.write_bytes(GENERATOR.render_png_bytes(source, size))
-        result = GENERATOR.validate_png(
-            output,
-            size,
-            expected_background=None,
-        )
-        assert result['center_delta'] == 0
-        assert len(set(result['mark_margins'])) == 1
-        assert min(result['mark_margins']) >= max(2, size // 8)
-        assert result['interior_probe'][2][3] <= 32
-        assert all(
-            pixel[3] >= 192
-            for _x, _y, pixel in result['band_probes']
-        )
+def test_reference_sizes_keep_bars_arrow_and_gaps_clear_in_both_themes(tmp_path):
+    for name, artwork, background in (
+        ('light', '#FFFFFF', '#000000'), ('dark', '#000000', '#FFFFFF'),
+    ):
+        for size in GENERATOR.REFERENCE_SIZES:
+            output = tmp_path / f'{name}-{size}.png'
+            output.write_bytes(GENERATOR.render_png_bytes(ICONS / f'favicon-{name}.svg', size))
+            GENERATOR.validate_png(output, size, expected_artwork=artwork,
+                                   expected_background=background)
 
 
 def test_manifest_references_generated_assets_without_new_platform_claims():
@@ -203,22 +125,10 @@ def test_manifest_references_generated_assets_without_new_platform_claims():
     assert manifest['short_name'] == 'OnePortfolio'
     assert manifest['theme_color'] == '#171717'
     assert manifest['background_color'] == '#ffffff'
-    assert manifest['icons'] == [
-        {
-            'src': '/static/icons/android-chrome-192x192.png',
-            'sizes': '192x192',
-            'type': 'image/png',
-            'purpose': 'any',
-        },
-        {
-            'src': '/static/icons/android-chrome-512x512.png',
-            'sizes': '512x512',
-            'type': 'image/png',
-            'purpose': 'any',
-        },
-    ]
+    assert manifest['icons'] == GENERATOR.manifest_icons()
+    assert {i['purpose'] for i in manifest['icons']} == {'any'}
     for icon in manifest['icons']:
-        source = icon['src']
+        source = icon['src'].split('?')[0]
         relative_source = source[len('/static/'):] if source.startswith('/static/') else source
         assert (
             ROOT / 'portfolio_app' / 'static'
@@ -236,10 +146,10 @@ def test_one_current_color_logo_component_owns_all_visible_marks():
     assert component.count('<svg') == 1
     assert component.count('<path') == 1
     assert '<img' not in component
-    assert '<rect' not in component
+    assert component.count('<rect') == 1
     assert 'brand-logo' in component
     assert 'fill="currentColor"' in component
-    assert 'viewBox="8 8 48 48"' in component
+    assert 'viewBox="2 2 60 60"' in component
     assert 'fill-rule="evenodd"' in component
     assert f'd="{master_path}"' in component
     assert 'color: inherit' in brand_rule
@@ -265,27 +175,18 @@ def test_one_current_color_logo_component_owns_all_visible_marks():
         if "include 'components/logo_mark.html'" in source:
             actual_consumers.add(relative)
         if template.name not in {'icon_sprite.html', 'logo_mark.html'}:
-            assert 'oneportfolio-quarter-pie' not in source
+            assert 'oneportfolio-growth' not in source
     assert actual_consumers == expected_consumers
 
 
-def test_visible_logo_cascade_cannot_paint_a_tile_or_pseudo_element():
-    """The shared mark and its immediate wrappers remain transparent.
-
-    Favicon SVGs deliberately have their own neutral platform background, so
-    this contract inspects only the inline application mark and the CSS classes
-    that can target it in the app shell, auth pages, and Landing lockup.
-    """
-    component = (TEMPLATES / 'components' / 'logo_mark.html').read_text(
-        encoding='utf-8',
-    )
-    assert not re.search(
-        r'<(?:rect|circle|ellipse|polygon|image|use)\b'
-        r'|\b(?:style|mask|filter|class)\s*=\s*["\'][^"\']*'
-        r'(?:background|border|shadow|tile)',
-        component,
-        re.IGNORECASE,
-    )
+def test_tile_is_vector_owned_without_extra_css_decoration():
+    """Only the generated SVG owns geometry; CSS selects semantic colours."""
+    component = (TEMPLATES / 'components' / 'logo_mark.html').read_text(encoding='utf-8')
+    assert component.count('<rect') == 1
+    assert not re.search(r'<(?:image|mask|filter|use)\b', component)
+    css = COMPONENT_CSS.read_text(encoding='utf-8')
+    assert '.brand-logo > rect { fill: var(--foreground); }' in css
+    assert '.brand-logo__symbol { fill: var(--background); }' in css
 
     forbidden_properties = re.compile(
         r'(?m)^\s*(?:background(?:-\w+)?|border(?:-\w+)?|box-shadow|'
@@ -309,10 +210,10 @@ def test_generator_has_no_browser_or_per_size_geometry():
     assert '--headless' not in source
     assert 'subprocess' not in source
     assert 'MASTER_SVG = ICONS_DIR / "favicon.svg"' in source
-    assert 'render_app_icon_png_bytes(size)' in source
-    assert 'expected_background=None' in source
+    assert 'render_app_icon_png_bytes(' in source
+    assert 'app_icon_composition' not in source
     assert 'generate_logo_component()' in source
-    assert 'oneportfolio-quarter-pie' in source
+    assert 'oneportfolio-growth' in source
     assert '"--validate-only"' in source
 
 
@@ -326,3 +227,16 @@ def test_visible_logo_component_is_an_exact_generated_master_derivative():
         encoding='utf-8',
     )
     assert component == GENERATOR.logo_component_text(master)
+
+
+@pytest.mark.parametrize('old,new', [
+    ('rx="14"', 'rx="0"'),
+    ('H39.5V24', 'H35V24'),
+    ('M13 43', 'M0 43'),
+    ('V52H26Z', 'V51H26Z'),
+])
+def test_validation_rejects_broken_tile_gap_bounds_or_baseline(old, new):
+    master = (ICONS / 'favicon.svg').read_text(encoding='utf-8')
+    assert old in master
+    with pytest.raises(GENERATOR.IconValidationError):
+        GENERATOR.inspect_svg_text(master.replace(old, new), 'broken.svg')

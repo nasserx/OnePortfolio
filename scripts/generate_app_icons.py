@@ -1,9 +1,9 @@
 """Generate and validate OnePortfolio brand icon derivatives.
 
 ``portfolio_app/static/icons/favicon.svg`` is the single geometric source.
-The master contains one hollow quarter-pie compound path in a 64x64 viewBox.
-This script derives transparent light/dark favicon variants, transparent ICO
-frames, and neutral installed-app compositions from that same path. A small
+The master contains three ascending bars and an arrow on a rounded tile.
+This script derives light/dark SVG variants, ICO frames, and installed-app
+compositions from that same vector source. A small
 standard-library scanline renderer keeps generation independent of a browser
 or third-party image package.
 """
@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import binascii
+import hashlib
 import json
 import math
 import re
@@ -26,11 +27,11 @@ ROOT = Path(__file__).resolve().parents[1]
 ICONS_DIR = ROOT / "portfolio_app" / "static" / "icons"
 MASTER_SVG = ICONS_DIR / "favicon.svg"
 LOGO_COMPONENT = ROOT / "portfolio_app" / "templates" / "components" / "logo_mark.html"
-DEFAULT_SURFACE_ARTWORK = "#757575"
-LIGHT_SURFACE_ARTWORK = "#0A0A0A"
-DARK_SURFACE_ARTWORK = "#FAFAFA"
-LIGHT_ICON_BACKGROUND = "#FAFAFA"
-DARK_ICON_BACKGROUND = "#171717"
+DEFAULT_SURFACE_ARTWORK = "#FFFFFF"
+LIGHT_SURFACE_ARTWORK = "#FFFFFF"
+DARK_SURFACE_ARTWORK = "#000000"
+LIGHT_ICON_BACKGROUND = "#000000"
+DARK_ICON_BACKGROUND = "#FFFFFF"
 SVG_VARIANTS = {
     ICONS_DIR / "favicon-light.svg": LIGHT_SURFACE_ARTWORK,
     ICONS_DIR / "favicon-dark.svg": DARK_SURFACE_ARTWORK,
@@ -40,7 +41,7 @@ SVG_ARTWORK_COLORS = {
     **SVG_VARIANTS,
 }
 TARGET_SURFACES = {
-    MASTER_SVG: ("#FFFFFF", "#000000"),
+    MASTER_SVG: (LIGHT_ICON_BACKGROUND,),
     ICONS_DIR / "favicon-light.svg": (LIGHT_ICON_BACKGROUND,),
     ICONS_DIR / "favicon-dark.svg": (DARK_ICON_BACKGROUND,),
 }
@@ -50,8 +51,8 @@ APP_PNGS = {
     "android-chrome-512x512.png": 512,
 }
 ICO_SIZES = (16, 32, 48)
-REFERENCE_SIZES = (16, 20, 24, 32, 48, 192, 512)
-BRAND_MARK_ATTRIBUTE = "oneportfolio-quarter-pie"
+REFERENCE_SIZES = (16, 18, 20, 24, 32, 48, 180, 192, 512)
+BRAND_MARK_ATTRIBUTE = "oneportfolio-growth"
 BRAND_BACKGROUND_ATTRIBUTE = "oneportfolio-icon-background"
 SUPERSAMPLE = 4
 
@@ -94,9 +95,9 @@ def inspect_svg_text(source: str, source_name: str) -> dict[str, object]:
     ]
     if len(marks) != 1 or not marks[0].tag.endswith("path"):
         raise IconValidationError(
-            f"{source_name} must contain exactly one quarter-pie path"
+            f"{source_name} must contain exactly one growth-symbol path"
         )
-    if len(backgrounds) > 1 or any(not item.tag.endswith("rect") for item in backgrounds):
+    if len(backgrounds) != 1 or any(not item.tag.endswith("rect") for item in backgrounds):
         raise IconValidationError(f"{source_name} has an invalid icon background")
     expected_children = 2 if backgrounds else 1
     if len(children) != expected_children:
@@ -114,13 +115,34 @@ def inspect_svg_text(source: str, source_name: str) -> dict[str, object]:
         raise IconValidationError(f"{source_name} has invalid brand path geometry")
     if marks[0].attrib.get("fill-rule") != "evenodd":
         raise IconValidationError(
-            f"{source_name} must use evenodd fill for the hollow brand mark"
+            f"{source_name} must use evenodd fill for the brand mark"
         )
     contours = _path_contours(path_data)
-    if len(contours) != 2:
+    if len(contours) != 3:
         raise IconValidationError(
-            f"{source_name} must contain one outer and one interior contour"
+            f"{source_name} must contain three separated ascending contours"
         )
+    tile = backgrounds[0].attrib
+    if any(tile.get(key) != value for key, value in
+           {"x": "2", "y": "2", "width": "60", "height": "60", "rx": "14"}.items()):
+        raise IconValidationError(f"{source_name} has incorrect tile bounds")
+    bounds = [(min(x for x, y in contour), min(y for x, y in contour),
+               max(x for x, y in contour), max(y for x, y in contour))
+              for contour in contours]
+    if not (bounds[0][1] > bounds[1][1] > bounds[2][1]
+            and {bound[3] for bound in bounds} == {52}
+            and bounds[0][2] < bounds[1][0]):
+        raise IconValidationError(f"{source_name} has invalid ascending-bar geometry")
+    # The arrowhead may overhang the middle bar, but the bodies must not touch.
+    if any(x <= bounds[1][2] for x, y in contours[2] if y >= bounds[1][1]):
+        raise IconValidationError(f"{source_name} closes the second bar gap")
+    points = [point for contour in contours for point in contour]
+    left, right = min(x for x, y in points), max(x for x, y in points)
+    top, bottom = min(y for x, y in points), max(y for x, y in points)
+    if not (10 <= left < right <= 54 and 9 <= top < bottom <= 54
+            and abs((left + right) / 2 - 32) <= 1
+            and abs((top + bottom) / 2 - 32) <= 1):
+        raise IconValidationError(f"{source_name} lacks centred artwork and safe area")
     return {
         "width": root.attrib.get("width"),
         "height": root.attrib.get("height"),
@@ -137,38 +159,19 @@ def inspect_svg_text(source: str, source_name: str) -> dict[str, object]:
     }
 
 
-def svg_variant(
-    svg_text: str,
-    artwork_color: str,
-) -> str:
-    root = ET.fromstring(svg_text)
-    marks = [
-        element
-        for element in root.iter()
-        if element.attrib.get("data-brand-mark") == BRAND_MARK_ATTRIBUTE
-    ]
-    if len(marks) != 1:
-        raise IconValidationError("Master SVG must contain one quarter-pie path")
-    current_color = marks[0].attrib.get("fill")
-    marker = f'fill="{current_color}"'
-    if not current_color or svg_text.count(marker) != 1:
-        raise IconValidationError("Could not isolate the master artwork color")
-    return svg_text.replace(marker, f'fill="{artwork_color}"', 1)
-
-
-def app_icon_composition(
-    svg_text: str,
-    artwork_color: str = LIGHT_SURFACE_ARTWORK,
-    background_color: str = LIGHT_ICON_BACKGROUND,
-) -> str:
-    """Compose the neutral platform tile without changing favicon sources."""
-    coloured = svg_variant(svg_text, artwork_color)
-    path_start = coloured.index("  <path ")
-    background = (
-        '  <rect data-brand-background="oneportfolio-icon-background" '
-        f'x="2" y="2" width="60" height="60" rx="12" fill="{background_color}"/>\n'
+def svg_variant(svg_text: str, artwork_color: str) -> str:
+    """Invert both regions together; geometry is copied only from the master."""
+    info = inspect_svg_text(svg_text, "master")
+    background_color = (
+        LIGHT_ICON_BACKGROUND if artwork_color == LIGHT_SURFACE_ARTWORK
+        else DARK_ICON_BACKGROUND
     )
-    return coloured[:path_start] + background + coloured[path_start:]
+    # Placeholders avoid replacing a colour twice when the pair is inverted.
+    return (svg_text
+            .replace(f'fill="{info["artwork_fill"]}"', 'fill="__ARTWORK__"')
+            .replace(f'fill="{info["background_fill"]}"', 'fill="__BACKGROUND__"')
+            .replace('__ARTWORK__', artwork_color)
+            .replace('__BACKGROUND__', background_color))
 
 
 def generate_svg_variants() -> None:
@@ -188,7 +191,7 @@ def logo_component_text(master_text: str) -> str:
         if element.attrib.get("data-brand-mark") == BRAND_MARK_ATTRIBUTE
     ]
     if len(marks) != 1:
-        raise IconValidationError("Master SVG must contain one quarter-pie path")
+        raise IconValidationError("Master SVG must contain one growth-symbol path")
     path_data = marks[0].attrib["d"]
     fill_rule = marks[0].attrib.get("fill-rule")
     if fill_rule != "evenodd":
@@ -206,15 +209,20 @@ def logo_component_text(master_text: str) -> str:
 {% set brand_logo_decorative = logo_decorative|default(true) %}
 <svg
     class="brand-logo{% if brand_logo_class %} {{ brand_logo_class }}{% endif %}"
-    viewBox="8 8 48 48"
+    viewBox="2 2 60 60"
     fill="currentColor"
     focusable="false"
     {% if brand_logo_decorative %}aria-hidden="true"{% else %}role="img" aria-label="{{ logo_alt|default('OnePortfolio') }}"{% endif %}
 >
-    <path fill-rule="__MASTER_FILL_RULE__" d="__MASTER_PATH__"></path>
+    __MASTER_TILE__
+    <path class="brand-logo__symbol" fill-rule="__MASTER_FILL_RULE__" d="__MASTER_PATH__"></path>
 </svg>
 """
-    return template.replace("__MASTER_FILL_RULE__", fill_rule).replace(
+    background = next(item for item in root if item.attrib.get("data-brand-background"))
+    geometry = " ".join(f'{key}="{background.attrib[key]}"' for key in
+                        ("x", "y", "width", "height", "rx"))
+    tile = f'<rect {geometry}></rect>'
+    return template.replace("__MASTER_TILE__", tile).replace("__MASTER_FILL_RULE__", fill_rule).replace(
         "__MASTER_PATH__",
         path_data,
     )
@@ -523,6 +531,7 @@ def render_svg_text_png_bytes(
     svg_text: str,
     size: int,
     source_name: str = "generated-icon.svg",
+    *, opaque: bool = False,
 ) -> bytes:
     info = inspect_svg_text(svg_text, source_name)
     artwork = _hex_rgb(str(info["artwork_fill"]))
@@ -556,6 +565,10 @@ def render_svg_text_png_bytes(
             ) + (round(output_opacity * 255),))
     else:
         pixels = [(*artwork, alpha) for alpha in artwork_alpha]
+    if opaque:
+        pixels = [tuple(round(channel * alpha / 255 + 255 - alpha)
+                        for channel in (red, green, blue)) + (255,)
+                  for red, green, blue, alpha in pixels]
     return _rgba_to_png(size, size, pixels)
 
 
@@ -567,10 +580,10 @@ def render_png_bytes(svg_path: Path, size: int) -> bytes:
     )
 
 
-def render_app_icon_png_bytes(size: int) -> bytes:
-    """Render the installed-icon tile while favicons remain transparent."""
-    source = app_icon_composition(MASTER_SVG.read_text(encoding="utf-8"))
-    return render_svg_text_png_bytes(source, size, "installed-app-icon.svg")
+def render_app_icon_png_bytes(size: int, *, opaque: bool = False) -> bytes:
+    """Render the master tile; Apple requires an opaque exterior backing."""
+    source = MASTER_SVG.read_text(encoding="utf-8")
+    return render_svg_text_png_bytes(source, size, "installed-app-icon.svg", opaque=opaque)
 
 
 def _paeth(a: int, b: int, c: int) -> int:
@@ -653,142 +666,44 @@ def validate_png(
     expected_size: int,
     *,
     expected_artwork: str = LIGHT_SURFACE_ARTWORK,
-    expected_background: str | None = LIGHT_ICON_BACKGROUND,
+    expected_background: str = LIGHT_ICON_BACKGROUND,
+    opaque: bool = False,
 ) -> dict[str, object]:
+    """Check the tile, each bar/arrow, and both separating gaps at actual size."""
     width, height, mode, pixels = decode_png(path)
-    if (width, height) != (expected_size, expected_size):
-        raise IconValidationError(
-            f"{path.name} is {width}x{height}, expected {expected_size}x{expected_size}"
-        )
+    if (width, height, mode) != (expected_size, expected_size, "RGBA"):
+        raise IconValidationError(f"{path.name} has unexpected dimensions or format")
     corners = (0, width - 1, (height - 1) * width, width * height - 1)
-    if any(pixels[index][3] != 0 for index in corners):
-        raise IconValidationError(f"{path.name} does not have transparent corners")
-    if mode != "RGBA":
-        raise IconValidationError(f"{path.name} does not have an alpha channel")
-    expected_rgb = _hex_rgb(expected_artwork)
-    expected_background_rgb = (
-        _hex_rgb(expected_background) if expected_background is not None else None
-    )
-    opaque_colors = {pixel[:3] for pixel in pixels if pixel[3] == 255}
-    if expected_rgb not in opaque_colors:
-        raise IconValidationError(f"{path.name} is missing its opaque mark colour")
-    if expected_background_rgb is not None and expected_background_rgb not in opaque_colors:
-        raise IconValidationError(f"{path.name} is missing its background colour")
-    if any(red != green or green != blue for red, green, blue in opaque_colors):
+    if opaque:
+        if any(pixel[3] != 255 for pixel in pixels):
+            raise IconValidationError(f"{path.name} must be opaque")
+        if any(pixels[index] != (255, 255, 255, 255) for index in corners):
+            raise IconValidationError(f"{path.name} must have white exterior backing")
+    elif any(pixels[index][3] != 0 for index in corners):
+        raise IconValidationError(f"{path.name} must have transparent exterior corners")
+    if any(red != green or green != blue for red, green, blue, _ in pixels):
         raise IconValidationError(f"{path.name} is not monochrome")
-    foreground = [
-        (index % width, index // width)
-        for index, pixel in enumerate(pixels)
-        if pixel[3] != 0
-    ]
-    if not foreground:
-        raise IconValidationError(f"{path.name} has no visible logo pixels")
-    min_x = min(x for x, _ in foreground)
-    max_x = max(x for x, _ in foreground)
-    min_y = min(y for _, y in foreground)
-    max_y = max(y for _, y in foreground)
-    bbox_width = max_x - min_x + 1
-    bbox_height = max_y - min_y + 1
-    center_x = (min_x + max_x) / 2
-    center_y = (min_y + max_y) / 2
-    canvas_center = (width - 1) / 2
-    center_delta = math.hypot(center_x - canvas_center, center_y - canvas_center)
-    minimum_extent = expected_size * (0.88 if expected_background_rgb else 0.68)
-    if bbox_width < minimum_extent or bbox_height < minimum_extent:
-        raise IconValidationError(
-            f"{path.name} artwork bbox is too small: {(min_x, min_y, max_x, max_y)}"
-        )
-    if center_delta > expected_size * 0.08:
-        raise IconValidationError(
-            f"{path.name} artwork is off-center: ({center_x:.2f}, {center_y:.2f})"
-        )
-    mark_pixels = []
-    for index, pixel in enumerate(pixels):
-        if pixel[3] < 128:
-            continue
-        if expected_background_rgb is not None and max(
-            abs(pixel[channel] - expected_background_rgb[channel])
-            for channel in range(3)
-        ) < 8:
-            continue
-        mark_pixels.append((index % width, index // width))
-    if not mark_pixels:
-        raise IconValidationError(f"{path.name} has no distinct quarter-pie mark")
-    mark_min_x = min(x for x, _ in mark_pixels)
-    mark_max_x = max(x for x, _ in mark_pixels)
-    mark_min_y = min(y for _, y in mark_pixels)
-    mark_max_y = max(y for _, y in mark_pixels)
-    mark_width = mark_max_x - mark_min_x + 1
-    mark_height = mark_max_y - mark_min_y + 1
-    if mark_width < expected_size * 0.68 or mark_height < expected_size * 0.68:
-        raise IconValidationError(
-            f"{path.name} quarter-pie is too small: "
-            f"{(mark_min_x, mark_min_y, mark_max_x, mark_max_y)}"
-        )
-    if (
-        mark_min_x <= 0
-        or mark_min_y <= 0
-        or mark_max_x >= width - 1
-        or mark_max_y >= height - 1
-    ):
-        raise IconValidationError(
-            f"{path.name} quarter-pie lacks safe area: "
-            f"{(mark_min_x, mark_min_y, mark_max_x, mark_max_y)}"
-        )
-    probe_x = min(width - 1, round(width * 24 / 64))
-    probe_y = min(height - 1, round(height * 36 / 64))
-    probe = pixels[probe_y * width + probe_x]
-    if expected_background_rgb is None:
-        if probe[3] > 32:
-            raise IconValidationError(
-                f"{path.name} hollow interior closed at {(probe_x, probe_y)}"
-            )
-    elif (
-        probe[3] < 224
-        or max(
-            abs(probe[channel] - expected_background_rgb[channel])
-            for channel in range(3)
-        ) > 8
-    ):
-        raise IconValidationError(
-            f"{path.name} hollow interior does not reveal its platform surface"
-        )
-    band_probes = []
-    for source_x, source_y in ((12, 36), (32, 52)):
-        band_x = min(width - 1, round(width * source_x / 64))
-        band_y = min(height - 1, round(height * source_y / 64))
-        band_pixel = pixels[band_y * width + band_x]
-        if band_pixel[3] < 192 or max(
-            abs(band_pixel[channel] - expected_rgb[channel])
-            for channel in range(3)
-        ) > 8:
-            raise IconValidationError(
-                f"{path.name} brand band does not survive at {(band_x, band_y)}"
-            )
-        band_probes.append((band_x, band_y, band_pixel))
+
+    artwork = _hex_rgb(expected_artwork)
+    background = _hex_rgb(expected_background)
+    def probe(x, y):
+        return pixels[min(height - 1, int(y * height / 64)) * width
+                      + min(width - 1, int(x * width / 64))]
+
+    # Interiors deliberately avoid antialiased outlines. The 3.5-unit gaps
+    # retain at least half tile coverage even at the 16px fallback size.
+    for x, y in ((18, 45), (30, 43), (45, 38), (45, 18)):
+        pixel = probe(x, y)
+        if pixel[3] < 240 or max(abs(pixel[c] - artwork[c]) for c in range(3)) > 48:
+            raise IconValidationError(f"{path.name} loses bar/arrow at {(x, y)}")
+    for x, y in ((24, 45), (38, 45), (8, 30), (32, 57)):
+        pixel = probe(x, y)
+        if pixel[3] < 240 or max(abs(pixel[c] - background[c]) for c in range(3)) > 128:
+            raise IconValidationError(f"{path.name} loses gap/tile at {(x, y)}")
     return {
-        "file": path.name,
-        "size": f"{width}x{height}",
-        "mode": mode,
-        "alpha_range": (min(pixel[3] for pixel in pixels), max(pixel[3] for pixel in pixels)),
-        "transparent_pixels": sum(1 for pixel in pixels if pixel[3] == 0),
-        "opaque_artwork_rgb": expected_rgb,
-        "opaque_background_rgb": expected_background_rgb,
-        "bbox": (min_x, min_y, max_x, max_y),
-        "bbox_size": (bbox_width, bbox_height),
-        "margins": (min_x, min_y, width - 1 - max_x, height - 1 - max_y),
-        "center": (round(center_x, 2), round(center_y, 2)),
-        "center_delta": round(center_delta, 3),
-        "mark_bbox": (mark_min_x, mark_min_y, mark_max_x, mark_max_y),
-        "mark_bbox_size": (mark_width, mark_height),
-        "mark_margins": (
-            mark_min_x,
-            mark_min_y,
-            width - 1 - mark_max_x,
-            height - 1 - mark_max_y,
-        ),
-        "interior_probe": (probe_x, probe_y, probe),
-        "band_probes": band_probes,
+        "file": path.name, "size": f"{width}x{height}", "mode": mode,
+        "opaque": opaque, "bar_and_gap_probes": "passed",
+        "transparent_pixels": sum(pixel[3] == 0 for pixel in pixels),
     }
 
 
@@ -888,7 +803,7 @@ def inspect_ico(ico_path: Path) -> list[dict[str, object]]:
             validation = validate_png(
                 entry_path,
                 width or 256,
-                expected_background=None,
+                expected_background=LIGHT_ICON_BACKGROUND,
             )
         entries.append({
             "width": width or 256,
@@ -904,7 +819,8 @@ def inspect_ico(ico_path: Path) -> list[dict[str, object]]:
 
 def generate_rasters() -> None:
     for name, size in APP_PNGS.items():
-        (ICONS_DIR / name).write_bytes(render_app_icon_png_bytes(size))
+        (ICONS_DIR / name).write_bytes(render_app_icon_png_bytes(
+            size, opaque=name == "apple-touch-icon.png"))
     with tempfile.TemporaryDirectory(prefix="oneportfolio-icons-") as directory:
         generated = {}
         for size in ICO_SIZES:
@@ -917,10 +833,27 @@ def generate_rasters() -> None:
         write_ico(generated, ICONS_DIR / "favicon.ico")
 
 
+def manifest_icons() -> list[dict[str, str]]:
+    revision = hashlib.sha256(MASTER_SVG.read_text(encoding="utf-8").encode("utf-8")).hexdigest()[:12]
+    return [
+        {"src": f"/static/icons/{name}?v={revision}", "sizes": f"{size}x{size}",
+         "type": "image/png", "purpose": "any"}
+        for name, size in APP_PNGS.items() if name.startswith("android-")
+    ]
+
+
+def generate_manifest() -> None:
+    path = ICONS_DIR / "site.webmanifest"
+    manifest = json.loads(path.read_text(encoding="utf-8"))
+    manifest["icons"] = manifest_icons()
+    path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+
 def generate() -> None:
     generate_svg_variants()
     generate_logo_component()
     generate_rasters()
+    generate_manifest()
 
 
 def validate() -> None:
@@ -937,9 +870,9 @@ def validate() -> None:
             raise IconValidationError(
                 f"{svg_path.name} artwork is {info['artwork_fill']}, expected {expected_color}"
             )
-        if info["background_fill"] is not None:
+        if info["background_fill"] != TARGET_SURFACES[svg_path][0]:
             raise IconValidationError(
-                f"{svg_path.name} must remain a transparent bare mark"
+                f"{svg_path.name} has an incorrect tile colour"
             )
         if svg_path != MASTER_SVG:
             expected_artwork = SVG_VARIANTS[svg_path]
@@ -960,11 +893,11 @@ def validate() -> None:
 
     for name, size in APP_PNGS.items():
         path = ICONS_DIR / name
-        if path.read_bytes() != render_app_icon_png_bytes(size):
+        if path.read_bytes() != render_app_icon_png_bytes(size, opaque=name == "apple-touch-icon.png"):
             raise IconValidationError(
                 f"{name} is not the deterministic render of the master SVG"
             )
-        print("PNG:", validate_png(path, size))
+        print("PNG:", validate_png(path, size, opaque=name == "apple-touch-icon.png"))
     print("Cross-size mean difference:", validate_cross_size())
 
     ico_entries = inspect_ico(ICONS_DIR / "favicon.ico")
@@ -994,23 +927,17 @@ def validate() -> None:
                 validate_png(
                     rendered,
                     size,
-                    expected_background=None,
+                    expected_background=LIGHT_ICON_BACKGROUND,
                 ),
             )
 
     manifest_path = ICONS_DIR / "site.webmanifest"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    expected = {
-        "/static/icons/android-chrome-192x192.png": "192x192",
-        "/static/icons/android-chrome-512x512.png": "512x512",
-    }
-    actual = {icon["src"]: icon["sizes"] for icon in manifest["icons"]}
-    for source, sizes in expected.items():
-        asset_path = ICONS_DIR / Path(source).name
-        if actual.get(source) != sizes or not asset_path.exists():
-            raise IconValidationError(
-                f"Manifest entry mismatch for {source}: {actual.get(source)}"
-            )
+    if manifest["icons"] != manifest_icons():
+        raise IconValidationError("Manifest entries do not match the generated assets")
+    for icon in manifest["icons"]:
+        if not (ICONS_DIR / icon["src"].split("?")[0].rsplit("/", 1)[-1]).is_file():
+            raise IconValidationError(f"Missing manifest asset: {icon['src']}")
     print("Manifest: valid")
 
 

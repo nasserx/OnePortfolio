@@ -107,7 +107,8 @@ def test_portfolios_page_renders_funding_metrics_and_log(app):
     assert 'data-withdrawable-cash-input' not in html
     assert "document.getElementById('withdraw_max_btn').dataset.portfolioId" in html
     assert "btn.addEventListener('click'" in html
-    assert 'amountInput.value = result.amount;' in html
+    # Actual Max assignment and stale-response behavior run in cash_account_max.js.
+    assert 'id="withdraw_funds_amount"' in html
 
     components = Path('portfolio_app/static/css/components.css').read_text(encoding='utf-8')
     assert '.withdraw-available-hint' not in components

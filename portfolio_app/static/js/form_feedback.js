@@ -28,7 +28,7 @@
             this.preserveInitialErrors = this.submitted && Boolean(this.modal);
 
             form.addEventListener('submit', event => {
-                if (this.pending) {
+                if (this.pending || this.fields().some(field => window.OnePortfolioNumeric?.isComposing(field))) {
                     event.preventDefault();
                     event.stopImmediatePropagation();
                     return;
@@ -49,14 +49,24 @@
                 // from date pickers, transaction type buttons, and Max.
                 form.addEventListener(type, event => {
                     const session = this.session;
-                    // Read the final value after existing target listeners
-                    // normalize input. Ignore updates queued by an old record.
+                    // Read settled edits after the numeric target listener.
+                    // Ignore provisional/rejected edits and old records.
                     queueMicrotask(() => {
-                        if (this.session === session) this.correct(event.target);
+                        if (this.session === session &&
+                            !window.OnePortfolioNumeric?.isComposing(event.target) &&
+                            !window.OnePortfolioNumeric?.shouldIgnoreEvent(event)) this.correct(event.target);
                     });
                 }, true);
             }
-            form.addEventListener('reset', () => this.reset());
+            form.addEventListener('reset', event => {
+                const session = this.session;
+                // Native default values are applied after reset listeners.
+                // Rebase numeric state only after that action, and never clear
+                // feedback for a cancelled reset or a newly prepared record.
+                queueMicrotask(() => {
+                    if (!event.defaultPrevented && session === this.session) this.reset();
+                });
+            });
             if (this.modal) {
                 this.modal.addEventListener('show.bs.modal', () => {
                     if (!this.preserveInitialErrors) this.reset();
@@ -273,6 +283,10 @@
 
         reset() {
             this.session++;
+            for (const field of this.fields()) {
+                if (window.OnePortfolioNumeric?.state(field)) window.OnePortfolioNumeric.reset(field);
+            }
+            window.OnePortfolioPreviews?.reset(this.form);
             this.submitted = false;
             this.preserveInitialErrors = false;
             this.clearErrors();

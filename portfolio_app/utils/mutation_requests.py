@@ -123,8 +123,12 @@ def register_mutation_requests(app):
         ) and current_user.is_authenticated:
             g._mutation_revisions = {current_user.id: current_revision(current_user.id)}
 
-    # All POSTs on the two financial blueprints, plus confirmed account removal.
+    # Financial writes plus confirmed account removal. The one advisory POST
+    # is read-only and retains login/CSRF/rate limits without consuming intents,
+    # taking a writer reservation or advancing financial revisions.
     for rule in app.url_map.iter_rules():
+        if rule.endpoint == 'transactions.transaction_preview':
+            continue
         if 'POST' not in rule.methods or not (
             rule.endpoint.startswith(('transactions.', 'portfolios.')) or
             rule.endpoint == 'auth.delete_account_verify'

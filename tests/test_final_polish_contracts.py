@@ -11,6 +11,7 @@ ASSETS = (ROOT / 'templates/assets.html').read_text(encoding='utf-8')
 BASE = (ROOT / 'templates/base.html').read_text(encoding='utf-8')
 LANDING_TEMPLATE = (ROOT / 'templates/landing.html').read_text(encoding='utf-8')
 MAIN = (ROOT / 'static/js/main.js').read_text(encoding='utf-8')
+PREVIEWS = (ROOT / 'static/js/transaction_previews.js').read_text(encoding='utf-8')
 LANDING = (ROOT / 'static/js/landing.js').read_text(encoding='utf-8')
 OVERVIEW = (ROOT / 'static/js/overview_charts.js').read_text(encoding='utf-8')
 FORMATTERS = (ROOT / 'static/js/display_formatters.js').read_text(encoding='utf-8')
@@ -24,9 +25,9 @@ def _rule(source, selector):
 
 def test_calculated_transaction_summary_has_one_neutral_shared_contract():
     assert ASSETS.count('class="tx-preview" aria-live="polite"') == 2
-    assert "const label = isSell ? 'Net Proceeds:' : 'Purchase Cost:';" in MAIN
-    assert 'class="tx-preview__label"' in MAIN
-    assert 'class="tx-preview__value"' in MAIN
+    assert "'Net Proceeds:' : 'Purchase Cost:'" in PREVIEWS
+    assert "className = 'tx-preview__label'" in PREVIEWS
+    assert "className = 'tx-preview__value'" in PREVIEWS
 
     summary = _rule(COMPONENTS, '.tx-preview')
     label = _rule(COMPONENTS, '.tx-preview__label')
@@ -43,11 +44,12 @@ def test_calculated_transaction_summary_has_one_neutral_shared_contract():
         assert edge not in contract
 
 
-def test_transaction_total_calculation_and_formatting_contract_are_unchanged():
-    assert 'const gross = price * quantity;' in MAIN
-    assert 'const total = isSell ? (gross - fees) : (gross + fees);' in MAIN
-    assert 'const formatted = Utils.formatMoney(total);' in MAIN
-    assert 'return window.OnePortfolioDisplay.money(value, false);' in MAIN
+def test_transaction_preview_keeps_exact_arithmetic_at_presentation_boundary():
+    # Production BigInt results are compared with Python in preview tests.
+    assert 'result.formatted_amount' in PREVIEWS
+    assert 'parseFloat' not in PREVIEWS
+    assert 'Number(' not in PREVIEWS
+    assert 'price * quantity' not in MAIN + PREVIEWS
 
 
 def test_browser_display_formatter_is_shared_and_matches_preview_precision():
@@ -59,7 +61,7 @@ def test_browser_display_formatter_is_shared_and_matches_preview_precision():
     for template in (BASE, LANDING_TEMPLATE):
         assert "filename='js/display_formatters.js'" in template
 
-    for script in (MAIN, LANDING, OVERVIEW):
+    for script in (LANDING, OVERVIEW):
         assert 'window.OnePortfolioDisplay' in script
         assert 'new Intl.NumberFormat' not in script
 

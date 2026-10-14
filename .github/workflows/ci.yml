@@ -33,7 +33,14 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements-dev.txt
 
-      - name: Run tests
+      - name: Set up Node for preview parity tests
+        # The preview parity regression executes production JavaScript against
+        # Python's authoritative Decimal calculator.
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Run Python tests
         env:
           SECRET_KEY: test-secret-key-for-ci
           DATABASE_URL: sqlite:///test_ci.db

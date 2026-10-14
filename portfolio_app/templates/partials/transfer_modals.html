@@ -31,7 +31,7 @@
                 <div class="row g-2">
                     <div class="col-6 mb-3">
                         <label for="transfer_amount" class="form-label">Amount</label>
-                        <input id="transfer_amount" name="amount" class="form-control" type="text" inputmode="decimal" placeholder="0.00" required value="{{ _transfer_vals.get('amount', '') }}" {{ field_attrs('transfer_amount', _transfer_errs.get('amount')) }}>
+                        <input id="transfer_amount" name="amount" class="form-control" type="text" inputmode="decimal" data-numeric="decimal" placeholder="0.00" required value="{{ _transfer_vals.get('amount', '') }}" {{ field_attrs('transfer_amount', _transfer_errs.get('amount')) }}>
                         {{ field_error('transfer_amount', _transfer_errs.get('amount')) }}
                     </div>
                     <div class="col-6 mb-3">

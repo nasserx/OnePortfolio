@@ -121,7 +121,7 @@ def test_portfolio_forms_preserve_layout_and_max_uses_exact_server_amount():
     assert 'Available To Withdraw' not in TEMPLATE
     assert 'withdraw-available-hint' not in TEMPLATE
     assert 'id="withdraw_max_btn">Max</button>' in TEMPLATE
-    assert "amountInput.value = result.amount;" in TEMPLATE
+    assert "OnePortfolioNumeric.setValue(amountInput, result.amount, {notify: true})" in TEMPLATE
     assert '/portfolios/withdrawal-max/${portfolioId}' in TEMPLATE
     assert 'dateInput.value !== date' in TEMPLATE
 

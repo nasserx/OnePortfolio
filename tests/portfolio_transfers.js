@@ -29,6 +29,7 @@ const source = document.getElementById('transfer_source_portfolio_id');
 source.options = [option('', 'Select Portfolio'), option('7', 'ETFs'), option('8', 'Crypto'), option('9', 'Stocks')];
 const destination = document.getElementById('transfer_destination_portfolio_id');
 const context = vm.createContext({document, Date, window: {
+    OnePortfolioNumeric: {restoreValue(field, value) { field.value = value; }},
     OnePortfolioForms: {prepare() {}},
     OnePortfolioDialogs: {show(element) { shown = element.id; }},
 }});

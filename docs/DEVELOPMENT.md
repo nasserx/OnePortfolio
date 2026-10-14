@@ -59,8 +59,9 @@ python -m pytest -v
 ```
 
 Tests use disposable databases; do not point diagnostic application instances
-at the working database. Node.js is needed only for the frontend checks below,
-with no npm install or browser required. Run all six assertion scripts using
+at the working database. Node.js 22 is used for the frontend checks below and
+the Python-to-JavaScript preview arithmetic parity test; CI configures it for
+both jobs. No npm install or browser is required. Run all assertion scripts using
 the same `tests/*.js` discovery pattern as CI (POSIX shell):
 
 ```bash
@@ -74,7 +75,10 @@ Get-ChildItem tests/*.js | ForEach-Object { node $_.FullName; if ($LASTEXITCODE 
 ```
 
 This includes precision boundaries, cash-account Max, portfolio transfers,
-form feedback, chart contracts, and overlay/keyboard contracts.
+form feedback, chart contracts, overlay/keyboard contracts, and the isolated
+[numeric editor](NUMERIC_INPUTS.md) event-model checks and exact transaction
+preview integration. These scripts use deterministic DOM/event stubs, not a
+browser; native editing and visual acceptance remain user checks.
 
 Check syntax for every application and assertion script (PowerShell):
 

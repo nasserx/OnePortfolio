@@ -18,7 +18,10 @@ async function run() {
     let requested;
     const context = vm.createContext({
         document: {getElementById: id => ({withdraw_max_btn: button, withdraw_funds_amount: input, withdraw_date: date})[id]},
-        window: {OnePortfolioForms: {register() { return feedback; }}},
+        window: {OnePortfolioForms: {register() { return feedback; }},
+            OnePortfolioNumeric: {setValue(field, value, options) {
+                assert.equal(options.notify, true); field.value = value; return true;
+            }}},
         URLSearchParams, Intl, Event: class {},
         fetch: (url) => { requested = url; return new Promise(resolve => { respond = resolve; }); },
     });

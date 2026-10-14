@@ -1,8 +1,9 @@
 """Transactions blueprint - Transaction and tracked-symbol management routes."""
 
 import logging
-from flask import Blueprint, render_template, request, redirect, url_for, flash
-from flask_login import login_required
+import json
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
+from flask_login import login_required, current_user
 from decimal import Decimal
 from sqlalchemy.exc import OperationalError
 from portfolio_app.services.mutation import abort_mutation
@@ -21,11 +22,42 @@ from portfolio_app.utils import (
 
 from portfolio_app.utils.constants import safe_html_id
 from config import Config
+from portfolio_app import limiter
+from portfolio_app.services.transaction_preview import PREVIEW_BODY_BYTES
 
 logger = logging.getLogger(__name__)
 
 # Create blueprint
 transactions_bp = Blueprint('transactions', __name__)
+
+
+@transactions_bp.route('/preview', methods=['POST'])
+@login_required
+@limiter.limit('120 per minute', key_func=lambda: f'transaction-preview:{current_user.get_id()}',
+               error_message='Preview temporarily unavailable.')
+def transaction_preview():
+    """CSRF-protected advisory read. Never enters financial mutation code."""
+    def unavailable(status=400):
+        response = jsonify(success=False, error='Preview unavailable.')
+        response.status_code = status
+        response.headers['Cache-Control'] = 'no-store'
+        return response
+
+    if not request.is_json:
+        return unavailable()
+    if request.content_length is not None and request.content_length > PREVIEW_BODY_BYTES:
+        return unavailable(413)
+    raw = request.stream.read(PREVIEW_BODY_BYTES + 1)
+    if len(raw) > PREVIEW_BODY_BYTES:
+        return unavailable(413)
+    try:
+        data = json.loads(raw)
+        result = get_services().transaction_service.preview_transaction(data)
+    except (ValueError, TypeError, ArithmeticError, ValidationError, RecursionError):
+        return unavailable()
+    response = jsonify(success=True, **result)
+    response.headers['Cache-Control'] = 'no-store'
+    return response
 
 
 def _decimal_places(value) -> int:

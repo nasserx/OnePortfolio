@@ -2,5 +2,6 @@
 <svg xmlns="http://www.w3.org/2000/svg"
      width="64" height="64" viewBox="0 0 64 64"
      preserveAspectRatio="xMidYMid meet">
-  <path data-brand-mark="oneportfolio-quarter-pie" fill="#757575" fill-rule="evenodd" d="M12 8A44 44 0 0 1 56 52Q56 56 52 56H12Q8 56 8 52V12Q8 8 12 8ZM20 18A26 26 0 0 1 46 44Q46 48 42 48H20Q16 48 16 44V22Q16 18 20 18Z"/>
+  <rect data-brand-background="oneportfolio-icon-background" x="2" y="2" width="60" height="60" rx="14" fill="#000000"/>
+  <path data-brand-mark="oneportfolio-growth" fill="#FFFFFF" fill-rule="evenodd" d="M13 43Q13 40 15.5 38.5L22.5 34.5V52H18Q13 52 13 47ZM26 34Q26 31 28.5 29.5L34 26Q36 24.8 36 27V52H26ZM33.5 19L46 11.5Q50.5 9 50.5 14V47Q50.5 52 46 52H39.5V24Q39.5 22 37.5 22H34Q30.5 22 33.5 19Z"/>
 </svg>

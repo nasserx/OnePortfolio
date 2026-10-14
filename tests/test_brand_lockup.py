@@ -4,9 +4,9 @@
 page stylesheets and template call sites from creating divergent lockups.
 
 The standalone mark on the auth and error pages appears without the wordmark,
-centred above a card, but deliberately inherits the same shared 18px mark size.
-That keeps every visible application use on one sizing and transparency
-contract.
+centred above a card, but deliberately inherits the same shared 20px mark size.
+That keeps every visible application use on one sizing contract. The rounded tile is part of the generated SVG,
+not an additional CSS background.
 """
 
 import re
@@ -58,8 +58,8 @@ def test_the_lockup_declares_every_dimension_it_owns():
 def test_the_mark_is_sized_by_shared_css_not_by_its_call_sites():
     css = _components_css()
     shared = _rule(css, '.brand-logo')
-    assert shared['width'] == '1.125rem'
-    assert shared['height'] == '1.125rem'
+    assert shared['width'] == '1.25rem'
+    assert shared['height'] == '1.25rem'
     assert 'logo_size' not in _PARTIAL.read_text(encoding='utf-8')
 
 

@@ -572,53 +572,47 @@ adds `role="img"` and `aria-label`. Icons within already named controls
 remain decorative. Bootstrap Icons and its font stylesheet are no longer part
 of the application.
 
-The OnePortfolio brand mark is a compact monochrome hollow quarter-pie. One
-compound path combines the established outer quarter-circle with a smaller
-matching interior opening through deterministic `evenodd` fill. The outer
-shape retains its straight left and bottom edges, circular arc, and softened
-corners; the opening repeats that geometry at a weight that remains legible at
-favicon size. The mark has no stroke, letter, financial symbol, gradient,
-shadow, or decorative colour. It is a brand asset, not a Tabler interface icon.
+The OnePortfolio brand icon follows the approved `op-icon-ref.png` reference:
+three separated ascending bars, the tallest forming an upward arrow, inside a
+rounded-square tile. It is a monochrome brand asset, not a Tabler interface icon.
+The full tile appears in navigation, authentication, and error surfaces as well
+as favicon and installed-app assets. No gradients, shadows, lettering, or
+financial semantic colours are part of the artwork.
 
-`static/icons/favicon.svg` is the sole geometric source of truth. It contains
-one two-contour compound path in a 64-by-64 viewBox. The unchanged outer mark
-occupies a 48-by-48-unit square; the final enlarged opening occupies 30 by 30
-master units, leaving an 8-unit straight band at the left and bottom. The same
-hollow geometry is used for the primary application mark and every small-icon
-derivative. The generated light and dark SVG favicons are transparent bare-mark
-variants, and every 16, 32, and 48px ICO frame is rasterized from the
-transparent light favicon. Apple-touch and Android installed-app outputs retain
-a separate neutral rounded-square composition because installed-platform icons
-cannot promise a suitable runtime surface or theme.
-`scripts/generate_app_icons.py` deterministically derives all of these outputs
-from the same path without browser automation or a third-party image dependency.
-Run the script after editing the master, then run it with
-`--validate-only` to verify geometry, transparency, contrast, dimensions,
-bounds, manifest references, cross-size consistency, and exact derivative
-provenance.
+`static/icons/favicon.svg` is the sole geometric source: one rounded rectangle
+and one compound path with three contours in a 64-by-64 viewBox. The same
+geometry is used at every size. `scripts/generate_app_icons.py` derives the
+light/dark SVGs, 16/32/48px ICO frames, 180px Apple touch icon, 192/512px Android
+icons, and the shared `templates/components/logo_mark.html` without browser
+automation or third-party image dependencies. Run the script after editing the
+master; `--validate-only` checks provenance, monochrome contrast, dimensions,
+bar/arrow and gap survival, exterior transparency, and manifest references.
 
-`templates/components/logo_mark.html` remains the only visible-logo component,
-and `templates/components/favicon_links.html` remains the only document-icon
-link component. The generator derives the visible component's one inline path
-from the master SVG and fills it with `currentColor`, so it follows the
-canonical foreground in either theme without hand-maintained geometry in page
-templates. Its 18px square uses a viewBox cropped to the master mark's bounds,
-so the optical mark—not merely an invisible asset canvas—measures 18px. The
-shared lockup pairs it with an 18px Geist semibold wordmark and the canonical
-`--space-2` gap; Landing, Auth, error, and authenticated surfaces do not restate
-those dimensions. The visible application mark is transparent: it has no tile,
-background, border, shadow, or padding. SVG favicons and ICO frames follow the
-same transparent bare-mark rule. Their light and dark marks use near-black and
-near-white respectively, with at least 4.5:1 contrast against the canonical
-light and dark surfaces on which they are intended to appear. Only Apple-touch and Android
-installed-app compositions may use the neutral rounded-square surface.
-Installed icons do not claim dynamic theme switching, and theme-colour metadata
-continues to follow the canonical page backgrounds.
+Light favicons use a black tile and white symbol; dark favicons invert both.
+Default SVG and ICO fallbacks use the light composition. Exterior corners are
+transparent. Installed Android assets use the fixed light composition with
+`purpose: any` (no maskable claim). The Apple touch asset has an opaque white
+exterior backing. Installed icons do not promise dynamic theme switching.
 
-Brand artwork must remain monochrome. It must never consume chart colours,
-financial semantic colours, or a separate brand hue. Future geometry changes
-must edit the master SVG and regenerate all derivatives rather than hand-edit
-the light, dark, raster, or ICO outputs.
+The shared application SVG uses `--foreground` for the tile and `--background`
+for the symbol, following explicit and system application themes without
+JavaScript icon swapping. Its viewBox crops only the outer canvas margin so
+the tile uses the shared 20px application size. The 18px Geist semibold
+wordmark, letter spacing, and `--space-2` gap remain unchanged. The component
+preserves decorative/named accessibility options. CSS does not add another
+tile, padding, shadow, or geometry around the generated artwork.
+
+`templates/components/favicon_links.html` declares the ICO fallback before
+SVGs and keeps light/dark `prefers-color-scheme` selection. All document icon
+links use the shared asset version. Generation versions Android URLs in the
+manifest using a SHA-256 revision of the master source, while preserving all
+other manifest metadata. Browsers and installed applications may still cache
+icons; installed shortcuts may require recreation for visual acceptance.
+
+The task-specific raster reference determines the artwork, not the wordmark
+or surrounding UI. Its sample-card shadows and labels are not exported.
+Geometry reconstruction and native small-size rendering require user visual
+acceptance; automated pixel/contract checks are not visual acceptance.
 
 ### Modal and behavior ownership
 

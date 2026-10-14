@@ -1,6 +1,7 @@
 """Presentation contracts for financial record types and terminology."""
 
 from pathlib import Path
+import re
 
 from flask import render_template_string
 
@@ -15,7 +16,7 @@ PORTFOLIOS = (ROOT / 'portfolio_app' / 'templates' / 'portfolios.html').read_tex
 COMPONENTS = (
     ROOT / 'portfolio_app' / 'static' / 'css' / 'components.css'
 ).read_text(encoding='utf-8')
-MAIN = (ROOT / 'portfolio_app' / 'static' / 'js' / 'main.js').read_text(
+PREVIEWS = (ROOT / 'portfolio_app' / 'static' / 'js' / 'transaction_previews.js').read_text(
     encoding='utf-8'
 )
 
@@ -75,24 +76,23 @@ def test_financial_table_and_calculated_summary_terminology():
     assert '>Total</th>' not in ASSETS
     assert "metric('Purchase Cost')" in ASSETS
     assert 'Total Buy Cost' not in ASSETS
-    assert "const label = isSell ? 'Net Proceeds:' : 'Purchase Cost:';" in MAIN
-    assert 'Total Received' not in MAIN
+    for label in ('Net Proceeds:', 'Purchase Cost:'):
+        assert label in PREVIEWS
+    assert 'Total Received' not in PREVIEWS
 
 
-def test_transaction_calculation_and_formatting_contract_is_unchanged():
-    assert 'const gross = price * quantity;' in MAIN
-    assert 'const total = isSell ? (gross - fees) : (gross + fees);' in MAIN
-    assert 'const formatted = Utils.formatMoney(total);' in MAIN
-    assert (
-        '<div id="transaction_amount_preview" class="tx-preview" '
-        'aria-live="polite"></div>'
-    ) in ASSETS
-    assert (
-        '<div id="edit_transaction_amount_preview" class="tx-preview" '
-        'aria-live="polite"></div>'
-    ) in ASSETS
+def test_transaction_previews_start_with_labeled_accessible_placeholders():
+    # Arithmetic/rounding are exercised by the production JS/Python parity
+    # test; this contract covers the pre-JavaScript accessible markup only.
+    for identifier in ('transaction_amount_preview', 'edit_transaction_amount_preview'):
+        match = re.search(rf'<div id="{identifier}"[^>]*>(.*?)</div>', ASSETS, re.S)
+        assert match is not None
+        assert 'class="tx-preview"' in match[0]
+        assert 'aria-live="polite"' in match[0]
+        assert '<span class="tx-preview__label">Purchase Cost:</span>' in match[1]
+        assert '<span class="tx-preview__value">—</span>' in match[1]
 
 
 def test_touched_multiword_labels_are_title_case():
     for label in ('Total Amount', 'Purchase Cost', 'Net Proceeds'):
-        assert label in ASSETS + MAIN
+        assert label in ASSETS + PREVIEWS

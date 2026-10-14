@@ -22,6 +22,9 @@ MAIN_JS = (ROOT / 'portfolio_app' / 'static' / 'js' / 'main.js').read_text(
 )
 
 
+PREVIEW_JS = (ROOT / 'portfolio_app/static/js/transaction_previews.js').read_text(encoding='utf-8')
+
+
 def _rule(css, selector):
     match = re.search(re.escape(selector) + r'\s*\{([^}]*)\}', css)
     assert match, f'missing rule: {selector}'
@@ -138,8 +141,7 @@ def test_asset_dialogs_keep_forms_fields_and_transaction_semantics():
     assert 'class="tx-type-tab tx-tab-sell"' in ASSETS
     assert 'id="transaction_amount_preview" class="tx-preview" aria-live="polite"' in ASSETS
     assert 'id="edit_transaction_amount_preview" class="tx-preview" aria-live="polite"' in ASSETS
-    assert "const total = isSell ? (gross - fees) : (gross + fees);" in MAIN_JS
-    assert "const label = isSell ? 'Net Proceeds:' : 'Purchase Cost:';" in MAIN_JS
+    assert "'Net Proceeds:' : 'Purchase Cost:'" in PREVIEW_JS
 
 
 def test_assets_copy_and_empty_state_follow_scoped_title_case():
@@ -150,7 +152,7 @@ def test_assets_copy_and_empty_state_follow_scoped_title_case():
         'Price (Per Unit)', 'No Assets Yet', 'Create Portfolio First',
         'Save Changes',
     ):
-        assert label in ASSETS + MAIN_JS
+        assert label in ASSETS + MAIN_JS + PREVIEW_JS
     for legacy in (
         'Notes (optional)', 'Price (per unit)', 'Create A Portfolio First',
         'Confirm Remove',

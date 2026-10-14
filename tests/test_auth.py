@@ -141,6 +141,9 @@ def test_verification_ui_uses_concise_generic_copy_and_accessible_controls(
     assert MESSAGES['AUTH_CODE_REQUEST_RESULT'] in html
     assert '<label class="form-label auth-code-label" for="code">Verification Code</label>' in html
     assert 'autocomplete="one-time-code"' in html
+    code_input = re.search(r'<input\b[^>]*id="code"[^>]*>', html)[0]
+    assert 'inputmode="numeric"' in code_input
+    assert 'data-numeric' not in code_input
     assert 'Send New Code' in html
     assert '>Back</a>' in html
     assert 'alice@example.com' not in html
@@ -844,8 +847,15 @@ def test_deletion_otp_does_not_require_redundant_recent_auth(
         state[RECENT_AUTH_AT_KEY] = (
             datetime.now(timezone.utc) - timedelta(days=1)
         ).timestamp()
-    assert client.post('/settings/delete/request').status_code in (302, 303)
+    response = client.post('/settings/delete/request')
+    assert response.status_code in (302, 303)
     code = mail_log[-1][1]
+    html = client.get(response.headers['Location']).get_data(as_text=True)
+    code_input = re.search(r'<input\b[^>]*id="delete-code"[^>]*>', html)[0]
+    assert 'inputmode="numeric"' in code_input
+    assert 'autocomplete="one-time-code"' in code_input
+    assert 'maxlength="6"' in code_input
+    assert 'data-numeric' not in code_input
     assert client.post('/settings/delete/verify', data={'code': code}).status_code in (302, 303)
     with app.app_context():
         assert db.session.get(User, user_id) is None

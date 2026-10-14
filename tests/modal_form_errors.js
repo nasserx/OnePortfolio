@@ -19,6 +19,8 @@ class Element {
     get id() { return this.attrs.id || ''; } set id(v) { this.attrs.id = v; }
     get name() { return this.attrs.name || ''; }
     get type() { return this.attrs.type || ''; }
+    get tagName() { return this.tag.toUpperCase(); }
+    get ownerDocument() { return document; }
     get className() { return this.attrs.class || ''; } set className(v) { this.attrs.class = v; }
     get hidden() { return 'hidden' in this.attrs; } set hidden(v) { if (v) this.attrs.hidden = ''; else delete this.attrs.hidden; }
     get firstChild() { return this.children[0]; }
@@ -42,6 +44,14 @@ class Element {
     appendChild(c) { c.parentElement = this; this.children.push(c); return c; }
     insertBefore(c, b) { c.parentElement = this; this.children.splice(b ? this.children.indexOf(b) : 0, 0, c); }
     addEventListener(type, fn, capture = false) { (this.listeners[type] ||= []).push({fn, capture}); }
+    setSelectionRange(start, end) { this.selectionStart = start; this.selectionEnd = end; }
+    dispatchEvent(event) {
+        Object.defineProperty(event, 'target', {value: this, configurable: true});
+        const parents = []; for (let p = this.parentElement; p; p = p.parentElement) parents.unshift(p);
+        for (const p of parents) for (const l of p.listeners[event.type] || []) if (l.capture) l.fn(event);
+        for (const l of this.listeners[event.type] || []) l.fn(event);
+        return !event.defaultPrevented;
+    }
     async emit(type) {
         const e = {target: this, prevented: false, stopped: false,
             preventDefault() { this.prevented = true; }, stopImmediatePropagation() { this.stopped = true; }};
@@ -54,20 +64,28 @@ class Element {
     focus() { document.activeElement = this; }
 }
 const document = new Element('document');
+document.defaultView = {Event};
 document.getElementById = id => document.querySelector('#' + id);
 document.createElement = tag => new Element(tag);
-let respond, reject, requests = 0, reloads = 0;
+let respond, reject, requestOptions, requests = 0, reloads = 0;
 const window = {location: {reload() { reloads++; }}};
 const context = vm.createContext({document, window, queueMicrotask, console: {error() {}},
-    FormData: class {}, sessionStorage: {setItem() {}},
-    fetch() { requests++; return new Promise((resolve, fail) => { respond = resolve; reject = fail; }); },
+    FormData: class {
+        constructor(form) {
+            this.values = new Map(form.querySelectorAll('input').filter(field => field.name && !field.disabled)
+                .map(field => [field.name, field.value]));
+        }
+        get(name) { return this.values.get(name) ?? null; }
+    }, sessionStorage: {setItem() {}},
+    fetch(url, options) { requestOptions = options; requests++; return new Promise((resolve, fail) => { respond = resolve; reject = fail; }); },
 });
 vm.runInContext(fs.readFileSync('portfolio_app/static/js/form_feedback.js', 'utf8'), context);
+vm.runInContext(fs.readFileSync('portfolio_app/static/js/numeric_inputs.js', 'utf8'), context);
 const main = fs.readFileSync('portfolio_app/static/js/main.js', 'utf8');
 vm.runInContext(main.slice(main.indexOf('class ModalAjaxHandler'), main.indexOf('class InvestmentPortfolioApp')) + '\nglobalThis.Transport = ModalAjaxHandler;', context);
 const forms = window.OnePortfolioForms;
 let index = 0;
-function fixture({modal = true, server = false} = {}) {
+function fixture({modal = true, server = false, decimal = false} = {}) {
     const overlay = modal ? document.appendChild(new Element('div', {class: 'modal', id: `modal-${++index}`})) : null;
     const form = (overlay || document).appendChild(new Element('form'));
     const body = form.appendChild(new Element('div', {class: modal ? 'modal-body' : 'field-group'}));
@@ -75,6 +93,10 @@ function fixture({modal = true, server = false} = {}) {
     const error = body.appendChild(new Element('div', {id: `${input.id}-error`, 'data-field-error': input.id, role: 'alert'}));
     if (server) error.textContent = 'Server rejected this amount.';
     const button = form.appendChild(new Element('button', {type: 'submit'})); button.innerHTML = 'Save';
+    if (decimal) {
+        input.setAttribute('type', 'text'); input.dataset.numeric = 'decimal';
+        window.OnePortfolioNumeric.register(input); // Production registration order.
+    }
     const controller = forms.register(form, [{selector: '#' + input.id, validate: v => v === 'valid' ? {ok: true} : {ok: false, message: 'Enter a valid amount.'}}]);
     return {overlay, form, input, error, button, controller};
 }
@@ -178,6 +200,84 @@ async function run() {
     vm.runInContext(html.slice(html.indexOf("document.getElementById('code').addEventListener"), html.indexOf('</script>')), context);
     otp.input.value = '12a3'; await otp.input.emit('input'); eq(submissions, 0); eq(otp.input.value, '123');
     otp.input.value = '123456'; await otp.input.emit('input'); eq(submissions, 1); eq(otp.controller.submitted, true);
+    // Real numeric editor + deferred feedback: no blur errors, no provisional
+    // IME submission, no rejected-input correction of server-only errors.
+    const numeric = window.OnePortfolioNumeric;
+    const money = fixture({decimal: true}); money.overlay.classList.add('show');
+    forms.register(money.form, [{selector: '#' + money.input.id, validate(value) {
+        const parsed = numeric.classify(value);
+        return {ok: parsed.complete && !parsed.zero && !parsed.negative, message: 'Enter a positive amount.'};
+    }}]);
+    const send = type => money.input.dispatchEvent(new Event(type));
+    money.input.value = '.'; send('input'); await tick(); send('blur');
+    eq(money.error.textContent, '');
+    eq((await money.form.emit('submit')).prevented, true);
+    eq(money.error.textContent, 'Enter a positive amount.');
+    money.controller.showGeneral('Insufficient cash');
+    send('compositionstart'); money.input.value = '漢'; send('input'); await tick();
+    eq(money.error.textContent, 'Enter a positive amount.');
+    eq((await money.form.emit('submit')).prevented, true);
+    money.input.value = '2'; send('compositionend'); await tick();
+    eq(money.error.textContent, ''); eq(money.controller.general().textContent, 'Insufficient cash');
+    money.controller.applyErrors({amount: 'Server field rejection'});
+    money.input.value = '2x'; send('input'); await tick();
+    eq(money.input.value, '2'); eq(money.error.textContent, 'Server field rejection');
+    money.input.value = '0.' + '0'.repeat(1000) + '1'; send('input'); await tick();
+    eq(money.error.textContent, '');
+    send('compositionstart'); money.input.value = 'old';
+    forms.prepare(money.overlay.id); numeric.restoreValue(money.input, '3.0000');
+    money.input.value = 'old'; send('input'); send('compositionend'); await tick();
+    eq(money.input.value, '3.0000'); eq(money.controller.submitted, false);
+    eq(money.error.textContent, ''); eq(money.input.getAttribute('aria-invalid'), null);
+    eq(money.input.getAttribute('aria-describedby'), 'help');
+    eq(numeric.state(otp.input), null);
+    money.input.value = '0'; send('input'); await tick();
+    await money.form.emit('submit'); eq(money.error.textContent, 'Enter a positive amount.');
+    numeric.setValue(money.input, '0.0000000000000000001', {notify: true}); await tick();
+    eq(money.error.textContent, ''); eq(money.input.getAttribute('aria-invalid'), null);
+    // Native reset defaults run after listeners. Feedback must not invalidate
+    // the editor's reset callback while it still contains the previous value.
+    money.form.dispatchEvent(new Event('reset', {cancelable: true}));
+    money.input.value = ''; // Native form-reset default action.
+    await tick();
+    money.input.value = 'x'; send('input'); await tick();
+    eq(money.input.value, '');
+    eq(money.controller.submitted, false); eq(money.error.textContent, '');
+    money.controller.applyErrors({__all__: 'Financial history conflict'});
+    const canceledReset = new Event('reset', {cancelable: true});
+    canceledReset.preventDefault(); money.form.dispatchEvent(canceledReset); await tick();
+    eq(money.controller.general().textContent, 'Financial history conflict');
+    money.form.dispatchEvent(new Event('reset', {cancelable: true}));
+    forms.prepare(money.overlay.id); numeric.restoreValue(money.input, '7.0000');
+    money.controller.applyErrors({__all__: 'New record error'}); await tick();
+    eq(money.input.value, '7.0000'); eq(money.controller.general().textContent, 'New record error');
+
+    // Transport snapshots actual input text, including silent external writes;
+    // neither a previous editor snapshot nor displayed preview replaces it.
+    context.Transport.prototype.handleForm.call({}, money.form, money.overlay);
+    const fees = money.form.appendChild(new Element('input', {name: 'fees', type: 'text'}));
+    fees.dataset.numeric = 'decimal'; numeric.register(fees);
+    const notes = money.form.appendChild(new Element('input', {name: 'notes', type: 'text'}));
+    notes.value = 'Keep $1.00 and 2e3 literally';
+    const preview = money.form.appendChild(new Element('div')); preview.textContent = 'Purchase Cost:999.00';
+    for (const raw of ['0.' + '0'.repeat(1000) + '1', '9'.repeat(5000), ' +1,000.00100 ', '1e-1000']) {
+        money.input.value = raw;
+        pending = money.form.emit('submit'); await tick();
+        eq(requestOptions.body.get('amount'), raw);
+        eq(requestOptions.body.get('fees'), ''); // Blank fees must reach the server unchanged.
+        eq(requestOptions.body.get('notes'), notes.value);
+        eq(requestOptions.body.get('preview'), null);
+        respond({json: async () => ({success: false, errors: {__all__: 'Insufficient cash'}})}); await pending;
+        eq(money.controller.general().textContent, 'Insufficient cash');
+        eq(money.input.value, raw);
+    }
+    const beforeInvalid = requests;
+    for (const raw of ['', '.', '1x2', '-1', '0']) {
+        money.input.value = raw;
+        eq((await money.form.emit('submit')).prevented, true);
+        eq(requests, beforeInvalid); eq(money.input.value, raw);
+    }
+    eq(numeric.state(notes), null);
     console.log(`${checks} shared form lifecycle/transport assertions passed`);
 }
 run().catch(e => { console.error(e); process.exitCode = 1; });

@@ -3,51 +3,20 @@ const AppConfig = {
     errorDismissDelay: 6000,    // 6 seconds for error messages
     validation: {
         symbolPattern: /^[A-Z0-9][A-Z0-9._\-]{0,19}$/,
-        numberPattern: /^[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?$/,
         datePattern: /^\d{4}-\d{2}-\d{2}$/
     }
 };
 
 
 const Utils = {
-    sanitizeDecimalInput(value) {
-        const raw = String(value || '').trim();
-        // Never turn invalid text (e.g. -1, 1x2, or 1,5) into another amount.
-        // Remove only valid thousands grouping; the server validates again.
-        const grouped = /^[+-]?\d{1,3}(?:,\d{3})+(?:\.\d*)?(?:[eE][+-]?\d+)?$/;
-        const text = grouped.test(raw) ? raw.replace(/,/g, '') : raw;
-        return this.toPlainDecimalString(text);
-    },
-
     normalizeSymbol(raw) {
         return String(raw || '').trim().toUpperCase();
-    },
-
-    formatMoney(value) {
-        if (!Number.isFinite(value)) return '0.00';
-        return window.OnePortfolioDisplay.money(value, false);
     },
 
     isValidSymbol(raw) {
         const value = this.normalizeSymbol(raw);
         if (!value) return false;
         return AppConfig.validation.symbolPattern.test(value);
-    },
-
-    parseNumberStrict(raw) {
-        const str = String(raw || '').trim();
-        if (!str) return { ok: false, value: null };
-
-        if (!AppConfig.validation.numberPattern.test(str)) {
-            return { ok: false, value: null };
-        }
-
-        const num = Number(str);
-        if (!Number.isFinite(num)) {
-            return { ok: false, value: null };
-        }
-
-        return { ok: true, value: num };
     },
 
     isValidDateYMD(raw) {
@@ -62,48 +31,6 @@ const Utils = {
         return date.getUTCFullYear() === year &&
                (date.getUTCMonth() + 1) === month &&
                date.getUTCDate() === day;
-    },
-
-    toPlainDecimalString(numStr) {
-        if (!numStr || typeof numStr !== 'string') return numStr;
-        if (!/[eE]/.test(numStr)) return numStr;
-        if (!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)[eE][+-]?\d+$/.test(numStr)) return numStr;
-
-        const parts = numStr.toLowerCase().split('e');
-        if (parts.length !== 2) return numStr;
-
-        let coefficient = parts[0];
-        const exponent = parseInt(parts[1], 10);
-        if (!Number.isSafeInteger(exponent) || Math.abs(exponent) > 10000) return numStr;
-
-        let sign = '';
-        if (coefficient.startsWith('-')) {
-            sign = '-';
-            coefficient = coefficient.slice(1);
-        } else if (coefficient.startsWith('+')) {
-            coefficient = coefficient.slice(1);
-        }
-
-        if (!coefficient) return numStr;
-
-        const coeffParts = coefficient.split('.');
-        const intPart = coeffParts[0] || '0';
-        const fracPart = coeffParts[1] || '';
-
-        const intPartNormalized = intPart.replace(/^0+(?=\d)/, '');
-        // Leading fractional zeros determine the decimal point position.
-        const digits = intPartNormalized + fracPart;
-
-        const decimalIndex = intPartNormalized.length;
-        const newIndex = decimalIndex + exponent;
-
-        if (newIndex <= 0) {
-            return sign + '0.' + '0'.repeat(-newIndex) + digits;
-        }
-        const left = (newIndex >= digits.length
-            ? digits.padEnd(newIndex, '0') : digits.slice(0, newIndex)).replace(/^0+(?=\d)/, '');
-        const right = digits.slice(newIndex);
-        return sign + left + (right ? '.' + right : '');
     },
 
 
@@ -362,149 +289,6 @@ function closeDatePickers(root) {
     });
 }
 
-class DecimalInputHandler {
-    static SELECTOR = 'input[type="number"], input[inputmode="decimal"]';
-
-    constructor() {
-        this.initialize();
-    }
-
-    initialize() {
-        this.attachSanitization();
-        this.attachFormatting();
-        this.disableSpinners();
-    }
-
-    attachSanitization() {
-        document.querySelectorAll('input[inputmode="decimal"]')
-            .forEach(element => {
-                element.addEventListener('input', () => {
-                    const sanitized = Utils.sanitizeDecimalInput(element.value);
-                    if (sanitized !== element.value) {
-                        element.value = sanitized;
-                    }
-                });
-            });
-    }
-
-    attachFormatting() {
-        const numberInputs = document.querySelectorAll(DecimalInputHandler.SELECTOR);
-
-        numberInputs.forEach(input => {
-            // Select all on focus
-            input.addEventListener('focus', function() {
-                this.select();
-            });
-
-            // Normalize exponential notation
-            const normalizeDisplay = () => {
-                const value = String(input.value || '');
-                if (!/[eE]/.test(value)) return;
-
-                const plain = Utils.toPlainDecimalString(value);
-                if (plain && plain !== value) {
-                    input.value = plain;
-                }
-            };
-
-            input.addEventListener('input', normalizeDisplay);
-            input.addEventListener('change', normalizeDisplay);
-            input.addEventListener('blur', normalizeDisplay);
-        });
-    }
-
-    disableSpinners() {
-        const numberInputs = document.querySelectorAll(DecimalInputHandler.SELECTOR);
-
-        numberInputs.forEach(input => {
-            // Prevent arrow key stepping
-            input.addEventListener('keydown', (event) => {
-                if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
-                    event.preventDefault();
-                }
-            });
-
-            // Prevent mouse wheel stepping
-            input.addEventListener('wheel', (event) => {
-                if (document.activeElement === input) {
-                    event.preventDefault();
-                }
-            }, { passive: false });
-        });
-    }
-}
-
-class TransactionFormHandler {
-    constructor() {
-        this.form = document.querySelector('form[action$="/transactions/add"]');
-        this.priceInput = document.getElementById('price');
-        this.quantityInput = document.getElementById('quantity');
-        this.feesInput = document.getElementById('fees');
-        this.typeInput = document.getElementById('transaction_type');
-        this.preview = document.getElementById('transaction_amount_preview');
-
-        if (this.form && this.preview) {
-            this.initialize();
-        }
-    }
-
-    initialize() {
-        this.attachPreviewCalculation();
-        this.attachBuySelectors();
-    }
-
-    calculateTotal() {
-        const price = parseFloat(this.priceInput.value) || 0;
-        const quantity = parseFloat(this.quantityInput.value) || 0;
-        const fees = parseFloat(this.feesInput.value) || 0;
-
-        const gross = price * quantity;
-        const isSell = (this.typeInput && this.typeInput.value === 'Sell');
-        const total = isSell ? (gross - fees) : (gross + fees);
-
-        const hasType = Boolean(
-            this.typeInput && String(this.typeInput.value || '').trim()
-        );
-
-        if (!hasType) {
-            this.preview.textContent = '';
-            return;
-        }
-
-        const formatted = Utils.formatMoney(total);
-        const label = isSell ? 'Net Proceeds:' : 'Purchase Cost:';
-        this.preview.innerHTML = `<span class="tx-preview__label">${label}</span>`
-            + `<span class="tx-preview__value">${formatted}</span>`;
-    }
-
-    attachPreviewCalculation() {
-        ['input', 'change'].forEach(eventType => {
-            this.priceInput?.addEventListener(eventType, () => this.calculateTotal());
-            this.quantityInput?.addEventListener(eventType, () => this.calculateTotal());
-            this.feesInput?.addEventListener(eventType, () => this.calculateTotal());
-            this.typeInput?.addEventListener(eventType, () => this.calculateTotal());
-        });
-
-        this.calculateTotal();
-    }
-
-    attachBuySelectors() {
-        const buyButton = document.getElementById('add_tx_type_buy_btn');
-        const sellButton = document.getElementById('add_tx_type_sell_btn');
-
-        const triggerChange = () => {
-            try {
-                this.typeInput?.dispatchEvent(new Event('change'));
-            } catch (e) {
-                // Ignore
-            }
-        };
-
-        buyButton?.addEventListener('click', triggerChange);
-        sellButton?.addEventListener('click', triggerChange);
-    }
-}
-
 class AlertManager {
     constructor() {
         this.initialize();
@@ -594,11 +378,11 @@ const ValidationRules = {
     fundsAmount: {
         name: 'amount_delta',
         validate: (raw) => {
-            const parsed = Utils.parseNumberStrict(raw);
-            if (!parsed.ok) {
+            const parsed = window.OnePortfolioNumeric.classify(raw);
+            if (!parsed.complete) {
                 return { ok: false, message: 'This field is required.' };
             }
-            if (parsed.value <= 0) {
+            if (parsed.negative || parsed.zero) {
                 return { ok: false, message: 'Must be more than 0.' };
             }
             return { ok: true };
@@ -660,11 +444,11 @@ const ValidationRules = {
     price: {
         name: 'price',
         validate: (raw) => {
-            const parsed = Utils.parseNumberStrict(raw);
-            if (!parsed.ok) {
+            const parsed = window.OnePortfolioNumeric.classify(raw);
+            if (!parsed.complete) {
                 return { ok: false, message: 'This field is required.' };
             }
-            if (parsed.value <= 0) {
+            if (parsed.negative || parsed.zero) {
                 return { ok: false, message: 'Must be more than 0.' };
             }
             return { ok: true };
@@ -675,11 +459,11 @@ const ValidationRules = {
     quantity: {
         name: 'quantity',
         validate: (raw) => {
-            const parsed = Utils.parseNumberStrict(raw);
-            if (!parsed.ok) {
+            const parsed = window.OnePortfolioNumeric.classify(raw);
+            if (!parsed.complete) {
                 return { ok: false, message: 'This field is required.' };
             }
-            if (parsed.value <= 0) {
+            if (parsed.negative || parsed.zero) {
                 return { ok: false, message: 'Must be more than 0.' };
             }
             return { ok: true };
@@ -693,11 +477,11 @@ const ValidationRules = {
             const str = String(raw || '').trim();
             if (!str) return { ok: true };
 
-            const parsed = Utils.parseNumberStrict(str);
-            if (!parsed.ok) {
+            const parsed = window.OnePortfolioNumeric.classify(str);
+            if (!parsed.complete) {
                 return { ok: false, message: 'Invalid fees.' };
             }
-            if (parsed.value < 0) {
+            if (parsed.negative) {
                 return { ok: false, message: 'Non-negative number required.' };
             }
             return { ok: true };
@@ -768,44 +552,18 @@ class FormValidatorsInitializer {
             { ...ValidationRules.symbol, selector: '#symbol_ticker' }
         ]);
 
-        // Add transaction — rules are mode-aware (Buy/Sell vs Dividend)
-        const skipInDividendMode = (baseRule) => (raw, el, form) => {
-            if (window.isDividendMode) return { ok: true };
-            if (typeof baseRule === 'function') return baseRule(raw, el, form);
-            return baseRule.validate(raw, el, form);
-        };
-
+        // Buy/Sell and dividends have separate forms and validation contracts.
         this.initValidator('form[action$="/transactions/add"]', [
-            { ...ValidationRules.portfolioSelect, selector: '#portfolio_id', name: 'portfolio_id' },
-            { ...ValidationRules.symbol, selector: '#symbol',
-                validate: skipInDividendMode(ValidationRules.symbol) },
-            { ...ValidationRules.transactionType, selector: '#transaction_type',
-                validate: skipInDividendMode(ValidationRules.transactionType) },
-            { ...ValidationRules.price, selector: '#price',
-                validate: skipInDividendMode(ValidationRules.requiresTransactionType(ValidationRules.price)) },
-            { ...ValidationRules.quantity, selector: '#quantity',
-                validate: skipInDividendMode(ValidationRules.requiresTransactionType(ValidationRules.quantity)) },
-            { ...ValidationRules.fees, selector: '#fees',
-                validate: skipInDividendMode(ValidationRules.requiresTransactionType(ValidationRules.fees)) },
-            { ...ValidationRules.date, selector: '#add_tx_date',
-                validate: skipInDividendMode(ValidationRules.date) },
-            // Dividend-only fields
-            { name: 'amount', selector: '#amount',
-                validate: (raw) => {
-                    if (!window.isDividendMode) return { ok: true };
-                    const str = String(raw || '').trim();
-                    if (!str) return { ok: false, message: 'Must be more than 0.' };
-                    const n = parseFloat(str);
-                    if (!isFinite(n) || n <= 0) return { ok: false, message: 'Must be more than 0.' };
-                    return { ok: true };
-                }
-            },
-            { name: 'add_dividend_date', selector: '#add_dividend_date',
-                validate: (raw) => {
-                    if (!window.isDividendMode) return { ok: true };
-                    return ValidationRules.date.validate(raw);
-                }
-            },
+            { ...ValidationRules.portfolioSelect, selector: '#portfolio_id' },
+            { ...ValidationRules.symbol, selector: '#symbol' },
+            { ...ValidationRules.transactionType, selector: '#transaction_type' },
+            { ...ValidationRules.price, selector: '#price', validate: ValidationRules.requiresTransactionType(ValidationRules.price) },
+            { ...ValidationRules.quantity, selector: '#quantity', validate: ValidationRules.requiresTransactionType(ValidationRules.quantity) },
+            { ...ValidationRules.fees, selector: '#fees', validate: ValidationRules.requiresTransactionType(ValidationRules.fees) },
+            { ...ValidationRules.date, selector: '#add_tx_date' }
+        ]);
+        this.initValidator('#transferForm', [
+            { ...ValidationRules.fundsAmount, selector: '#transfer_amount', name: 'amount' }
         ]);
 
         // Edit transaction
@@ -984,13 +742,13 @@ class InvestmentPortfolioApp {
     }
 
     initialize() {
-        new DecimalInputHandler();
+        document.querySelectorAll('[data-numeric="decimal"]').forEach(field => window.OnePortfolioNumeric.register(field));
         new ActionMenuManager(document);
         initDateFields(document);
         new AlertManager();
         new TooltipManager();
         new FormValidatorsInitializer();
-        new TransactionFormHandler();
+        window.OnePortfolioPreviews.initialize();
         new ModalAjaxHandler();
         new NotesCounterHandler();
 

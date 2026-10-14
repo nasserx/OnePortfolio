@@ -17,7 +17,9 @@
             ? `/portfolios/transfers/edit/${data.id}` : '/portfolios/transfers/add';
         document.getElementById('transferModalTitle').textContent = data.id ? 'Edit Transfer' : 'Transfer';
         for (const field of ['source_portfolio_id', 'destination_portfolio_id', 'amount', 'notes']) {
-            document.getElementById(`transfer_${field}`).value = data[field] ?? '';
+            const input = document.getElementById(`transfer_${field}`);
+            if (field === 'amount') window.OnePortfolioNumeric.restoreValue(input, String(data[field] ?? ''));
+            else input.value = data[field] ?? '';
         }
         source.disabled = !editing;
         document.getElementById('transfer_source_picker').hidden = !editing;

@@ -243,7 +243,7 @@
                         <div class="col-6">
                             <div class="mb-3">
                                 <label for="add_funds_amount" class="form-label">Amount</label>
-                                <input type="text" inputmode="decimal"
+                                <input type="text" inputmode="decimal" data-numeric="decimal"
                                        class="form-control {% if _dep_errs.get('amount_delta') %}is-invalid{% endif %}"
                                        id="add_funds_amount" name="amount_delta"
                                        placeholder="0.00"
@@ -302,7 +302,7 @@
                             <div class="mb-3">
                                 <label for="withdraw_funds_amount" class="form-label">Amount</label>
                                 <div class="position-relative">
-                                    <input type="text" inputmode="decimal"
+                                    <input type="text" inputmode="decimal" data-numeric="decimal"
                                            class="form-control {% if _with_errs.get('amount_delta') %}is-invalid{% endif %} pe-5"
                                            id="withdraw_funds_amount" name="amount_delta"
                                            placeholder="0.00"
@@ -466,7 +466,7 @@
                         <div class="col-6">
                             <div class="mb-3">
                                 <label for="edit_cash_event_amount" class="form-label">Amount</label>
-                                <input type="text" inputmode="decimal"
+                                <input type="text" inputmode="decimal" data-numeric="decimal"
                                        class="form-control {% if _ev_errs.get('edit_cash_event_amount') %}is-invalid{% endif %}"
                                        value="{{ _ev_vals.get('edit_cash_event_amount', '') }}" id="edit_cash_event_amount" name="edit_cash_event_amount"
                                        placeholder="0.00" {{ field_attrs('edit_cash_event_amount', _ev_errs.get('edit_cash_event_amount')) }} required>
@@ -716,7 +716,7 @@ function depositFunds(id, name, opts) {
     opts = opts || {};
     document.getElementById('depositFundsForm').action = `/portfolios/deposit/${id}`;
     document.getElementById('deposit_portfolio_name').value = name || '';
-    document.getElementById('add_funds_amount').value = (opts.amount != null ? String(opts.amount) : '');
+    window.OnePortfolioNumeric.restoreValue(document.getElementById('add_funds_amount'), (opts.amount != null ? String(opts.amount) : ''));
     document.getElementById('deposit_date').value = (opts.date != null ? String(opts.date) : todayStr());
     document.getElementById('add_funds_notes').value = (opts.notes || '');
     window.OnePortfolioDialogs.show(document.getElementById('depositFundsModal'));
@@ -728,7 +728,7 @@ function withdrawFunds(id, name, opts) {
     document.getElementById('withdrawFundsForm').action = `/portfolios/withdraw/${id}`;
     document.getElementById('withdraw_portfolio_name').value = name || '';
     document.getElementById('withdraw_max_btn').dataset.portfolioId = String(id);
-    document.getElementById('withdraw_funds_amount').value = (opts.amount != null ? String(opts.amount) : '');
+    window.OnePortfolioNumeric.restoreValue(document.getElementById('withdraw_funds_amount'), (opts.amount != null ? String(opts.amount) : ''));
     document.getElementById('withdraw_date').value = (opts.date != null ? String(opts.date) : todayStr());
     document.getElementById('withdraw_funds_notes').value = (opts.notes || '');
     window.OnePortfolioDialogs.show(document.getElementById('withdrawFundsModal'));
@@ -757,8 +757,9 @@ function withdrawFunds(id, name, opts) {
                 feedback.showGeneral(Object.values(result.errors || {}).join(' ') || 'Unable to calculate Max.', true, 'action');
                 return;
             }
-            amountInput.value = result.amount;
-            amountInput.dispatchEvent(new Event('input'));
+            if (!window.OnePortfolioNumeric.setValue(amountInput, result.amount, {notify: true})) {
+                throw new Error('Invalid Max response');
+            }
         } catch (error) {
             if (feedback.session === session && dateInput.value === date && btn.dataset.portfolioId === portfolioId) {
                 feedback.showGeneral('Unable to calculate Max. Please try again.', true, 'action');
@@ -788,7 +789,7 @@ function editPortfolioEvent(id, type, amount, notes, date) {
     document.getElementById('editPortfolioEventForm').action = `/portfolios/events/edit/${id}`;
     document.getElementById('edit_event_type_display').value = portfolioEventTypeLabel(type);
     document.getElementById('edit_event_type_hidden').value = type || '';
-    document.getElementById('edit_cash_event_amount').value = amount || '';
+    window.OnePortfolioNumeric.restoreValue(document.getElementById('edit_cash_event_amount'), amount || '');
     document.getElementById('edit_cash_event_notes').value = notes || '';
     document.getElementById('edit_event_date').value = date || todayStr();
     window.OnePortfolioDialogs.show(document.getElementById('editPortfolioEventModal'));

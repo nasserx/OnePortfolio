@@ -428,7 +428,7 @@
                             <div class="col-6">
                                 <div class="mb-3">
                                     <label for="price" class="form-label">Price (Per Unit)</label>
-                                    <input type="text" inputmode="decimal" class="form-control {% if _tx_add_errs.get('price') %}is-invalid{% endif %}" id="price" name="price"
+                                    <input type="text" inputmode="decimal" data-numeric="decimal" class="form-control {% if _tx_add_errs.get('price') %}is-invalid{% endif %}" id="price" name="price"
                                         placeholder="0.0000" {{ field_attrs('price', _tx_add_errs.get('price')) }} required value="{{ _tx_add_vals.get('price', '') }}">
                                     {{ field_error('price', _tx_add_errs.get('price')) }}
                                 </div>
@@ -437,7 +437,7 @@
                                 <div class="mb-3">
                                     <label for="quantity" class="form-label">Quantity</label>
                                     <div class="position-relative">
-                                        <input type="text" inputmode="decimal" class="form-control {% if _tx_add_errs.get('quantity') %}is-invalid{% endif %} pe-5" id="quantity" name="quantity"
+                                        <input type="text" inputmode="decimal" data-numeric="decimal" class="form-control {% if _tx_add_errs.get('quantity') %}is-invalid{% endif %} pe-5" id="quantity" name="quantity"
                                             placeholder="0.0000" {{ field_attrs('quantity', _tx_add_errs.get('quantity')) }} required value="{{ _tx_add_vals.get('quantity', '') }}">
                                         <span id="add_sell_max_row" class="d-none sell-max-inline">
                                             <button type="button" class="btn btn-link btn-sm sell-max-btn" id="add_sell_max_btn">Max</button>
@@ -452,10 +452,10 @@
                             <div class="col-6">
                                 <div class="mb-3">
                                     <label for="fees" class="form-label">Fee (Optional)</label>
-                                    <input type="text" inputmode="decimal" autocomplete="off" class="form-control {% if _tx_add_errs.get('fees') %}is-invalid{% endif %}" id="fees" name="fees"
+                                    <input type="text" inputmode="decimal" data-numeric="decimal" autocomplete="off" class="form-control {% if _tx_add_errs.get('fees') %}is-invalid{% endif %}" id="fees" name="fees"
                                         placeholder="0.00" {{ field_attrs('fees', _tx_add_errs.get('fees')) }} value="{{ _tx_add_vals.get('fees', '') }}">
                                     {{ field_error('fees', _tx_add_errs.get('fees')) }}
-                                    <div id="transaction_amount_preview" class="tx-preview" aria-live="polite"></div>
+                                    <div id="transaction_amount_preview" class="tx-preview" aria-live="polite"><span class="tx-preview__label">Purchase Cost:</span><span class="tx-preview__value">—</span></div>
                                 </div>
                             </div>
                             <div class="col-6">
@@ -534,7 +534,7 @@
                         <div class="col-6">
                             <div class="mb-3">
                                 <label for="edit_price" class="form-label">Price (Per Unit)</label>
-                                <input type="text" inputmode="decimal" class="form-control {% if _tx_edit_errs.get('edit_price') %}is-invalid{% endif %}" id="edit_price" name="edit_price"
+                                <input type="text" inputmode="decimal" data-numeric="decimal" class="form-control {% if _tx_edit_errs.get('edit_price') %}is-invalid{% endif %}" id="edit_price" name="edit_price"
                                     placeholder="0.0000" {{ field_attrs('edit_price', _tx_edit_errs.get('edit_price')) }} required value="{{ _tx_edit_vals.get('edit_price', '') }}">
                                 {{ field_error('edit_price', _tx_edit_errs.get('edit_price')) }}
                             </div>
@@ -542,7 +542,7 @@
                         <div class="col-6">
                             <div class="mb-3">
                                 <label for="edit_quantity" class="form-label">Quantity</label>
-                                <input type="text" inputmode="decimal" class="form-control {% if _tx_edit_errs.get('edit_quantity') %}is-invalid{% endif %}" id="edit_quantity" name="edit_quantity"
+                                <input type="text" inputmode="decimal" data-numeric="decimal" class="form-control {% if _tx_edit_errs.get('edit_quantity') %}is-invalid{% endif %}" id="edit_quantity" name="edit_quantity"
                                     placeholder="0.0000" {{ field_attrs('edit_quantity', _tx_edit_errs.get('edit_quantity')) }} required value="{{ _tx_edit_vals.get('edit_quantity', '') }}">
                                 {{ field_error('edit_quantity', _tx_edit_errs.get('edit_quantity')) }}
                             </div>
@@ -553,10 +553,10 @@
                         <div class="col-6">
                             <div class="mb-3">
                                 <label for="edit_fees" class="form-label">Fee (Optional)</label>
-                                <input type="text" inputmode="decimal" autocomplete="off" class="form-control {% if _tx_edit_errs.get('edit_fees') %}is-invalid{% endif %}" id="edit_fees" name="edit_fees"
+                                <input type="text" inputmode="decimal" data-numeric="decimal" autocomplete="off" class="form-control {% if _tx_edit_errs.get('edit_fees') %}is-invalid{% endif %}" id="edit_fees" name="edit_fees"
                                     placeholder="0.00" {{ field_attrs('edit_fees', _tx_edit_errs.get('edit_fees')) }} value="{{ _tx_edit_vals.get('edit_fees', '') }}">
                                 {{ field_error('edit_fees', _tx_edit_errs.get('edit_fees')) }}
-                                <div id="edit_transaction_amount_preview" class="tx-preview" aria-live="polite"></div>
+                                <div id="edit_transaction_amount_preview" class="tx-preview" aria-live="polite"><span class="tx-preview__label">Purchase Cost:</span><span class="tx-preview__value">—</span></div>
                             </div>
                         </div>
                         <div class="col-6">
@@ -675,7 +675,7 @@
                         <div class="col-6">
                             <div class="mb-3">
                                 <label for="add_div_amount" class="form-label">Amount</label>
-                                <input type="text" inputmode="decimal" autocomplete="off"
+                                <input type="text" inputmode="decimal" data-numeric="decimal" autocomplete="off"
                                        class="form-control {% if _div_add_errs.get('amount') %}is-invalid{% endif %}"
                                        id="add_div_amount" name="amount" placeholder="0.00" {{ field_attrs('add_div_amount', _div_add_errs.get('amount')) }} required value="{{ _div_add_vals.get('amount', '') }}">
                                 {{ field_error('add_div_amount', _div_add_errs.get('amount')) }}
@@ -727,7 +727,7 @@
                         <div class="col-6">
                             <div class="mb-3">
                                 <label for="edit_amount" class="form-label">Amount</label>
-                                <input type="text" inputmode="decimal" autocomplete="off"
+                                <input type="text" inputmode="decimal" data-numeric="decimal" autocomplete="off"
                                        class="form-control {% if _div_edit_errs.get('edit_amount') %}is-invalid{% endif %}"
                                        id="edit_amount" name="edit_amount" placeholder="0.00" {{ field_attrs('edit_amount', _div_edit_errs.get('edit_amount')) }} required value="{{ _div_edit_vals.get('edit_amount', '') }}">
                                 {{ field_error('edit_amount', _div_edit_errs.get('edit_amount')) }}
@@ -873,9 +873,9 @@ function openAddSymbolModal() {
                     typeEl.value = String(vals.transaction_type);
                     typeEl.dispatchEvent(new Event('change'));
                 }
-                if (priceEl && vals.price != null) priceEl.value = String(vals.price);
-                if (qtyEl && vals.quantity != null) qtyEl.value = String(vals.quantity);
-                if (feesEl && vals.fees != null && String(vals.fees) !== '') feesEl.value = String(vals.fees);
+                if (priceEl && vals.price != null) window.OnePortfolioNumeric.restoreValue(priceEl, String(vals.price));
+                if (qtyEl && vals.quantity != null) window.OnePortfolioNumeric.restoreValue(qtyEl, String(vals.quantity));
+                if (feesEl && vals.fees != null) window.OnePortfolioNumeric.restoreValue(feesEl, String(vals.fees));
                 if (notesEl && vals.notes != null) notesEl.value = String(vals.notes);
 
                 const dateEl = document.getElementById('add_tx_date');
@@ -1133,9 +1133,9 @@ function openAddTransactionModal(portfolioId, portfolioName, symbol, forcedType)
 
     const dateInput = document.getElementById('add_tx_date');
 
-    if (priceInput) priceInput.value = '';
-    if (quantityInput) quantityInput.value = '';
-    if (feesInput) feesInput.value = '';
+    if (priceInput) window.OnePortfolioNumeric.restoreValue(priceInput, '');
+    if (quantityInput) window.OnePortfolioNumeric.restoreValue(quantityInput, '');
+    if (feesInput) window.OnePortfolioNumeric.restoreValue(feesInput, '');
     if (notesInput) notesInput.value = '';
     if (dateInput) dateInput.value = todayStr();
 
@@ -1171,20 +1171,6 @@ function editTransaction(id, portfolioId, type, symbol, price, quantity, fees, n
     window.OnePortfolioForms.prepare('editTransactionModal');
     document.getElementById('editTransactionForm').action = `/transactions/edit/${id}`;
 
-    function trimTrailingZeros(v) {
-        if (v == null) return '';
-        let s = String(v).trim();
-        if (!s) return '';
-        // Handle scientific notation (e.g. "0E-10" from Python Decimal for zero values).
-        if (/[Ee]/.test(s)) {
-            s = Utils.toPlainDecimalString(s);
-        }
-        if (!/^[-+]?\d*(?:\.\d+)?$/.test(s)) return s;
-        if (!s.includes('.')) return s;
-        const out = s.replace(/(?:\.0+|(?<=\.\d*?)0+)$/, '');
-        return out.endsWith('.') ? out.slice(0, -1) : out;
-    }
-
     const portfolioSelect = document.getElementById('edit_portfolio_id_display');
     const typeSelect = document.getElementById('edit_transaction_type_display');
     const symbolInput = document.getElementById('edit_symbol');
@@ -1197,9 +1183,9 @@ function editTransaction(id, portfolioId, type, symbol, price, quantity, fees, n
     if (portfolioSelect) portfolioSelect.value = portfolioId ? String(portfolioId) : '';
     if (typeSelect) typeSelect.value = type || '';
     if (symbolInput) symbolInput.value = (symbol || '').toUpperCase();
-    if (priceInput) priceInput.value = trimTrailingZeros(price);
-    if (quantityInput) quantityInput.value = trimTrailingZeros(quantity);
-    if (feesInput) feesInput.value = trimTrailingZeros(fees);
+    if (priceInput) window.OnePortfolioNumeric.restoreValue(priceInput, String(price ?? ''));
+    if (quantityInput) window.OnePortfolioNumeric.restoreValue(quantityInput, String(quantity ?? ''));
+    if (feesInput) window.OnePortfolioNumeric.restoreValue(feesInput, String(fees ?? ''));
     if (notesInput) notesInput.value = notes;
     if (dateInput) dateInput.value = dateShort || '';
 
@@ -1305,8 +1291,8 @@ window.openDeleteSymbolModal = function(portfolioId, portfolioName, symbol, txCo
             }
             const data = await resp.json();
             const heldQty = (data && data.held_quantity != null) ? String(data.held_quantity) : '0';
-            const heldNum = parseFloat(heldQty);
-            const enabled = Number.isFinite(heldNum) && heldNum > 0;
+            const held = window.OnePortfolioNumeric.classify(heldQty);
+            const enabled = held.complete && !held.negative && !held.zero;
             setState({ visible: true, enabled, heldQty });
         } catch (e) {
             setState({ visible: true, enabled: false, heldQty: null });
@@ -1332,8 +1318,7 @@ window.openDeleteSymbolModal = function(portfolioId, portfolioName, symbol, txCo
 
     maxBtn.addEventListener('click', function() {
         if (!lastHeldQty) return;
-        quantityInput.value = lastHeldQty;
-        quantityInput.dispatchEvent(new Event('input'));
+        window.OnePortfolioNumeric.setValue(quantityInput, lastHeldQty, {notify: true});
     });
 
     buyBtn.addEventListener('click', function() {
@@ -1475,7 +1460,7 @@ function openStandaloneDividendModal(portfolioId, symbol) {
 
     if (portfolioInput) portfolioInput.value = portfolioId ? String(portfolioId) : '';
     if (symInput)       symInput.value       = (symbol || '').toUpperCase();
-    if (amountEl)       { amountEl.value = ''; }
+    if (amountEl)       { window.OnePortfolioNumeric.restoreValue(amountEl, ''); }
     if (dateEl)         dateEl.value = todayStr();
     if (notesEl)        notesEl.value = '';
     if (submitBtn)      submitBtn.disabled = false;
@@ -1492,23 +1477,12 @@ function openStandaloneDividendModal(portfolioId, symbol) {
 // -----------------------------------------------------------------------
 function openEditDividendModal(id, amount, dateShort, notes) {
     window.OnePortfolioForms.prepare('editDividendModal');
-    function trimTrailingZeros(v) {
-        if (v == null) return '';
-        let s = String(v).trim();
-        if (!s) return '';
-        if (/[Ee]/.test(s)) s = Utils.toPlainDecimalString(s);
-        if (!/^[-+]?\d*(?:\.\d+)?$/.test(s)) return s;
-        if (!s.includes('.')) return s;
-        const out = s.replace(/(?:\.0+|(?<=\.\d*?)0+)$/, '');
-        return out.endsWith('.') ? out.slice(0, -1) : out;
-    }
-
     document.getElementById('editDividendForm').action = '/transactions/dividends/edit/' + id;
     const amountEl = document.getElementById('edit_amount');
     const dateEl   = document.getElementById('edit_dividend_date');
     const notesEl  = document.getElementById('edit_dividend_notes');
 
-    if (amountEl) amountEl.value = trimTrailingZeros(amount);
+    if (amountEl) window.OnePortfolioNumeric.restoreValue(amountEl, String(amount ?? ''));
     if (dateEl)   dateEl.value   = dateShort || '';
     if (notesEl)  notesEl.value  = notes || '';
 

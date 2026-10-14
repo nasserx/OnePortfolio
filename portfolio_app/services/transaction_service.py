@@ -43,6 +43,33 @@ class TransactionService:
         self.dividend_repo = dividend_repo
         self.cash_account = CashAccount(portfolio_repo)
 
+    def preview_transaction(self, data):
+        """Read-only arithmetic preview; retained edit values are owned records."""
+        from portfolio_app.services.transaction_preview import (
+            PreviewUnavailable, bounded_preview_value, preview_values, render_preview,
+        )
+        if not isinstance(data, dict) or data.get('mode') not in ('create', 'edit', 'retained'):
+            raise PreviewUnavailable()
+        transaction = None
+        if data['mode'] in ('edit', 'retained'):
+            supplied_id = data.get('transaction_id')
+            if (not isinstance(supplied_id, str) or not supplied_id.isascii()
+                    or not supplied_id.isdecimal() or len(supplied_id) > 19
+                    or int(supplied_id) > 9223372036854775807):
+                raise PreviewUnavailable()
+            transaction = self.transaction_repo.get_by_id(int(supplied_id))
+            if not transaction or not self.portfolio_repo.get_by_id(transaction.portfolio_id):
+                raise PreviewUnavailable()
+            transaction_type = transaction.transaction_type
+        else:
+            transaction_type = data.get('transaction_type')
+        if transaction_type not in ('Buy', 'Sell'):
+            raise PreviewUnavailable()
+        if data['mode'] == 'retained':
+            return {'fees': str(bounded_preview_value(transaction.fees))}
+        values = preview_values(data, transaction)
+        return render_preview(transaction_type, values)
+
     @financial_mutation
     def add_transaction(
         self,

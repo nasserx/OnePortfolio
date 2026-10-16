@@ -54,6 +54,9 @@ def test_asset_disclosures_preserve_metrics_formatters_and_neutral_identity():
     assert 'disclosure__toggle surface-interactive__control' in ASSETS
     assert "{{ icon('chevron-right', class='disclosure__chevron') }}" in ASSETS
     assert 'badge badge--secondary' in ASSETS
+    assert 'data-summary-list="assets"' in ASSETS
+    assert 'role="listitem"' in ASSETS
+    assert 'summary_header(' in ASSETS
     assert 'disclosure__metrics disclosure__metrics--assets' in ASSETS
     assert 'style="--metric-columns:7"' not in ASSETS
 

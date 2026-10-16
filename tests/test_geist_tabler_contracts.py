@@ -82,7 +82,11 @@ def test_sprite_symbols_are_unique_and_every_reference_resolves():
             continue
         source = path.read_text(encoding='utf-8')
         references.update(re.findall(r"icon\('([a-z0-9-]+)'", source))
-        references.update(re.findall(r"\('([a-z0-9-]+)', '[^']+',", source))
+        # Only empty-state icon arguments and standalone marketing tuples;
+        # unrelated macro arguments (e.g. summary_header) are not icon IDs.
+        references.update(re.findall(
+            r"(?:\bempty_state|^\s*)\('([a-z0-9-]+)', '[^']+',", source, re.M,
+        ))
         references.update(re.findall(
             r"\('[^']+',\s*'([a-z0-9-]+)',\s*'[^']+'\)",
             source,

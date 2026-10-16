@@ -10,7 +10,7 @@
 {% set _with_vals = (form_values.get('portfolios_withdraw', {}) if form_values else {}) %}
 {% set _ev_errs = (form_errors.get('portfolio_event_edit', {}) if form_errors else {}) %}
 {% set _ev_vals = (form_values.get('portfolio_event_edit', {}) if form_values else {}) %}
-{% from 'macros/ui.html' import money, metric, marker, empty_state, action_menu, record_type %}
+{% from 'macros/ui.html' import money, metric, marker, empty_state, action_menu, record_type, summary_header %}
 {% from 'macros/icons.html' import icon %}
 
 
@@ -37,10 +37,14 @@
 <div class="portfolios-page stack">
 
     {% if portfolio_details %}
-    <section class="disclosure enter" aria-label="Portfolio List">
+    <section class="disclosure enter" aria-label="Portfolio List" data-summary-list="portfolios">
+        {{ summary_header('portfolios', 'Portfolio', ['Entries', 'Net Contributions', 'Cash', 'Cost Basis']) }}
+        <div class="summary-list__body-scroll" data-summary-body tabindex="0"
+             role="region" aria-label="Portfolio summaries" aria-describedby="portfolios-scroll-help">
+        <div class="summary-list__track summary-list__items" role="list">
         {% for item in portfolio_details %}
         {% set panel_id = 'events-' ~ item.portfolio.id %}
-        <article class="disclosure__item portfolio-card surface-card surface-interactive">
+        <article class="disclosure__item portfolio-card surface-card surface-interactive" role="listitem">
 
             <div class="disclosure__head">
                 {#
@@ -203,6 +207,8 @@
 
         </article>
         {% endfor %}
+        </div>
+        </div>
     </section>
     <div id="outer-pg-bar-portfolios" class="pagination-bar"
          data-pagination-label="Portfolio Pages" hidden></div>
@@ -539,6 +545,7 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="{{ url_for('static', filename='js/summary_lists.js', v=ASSET_VERSION) }}"></script>
 <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"
         integrity="sha384-5JqMv4L/Xa0hfvtF06qboNdhvuYXUku9ZrhZh3bSk8VXF0A/RuSLHpLsSV9Zqhl6"
         crossorigin="anonymous"></script>

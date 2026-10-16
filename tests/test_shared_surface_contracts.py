@@ -66,9 +66,9 @@ def test_disclosure_has_neutral_hover_and_container_focus_contract():
     assert 'var(--focus-ring-soft)' in focus
 
     assert '.disclosure__item:not(:has(.disclosure__toggle[aria-expanded="true"]))' not in app
-    assert '.disclosure__head:has(.disclosure__toggle:hover)' in app
+    assert '.disclosure__head:has(button.disclosure__toggle:hover)' in app
     hover_rule = re.search(
-        r'\.disclosure__head:has\(\.disclosure__toggle:focus-visible\)\s*\{([^}]*)\}',
+        r'\.disclosure__head:has\(button\.disclosure__toggle:focus-visible\)\s*\{([^}]*)\}',
         app,
     )
     assert hover_rule

@@ -486,10 +486,50 @@ separate decorative theme icon or button variant.
 ### UI copy
 
 Short interface headings, labels, buttons, menu items, table headers, and
-statuses use Title Case in their source strings. CSS capitalization is not part
-of the contract. Sentences, explanatory copy, validation text, natural ARIA
+statuses use Title Case in their source strings. The shared Assets/Portfolios
+summary strip intentionally renders those headings uppercase, as approved in
+the table reference; other components do not inherit that transformation.
+Sentences, explanatory copy, validation text, natural ARIA
 descriptions, and user-entered content remain sentence case. Acronyms and
 notation such as P&L, ETF and OTP retain their established spelling.
+
+### Sticky summary lists (Assets and Portfolios)
+
+The approved `D:\tmp\table-ref.png` composition is adapted to disclosure lists,
+not applied to the Overview or nested financial ledgers. The exact preset
+initialization and official Nova Table/Item recipes were retrieved on
+2026-10-16: headings use foreground and the application's approved 550 emphasis,
+with the existing compact typography. The Asset identity keeps its portfolio
+badge; there is no invented Category column.
+
+`summary_header` and the summary buttons share their identity, metric-track,
+padding, gap, and action-width rules in `app.css`. Assets retain seven metrics
+at a 68rem minimum track width; Portfolios retain four at 48rem. Repeated labels
+remain visually hidden inside each disclosure button for accessible reading.
+The list/listitem roles do not add grid keyboard behavior; expanded ledgers
+retain native table semantics.
+
+The header has no card surface, border, shadow, radius, or interactive hover
+paint. Its sticky wrapper alone uses the page's `--background` to occlude rows
+scrolling beneath the text, preserving a seamless appearance in both themes.
+This is the approved minimal alternative to overlapping transparent labels.
+
+The document owns vertical scrolling. A sticky strip (`top: 0`, `--z-sticky`)
+sits outside the auto-height horizontal body scroller and stops at the list's
+end. The current page toolbar is not sticky, so no shell-height offset is used.
+Only the header strip shows a scrollbar; both regions support native horizontal
+scrolling. `summary_lists.js` synchronizes scrollLeft and observes viewport/track
+resizing, including sidebar changes. It does not handle document scrolling or
+menu focus. The measured strip height supplies a scroll margin for keyboard
+focus targets below it. Overflow regions enter the tab order only when they overflow.
+JavaScript is required for synchronized scrolling, as it is for disclosures.
+
+No transformed or contained ancestor is introduced around Bootstrap's fixed
+Popper menus. The shared fade stays on the common list ancestor, not a separate
+body stacking context. Existing nested-ledger scroll behavior remains intact.
+Rendered/source and DOM-model regressions cover these contracts; actual sticky
+alignment, menu escape, touch scrolling, and screen-reader acceptance remain
+user browser checks.
 
 ### Accessibility and motion
 

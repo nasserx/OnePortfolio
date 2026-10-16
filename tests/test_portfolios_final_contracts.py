@@ -17,7 +17,8 @@ COMPONENTS_CSS = (
 
 
 def _rule(css, selector):
-    match = re.search(re.escape(selector) + r'\s*\{([^}]*)\}', css)
+    css = re.sub(r'/\*.*?\*/', '', css, flags=re.S)
+    match = re.search(r'(?:^|[{}])\s*' + re.escape(selector) + r'\s*\{([^}]*)\}', css)
     assert match, f'missing rule: {selector}'
     return match.group(1)
 
@@ -142,8 +143,10 @@ def test_disclosure_paint_uses_canonical_roles_without_chart_or_raw_colors():
 
 
 def test_responsive_and_accessible_portfolio_structure_remains_present():
-    assert '@media (max-width: 75rem)' in APP_CSS
-    assert '@media (max-width: 56rem)' in APP_CSS
+    assert '--summary-min-width: 48rem' in _rule(APP_CSS, '.disclosure')
+    assert 'min-width: var(--summary-min-width)' in _rule(APP_CSS, '.summary-list__track')
+    assert 'data-summary-list="portfolios"' in TEMPLATE
+    assert 'role="listitem"' in TEMPLATE
     assert '.disclosure__toggle {' in APP_CSS
     assert 'min-width: 0' in _rule(APP_CSS, '.disclosure__toggle')
     assert 'text-overflow: ellipsis' in _rule(APP_CSS, '.disclosure__name')

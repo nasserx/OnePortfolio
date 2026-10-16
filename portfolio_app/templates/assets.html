@@ -10,7 +10,7 @@
 {% set _div_edit_vals = (form_values.get('dividend_edit', {}) if form_values else {}) %}
 {% set _div_add_errs = (form_errors.get('dividend_add', {}) if form_errors else {}) %}
 {% set _div_edit_errs = (form_errors.get('dividend_edit', {}) if form_errors else {}) %}
-{% from 'macros/ui.html' import money, percent, quantity, metric, empty_state, action_menu, record_type %}
+{% from 'macros/ui.html' import money, percent, quantity, metric, empty_state, action_menu, record_type, summary_header %}
 {% from 'macros/icons.html' import icon %}
 
 {% block title %}Assets — OnePortfolio{% endblock %}
@@ -73,14 +73,18 @@
 <div class="transactions-page stack">
 
         {% if holdings|length > 0 %}
-        <section class="disclosure enter" aria-label="Asset List">
+        <section class="disclosure enter" aria-label="Asset List" data-summary-list="assets">
+            {{ summary_header('assets', 'Asset', ['Entries', 'Purchase Cost', 'Quantity', 'Avg. Cost', 'Cumulative P&L', 'Return', 'Dividends']) }}
+            <div class="summary-list__body-scroll" data-summary-body tabindex="0"
+                 role="region" aria-label="Asset summaries" aria-describedby="assets-scroll-help">
+            <div class="summary-list__track summary-list__items" role="list">
             {% for item in holdings %}
             {% set symbol_key = (item.portfolio.id, item.symbol) %}
             {% set symbol_dividends = dividends_by_symbol.get(symbol_key, []) %}
             {% set symbol_dividend_total = dividend_totals.get(symbol_key, 0) %}
             {% set show_dividend_rows = symbol_dividends|length > 0 %}
             {% set panel_id = 'transactions-' ~ item.html_group_id %}
-            <article class="disclosure__item symbol-card surface-card surface-interactive" data-symbol="{{ item.symbol }}">
+            <article class="disclosure__item symbol-card surface-card surface-interactive" data-symbol="{{ item.symbol }}" role="listitem">
 
                 <div class="disclosure__head">
                     <button type="button" class="disclosure__toggle surface-interactive__control"
@@ -293,6 +297,8 @@
                 </div>
             </article>
             {% endfor %}
+            </div>
+            </div>
         </section>
         <div id="outer-pg-bar" class="pagination-bar"
              data-pagination-label="Asset Pages" hidden></div>
@@ -793,6 +799,7 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="{{ url_for('static', filename='js/summary_lists.js', v=ASSET_VERSION) }}"></script>
 <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"
         integrity="sha384-5JqMv4L/Xa0hfvtF06qboNdhvuYXUku9ZrhZh3bSk8VXF0A/RuSLHpLsSV9Zqhl6"
         crossorigin="anonymous"></script>

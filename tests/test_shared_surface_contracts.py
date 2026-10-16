@@ -48,8 +48,8 @@ def test_surface_consumers_are_declared_in_templates():
     assert 'class="hero-figure surface-card"' in index
     assert 'class="card alloc-panel"' in index
     assert 'class="ledger surface-table"' in index
-    assert 'portfolio-card surface-card surface-interactive' in portfolios
-    assert 'symbol-card surface-card surface-interactive' in assets
+    assert 'portfolio-card surface-row' in portfolios
+    assert 'symbol-card surface-row' in assets
     assert 'class="empty-state surface-card"' in macros
     assert 'class="auth-card surface-card"' in auth
     assert 'auth__showcase' not in auth
@@ -66,9 +66,9 @@ def test_disclosure_has_neutral_hover_and_container_focus_contract():
     assert 'var(--focus-ring-soft)' in focus
 
     assert '.disclosure__item:not(:has(.disclosure__toggle[aria-expanded="true"]))' not in app
-    assert '.disclosure__head:has(.disclosure__toggle:hover)' in app
+    assert '.disclosure__head:has(button.disclosure__toggle:hover)' in app
     hover_rule = re.search(
-        r'\.disclosure__head:has\(\.disclosure__toggle:focus-visible\)\s*\{([^}]*)\}',
+        r'\.disclosure__head:has\(button\.disclosure__toggle:focus-visible\)\s*\{([^}]*)\}',
         app,
     )
     assert hover_rule
@@ -122,7 +122,7 @@ def test_expanded_financial_tables_share_nova_row_contract():
     selected = _rule(components, '.table tbody tr[data-state="selected"] > *')
     assert 'background-color: transparent' in resting
     assert 'background-color: var(--muted-half)' in hover
-    assert 'background-color: var(--muted)' in selected
+    assert 'background-color: var(--table-selected-background, var(--muted))' in selected
     assert 'transform' not in hover
     assert 'box-shadow' not in hover
     assert 'border' not in hover
@@ -135,7 +135,12 @@ def test_expanded_financial_tables_share_nova_row_contract():
     assert 'border-bottom: 1px solid var(--border)' in header
 
     panel = _rule(app, '.disclosure__panel')
-    assert 'background-color: var(--card)' in panel
+    assert 'background-color: var(--muted-half)' in panel
+    assert '--table-selected-background: var(--muted-half)' in panel
+    assert 'background-color: var(--card)' in _rule(app, '.disclosure__panel > .table-responsive')
+    menu_open = _rule(components, '.records-table tbody tr:has([aria-expanded="true"]) > *')
+    assert 'background-color: var(--muted-half)' in menu_open
+    assert '.records-table tbody tr:focus-within > *,' in components
     assert '.disclosure__panel .table thead th' not in app
 
     for template in ('portfolios.html', 'assets.html'):

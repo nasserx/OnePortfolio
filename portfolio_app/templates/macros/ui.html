@@ -116,9 +116,34 @@
 #}
 {%- macro metric(label) -%}
   <span class="metric">
-    <span class="metric__label">{{ label }}</span>
+    <span class="metric__label visually-hidden">{{ label }}</span>
     <span class="metric__value">{{ caller() }}</span>
   </span>
+{%- endmacro -%}
+
+{# The visual column strip mirrors the disclosure button's layout. Each
+   actual value keeps its own accessible label; this is a disclosure list,
+   not a second table or an interactive grid. #}
+{%- macro summary_header(kind, identity, labels) -%}
+  <p class="visually-hidden" id="{{ kind }}-scroll-help">Scroll horizontally to see all summary columns. Use Left and Right arrow keys when the scroll region is focused.</p>
+  <div class="summary-list__sticky">
+    <div class="summary-list__header-scroll" data-summary-header tabindex="0"
+         role="region" aria-label="{{ identity }} summary columns"
+         aria-describedby="{{ kind }}-scroll-help">
+      <div class="summary-list__track">
+        <div class="disclosure__head summary-list__columns" aria-hidden="true">
+          <span class="disclosure__toggle">
+            <span class="summary-list__chevron-space"></span>
+            <span class="disclosure__identity">{{ identity }}</span>
+            <span class="disclosure__metrics">
+              {% for label in labels %}<span class="summary-list__label">{{ label }}</span>{% endfor %}
+            </span>
+          </span>
+          <span class="disclosure__actions">Actions</span>
+        </div>
+      </div>
+    </div>
+  </div>
 {%- endmacro -%}
 
 

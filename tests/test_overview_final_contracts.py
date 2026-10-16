@@ -86,6 +86,11 @@ def test_chart_switcher_is_the_shared_neutral_segmented_control():
 
 
 def test_portfolio_ledger_uses_neutral_shared_table_semantics():
+    assert re.findall(r'<div role="columnheader">([^<]+)</div>', TEMPLATE) == [
+        'PORTFOLIO', 'BOOK VALUE', 'DIVIDENDS', 'CUMULATIVE P&amp;L', 'RETURN',
+    ]
+    assert 'data-label="Book Value"' in TEMPLATE
+    assert 'data-label="Cumulative P&amp;L"' in TEMPLATE
     assert 'class="ledger surface-table" role="table"' in TEMPLATE
     assert 'class="ledger__row ledger__row--head" role="row"' in TEMPLATE
     assert 'class="ledger__row table-row-interactive" role="row"' in TEMPLATE
@@ -93,11 +98,13 @@ def test_portfolio_ledger_uses_neutral_shared_table_semantics():
     assert 'class="marker"' in MACROS
 
     header = _rule(APP, '.ledger__row--head')
+    assert 'font-size: var(--text-xs)' in _rule(APP, '.ledger__row--head,\n  .summary-list__columns')
+    assert 'font-size:' not in header
     row = _rule(APP, '.ledger__row')
     hover = _rule(COMPONENTS, '.table-row-interactive:is(:hover, :focus-within)')
     number = _rule(APP, '.ledger__num')
     assert 'background-color: transparent' in header
-    assert 'color: var(--foreground)' in header
+    assert 'color: var(--muted-foreground)' in header
     assert row.count('border-bottom: 1px solid var(--border)') == 1
     assert 'background-color: var(--muted-half)' in hover
     assert 'font-variant-numeric: tabular-nums' in number

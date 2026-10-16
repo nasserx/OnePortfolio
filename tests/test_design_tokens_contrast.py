@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from tests._colour import TEXT_MIN, contrast, mix_oklab, resolve, theme_tokens, to_rgb
+from tests._colour import TEXT_MIN, contrast, mix_oklab, resolve, theme_tokens, to_rgb, to_rgba
 
 
 TOKENS = Path('portfolio_app/static/css/tokens.css')
@@ -61,6 +61,46 @@ def test_muted_text_remains_readable(css, theme):
         assert ratio >= TEXT_MIN, (
             f'{theme}: --muted-foreground on --{surface} is {ratio:.2f}:1'
         )
+
+
+@pytest.mark.parametrize('theme', ['light', 'dark'])
+@pytest.mark.parametrize('role', [
+    'foreground', 'muted-foreground', 'financial-positive',
+    'financial-negative', 'financial-income', 'financial-flat',
+])
+def test_summary_and_nested_ledger_text_on_actual_composited_surfaces(css, theme, role):
+    declared = theme_tokens(css, theme)
+    page = to_rgb(resolve('background', declared))
+    card = to_rgb(resolve('card', declared))
+    muted = to_rgb(resolve('muted', declared))
+    # CSS muted/50 is an alpha surface, not a second opaque background.
+    # Composite once: the ledger wrapper is opaque and prevents stacked tints.
+    soft = lambda base: tuple(round((a + b) / 2) for a, b in zip(muted, base))
+    surfaces = {
+        'plain summary': page,
+        'expanded/hover summary and panel': soft(page),
+        'ledger header/body': card,
+        'ledger hover/focus/open-menu/selected': soft(card),
+        'empty state and pagination surround': soft(page),
+    }
+    for label, surface in surfaces.items():
+        ratio = contrast(resolve(role, declared), surface)
+        assert ratio >= TEXT_MIN, f'{theme}: {role} on {label}: {ratio:.3f}:1'
+
+
+@pytest.mark.parametrize('theme', ['light', 'dark'])
+def test_expanded_ledger_boundaries_use_distinct_semantic_surfaces(css, theme):
+    declared = theme_tokens(css, theme)
+    page = to_rgb(resolve('background', declared))
+    card = to_rgb(resolve('card', declared))
+    muted = to_rgb(resolve('muted', declared))
+    surround = tuple(round((a + b) / 2) for a, b in zip(muted, page))
+    border = to_rgba(resolve('border', declared))
+    painted_border = tuple(round(border[i] * border[3] + card[i] * (1 - border[3])) for i in range(3))
+    assert surround != card
+    assert painted_border != card
+    # Separators are decorative; text AA is checked separately above.
+    assert contrast(painted_border, card) > 1
 
 
 @pytest.mark.parametrize('theme', ['light', 'dark'])

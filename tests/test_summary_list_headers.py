@@ -103,6 +103,9 @@ def test_one_header_with_labelled_values_and_unchanged_controls(summary_client, 
     rows = list_node.find(lambda n: n.attrs.get('role') == 'listitem')
     assert len(rows) == 2
     for row in rows:
+        classes = row.attrs['class'].split()
+        assert 'surface-row' in classes
+        assert 'surface-card' not in classes and 'surface-interactive' not in classes
         toggle, = row.by_class('disclosure__toggle')
         assert toggle.tag == 'button' and toggle.attrs['aria-expanded'] == 'false'
         panel, = row.by_class('disclosure__panel')
@@ -113,6 +116,7 @@ def test_one_header_with_labelled_values_and_unchanged_controls(summary_client, 
         assert not toggle.by_class('action-menu__trigger')
         assert row.by_class('action-menu__trigger')
         assert panel.find(lambda n: n.tag == 'table')
+        assert all(n.attrs.get('scope') == 'col' for n in panel.find(lambda n: n.tag == 'th'))
     help_node, = doc.find(lambda n: n.attrs.get('id') == kind + '-scroll-help')
     assert 'Left and Right' in help_node.text
     for region in section.find(lambda n: 'data-summary-header' in n.attrs or 'data-summary-body' in n.attrs):
@@ -132,6 +136,13 @@ def test_shared_geometry_sticky_ownership_and_fixed_menu_escape():
     assert 'background-color: var(--background)' in sticky
     assert 'text-transform: uppercase' in rule('.summary-list__columns')
     assert 'font-weight: var(--weight-emphasis)' in rule('.summary-list__columns')
+    assert 'color: var(--muted-foreground)' in rule('.summary-list__columns')
+    shared_type = rule('.ledger__row--head,\n  .summary-list__columns')
+    assert 'font-size: var(--text-xs)' in shared_type
+    assert 'font-size:' not in rule('.summary-list__columns')
+    # Only the header/body gap tightens; spacing between data rows stays intact.
+    assert 'gap: var(--space-1)' in rule('.disclosure')
+    assert 'gap: var(--space-2)' in rule('.summary-list__items')
     for selector in ('.summary-list__sticky', '.summary-list__columns', '.disclosure__head'):
         declarations = rule(selector)
         assert not re.search(r'(?:^|[;\n])\s*(?:border(?:-radius)?|box-shadow|outline)\s*:', declarations)
@@ -152,3 +163,32 @@ def test_shared_geometry_sticky_ownership_and_fixed_menu_escape():
     main = Path('portfolio_app/static/js/main.js').read_text(encoding='utf-8')
     assert "strategy: 'fixed'" in main and "boundary: 'viewport'" in main
     assert '--metric-columns: 2' not in css and '--metric-columns: 3' not in css
+
+
+@pytest.mark.parametrize('url', ['/transactions/', '/portfolios/'])
+def test_empty_expanded_content_retains_inline_feedback_and_disclosure(app, url):
+    with app.app_context():
+        user = User(username='empty-summary', email='empty-summary@example.com', is_verified=True)
+        db.session.add(user)
+        db.session.commit()
+        uid = user.id
+        services = Services(user_id=uid)
+        portfolio = services.portfolio_service.create_portfolio('Unfunded', user_id=uid)
+        services.transaction_service.add_symbol(portfolio.id, 'EMPTY')
+    client = app.test_client()
+    authenticate_client(client, uid)
+    response = client.get(url)
+    assert response.status_code == 200
+    doc = Document(response.get_data(as_text=True)).root
+    row, = doc.by_class('disclosure__item')
+    assert 'surface-row' in row.attrs['class']
+    panel, = row.by_class('disclosure__panel')
+    assert 'hidden' in panel.attrs
+    empty, = panel.by_class('inline-empty')
+    assert not panel.find(lambda n: n.tag == 'table')
+    if url == '/transactions/':
+        button, = empty.find(lambda n: n.tag == 'button')
+        assert 'js-add-transaction-btn' in button.attrs['class']
+        assert 'Add Entry' in button.text
+    else:
+        assert 'No entries yet' in empty.text

@@ -37,7 +37,7 @@ def test_page_header_action_and_empty_state_keep_shared_workflows():
 
 def test_disclosures_keep_behavior_hooks_and_shared_surface_contracts():
     assert 'class="disclosure enter" aria-label="Portfolio List"' in TEMPLATE
-    assert 'portfolio-card surface-card surface-interactive' in TEMPLATE
+    assert 'portfolio-card surface-row' in TEMPLATE
     assert 'disclosure__toggle surface-interactive__control' in TEMPLATE
     assert 'aria-expanded="false" aria-controls="{{ panel_id }}"' in TEMPLATE
     assert 'data-disclosure="{{ item.portfolio.id }}"' in TEMPLATE

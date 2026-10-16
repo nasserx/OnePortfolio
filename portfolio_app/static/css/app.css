@@ -697,11 +697,15 @@
 
   .ledger__row:last-child { border-bottom: 0; }
 
+  .ledger__row--head,
+  .summary-list__columns {
+    font-size: var(--text-xs);
+  }
+
   .ledger__row--head {
     min-height: var(--row-h);
     background-color: transparent;
-    color: var(--foreground);
-    font-size: var(--text-sm);
+    color: var(--muted-foreground);
     font-weight: var(--weight-emphasis);
     letter-spacing: normal;
   }
@@ -729,7 +733,6 @@
   }
 
   .ledger__row--head > *:not(:first-child) { text-align: right; }
-  .ledger__row--head > *:last-child { text-align: right; }
 
   .ledger__action { justify-self: end; }
 
@@ -817,7 +820,7 @@
     --summary-columns: 3rem repeat(3, minmax(0, 1fr));
     display: flex;
     flex-direction: column;
-    gap: var(--space-2);
+    gap: var(--space-1);
   }
 
   .disclosure[data-summary-list="assets"] {
@@ -866,8 +869,7 @@
 
   .summary-list__columns {
     min-height: var(--row-h);
-    color: var(--foreground);
-    font-size: var(--text-sm);
+    color: var(--muted-foreground);
     font-weight: var(--weight-emphasis);
     text-transform: uppercase;
     white-space: nowrap;
@@ -886,6 +888,10 @@
     overflow: hidden;
   }
 
+  .disclosure__item.surface-row {
+    border-bottom: 1px solid var(--border);
+  }
+
   .disclosure__head {
     display: flex;
     align-items: center;
@@ -896,6 +902,12 @@
 
   .disclosure__head:has(button.disclosure__toggle:hover),
   .disclosure__head:has(button.disclosure__toggle:focus-visible) {
+    background-color: var(--muted-half);
+  }
+
+  /* Transparent Item surfaces gain paint only for interaction. Muted/50
+     keeps the approved financial-flat colour readable in light mode. */
+  .disclosure__head:has(> .disclosure__toggle[aria-expanded="true"]) {
     background-color: var(--muted-half);
   }
 
@@ -1012,10 +1024,18 @@
      summary row above it: the summary row pads itself, a table pads inside
      each cell, and the difference is what the panel makes up. */
   .disclosure__panel {
+    /* Full muted drops light-mode financial-flat/supporting text below AA.
+       Use the existing soft token for any ledger selection as well. */
+    --table-selected-background: var(--muted-half);
     padding-inline: calc(var(--space-4) - var(--cell-pad-x));
+    padding-block: var(--space-2);
     border-top: 1px solid var(--border);
-    background-color: var(--card);
+    background-color: var(--muted-half);
     animation: op-fade-in var(--dur-3) var(--ease-out);
+  }
+
+  .disclosure__panel > .table-responsive {
+    background-color: var(--card);
   }
 
   /* Records revealed inside a disclosure are one level below the summary row

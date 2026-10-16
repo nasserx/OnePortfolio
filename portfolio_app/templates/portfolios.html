@@ -44,7 +44,7 @@
         <div class="summary-list__track summary-list__items" role="list">
         {% for item in portfolio_details %}
         {% set panel_id = 'events-' ~ item.portfolio.id %}
-        <article class="disclosure__item portfolio-card surface-card surface-interactive" role="listitem">
+        <article class="disclosure__item portfolio-card surface-row" role="listitem">
 
             <div class="disclosure__head">
                 {#
@@ -134,11 +134,11 @@
                             </colgroup>
                             <thead>
                                 <tr>
-                                    <th class="records-cell">Date</th>
-                                    <th class="records-cell">Type</th>
-                                    <th class="records-cell records-cell--number">Total Amount</th>
-                                    <th class="records-cell">Notes</th>
-                                    <th class="records-cell records-cell--actions">Actions</th>
+                                    <th scope="col" class="records-cell">Date</th>
+                                    <th scope="col" class="records-cell">Type</th>
+                                    <th scope="col" class="records-cell records-cell--number">Total Amount</th>
+                                    <th scope="col" class="records-cell">Notes</th>
+                                    <th scope="col" class="records-cell records-cell--actions">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>

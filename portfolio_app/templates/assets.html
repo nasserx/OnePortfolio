@@ -84,7 +84,7 @@
             {% set symbol_dividend_total = dividend_totals.get(symbol_key, 0) %}
             {% set show_dividend_rows = symbol_dividends|length > 0 %}
             {% set panel_id = 'transactions-' ~ item.html_group_id %}
-            <article class="disclosure__item symbol-card surface-card surface-interactive" data-symbol="{{ item.symbol }}" role="listitem">
+            <article class="disclosure__item symbol-card surface-row" data-symbol="{{ item.symbol }}" role="listitem">
 
                 <div class="disclosure__head">
                     <button type="button" class="disclosure__toggle surface-interactive__control"
@@ -166,16 +166,16 @@
                             </colgroup>
                             <thead>
                                 <tr>
-                                    <th class="records-cell">Date</th>
-                                    <th class="records-cell">Type</th>
-                                    <th class="records-cell records-cell--number">Price</th>
-                                    <th class="records-cell records-cell--number">Quantity</th>
-                                    <th class="records-cell records-cell--number">Fee</th>
-                                    <th class="records-cell records-cell--number">Total Amount</th>
-                                    <th class="records-cell records-cell--number">Realized P&amp;L</th>
-                                    <th class="records-cell records-cell--number" aria-label="Return" title="Return">Return</th>
-                                    <th class="records-cell">Notes</th>
-                                    <th class="records-cell records-cell--actions">Actions</th>
+                                    <th scope="col" class="records-cell">Date</th>
+                                    <th scope="col" class="records-cell">Type</th>
+                                    <th scope="col" class="records-cell records-cell--number">Price</th>
+                                    <th scope="col" class="records-cell records-cell--number">Quantity</th>
+                                    <th scope="col" class="records-cell records-cell--number">Fee</th>
+                                    <th scope="col" class="records-cell records-cell--number">Total Amount</th>
+                                    <th scope="col" class="records-cell records-cell--number">Realized P&amp;L</th>
+                                    <th scope="col" class="records-cell records-cell--number" aria-label="Return" title="Return">Return</th>
+                                    <th scope="col" class="records-cell">Notes</th>
+                                    <th scope="col" class="records-cell records-cell--actions">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>

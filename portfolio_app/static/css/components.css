@@ -750,6 +750,19 @@
     box-shadow: 0 0 0 1px var(--surface-ring);
   }
 
+  /* Borderless Nova Item surface: layout remains owned by its consumer.
+     Unlike a card, this has no persistent perimeter ring or elevation. */
+  .surface-row {
+    position: relative;
+    border: 0;
+    border-radius: var(--radius-lg);
+    background-color: transparent;
+    color: var(--foreground);
+    font-size: var(--text-sm);
+    box-shadow: none;
+  }
+
+  .surface-row,
   .surface-interactive {
     transition:
       background-color var(--dur-1) var(--ease-out),
@@ -760,6 +773,10 @@
     box-shadow:
       0 0 0 1px var(--surface-ring),
       0 0 0 4px var(--focus-ring-soft);
+  }
+
+  .surface-row:has(.surface-interactive__control:focus-visible) {
+    box-shadow: 0 0 0 4px var(--focus-ring-soft);
   }
 
   .surface-interactive__control:focus-visible {
@@ -877,8 +894,13 @@
     background-color: var(--muted-half);
   }
 
+  .records-table tbody tr:focus-within > *,
+  .records-table tbody tr:has([aria-expanded="true"]) > * {
+    background-color: var(--muted-half);
+  }
+
   .table tbody tr[data-state="selected"] > * {
-    background-color: var(--muted);
+    background-color: var(--table-selected-background, var(--muted));
   }
 
   /* Shared row interaction for semantic table-like layouts that cannot use

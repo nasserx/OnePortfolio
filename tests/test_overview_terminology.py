@@ -170,18 +170,18 @@ def test_overview_uses_current_health_metrics_and_terminology(app):
         assert label in text
 
     for label in (
-        'Portfolio',
-        'Book Value',
-        'Cumulative P&L',
-        'Return',
-        'Dividends',
+        'PORTFOLIO',
+        'BOOK VALUE',
+        'CUMULATIVE P&L',
+        'RETURN',
+        'DIVIDENDS',
         'Assets',
     ):
         assert label in row_text
 
     column_positions = [
         row_text.index(label)
-        for label in ('Portfolio', 'Book Value', 'Dividends', 'Cumulative P&L', 'Return', 'Assets')
+        for label in ('PORTFOLIO', 'BOOK VALUE', 'DIVIDENDS', 'CUMULATIVE P&L', 'RETURN', 'Assets')
     ]
     assert column_positions == sorted(column_positions)
     assert 'class="marker"' in html
@@ -230,7 +230,6 @@ def test_overview_uses_current_health_metrics_and_terminology(app):
         'Total Dividends',
         'COST BASIS',
         'Cost Basis',
-        'DIVIDENDS',
         'View Transactions',
         'ALLOCATION',
         'Allocation',

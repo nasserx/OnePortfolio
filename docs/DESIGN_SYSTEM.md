@@ -498,8 +498,21 @@ notation such as P&L, ETF and OTP retain their established spelling.
 The approved `D:\tmp\table-ref.png` composition is adapted to disclosure lists,
 not applied to the Overview or nested financial ledgers. The exact preset
 initialization and official Nova Table/Item recipes were retrieved on
-2026-10-16: headings use foreground and the application's approved 550 emphasis,
-with the existing compact typography. The Asset identity keeps its portfolio
+2026-10-16. The final header refinement intentionally uses muted-foreground
+instead of the Table recipe's foreground, retaining approved 550 emphasis,
+uppercase labels and compact typography. Muted text on the opaque page-colour
+sticky surface meets 4.5:1 in both themes in source-level contrast checks.
+The header/body gap is `--space-1` (0.25rem), bringing labels slightly closer
+to the first row; inter-row gaps remain `--space-2` (0.5rem). Horizontal padding,
+column tracks, sticky ownership and scroll synchronization are unchanged.
+Overview's portfolio table headings share this intentional muted-foreground
+treatment, retaining uppercase text and approved weights. Nested financial
+table headings retain foreground. All three main summary header locations use
+one shared `--text-xs` sizing rule: 0.6875rem on desktop and 0.75rem below 48rem,
+preserving the existing narrow-screen readability floor. This is an intentional
+compact-size adaptation to the preset; weights remain 550 and row values,
+nested-table sizes, header heights and column geometry are unchanged.
+The Asset identity keeps its portfolio
 badge; there is no invented Category column.
 
 `summary_header` and the summary buttons share their identity, metric-track,
@@ -530,6 +543,32 @@ body stacking context. Existing nested-ledger scroll behavior remains intact.
 Rendered/source and DOM-model regressions cover these contracts; actual sticky
 alignment, menu escape, touch scrolling, and screen-reader acceptance remain
 user browser checks.
+
+Both lists use the borderless `.surface-row` Item surface. The inspected
+`new-style-ref.png` AFTER examples supersede the earlier alternating treatment:
+default rows are uniformly transparent, with no persistent perimeter ring,
+outline, shadow, or alternating fill. No JavaScript presentation pass is needed
+after pagination or filtering. Each main disclosure item now has a single
+1px bottom divider using `--border`, including the last item as explicitly
+requested. This adapts the Nova Table separator to the shared Item surface;
+top and side borders remain absent. The divider belongs to the outer item,
+so expanded ledger separators and backgrounds are unchanged. Existing padding,
+gaps and column tracks are preserved. Hover and expanded summaries use `--muted-half`;
+keyboard focus retains the visible soft ring. Spacing and column geometry stay
+unchanged. Overview's five visible portfolio table headings are uppercase;
+metric cards, responsive data labels, and financial values retain their casing.
+
+Nested ledgers keep opaque `--card` surfaces, foreground headings, explicit
+column scopes, and internal preset Table separators. Their expanded surround
+uses `--muted-half`, including the empty state and pagination area. Focus within
+and open action menus retain the soft row treatment. Nested selected rows also
+use muted/50 rather than the recipe's full muted: source contrast checks put
+approved light-mode neutral text at about 4.54:1 on the soft surface versus
+4.35:1 on full muted. Financial colors are unchanged. This accessibility
+adaptation, compact sizes, 450/550 weights, and uppercase headings are intentional
+application exceptions. The actual preset and official Nova Table/Item recipes
+were retrieved again on 2026-10-17; existing Jinja/CSS/Bootstrap ownership is
+preserved without a new framework. Browser acceptance remains the user's task.
 
 ### Accessibility and motion
 

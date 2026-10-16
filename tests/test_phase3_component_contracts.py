@@ -35,7 +35,7 @@ def test_roles_do_not_conflate_titles_headers_and_descriptions():
         (CSS, '.panel__title', 'card-foreground'),
         (CSS, '.table thead th', 'foreground'),
         (CSS, 'label.form-label', 'foreground'),
-        (APP, '.ledger__row--head', 'foreground'),
+        (APP, '.ledger__row--head', 'muted-foreground'),
         (APP, '.hero-figure__label', 'card-foreground'),
         (CSS, '.supporting-item__label', 'muted-foreground'),
         (APP, '.metric__label', 'muted-foreground'),

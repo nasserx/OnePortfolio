@@ -117,10 +117,73 @@ eq(fallback.body.tabIndex, -1);
 eq(fallback.header.scrollLeft, 0);
 
 // Empty page and incomplete roots are harmless; neither installs listeners.
-vm.runInNewContext(source, {document: {querySelectorAll: () => []}});
+vm.runInNewContext(source, {window: {}, document: {querySelectorAll: () => []}});
 checks++;
-vm.runInNewContext(source, {document: {querySelectorAll: () => [{
+vm.runInNewContext(source, {window: {}, document: {querySelectorAll: () => [{
     dataset: {}, querySelector: () => null,
 }]}});
 checks++;
+// Exercise the actual Assets pagination renderer: uniform rows retain their
+// visibility and classes through search resets and later pages.
+const assets = fs.readFileSync('portfolio_app/templates/assets.html', 'utf8');
+const paginationStart = assets.indexOf('(function setupOuterPagination()');
+const paginationEnd = assets.indexOf('}());', paginationStart) + 5;
+assert(paginationStart !== -1 && paginationEnd > paginationStart);
+const cards = Array.from({length: 205}, () => {
+    const classes = new Set();
+    return {style: {}, classList: {
+        contains: name => classes.has(name),
+        remove: name => classes.delete(name),
+        toggle(name, on) { if (on) classes.add(name); else classes.delete(name); },
+    }};
+});
+let pagination;
+const paginationWindow = {OnePortfolioPagination: {render: (_, config) => { pagination = config; }}};
+vm.runInNewContext(assets.slice(paginationStart, paginationEnd), {
+    window: paginationWindow,
+    document: {
+        querySelectorAll: () => cards,
+        getElementById: () => ({dataset: {paginationLabel: 'Asset Pages'}}),
+    },
+});
+function checkPage(expected) {
+    const visible = cards.filter(card => card.style.display !== 'none');
+    eq(visible, expected);
+    eq(cards
+        .some(card => card.classList.contains('summary-row--alternate')), false);
+}
+checkPage(cards.slice(0, 100));
+pagination.onPageChange(2);
+checkPage(cards.slice(100, 200));
+pagination.onPageChange(3);
+checkPage(cards.slice(200));
+cards.forEach((card, index) => card.classList.toggle('sym-filter-hide', index % 3 === 0));
+paginationWindow.refreshOuterPagination(true);
+const matches = cards.filter(card => !card.classList.contains('sym-filter-hide'));
+checkPage(matches.slice(0, 100));
+pagination.onPageChange(2);
+checkPage(matches.slice(100));
+cards.forEach(card => card.classList.toggle('sym-filter-hide', true));
+paginationWindow.refreshOuterPagination(true);
+checkPage([]);
+cards.forEach(card => card.classList.toggle('sym-filter-hide', false));
+paginationWindow.refreshOuterPagination(true);
+checkPage(cards.slice(0, 100));
+// Portfolios pagination also works without a row-presentation controller.
+const portfolios = fs.readFileSync('portfolio_app/templates/portfolios.html', 'utf8');
+const portfoliosStart = portfolios.indexOf('(function setupPortfolioOuterPagination()');
+const portfoliosEnd = portfolios.indexOf('}());', portfoliosStart) + 5;
+assert(portfoliosStart !== -1 && portfoliosEnd > portfoliosStart);
+vm.runInNewContext(portfolios.slice(portfoliosStart, portfoliosEnd), {
+    window: paginationWindow,
+    document: {
+        querySelectorAll: () => cards,
+        getElementById: () => ({dataset: {paginationLabel: 'Portfolio Pages'}}),
+    },
+});
+checkPage(cards.slice(0, 100));
+pagination.onPageChange(3);
+checkPage(cards.slice(200));
+pagination.onPageChange(2);
+checkPage(cards.slice(100, 200));
 console.log(`${checks} summary-list assertions passed`);

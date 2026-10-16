@@ -63,6 +63,18 @@ scroll owner; Bootstrap retains menu positioning and keyboard ownership.
 Sticky positioning, horizontal touch interaction, menu escape, and alignment
 across sidebar/theme states still require user browser acceptance.
 
+The 2026-10-17 refinement applies the inspected `new-style-ref.png` AFTER
+direction to both shared borderless lists: uniform transparent default rows,
+soft hover/expanded states, and preserved focus rings. Alternating-row CSS and
+its JavaScript helper/callers were removed. Overview's five visible portfolio
+column headings are uppercase. Nested ledger surfaces, separators, column
+scopes, empty states and menu/focus states are covered by
+`test_shared_surface_contracts.py`, `test_summary_list_headers.py`, and
+`test_design_tokens_contrast.py`; Overview heading scope is covered by
+`test_overview_final_contracts.py`. Existing scroll/pagination behavior remains
+covered by `summary_lists.js`. These are source/rendered/model checks, not
+browser visual acceptance.
+
 Global coverage for every applicable row: light, dark, system theme, narrow and
 wide layouts, keyboard/focus, hover/active/expanded, disabled/readonly, reduced
 motion, forced colours, long content, and empty/loading/error states. These are
@@ -127,7 +139,7 @@ evidence in this table describes the original baseline, not current defects.
 | AJAX banner and server-rendered `.alert-danger` differ; Withdraw Max calls `reportValidity()` | 2: shared top-of-body general errors and auxiliary action feedback |
 | Transaction type changes instantiate extra validators to clear an error | 2: reuse the form's existing feedback owner |
 | `--text-sm` is 13px; table headers are 11px; help text is 10px | 3: map typography by actual recipe role |
-| Overview ledger headers are muted while native table headers use foreground | 3/4: consistent Table semantic role, preserving muted descriptive labels |
+| Overview ledger headers are muted while native table headers use foreground | Final approved adaptation: Overview and main sticky summary headings use muted-foreground; nested/native table headings retain foreground |
 | Invalid fields use custom tinted fills; input/disabled/select recipes are conflated | 3: separate component state recipes |
 | Settings static displays imitate differently styled readonly fields | 3/4: explicit static label/value presentation |
 | Three-dot triggers use 28px/26px sizes, inherited icon dimensions, and generic active translation | 3/4: Button/Menu recipes and existing positioning owner |

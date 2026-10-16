@@ -162,7 +162,8 @@ def test_table_uses_nova_neutral_rows_and_single_separator_recipe():
     hover = _rule(css, '.table tbody tr:hover > *')
     assert 'background-color: var(--muted-half)' in hover
     selected = _rule(css, '.table tbody tr[data-state="selected"] > *')
-    assert 'background-color: var(--muted)' in selected
+    # Full muted remains the default; financial ledgers use the contrast-safe soft token.
+    assert 'background-color: var(--table-selected-background, var(--muted))' in selected
 
 
 def test_secondary_badge_uses_official_nova_recipe():

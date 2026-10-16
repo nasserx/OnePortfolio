@@ -78,7 +78,7 @@ def test_concise_page_vocabulary_is_separate_from_precise_domain_names(ledger, a
                 'Total Purchase Cost', 'Average Unit Cost', 'Position Cost Basis',
                 'Total Realized Earnings'} & set(page.labels)
     if url == '/transactions/':
-        assert '<th class="records-cell records-cell--number" aria-label="Return" title="Return">Return</th>' in html
+        assert '<th scope="col" class="records-cell records-cell--number" aria-label="Return" title="Return">Return</th>' in html
         assert 'Trading Return' not in html
         assert '>Realized P&amp;L</th>' in html
     elif url == '/portfolios/':

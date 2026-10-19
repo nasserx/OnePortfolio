@@ -31,19 +31,17 @@
                 <span class="hero-figure__return">
                 <span class="visually-hidden">Return</span>
                 {% if totals.capital_return is none %}
-                    <span class="delta delta--flat">—</span>
+                    <span class="hero-figure__return-value num--flat">—</span>
                 {% else %}
-                    <span class="delta {% if totals.capital_return > 0 %}delta--pos{% elif totals.capital_return < 0 %}delta--neg{% else %}delta--flat{% endif %}">
+                    <span class="hero-figure__return-value {% if totals.capital_return > 0 %}num--pos{% elif totals.capital_return < 0 %}num--neg{% else %}num--flat{% endif %}">
                         {% if totals.capital_return > 0 %}
                             <span class="visually-hidden">Positive return:</span>
-                            {{ icon('arrow-up-right') }}
                         {% elif totals.capital_return < 0 %}
                             <span class="visually-hidden">Negative return:</span>
-                            {{ icon('arrow-down-right') }}
                         {% else %}
                             <span class="visually-hidden">No gain or loss:</span>
                         {% endif %}
-                        {{ totals.capital_return|fmt_display_percent(signed=True) }}
+                        ({{ totals.capital_return|fmt_display_percent(signed=True) }})
                     </span>
                 {% endif %}
                 {{ cumulative_return_info() }}

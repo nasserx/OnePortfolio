@@ -42,15 +42,15 @@ def test_typography_preserves_brand_and_removes_lightweight_overrides():
     all_css = '\n'.join(path.read_text(encoding='utf-8') for path in (ROOT / 'static/css').glob('*.css'))
     for role, value in (('body', '450'), ('emphasis', '550')):
         assert re.findall(r'--weight-' + role + r':\s*([^;]+);', all_css) == [value]
-    assert 'var(--weight-regular)' not in all_css
     # The Overview return percentage intentionally uses a lighter weight than
-    # the P&L amount; other typography keeps the shared semantic mapping.
+    # the P&L amount, using regular weight (400) only for this percentage.
     return_rule = re.search(
         r'\.hero-figure__return-value\s*\{([^}]+)\}', source('static/css/app.css')
     ).group(0)
-    assert 'font-weight: var(--weight-medium);' in return_rule
-    assert 'font-size: var(--text-sm);' in return_rule
-    assert 'var(--weight-medium)' not in all_css.replace(return_rule, '', 1)
+    assert 'font-weight: var(--weight-regular);' in return_rule
+    assert 'font-size: var(--text-lg);' in return_rule
+    assert 'var(--weight-regular)' not in all_css.replace(return_rule, '', 1)
+    assert 'var(--weight-medium)' not in all_css
     # Native semantic strong/b regain their normal bolder weight, as in the
     # reference reset; no application-wide lighter emphasis override remains.
     assert 'strong, b {' not in source('static/css/base.css')

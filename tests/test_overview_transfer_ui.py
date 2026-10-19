@@ -14,13 +14,15 @@ from tests.test_final_financial_vocabulary import FinancialPage
 from tests.test_portfolio_transfers import pair, day, D, buy
 
 
-@pytest.mark.parametrize('sale_price,tone,percentage,amount,arrow', [
-    ('120', 'pos', '+2.00%', '+20.00', 'arrow-up-right'),
-    ('80', 'neg', '-2.00%', '-20.00', 'arrow-down-right'),
-    ('100', 'flat', '0.00%', '0.00', None),
-    (None, 'flat', '0.00%', '0.00', None),
+@pytest.mark.parametrize('sale_price,tone,percentage,amount', [
+    ('120', 'pos', '(+2.00%)', '+20.00'),
+    ('80', 'neg', '(-2.00%)', '-20.00'),
+    ('100', 'flat', '(0.00%)', '0.00'),
+    (None, 'flat', '(0.00%)', '0.00'),
+    ('18100', 'pos', '(+1,800.00%)', '+18,000.00'),
+    ('10000100', 'pos', '(+1.00M%)', '+10.00M'),
 ])
-def test_overview_groups_return_with_pnl_not_book_value(pair, app, sale_price, tone, percentage, amount, arrow):
+def test_overview_groups_return_with_pnl_not_book_value(pair, app, sale_price, tone, percentage, amount):
     buy(pair, pair.a, '100', 1)
     if sale_price:
         pair.svc.transaction_service.add_transaction(pair.a, 'Sell', 'BTC', D(sale_price), D('1'), D('0'), date=day(2))
@@ -34,11 +36,9 @@ def test_overview_groups_return_with_pnl_not_book_value(pair, app, sale_price, t
     assert '>Return<' not in headline and 'delta' not in headline
     assert '>Cumulative P&amp;L<' in realized and '>Return<' in realized
     assert amount in realized and percentage in realized
-    assert f'delta--{tone}' in realized
-    if arrow:
-        assert f'#op-icon-{arrow}' in realized
-    else:
-        assert '#op-icon-arrow-' not in realized
+    assert f'hero-figure__return-value num--{tone}' in realized
+    assert 'delta' not in realized
+    assert '#op-icon-arrow-' not in realized
     assert facts.count('class="fact"') == 3
     assert 'fact supporting-item' not in facts and '>Cumulative P&amp;L<' not in facts
     assert facts.index('Net Contributions') < facts.index('Cash') < facts.index('Dividends')
@@ -51,7 +51,7 @@ def test_overview_groups_return_with_pnl_not_book_value(pair, app, sale_price, t
     assert 'hero-figure__pnl-label' not in realized
     assert realized.index('Cumulative P&amp;L') < realized.index('hero-figure__pnl-value')
     assert realized.index('hero-figure__pnl-value') < realized.index('hero-figure__return')
-    assert realized.index('class="info-dot"') > realized.index('class="delta ')
+    assert realized.index('class="info-dot"') > realized.index('class="hero-figure__return-value ')
     # Same indicator, exactly two consolidated formulas and no extra headings.
     hint, _ = FinancialPage(realized).help[0]
     assert hint['data-bs-html'] == 'true'
@@ -80,7 +80,9 @@ def test_overview_undefined_return_keeps_accessible_pnl_label_and_amount(app):
     assert 'hero-figure__pnl-label' not in row
     amount = row.split('class="hero-figure__pnl-value">', 1)[1].split('class="hero-figure__return"', 1)[0]
     assert '0.00' in amount and 'num--flat' in amount
-    assert 'class="delta delta--flat">—</span>' in row
+    assert 'class="hero-figure__return-value num--flat">—</span>' in row
+    assert 'delta' not in row
+    assert '#op-icon-arrow-' not in row
     assert '<span class="visually-hidden">Return</span>' in row
     assert row.count('class="info-dot"') == 1
 

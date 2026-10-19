@@ -210,7 +210,13 @@ def test_pages_render_scope_specific_returns_and_signs(ledger, app, sale_price, 
     overview = client.get('/').get_data(as_text=True)
     hero_pnl = re.search(r'class="hero-figure__pnl-value">(.*?)</span>', overview, re.S).group(1)
     assert f'>{pnl}' in hero_pnl
-    assert f'delta delta--{tone}' in overview
+    assert f'hero-figure__return-value num--{tone}' in overview
+    hero_return = overview.split('class="hero-figure__return">', 1)[1].split('<div class="hero-figure__facts">', 1)[0]
+    if sale_price is not None:
+        assert f'({capital_return})' in hero_return
+    else:
+        assert '>—</span>' in hero_return
+    assert 'delta' not in hero_return
     portfolio_return = re.search(r'data-label="Return">(.*?)</div>', overview, re.S).group(1)
     assert f'>{capital_return}</span>' in portfolio_return
     assets = client.get('/transactions/').get_data(as_text=True)

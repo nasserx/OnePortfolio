@@ -200,7 +200,7 @@ def test_api_and_overview_expose_new_semantics_without_losing_exact_decimal_stri
     html = client.get('/').get_data(as_text=True)
     assert '<span class="visually-hidden">Return</span>' in html
     assert 'Realized Return On Net Contributions' not in html
-    assert 'delta delta--flat">—</span>' in html
+    assert 'hero-figure__return-value num--flat">—</span>' in html
     _historical_trade(ledger, 'Buy', '100', '1', 2)
     _historical_trade(ledger, 'Sell', '100', '1', 3)
     payload = client.get('/api/portfolio-summary').get_json()['portfolio_summary'][0]

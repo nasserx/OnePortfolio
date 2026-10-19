@@ -8,7 +8,8 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    # Keep Python 3.8 available when ubuntu-latest moves to a newer image.
+    runs-on: ubuntu-24.04
 
     strategy:
       matrix:

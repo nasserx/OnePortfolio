@@ -57,7 +57,7 @@ def test_upgrade_preserves_records_audits_receipts_and_invalidates_v1(schema39):
             assert app.login_manager._user_callback(str(uid)) is None
             assert PC.get_financial_snapshot(uid) == expected
             connection = db.session.connection()
-            assert connection.exec_driver_sql('PRAGMA user_version').scalar() == TARGET_SCHEMA_VERSION == 40
+            assert connection.exec_driver_sql('PRAGMA user_version').scalar() == TARGET_SCHEMA_VERSION == 41
             assert connection.exec_driver_sql('PRAGMA foreign_key_check').all() == []
             assert connection.exec_driver_sql('PRAGMA foreign_keys').scalar() == 1
             db.session.remove()
@@ -85,7 +85,7 @@ def test_identity_upgrade_failure_is_atomic_and_retryable(schema39, marker):
     app = create_app(_config_for(path))
     with app.app_context():
         assert PC.get_financial_snapshot(uid) == expected
-        assert db.session.connection().exec_driver_sql('PRAGMA user_version').scalar() == 40
+        assert db.session.connection().exec_driver_sql('PRAGMA user_version').scalar() == TARGET_SCHEMA_VERSION
         db.session.remove()
         db.engine.dispose()
 

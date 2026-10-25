@@ -8,7 +8,7 @@ from portfolio_app import db
 # Bumped whenever a new migration step is added below. Stored in the SQLite
 # header (PRAGMA user_version) after a successful migration so subsequent
 # boots can short-circuit the whole inspection pass.
-TARGET_SCHEMA_VERSION = 40
+TARGET_SCHEMA_VERSION = 41
 
 # Sidecar file that carries the startup schema lock, derived from the
 # application database path (``portfolio.db`` → ``portfolio.db.schema-lock``).
@@ -209,6 +209,13 @@ def _run_migration_pass(app):
             if current_version >= TARGET_SCHEMA_VERSION:
                 return
 
+            # Schema 41 is a forward validation gate, including databases
+            # already on 40. Check before ANY legacy DDL/DML or version change:
+            # older upgrades used to delete these authoritative financial facts.
+            _assert_attributed_dividends(conn, sa)
+            _assert_financial_ownership(conn, sa)
+            _assert_readable_financial_history(conn, sa)
+
             # FK enforcement must be OFF for the duration of the migration.
             # Several legacy tables in deployed databases still carry FK
             # references to renamed parent tables (e.g. ``REFERENCES capital``
@@ -225,7 +232,8 @@ def _run_migration_pass(app):
                     _apply_migration_steps(conn, sa)
                     _migrate_mutation_receipts(conn, sa)
                     _migrate_financial_audit(conn, sa)
-                _migrate_session_identity(conn, sa)
+                if current_version < 40:
+                    _migrate_session_identity(conn, sa)
                 # End any residual migration transaction before changing the
                 # connection-level FK pragma. Individual historical steps may
                 # commit earlier, but inspection-only work can autobegin again.
@@ -244,6 +252,141 @@ def _run_migration_pass(app):
 
             # Mark this DB as up-to-date so future boots skip everything above.
             raw_conn.execute(f'PRAGMA user_version = {TARGET_SCHEMA_VERSION}')
+
+
+def _assert_attributed_dividends(conn, sa):
+    """Fail closed, preserving unresolved history for evidence-based repair.
+
+    Do not invent a ticker or reconstruct rows removed by an older release.
+    Report only a bounded list of record IDs; never disclose financial contents.
+    """
+    inspector = sa.inspect(conn)
+    if 'dividend' not in inspector.get_table_names():
+        return
+    columns = {column['name'] for column in inspector.get_columns('dividend')}
+    symbol = 'symbol' if 'symbol' in columns else 'NULL'
+    identifiers = []
+    with conn.exec_driver_sql(f'SELECT id, {symbol} FROM dividend ORDER BY id') as rows:
+        for identifier, ticker in rows:
+            if ticker is None or not ticker.strip():
+                identifiers.append(str(identifier))
+                if len(identifiers) == 20:
+                    break
+    if identifiers:
+        raise RuntimeError(
+            'Upgrade stopped: unattributed dividend records (first IDs: '
+            + ', '.join(identifiers) + '). No records were deleted. '
+            'Back up the database and resolve attribution from source evidence '
+            'before retrying. See docs/MIGRATIONS.md, schema 41.'
+        )
+
+
+def _assert_financial_ownership(conn, sa):
+    """Validate legacy and current owners before any committed migration step."""
+    inspector = sa.inspect(conn)
+    tables = set(inspector.get_table_names())
+
+    def refuse(table, identifiers):
+        if identifiers:
+            raise RuntimeError(
+                f'Upgrade stopped: unresolved ownership in {table} (first IDs: '
+                + ', '.join(str(row[0]) for row in identifiers) + '). '
+                'No database changes were made. Back up the database and explicitly '
+                'repair portfolio ownership/links from source evidence before retrying. '
+                'No owner will be inferred. See docs/MIGRATIONS.md, schema 41.'
+            )
+
+    for table in ('capital', 'fund', 'portfolio'):
+        if table not in tables:
+            continue
+        columns = {column['name'] for column in inspector.get_columns(table)}
+        if 'user_id' not in columns or 'user' not in tables:
+            query = f'SELECT id FROM "{table}" ORDER BY id LIMIT 20'
+        else:
+            query = (f'SELECT p.id FROM "{table}" p LEFT JOIN "user" u ON u.id=p.user_id '
+                     'WHERE u.id IS NULL ORDER BY p.id LIMIT 20')
+        refuse(table, conn.exec_driver_sql(query).all())
+
+    # A child with no parent also has no verifiable owner. Handle column names
+    # before the capital -> fund -> portfolio rename chain, without rewriting it.
+    links = {'capital_id': 'capital', 'fund_id': 'fund', 'portfolio_id': 'portfolio',
+             'source_portfolio_id': 'portfolio', 'destination_portfolio_id': 'portfolio'}
+    for table in ('transaction', 'dividend', 'capital_event', 'fund_event',
+                  'portfolio_event', 'asset', 'symbol', 'portfolio_transfer'):
+        if table not in tables:
+            continue
+        columns = {column['name'] for column in inspector.get_columns(table)}
+        for column, parent in links.items():
+            if column not in columns:
+                continue
+            if parent not in tables:
+                # A committed table rename can precede its child-column rename.
+                # These are the same IDs/owners, not an inferred assignment.
+                successors = {'capital': ('fund', 'portfolio'), 'fund': ('portfolio',)}
+                renamed = [name for name in successors.get(parent, ()) if name in tables]
+                if len(renamed) == 1:
+                    parent = renamed[0]
+            if parent in tables:
+                query = (f'SELECT c.id FROM "{table}" c LEFT JOIN "{parent}" p '
+                         f'ON p.id=c."{column}" WHERE p.id IS NULL ORDER BY c.id LIMIT 20')
+            else:
+                query = f'SELECT id FROM "{table}" ORDER BY id LIMIT 20'
+            refuse(table, conn.exec_driver_sql(query).all())
+
+
+def _assert_readable_financial_history(conn, sa):
+    """Preflight compatibility without pulling oversized values into Python."""
+    from portfolio_app.utils.decimal_utils import MAX_STORED_DECIMAL_CHARS
+    from portfolio_app.utils.exact_decimal import read_stored_decimal, canonical_decimal_text
+
+    fields = {
+        # Step 9 can turn these legacy balances into authoritative events.
+        'capital': {'amount': 2, 'cash_balance': 2},
+        'fund': {'amount': 2, 'cash_balance': 2},
+        'transaction': {'price': 10, 'quantity': 10, 'fees': 10},
+        'dividend': {'amount': 10},
+        'capital_event': {'amount_usd_delta': 2, 'amount_delta': 2},
+        'fund_event': {'amount_usd_delta': 2, 'amount_delta': 2},
+        'portfolio_event': {'amount_delta': 2},
+        'portfolio_transfer': {'amount': 10},
+    }
+    inspector = sa.inspect(conn)
+    tables = set(inspector.get_table_names())
+    for table, financial in fields.items():
+        if table not in tables:
+            continue
+        columns = {column['name']: column for column in inspector.get_columns(table)}
+        for field, scale in financial.items():
+            if field not in columns:
+                continue
+            exact_text = isinstance(columns[field]['type'], sa.Text)
+            legacy_reader = sa.Numeric(15 if scale == 2 else 20, scale).result_processor(conn.dialect, None)
+            # SQLite keeps oversized TEXT/BLOB on its side of the boundary.
+            # Stream rows; never materialize the entire financial table.
+            query = (f'SELECT id, CASE WHEN length(CAST("{field}" AS BLOB)) <= '
+                     f'{MAX_STORED_DECIMAL_CHARS} THEN "{field}" ELSE NULL END '
+                     f'FROM "{table}"')
+            if table in ('capital', 'fund'):
+                # Step 9 deliberately ignores absent legacy opening balances.
+                query += f' WHERE "{field}" IS NOT NULL'
+            query += ' ORDER BY id'
+            with conn.exec_driver_sql(query) as rows:
+                for identifier, value in rows:
+                    try:
+                        if exact_text:
+                            read_stored_decimal(value)
+                        else:
+                            # Match migration 36 / the old ORM, not a new
+                            # float conversion or a different rounding policy.
+                            canonical_decimal_text(legacy_reader(value))
+                    except (ValueError, TypeError, ArithmeticError) as exc:
+                        raise RuntimeError(
+                            f'Upgrade stopped: unsupported historical decimal in {table} '
+                            f'id={identifier}, field={field}. No database changes were made. '
+                            'Back up the database and review this record with source evidence '
+                            'and a compatible reader before retrying; do not round, zero or '
+                            'delete it to bypass this check. See docs/MIGRATIONS.md, schema 41.'
+                        ) from exc
 
 
 def _migrate_session_identity(conn, sa):
@@ -646,36 +789,8 @@ def _apply_migration_steps(conn, sa):
         ))
         conn.commit()
 
-    # ── Step 22: delete orphan portfolios with NULL user_id ──────────────
-    # Created before user_id was introduced, invisible to every account
-    # (PortfolioRepository filters by user_id). They and all their
-    # children — transactions, events, dividends, symbols — are removed.
-    if 'portfolio' in tables:
-        p_cols = {c['name'] for c in inspector.get_columns('portfolio')}
-        if 'user_id' in p_cols:
-            orphan_ids = [
-                row[0]
-                for row in conn.execute(sa.text(
-                    'SELECT id FROM portfolio WHERE user_id IS NULL'
-                )).fetchall()
-            ]
-            if orphan_ids:
-                placeholders = ','.join(str(int(i)) for i in orphan_ids)
-                for child_table, fk_col in (
-                    ('"transaction"',     'portfolio_id'),
-                    ('portfolio_event',   'portfolio_id'),
-                    ('dividend',          'portfolio_id'),
-                    ('symbol',            'portfolio_id'),
-                ):
-                    bare = child_table.strip('"')
-                    if bare in tables:
-                        conn.execute(sa.text(
-                            f'DELETE FROM {child_table} WHERE {fk_col} IN ({placeholders})'
-                        ))
-                conn.execute(sa.text(
-                    f'DELETE FROM portfolio WHERE id IN ({placeholders})'
-                ))
-                conn.commit()
+    # Step 22's ownerless-history purge is retired. The preflight requires
+    # explicit ownership repair before even the first legacy schema change.
 
     # ── Step 23: drop closed_trade table ─────────────────────────────────
     # Realized P&L is now computed dynamically from transactions, so the
@@ -687,17 +802,10 @@ def _apply_migration_steps(conn, sa):
     conn.execute(sa.text('DROP TABLE IF EXISTS closed_trade'))
     conn.commit()
 
-    # ── Step 25: purge dividends without an attributed symbol ────────────
-    # Pre-dates the form requiring symbol; any legacy null/empty rows were
-    # silently dropped from totals by a defensive filter in the calculator.
-    # Step 24 below rebuilds dividend with ``symbol NOT NULL``, so these
-    # rows must be removed first or the rebuild's INSERT...SELECT fails.
-    # (Numbered 25 to keep migration ordering intuitive — runs before 24.)
-    if 'dividend' in tables:
-        conn.execute(sa.text(
-            "DELETE FROM dividend WHERE symbol IS NULL OR symbol = ''"
-        ))
-        conn.commit()
+    # Step 25 formerly deleted unattributed dividends. Never discard financial
+    # history to satisfy the later NOT NULL rebuild. The schema-41 preflight
+    # checks even earlier schemas (including those without a symbol column).
+    _assert_attributed_dividends(conn, sa)
 
     # ── Step 26: auth refactor — pending_registration table + lockout cols ─
     # Sign-ups now stage in pending_registration until the OTP is confirmed,

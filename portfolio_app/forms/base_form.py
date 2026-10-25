@@ -123,7 +123,7 @@ class BaseForm:
         Returns:
             Decimal value if valid, None otherwise (error added to self.errors)
         """
-        value_str = (self.data.get(field_name) or '').strip()
+        value_str = self.data.get(field_name) or ''
         dec, err = validate_positive_decimal(value_str, allow_zero=allow_zero, allow_blank=allow_blank)
 
         if err:

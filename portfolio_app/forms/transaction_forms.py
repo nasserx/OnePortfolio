@@ -86,23 +86,17 @@ class TransactionEditForm(BaseForm):
             ):
                 self.cleaned_data['symbol'] = symbol.upper()
 
-        price_str = self._get_string('edit_price', default='')
-        if price_str:
-            price = self._validate_decimal('edit_price', allow_zero=False)
-            if price is not None:
-                self.cleaned_data['price'] = price
+        price = self._validate_decimal('edit_price', allow_zero=False, allow_blank=True)
+        if price is not None:
+            self.cleaned_data['price'] = price
 
-        quantity_str = self._get_string('edit_quantity', default='')
-        if quantity_str:
-            quantity = self._validate_decimal('edit_quantity', allow_zero=False)
-            if quantity is not None:
-                self.cleaned_data['quantity'] = quantity
+        quantity = self._validate_decimal('edit_quantity', allow_zero=False, allow_blank=True)
+        if quantity is not None:
+            self.cleaned_data['quantity'] = quantity
 
-        fees_str = self._get_string('edit_fees', default='')
-        if fees_str:
-            fees = self._validate_decimal('edit_fees', allow_zero=True, allow_blank=False)
-            if fees is not None:
-                self.cleaned_data['fees'] = fees
+        fees = self._validate_decimal('edit_fees', allow_zero=True, allow_blank=True)
+        if fees is not None:
+            self.cleaned_data['fees'] = fees
 
         notes = self._get_string('edit_notes', default=None)
         if notes is not None:

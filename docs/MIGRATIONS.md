@@ -4,7 +4,7 @@ OnePortfolio uses an in-app SQLite migration system in `portfolio_app/migrations
 
 ## Schema Version
 
-`TARGET_SCHEMA_VERSION = 40` in `portfolio_app/migrations.py` defines the current expected SQLite schema version.
+`TARGET_SCHEMA_VERSION = 41` in `portfolio_app/migrations.py` defines the current expected SQLite schema version.
 
 Startup migration state is stored in SQLite through:
 
@@ -173,6 +173,55 @@ copy. This change does not migrate the developer's working `portfolio.db`.
 Rollback to older application code requires restoring a schema-35 backup, not
 running the old Numeric models against schema 36. A down-migration would be lossy
 for newly accepted precision and is deliberately not provided.
+
+## Schema 41: preserve unattributed dividend history
+
+This forward revision validates surviving dividend attribution **before any
+legacy migration writes**, including installations already marked schema 40.
+A missing `symbol` column with dividend rows, NULL symbols, empty symbols or
+whitespace-only symbols stop startup with a bounded list of affected record IDs.
+The database contents and version remain unchanged; repeated attempts are safe.
+The same preflight checks ownership in `capital`, `fund` and `portfolio`, including
+missing/NULL owner columns, missing users and broken financial-record parent links.
+Correcting a dividend symbol alone cannot authorize deletion of ownerless history.
+The historical Step 22 ownerless-portfolio purge and Step 25 dividend deletion are
+removed. No account is chosen automatically, even if only one account exists.
+An interrupted legacy table rename can still be retried using the same IDs and
+explicit owner through the existing rename chain.
+Empty/fresh databases and databases passing all preflight checks advance to 41.
+No substitute ticker, amount, cash event or financial history is generated.
+
+For a stopped upgrade, retain an untouched backup and work on a disposable copy.
+Determine each dividend's portfolio owner and actual asset from statements or
+other authoritative evidence. For a schema predating the symbol column, add the
+attribution column on that copy before supplying verified symbols. If ownership
+is absent, explicitly restore the correct `user_id` and parent links from evidence
+on the copy (adding the owner column when the schema predates it). Preserve IDs,
+amounts, dates and notes, reconcile the records, then retry the upgrade and verify
+foreign keys and financial totals. If attribution cannot be established, keep the
+original records and resolve the missing evidence; do not delete them or invent
+a placeholder asset merely to complete startup.
+
+The preflight also checks financial numeric compatibility before legacy DDL/DML
+or a version change, including schema 40. Canonical fixed-point historical TEXT
+is read exactly within the existing 32,768-character representation budget;
+`1e-8193` stored as ordinary decimal text remains supported. Reading does not
+re-expand scientific notation or impose new-action limits. Old NUMERIC fields
+are checked using the same legacy SQLAlchemy reader as migration 36.
+An unsupported value stops startup with its table, record ID and field, leaving
+contents and schema version unchanged. Keep an untouched backup, inspect that
+record with a compatible reader and source evidence, and retry only after an
+explicit verified correction or a reviewed compatibility change. Never round,
+replace with zero or delete a valid historical fact just to pass the gate.
+
+**Already deleted records cannot be reconstructed from schema 40 alone.** The old
+deletion left no recoverable financial event or audit revision. A successful 41
+upgrade validates surviving rows, not the completeness of historical income.
+Compare a pre-upgrade backup or external statements against current records on
+disposable copies. Recover only verified missing facts, preserving ownership and
+avoiding duplicate imports. No automatic restore or replay of an old backup over
+newer user activity is performed. Validation of this revision uses disposable
+databases only; deployment still runs the normal startup migration workflow.
 
 ## Schema 40: account-lifetime session identity
 

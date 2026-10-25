@@ -15,6 +15,7 @@ intact.
 
 from pathlib import Path
 import sqlite3
+import pytest
 
 from config import Config
 from portfolio_app import create_app, db
@@ -47,7 +48,7 @@ def _create_capital_era_database(db_path, *, owned=True):
 
     ``owned`` mirrors the two real variants. A database that had already
     gained ``capital.user_id`` carries its rows through the rename chain; one
-    that never did leaves them ownerless, and Step 22 purges them by design.
+    that never did requires explicit ownership repair before migration.
     """
     owner_column = ', user_id INTEGER' if owned else ''
     owner_value = ', 1' if owned else ''
@@ -250,9 +251,21 @@ def _assert_database_is_sound(app):
 # capital era
 # ---------------------------------------------------------------------------
 
+def _attribute_capital_dividend(db_path):
+    """Model an operator's evidence-based attribution before the safe upgrade.
+
+    The unmodified oldest schema is separately tested to fail closed; the
+    application must never infer this attribution from the other holdings.
+    """
+    with sqlite3.connect(db_path) as connection:
+        connection.execute('ALTER TABLE dividend ADD COLUMN symbol VARCHAR(20)')
+        connection.execute("UPDATE dividend SET symbol='AAPL' WHERE id=1")
+
+
 def test_capital_era_database_reaches_target_version_in_one_boot(tmp_path):
     db_path = tmp_path / 'capital-era.sqlite'
     _create_capital_era_database(db_path)
+    _attribute_capital_dividend(db_path)
 
     app = create_app(_config_for(db_path))
 
@@ -272,6 +285,7 @@ def test_capital_era_database_reaches_target_version_in_one_boot(tmp_path):
 def test_capital_era_replay_carries_every_owned_row_through_the_renames(tmp_path):
     db_path = tmp_path / 'capital-era-rows.sqlite'
     _create_capital_era_database(db_path)
+    _attribute_capital_dividend(db_path)
 
     app = create_app(_config_for(db_path))
 
@@ -298,32 +312,30 @@ def test_capital_era_replay_carries_every_owned_row_through_the_renames(tmp_path
     assert _rows(app, 'SELECT id, portfolio_id, symbol FROM symbol') == [
         (1, 1, 'AAPL'),
     ]
-    # The one deliberate deletion: this era's dividends carry no symbol, and
-    # Step 25 purges them so Step 24 can rebuild the table with symbol NOT
-    # NULL. Asserted so the intent stays explicit rather than incidental.
-    assert _rows(app, 'SELECT COUNT(*) FROM dividend') == [(0,)]
+    assert _rows(app, 'SELECT id,portfolio_id,symbol,amount,notes FROM dividend') == [
+        (1, 1, 'AAPL', '75', 'unattributed'),
+    ]
 
 
-def test_capital_era_without_an_owner_purges_orphans_and_still_converges(tmp_path):
-    """Step 22's documented purge, on a database that never had user_id."""
+def test_capital_era_without_an_owner_preserves_records_and_stops(tmp_path):
+    """Missing ownership must never authorize deletion of financial history."""
     db_path = tmp_path / 'capital-era-ownerless.sqlite'
     _create_capital_era_database(db_path, owned=False)
+    _attribute_capital_dividend(db_path)
 
-    app = create_app(_config_for(db_path))
-
-    assert _scalar(app, 'PRAGMA user_version') == TARGET_SCHEMA_VERSION
-    assert _rows(app, 'SELECT id, username FROM "user"') == [(1, 'legacy')]
-    for table_name in ('portfolio', 'portfolio_event', 'transaction',
-                       'symbol', 'dividend'):
-        assert _rows(app, f'SELECT COUNT(*) FROM "{table_name}"') == [(0,)], (
-            f'{table_name} still holds rows from an ownerless portfolio'
-        )
-    _assert_database_is_sound(app)
+    with sqlite3.connect(db_path) as connection:
+        before = tuple(connection.iterdump())
+    with pytest.raises(RuntimeError, match='unresolved ownership'):
+        create_app(_config_for(db_path))
+    with sqlite3.connect(db_path) as connection:
+        assert tuple(connection.iterdump()) == before
+        assert connection.execute('PRAGMA user_version').fetchone()[0] == 0
 
 
 def test_capital_era_second_boot_changes_nothing(tmp_path):
     db_path = tmp_path / 'capital-era-replay.sqlite'
     _create_capital_era_database(db_path)
+    _attribute_capital_dividend(db_path)
 
     first = create_app(_config_for(db_path))
     after_first = {
@@ -428,6 +440,7 @@ def test_every_era_lands_on_the_fresh_installs_cascade_contract(tmp_path):
     capital_path = tmp_path / 'parity-capital.sqlite'
     fund_path = tmp_path / 'parity-fund.sqlite'
     _create_capital_era_database(capital_path)
+    _attribute_capital_dividend(capital_path)
     _create_fund_era_database(fund_path)
 
     fresh = create_app(_config_for(tmp_path / 'parity-fresh.sqlite'))

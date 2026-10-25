@@ -38,7 +38,7 @@ def _payloads(html, attribute):
 def _forms(value):
     portfolio = SimpleNamespace(id=1)
     return [
-        TransactionAddForm(dict(portfolio_id='1', symbol='BTC', price=value,
+        TransactionAddForm(dict(portfolio_id='1', transaction_type='Buy', symbol='BTC', price=value,
                                 quantity=value, fees=value, date='2024-01-01'), [portfolio]),
         TransactionEditForm(dict(edit_price=value, edit_quantity=value, edit_fees=value), 1, 'Buy'),
         DividendAddForm(dict(portfolio_id='1', div_symbol='BTC', amount=value, date='2024-01-01'), [portfolio]),

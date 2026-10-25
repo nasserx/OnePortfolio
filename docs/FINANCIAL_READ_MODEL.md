@@ -240,6 +240,12 @@ times a quantity of `1e-64` still yields an exact purchase cost of `1e-128`.
 Existing safely bounded historical values are read unchanged, but an explicitly
 resubmitted out-of-policy number is rejected. No automatic normalization is applied.
 
+New transactions require an approved type from `Config.TRANSACTION_TYPES`
+(`Buy` or `Sell`). Missing, blank, unknown or differently cased types are rejected
+by the form and service; they never default to Buy. Forms retain their existing
+surrounding-whitespace trimming for choices. This does not rewrite stored history
+or permit changing a transaction's type through the edit workflow.
+
 ### Display precision
 
 Existing formatters retain separators, signs, monetary/price/fee/quantity and

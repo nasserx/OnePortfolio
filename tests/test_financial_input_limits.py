@@ -268,7 +268,8 @@ def test_financial_field_original_length_boundary(length, side):
 def test_optional_edit_financial_blanks_still_obey_original_length(length, field):
     form = TransactionEditForm({field: ' ' * length}, 1, 'Buy')
     assert form.validate() == (length == 256)
-    assert field.removeprefix('edit_') not in form.cleaned_data
+    cleaned_field = field[len('edit_'):] if field.startswith('edit_') else field
+    assert cleaned_field not in form.cleaned_data
     if length == 257:
         assert '256' in form.errors[field]
 

@@ -124,6 +124,7 @@ MESSAGES = {
     # Form validation — portfolio / symbol selectors
     'PORTFOLIO_SELECT_REQUIRED':   "Please select a portfolio.",
     'PORTFOLIO_SELECTION_INVALID': "Invalid portfolio selection.",
+    'TRANSACTION_TYPE_INVALID':    "Please choose Buy or Sell.",
     'SYMBOL_REQUIRED':             "Please enter an asset symbol (e.g., AAPL, BTC).",
 
     # Form validation — username

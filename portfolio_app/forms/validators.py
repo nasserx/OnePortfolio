@@ -3,7 +3,9 @@
 from decimal import Decimal, InvalidOperation
 from typing import Optional, Tuple
 from portfolio_app.utils.messages import MESSAGES
-from portfolio_app.utils.decimal_utils import parse_financial_decimal
+from portfolio_app.utils.decimal_utils import (
+    parse_financial_decimal, FinancialNumberLimitError, validate_financial_input_length,
+)
 
 
 def parse_decimal_field(
@@ -18,11 +20,14 @@ def parse_decimal_field(
         If successful: (Decimal, None)
         If error: (None, error_message)
     """
-    v = (value or '').strip()
-    if v == '':
-        return (None, None) if allow_blank else (None, MESSAGES['FIELD_REQUIRED'])
+    v = value or ''
     try:
+        validate_financial_input_length(v)
+        if not v.strip():
+            return (None, None) if allow_blank else (None, MESSAGES['FIELD_REQUIRED'])
         return parse_financial_decimal(v), None
+    except FinancialNumberLimitError as exc:
+        return None, str(exc)
     except (InvalidOperation, ValueError, TypeError):
         return None, MESSAGES['INVALID_NUMBER']
 

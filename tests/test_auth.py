@@ -620,9 +620,9 @@ def test_origin_and_normalized_target_rate_limits(tmp_path, monkeypatch):
     )
     application = create_app(LimitedConfig)
     limiter.reset()
+    # Start and resend now share the existing three-per-hour send allowance.
     for index, spelling in enumerate((
         'rate@example.com', 'RATE@example.com', 'Rate@Example.com',
-        'rate@EXAMPLE.COM', 'rAtE@example.com',
     )):
         response = application.test_client().post(
             '/login', data={'email': spelling},

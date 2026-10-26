@@ -160,11 +160,21 @@ was introduced. URLs and raw mutation field names remain unchanged.
 
 Schema 36 introduced `ExactDecimalText` for Transaction price/quantity/fees,
 Dividend amount and PortfolioEvent amount_delta; schema 37 adds PortfolioTransfer
-amount with the same unrestricted accepted Decimal precision. Finite Decimal -> canonical
+amount with the same exact Decimal representation. Finite Decimal -> canonical
 ordinary decimal TEXT -> Decimal never passes through float. Fractional trailing
 zeros are removed; all numeric zero representations normalize to `0`.
-No new fixed scale or significant-digit limit is imposed. Float/non-finite input
-and malformed/noncanonical stored text are rejected.
+No value is rounded to a storage scale. Float/non-finite input and
+malformed/noncanonical stored text are rejected. Storage uses a representation
+budget of 32,768 characters, including the sign and decimal point. Writers check
+the predicted fixed-point length before expansion. Readers validate the existing
+fixed-point text directly, before Decimal construction, without reformatting it
+or applying the new-entry exponent limits. This preserves historical values such
+as `1e-8193` exactly in their previously stored fixed-point form. Scientific
+notation is not valid on disk: all digit positions must already fit in the text
+budget, which also bounds each operand's arithmetic span. The text ceiling has
+not increased. Schema 41 checks compatibility before any migration writes;
+unsupported records stop startup with their table, ID and field for investigation.
+They are never rounded, clamped, deleted or rewritten automatically.
 
 Historical migration 36 removed stored `Transaction.average_cost` and
 `Transaction.net_amount`, their defaults/checks and compatibility writers.
@@ -210,6 +220,32 @@ raw numbers. Withdrawal Max floors the date-specific safe amount to executable c
 zero/negative headroom produces no positive Max. Funding storage itself is not
 newly restricted to cents.
 
+New and explicitly replaced cash amounts, prices, quantities and fees are limited
+to 256 input characters, 64 integer digits and 64 decimal places. The same parser
+guards forms and direct service calls, including create/edit, funding, dividends
+and transfers. Scientific notation and valid thousands grouping remain accepted.
+The exponent is inspected without expanding it: `1e63` and `1e-64` fit; `1e64`,
+`1e-65`, and even zero with an extreme exponent are rejected. Fractional trailing
+zeros count toward the submitted scale; they are not silently stripped to make an
+out-of-budget input pass. The 256-character limit counts the original text,
+including leading/trailing whitespace, before stripping, blank-field handling,
+regex matching or Decimal construction. Surrounding whitespace remains accepted
+within that limit, including optional edit fields and preview operands.
+
+These deliberately generous limits retain existing fine-grained share/fee inputs
+while bounding per-operand work. They are not rounding rules or currency-specific
+scales. Rejections appear as field validation errors. Calculated products, sums,
+cost pools and ratios do **not** inherit the entry limits: a valid price of `1e-64`
+times a quantity of `1e-64` still yields an exact purchase cost of `1e-128`.
+Existing safely bounded historical values are read unchanged, but an explicitly
+resubmitted out-of-policy number is rejected. No automatic normalization is applied.
+
+New transactions require an approved type from `Config.TRANSACTION_TYPES`
+(`Buy` or `Sell`). Missing, blank, unknown or differently cased types are rejected
+by the form and service; they never default to Buy. Forms retain their existing
+surrounding-whitespace trimming for choices. This does not rewrite stored history
+or permit changing a transaction's type through the edit workflow.
+
 ### Display precision
 
 Existing formatters retain separators, signs, monetary/price/fee/quantity and
@@ -253,13 +289,13 @@ Chart values are a presentation-only boundary: Decimal totals are calculated
 before conversion. If any positive chart component or total overflows or
 underflows the chart's binary-number range, that dataset is unavailable; exact
 financial metrics and the portfolio table remain available with their existing
-formatting. No business precision limit is imposed.
+formatting. New user entries follow the explicit limits above.
 
 Recurring division remains approximate; terminating division also observes its
 working budget. Guards cannot promise arbitrary relative accuracy after cancellation.
 Adding historical transactions can increase replay precision and refine low-order
-digits. Extremely large exponents/spans/history require resources and remain
-subject to Python Decimal platform limits.
+digits. Input and storage spans are bounded as described above; aggregate work
+still depends on history length and remains subject to Python Decimal platform limits.
 
 Optional unscoped calculator calls remain an internal convention; application
 consumers pass user IDs. Malformed/non-normalized legacy data and concurrent

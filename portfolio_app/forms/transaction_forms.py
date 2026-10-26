@@ -31,9 +31,11 @@ class TransactionAddForm(BaseForm):
         except (ValueError, TypeError):
             self.errors['portfolio_id'] = MESSAGES['PORTFOLIO_SELECTION_INVALID']
 
-        raw_type = (self.data.get('transaction_type') or '').strip()
-        transaction_type = raw_type if raw_type in Config.TRANSACTION_TYPES else Config.TRANSACTION_TYPES[0]
-        self.cleaned_data['transaction_type'] = transaction_type
+        transaction_type = self._validate_choice(
+            'transaction_type', Config.TRANSACTION_TYPES, MESSAGES['TRANSACTION_TYPE_INVALID'],
+        )
+        if transaction_type is not None:
+            self.cleaned_data['transaction_type'] = transaction_type
 
         symbol = self._validate_required_string('symbol', MESSAGES['SYMBOL_REQUIRED'])
         if symbol:
@@ -86,23 +88,17 @@ class TransactionEditForm(BaseForm):
             ):
                 self.cleaned_data['symbol'] = symbol.upper()
 
-        price_str = self._get_string('edit_price', default='')
-        if price_str:
-            price = self._validate_decimal('edit_price', allow_zero=False)
-            if price is not None:
-                self.cleaned_data['price'] = price
+        price = self._validate_decimal('edit_price', allow_zero=False, allow_blank=True)
+        if price is not None:
+            self.cleaned_data['price'] = price
 
-        quantity_str = self._get_string('edit_quantity', default='')
-        if quantity_str:
-            quantity = self._validate_decimal('edit_quantity', allow_zero=False)
-            if quantity is not None:
-                self.cleaned_data['quantity'] = quantity
+        quantity = self._validate_decimal('edit_quantity', allow_zero=False, allow_blank=True)
+        if quantity is not None:
+            self.cleaned_data['quantity'] = quantity
 
-        fees_str = self._get_string('edit_fees', default='')
-        if fees_str:
-            fees = self._validate_decimal('edit_fees', allow_zero=True, allow_blank=False)
-            if fees is not None:
-                self.cleaned_data['fees'] = fees
+        fees = self._validate_decimal('edit_fees', allow_zero=True, allow_blank=True)
+        if fees is not None:
+            self.cleaned_data['fees'] = fees
 
         notes = self._get_string('edit_notes', default=None)
         if notes is not None:

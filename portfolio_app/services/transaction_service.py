@@ -3,6 +3,7 @@
 from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Optional, Any
+from config import Config
 from portfolio_app.models.transaction import Transaction
 from portfolio_app.models.symbol import Symbol
 from portfolio_app.models.dividend import Dividend
@@ -63,7 +64,7 @@ class TransactionService:
             transaction_type = transaction.transaction_type
         else:
             transaction_type = data.get('transaction_type')
-        if transaction_type not in ('Buy', 'Sell'):
+        if transaction_type not in Config.TRANSACTION_TYPES:
             raise PreviewUnavailable()
         if data['mode'] == 'retained':
             return {'fees': str(bounded_preview_value(transaction.fees))}
@@ -83,6 +84,8 @@ class TransactionService:
         date: Optional[Any] = None
     ) -> Transaction:
         """Add a new transaction."""
+        if transaction_type not in Config.TRANSACTION_TYPES:
+            raise ValueError(MESSAGES['TRANSACTION_TYPE_INVALID'])
         price, quantity, fees = map(parse_financial_decimal, (price, quantity, fees))
         date = new_effective_date(date)
         self._validate_trade_values(price, quantity, fees)

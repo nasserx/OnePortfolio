@@ -113,6 +113,7 @@ def test_preview_ownership_and_authentication(app, ledger, mode):
     {'transaction_type': 'Dividend'},
     {'price': '1' * 4097}, {'price': '1e999999'}, {'quantity': '1e-999999'},
     {'price': '1e4100', 'quantity': '1e4100'}, {'mode': 'edit', 'transaction_id': []},
+    {'price': '1e64'}, {'quantity': '1e-65'},
 ])
 def test_preview_rejects_invalid_or_unbounded_work(app, ledger, change):
     data = payload()
@@ -125,10 +126,10 @@ def test_preview_rejects_invalid_or_unbounded_work(app, ledger, change):
 def test_preview_legacy_syntax_tiny_decimals_and_body_limits(app, ledger):
     client = client_for(app, ledger.uid)
     data = payload()
-    data.update(price=' +1,000.00100 ', quantity='1e-1000')
+    data.update(price=' +1,000.00100 ', quantity='1e-64')
     response = client.post('/transactions/preview', json=data)
     assert response.status_code == 200
-    assert Decimal(response.json['amount']) == Decimal('1.000001e-997')
+    assert Decimal(response.json['amount']) == Decimal('1.000001e-61')
     assert response.json['formatted_amount'] == '0.00'
     assert client.post('/transactions/preview', data='{' + ' ' * 16384, content_type='application/json').status_code == 413
     assert client.post('/transactions/preview', data='{broken', content_type='application/json').status_code == 400
@@ -193,15 +194,16 @@ def test_production_bigint_preview_matches_python_exact_calculator_and_formattin
         ('1.005', '1', '0'), ('1.004999999999999999999999', '1', '0'),
         ('1', '1', '1.005'), ('1', '1', '1.004999999999999999999999'),
         ('999999999999999999.995', '1', '.005'),
-        ('0.' + '0' * 2000 + '1', '0.0001', '0'),
-        (' +1,000.00100 ', '1e-1000', '.1'),
+        # Exercise the new entry boundaries; derived products can exceed them.
+        ('0.' + '0' * 63 + '1', '0.0001', '0'),
+        (' +1,000.00100 ', '1e-64', '.1'),
         ('1234567890.123456789012345678901', '.0000000001234567890123456789', '.000000000000000000001'),
-        ('9' * 4000, '1e-3000', '.005'),
+        ('9' * 64, '1e-60', '.005'),
     ]
     rng = random.Random(10714)
     for _ in range(150):
         operands.append(tuple(
-            f"{rng.choice(('', '-'))}{rng.randrange(10**40)}e{rng.randrange(-60, 61)}"
+            f"{rng.choice(('', '-'))}{rng.randrange(10**40)}e{rng.randrange(-60, 25)}"
             for _ in range(3)
         ))
     vectors = [[kind, *values] for values in operands for kind in ('Buy', 'Sell')]

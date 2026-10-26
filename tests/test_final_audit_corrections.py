@@ -8,7 +8,7 @@ import pytest
 from flask_login import login_user
 
 from portfolio_app import db
-from portfolio_app.models import User, Transaction, Dividend, Symbol
+from portfolio_app.models import User, Transaction, Dividend, Symbol, PortfolioEvent
 from portfolio_app.services.factory import Services
 from portfolio_app.calculators.portfolio_calculator import PortfolioCalculator as PC
 from portfolio_app.calculators.allocation_charts import build_allocation_chart_data
@@ -299,7 +299,9 @@ def test_chart_presentation_range_and_exact_totals(values):
 @pytest.mark.parametrize('value', ['1e309', '1e-400', '1e308'])
 def test_large_and_small_persisted_values_render_overview(ledger, app, value):
     l = ledger
-    l.svc.portfolio_service.deposit_funds(l.pid, D(value), date=day(1))
+    # Legacy-read contract: these values exceed the new user-entry limits.
+    db.session.add(PortfolioEvent(portfolio_id=l.pid, event_type='Deposit', amount_delta=D(value), date=day(1)))
+    db.session.commit()
     snap = PC.get_portfolio_snapshot(l.pid, user_id=l.uid)
     assert snap.cash_balance == snap.metrics['book_value'] == D(value)
     client = app.test_client()
@@ -313,7 +315,8 @@ def test_overview_handles_float_representable_portfolios_with_overflowing_total(
     l = ledger
     second = l.svc.portfolio_service.create_portfolio('Second large', user_id=l.uid).id
     for pid in (l.pid, second):
-        l.svc.portfolio_service.deposit_funds(pid, D('1e308'), date=day(1))
+        db.session.add(PortfolioEvent(portfolio_id=pid, event_type='Deposit', amount_delta=D('1e308'), date=day(1)))
+    db.session.commit()
     snapshot = PC.get_financial_snapshot(l.uid)
     assert snapshot.totals['cash_balance'] == snapshot.total_book_value == D('2e308')
     datasets = build_allocation_chart_data(snapshot.as_portfolio_summary()[0])

@@ -1,14 +1,34 @@
 """Exact financial persistence, independent of presentation or calculation scale."""
 
+import re
 from decimal import Decimal
+
 from sqlalchemy.types import TypeDecorator, Text
 
-from portfolio_app.utils.decimal_utils import parse_financial_decimal
+from portfolio_app.utils.decimal_utils import (
+    parse_storage_decimal, MAX_STORED_DECIMAL_CHARS, FinancialNumberLimitError,
+)
+
+
+def read_stored_decimal(value):
+    """Read bounded canonical fixed-point TEXT without expanding or rounding.
+
+    In this grammar every exponent position is already present on disk. Checking
+    length before parsing bounds both the coefficient and the arithmetic span;
+    compressed exponents, non-finite values and noncanonical zeros are rejected.
+    """
+    if not isinstance(value, str):
+        raise ValueError('Exact Decimal storage must be TEXT; migrate the database first.')
+    if len(value) > MAX_STORED_DECIMAL_CHARS:
+        raise FinancialNumberLimitError('Financial number exceeds the safe storage limit.')
+    if value == '-0' or not re.fullmatch(r'-?(?:0|[1-9][0-9]*)(?:\.[0-9]*[1-9])?', value):
+        raise ValueError('Noncanonical persisted Decimal text.')
+    return Decimal(value)
 
 
 def canonical_decimal_text(value):
     """Context-independent canonical fixed point, without normalize()/rounding."""
-    value = parse_financial_decimal(value)
+    value = parse_storage_decimal(value)
     if value.is_zero():
         return '0'
     text = format(value, 'f')
@@ -18,7 +38,8 @@ def canonical_decimal_text(value):
 class ExactDecimalText(TypeDecorator):
     """TEXT on disk; finite Decimal in Python. Never bind or read binary floats.
 
-    No scale/range or positivity policy is imposed by this storage type.
+    Entry policy belongs to forms/services. A larger resource ceiling also
+    bounds storage expansion without rounding safely bounded legacy values.
     Numeric SQL arithmetic/order is intentionally not supported as financial math.
     """
 
@@ -31,11 +52,4 @@ class ExactDecimalText(TypeDecorator):
     def process_result_value(self, value, dialect):
         if value is None:
             return None
-        if not isinstance(value, str):
-            raise ValueError('Exact Decimal storage must be TEXT; migrate the database first.')
-        result = Decimal(value)
-        if not result.is_finite():
-            raise ValueError('Non-finite persisted Decimal.')
-        if canonical_decimal_text(result) != value:
-            raise ValueError('Noncanonical persisted Decimal text.')
-        return result
+        return read_stored_decimal(value)

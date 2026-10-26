@@ -38,15 +38,14 @@ def preview_values(data, transaction=None):
         raw = data.get(name, '')
         if not isinstance(raw, str) or len(raw) > PREVIEW_OPERAND_CHARS:
             raise PreviewUnavailable()
-        if not raw.strip() and transaction is not None:
+        value, error = parse_decimal_field(raw, allow_blank=True)
+        if error:
+            raise PreviewUnavailable()
+        if value is None and transaction is not None:
             # Same partial-edit semantics as TransactionEditForm/update_transaction.
             value = getattr(transaction, name)
-        elif not raw.strip() and name == 'fees':
+        elif value is None and name == 'fees':
             value = Decimal('0')
-        else:
-            value, error = parse_decimal_field(raw)
-            if error:
-                raise PreviewUnavailable()
         values[name] = bounded_preview_value(value)
 
     price, quantity, fees = (values[key] for key in ('price', 'quantity', 'fees'))

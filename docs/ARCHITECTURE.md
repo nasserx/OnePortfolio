@@ -48,6 +48,42 @@ selected through `RATELIMIT_STORAGE_URI`; its default `memory://` storage is
 authoritative only when one application process owns the counters, while
 multi-process deployments must provide a supported shared backend.
 
+Code-send limits use that same Flask-Limiter backend and its configured strategy
+(fixed windows by default). Start and resend requests share these counters:
+
+| Flow | Routes sharing the counter | Target/account limit | Shared origin limit |
+| --- | --- | --- | --- |
+| Login / registration | `POST /login`, `POST /resend-code` | 3/hour per normalized email target | 10/hour per IP |
+| Recent authentication | `POST /reauthenticate`, `POST /reauthenticate/resend` | 3/hour per account | 10/hour per IP |
+| Email change | `POST /update-email`, `POST /settings/email/resend` | 3/hour per account | None |
+| Account deletion | `POST /settings/delete/request` (both initial send and resend) | 3/hour per account | None |
+
+Each flow has its own scope. Authenticated account counters use the immutable
+`User.session_identity`, so changing either the proposed or confirmed email,
+renewing a session, cancelling a pending change, or switching start/resend routes
+does not reset the budget. Different accounts have separate account counters;
+the additional origin counters intentionally remain shared by users on one IP.
+Anonymous login/registration is keyed by normalized email, not a caller-supplied
+account ID. The former separate 5/hour start and 3/hour resend allowances now
+form one 3/hour allowance. The 10/hour resend IP allowance now also counts start
+requests; start routes additionally retain their existing 10/15-minute IP limit
+to protect against bursts across hourly window boundaries.
+
+Only POST attempts are counted, before the route invokes a service or mail
+sender. Valid CSRF requests reaching the limiter count even if form validation,
+recent-auth checks, reservation checks, or mail delivery subsequently fail;
+rejected requests never generate/rotate a code or change a reservation. GETs and
+cancellation/confirmation routes do not spend the sending budget. Existing
+verification attempt limits, recent-auth checks and CSRF protection remain in
+place (deletion's own OTP still does not require redundant recent authentication).
+Exhaustion uses the existing verification-request rate-limit message and error
+handler: JSON/AJAX receives HTTP 429; HTML receives the existing form/error page,
+except `/resend-code`, which retains its warning flash and redirect to code entry.
+Allowances return after the configured strategy's window expires; with the default
+fixed-window strategy the hour starts at the first counted request. `memory://`
+counters are process-local and reset on restart; shared enforcement across workers
+requires the configured shared storage backend, not a process-local Python lock.
+
 ## Services Container
 
 `portfolio_app/services/factory.py` provides a `Services` container. Routes call `get_services()`, which stores one container per request on Flask `g`.
@@ -80,9 +116,29 @@ Models live in `portfolio_app/models/`:
 - `MutationReceipt`: durable submission replay and account revision records.
 - `FinancialAudit`: append-only persisted-domain revisions linked to receipts.
 
-Pending email-change claims are bounded by their verification-code lifetime.
-Expired or incomplete pending-email state is non-reserving and is cleared when
-an account workflow encounters it, so it cannot indefinitely hold an address.
+Email ownership/reservations share one availability policy in `AuthService`:
+an assigned `User.email`, a live 24-hour `PendingRegistration`, or another user's
+live pending email-change OTP reserves an address. Email-change claims expire
+with the 10-minute code, or after exhausted attempts; expired/incomplete state
+does not reserve an address. Availability checks are read-only. Replacing or
+explicitly cancelling a pending change releases its old address and invalidates
+the old code. `POST /settings/email/cancel` requires login, recent authentication
+and the existing CSRF protection; no navigation/back link implicitly cancels it.
+
+Registration, email-change staging, resends and confirmations recheck reservations
+under a SQLite `BEGIN IMMEDIATE` writer reservation, including refreshing objects
+loaded before the lock. Services hold it through their commit; failures/early
+returns roll back. A resend can renew an expired change only if the address is
+still available. Registration and email-change confirmations check again before
+assigning email; uniqueness errors roll back the whole claim and account change.
+No schema change or automatic reassignment of overlapping legacy claims occurs.
+
+A registration request for another user's live pending address sends no email
+and creates no signup/challenge. It retains the same public redirect and generic
+message as other authentication requests (with an unpersisted random token).
+Rejected signup confirmations use the generic invalid/expired-code message;
+email-change confirmations can report the existing email-in-use message. Existing
+account login still uses its assigned email, independent of pending changes.
 
 The concise user-facing label is Dividends. The `Dividend` model remains accurate
 for investment cash dividends/distributions, not generic income.
@@ -295,6 +351,13 @@ endpoint. Its edits/deletes use the same event service. The portfolio-summary,
 holdings and withdrawal-Max JSON endpoints are read-only; no alternate financial
 JSON write path bypasses these services. Registration/email/login/challenge
 operations are nonfinancial and retain their existing authentication boundaries.
+
+Assets Sell Max accepts a holdings response only for the latest request and the
+current portfolio/symbol while its dialog is open. Changing the selection or
+closing the dialog immediately invalidates the cached quantity; Max stays
+disabled during loading and after failure. Late successes and failures cannot
+replace that state, including after reopening the same selection. Max copies the
+exact decimal string; final sale validation remains authoritative on the server.
 
 ### Append-only financial history (schema 39)
 

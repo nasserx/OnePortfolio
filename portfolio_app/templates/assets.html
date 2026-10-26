@@ -1266,6 +1266,8 @@ window.openDeleteSymbolModal = function(portfolioId, portfolioName, symbol, txCo
     if (!modalEl || !typeSelect || !portfolioSelect || !symbolInput || !quantityInput || !maxRow || !maxBtn || !buyBtn || !sellBtn) return;
 
     let lastHeldQty = null;
+    let active = false;
+    let currentRequest = null;
 
     function setState({ visible, enabled, heldQty }) {
         maxRow.classList.toggle('d-none', !visible);
@@ -1273,35 +1275,44 @@ window.openDeleteSymbolModal = function(portfolioId, portfolioName, symbol, txCo
         lastHeldQty = heldQty;
     }
 
+    function isCurrent(pending) {
+        return active && pending !== null && pending === currentRequest
+            && typeSelect.value === 'Sell'
+            && portfolioSelect.value === pending.portfolioId
+            && (symbolInput.value || '').trim().toUpperCase() === pending.symbol;
+    }
+
     async function refresh() {
         const isSell = typeSelect.value === 'Sell';
-        if (!isSell) {
-            setState({ visible: false, enabled: false, heldQty: null });
-            return;
-        }
+        // Invalidate synchronously, including when closing or clearing a field.
+        currentRequest = null;
+        setState({ visible: active && isSell, enabled: false, heldQty: null });
+        if (!active || !isSell) return;
 
         const portfolioId = parseInt(portfolioSelect.value || '0', 10);
         const symbol = (symbolInput.value || '').trim().toUpperCase();
 
-        if (!portfolioId || !symbol) {
-            setState({ visible: true, enabled: false, heldQty: null });
-            return;
-        }
+        if (!portfolioId || !symbol) return;
 
-        setState({ visible: true, enabled: false, heldQty: null });
+        // Object identity also distinguishes A -> B -> A and modal reopenings.
+        const pending = { portfolioId: portfolioSelect.value, symbol };
+        currentRequest = pending;
 
         try {
             const url = `/api/holdings?portfolio_id=${encodeURIComponent(String(portfolioId))}&symbol=${encodeURIComponent(symbol)}`;
             const resp = await fetch(url, { headers: { 'Accept': 'application/json' } });
+            if (!isCurrent(pending)) return;
             if (!resp.ok) {
                 throw new Error(`HTTP ${resp.status}`);
             }
             const data = await resp.json();
+            if (!isCurrent(pending)) return;
             const heldQty = (data && data.held_quantity != null) ? String(data.held_quantity) : '0';
             const held = window.OnePortfolioNumeric.classify(heldQty);
             const enabled = held.complete && !held.negative && !held.zero;
             setState({ visible: true, enabled, heldQty });
         } catch (e) {
+            if (!isCurrent(pending)) return;
             setState({ visible: true, enabled: false, heldQty: null });
         }
     }
@@ -1324,7 +1335,7 @@ window.openDeleteSymbolModal = function(portfolioId, portfolioName, symbol, txCo
     }
 
     maxBtn.addEventListener('click', function() {
-        if (!lastHeldQty) return;
+        if (maxBtn.disabled || !lastHeldQty || !isCurrent(currentRequest)) return;
         window.OnePortfolioNumeric.setValue(quantityInput, lastHeldQty, {notify: true});
     });
 
@@ -1348,10 +1359,21 @@ window.openDeleteSymbolModal = function(portfolioId, portfolioName, symbol, txCo
 
     refresh();
 
+    modalEl.addEventListener('show.bs.modal', function() {
+        active = true;
+        refresh();
+    });
+
+    modalEl.addEventListener('hide.bs.modal', function() {
+        active = false;
+        refresh();
+    });
 
     modalEl.addEventListener('hidden.bs.modal', function() {
+        active = false;
         typeSelect.value = 'Buy';
         syncTypeButtons();
+        refresh();
     });
 })();
 

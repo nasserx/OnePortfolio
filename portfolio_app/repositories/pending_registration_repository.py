@@ -16,6 +16,14 @@ class PendingRegistrationRepository(BaseRepository[PendingRegistration]):
     def get_by_username(self, username: str) -> Optional[PendingRegistration]:
         return self.model.query.filter_by(username=username).first()
 
+    def get_live_by_email(self, email, now, exclude_pending_id=None):
+        query = self.model.query.filter(
+            self.model.email == email.lower(), self.model.expires_at >= now,
+        )
+        if exclude_pending_id is not None:
+            query = query.filter(self.model.id != exclude_pending_id)
+        return query.first()
+
     def purge_expired(self, now: datetime) -> int:
         """Remove rows whose 24-hour TTL has passed. Returns the count purged."""
         rows = self.model.query.filter(self.model.expires_at < now).all()

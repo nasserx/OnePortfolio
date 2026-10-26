@@ -171,7 +171,12 @@ def calculate_cumulative_return(earnings, capital):
     portfolio deposits plus transfer in, or consolidated external deposits.
     Zero capital is undefined; negative capital is invalid, not a loss.
     """
-    earnings, capital = map(parse_financial_decimal, (earnings, capital))
+    # These are derived aggregates, not incoming fields. Products, sums and
+    # recurring divisions must retain their full calculation precision.
+    earnings, capital = (
+        to_decimal(value) if isinstance(value, Decimal) else parse_financial_decimal(value)
+        for value in (earnings, capital)
+    )
     if capital < ZERO:
         raise ValueError('Cumulative return capital cannot be negative.')
     return financial_percent(earnings, capital) if capital > ZERO else None

@@ -174,8 +174,16 @@ Tests live in `tests/` and use isolated databases. See
 [Development](docs/DEVELOPMENT.md#validation-commands) for all JavaScript assertion
 and syntax checks. Node.js is needed for those checks, not for application runtime.
 
-The current SQLite schema is 40. Its account-lifetime session identities
-intentionally invalidate pre-upgrade login cookies; existing users sign in again.
+The current SQLite schema is 41. Its dividend-preservation gate stops upgrades
+with unresolved dividend attribution or portfolio ownership before changing records.
+It also checks historical numeric compatibility before upgrading; supported
+fixed-point history retains its exact value. Previously deleted history requires
+a backup or external evidence. See
+[schema 41](docs/MIGRATIONS.md#schema-41-preserve-unattributed-dividend-history).
+New financial inputs accept up to 256 characters, 64 integer digits and 64 decimal
+places, without rounding; see [precision limits](docs/FINANCIAL_READ_MODEL.md#action-precision).
+Schema 40's account-lifetime session identities intentionally invalidate older
+login cookies; affected users sign in again.
 See [Migrations](docs/MIGRATIONS.md#schema-40-account-lifetime-session-identity)
 for deployment compatibility and upgrade guarantees.
 

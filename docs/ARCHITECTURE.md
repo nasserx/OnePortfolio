@@ -48,6 +48,42 @@ selected through `RATELIMIT_STORAGE_URI`; its default `memory://` storage is
 authoritative only when one application process owns the counters, while
 multi-process deployments must provide a supported shared backend.
 
+Code-send limits use that same Flask-Limiter backend and its configured strategy
+(fixed windows by default). Start and resend requests share these counters:
+
+| Flow | Routes sharing the counter | Target/account limit | Shared origin limit |
+| --- | --- | --- | --- |
+| Login / registration | `POST /login`, `POST /resend-code` | 3/hour per normalized email target | 10/hour per IP |
+| Recent authentication | `POST /reauthenticate`, `POST /reauthenticate/resend` | 3/hour per account | 10/hour per IP |
+| Email change | `POST /update-email`, `POST /settings/email/resend` | 3/hour per account | None |
+| Account deletion | `POST /settings/delete/request` (both initial send and resend) | 3/hour per account | None |
+
+Each flow has its own scope. Authenticated account counters use the immutable
+`User.session_identity`, so changing either the proposed or confirmed email,
+renewing a session, cancelling a pending change, or switching start/resend routes
+does not reset the budget. Different accounts have separate account counters;
+the additional origin counters intentionally remain shared by users on one IP.
+Anonymous login/registration is keyed by normalized email, not a caller-supplied
+account ID. The former separate 5/hour start and 3/hour resend allowances now
+form one 3/hour allowance. The 10/hour resend IP allowance now also counts start
+requests; start routes additionally retain their existing 10/15-minute IP limit
+to protect against bursts across hourly window boundaries.
+
+Only POST attempts are counted, before the route invokes a service or mail
+sender. Valid CSRF requests reaching the limiter count even if form validation,
+recent-auth checks, reservation checks, or mail delivery subsequently fail;
+rejected requests never generate/rotate a code or change a reservation. GETs and
+cancellation/confirmation routes do not spend the sending budget. Existing
+verification attempt limits, recent-auth checks and CSRF protection remain in
+place (deletion's own OTP still does not require redundant recent authentication).
+Exhaustion uses the existing verification-request rate-limit message and error
+handler: JSON/AJAX receives HTTP 429; HTML receives the existing form/error page,
+except `/resend-code`, which retains its warning flash and redirect to code entry.
+Allowances return after the configured strategy's window expires; with the default
+fixed-window strategy the hour starts at the first counted request. `memory://`
+counters are process-local and reset on restart; shared enforcement across workers
+requires the configured shared storage backend, not a process-local Python lock.
+
 ## Services Container
 
 `portfolio_app/services/factory.py` provides a `Services` container. Routes call `get_services()`, which stores one container per request on Flask `g`.

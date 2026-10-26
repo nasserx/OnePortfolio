@@ -68,6 +68,38 @@ def _current_user_email_key():
     return _email_rate_limit_key(getattr(current_user, 'email', ''))
 
 
+def _authentication_send_key():
+    return _request_email_key() if request.endpoint == 'auth.login' else _active_auth_email_key()
+
+
+def _account_send_key():
+    # Email changes, session renewal and auth-generation changes must not reset
+    # the sending budget. This identity lasts for the lifetime of the account.
+    return 'code-account:' + current_user.session_identity
+
+
+def _account_code_limit(scope):
+    return limiter.shared_limit(
+        '3 per hour', scope=scope, methods=['POST'], key_func=_account_send_key,
+        exempt_when=lambda: not current_user.is_authenticated,
+        error_message=MESSAGES['RATE_LIMIT_AUTH_REQUEST'],
+    )
+
+
+_authentication_send_limit = limiter.shared_limit(
+    '3 per hour', scope='authentication-code', methods=['POST'],
+    key_func=_authentication_send_key, error_message=MESSAGES['RATE_LIMIT_AUTH_REQUEST'],
+)
+_authentication_origin_limit = limiter.shared_limit(
+    '10 per hour', scope='authentication-code-origin', methods=['POST'],
+    key_func=get_remote_address, error_message=MESSAGES['RATE_LIMIT_AUTH_REQUEST'],
+)
+_recent_auth_origin_limit = limiter.shared_limit(
+    '10 per hour', scope='recent-auth-code-origin', methods=['POST'],
+    key_func=get_remote_address, error_message=MESSAGES['RATE_LIMIT_AUTH_REQUEST'],
+)
+
+
 def _render_code_page(*, recent=False, form_errors=None):
     return render_template(
         'auth/verify_code.html',
@@ -88,10 +120,8 @@ def _render_code_page(*, recent=False, form_errors=None):
     '10 per 15 minutes', methods=['POST'], key_func=get_remote_address,
     error_message=MESSAGES['RATE_LIMIT_AUTH_REQUEST'],
 )
-@limiter.limit(
-    '5 per hour', methods=['POST'], key_func=_request_email_key,
-    error_message=MESSAGES['RATE_LIMIT_AUTH_REQUEST'],
-)
+@_authentication_origin_limit
+@_authentication_send_limit
 def login():
     """Begin the sole production authentication and registration flow."""
     if current_user.is_authenticated:
@@ -172,14 +202,8 @@ def verify_code():
 
 
 @auth_bp.route('/resend-code', methods=['POST'])
-@limiter.limit(
-    '10 per hour', methods=['POST'], key_func=get_remote_address,
-    error_message=MESSAGES['RATE_LIMIT_RESEND'],
-)
-@limiter.limit(
-    '3 per hour', methods=['POST'], key_func=_active_auth_email_key,
-    error_message=MESSAGES['RATE_LIMIT_RESEND'],
-)
+@_authentication_origin_limit
+@_authentication_send_limit
 def resend_code():
     token = session.get(_AUTH_TOKEN_KEY)
     if token:
@@ -207,10 +231,8 @@ def logout():
     '10 per 15 minutes', methods=['POST'], key_func=get_remote_address,
     error_message=MESSAGES['RATE_LIMIT_AUTH_REQUEST'],
 )
-@limiter.limit(
-    '5 per hour', methods=['POST'], key_func=_current_user_email_key,
-    error_message=MESSAGES['RATE_LIMIT_AUTH_REQUEST'],
-)
+@_recent_auth_origin_limit
+@_account_code_limit('recent-auth-code')
 def reauthenticate():
     if recent_auth_is_valid(session):
         return redirect(safe_local_redirect(request.args.get('next')) or url_for('auth.settings'))
@@ -269,14 +291,8 @@ def reauthenticate_verify():
 
 @auth_bp.route('/reauthenticate/resend', methods=['POST'])
 @login_required
-@limiter.limit(
-    '10 per hour', methods=['POST'], key_func=get_remote_address,
-    error_message=MESSAGES['RATE_LIMIT_RESEND'],
-)
-@limiter.limit(
-    '3 per hour', methods=['POST'], key_func=_current_user_email_key,
-    error_message=MESSAGES['RATE_LIMIT_RESEND'],
-)
+@_recent_auth_origin_limit
+@_account_code_limit('recent-auth-code')
 def reauthenticate_resend():
     token = session.get(_REAUTH_TOKEN_KEY)
     if token:
@@ -295,6 +311,7 @@ def settings():
 
 @auth_bp.route('/update-email', methods=['GET', 'POST'])
 @login_required
+@_account_code_limit('email-change-code')
 def update_email():
     if not recent_auth_is_valid(session):
         return redirect(url_for('auth.reauthenticate', next=url_for('auth.update_email')))
@@ -361,10 +378,7 @@ def verify_email_change():
 
 @auth_bp.route('/settings/email/resend', methods=['POST'])
 @login_required
-@limiter.limit(
-    '3 per hour', methods=['POST'], key_func=_current_user_email_key,
-    error_message=MESSAGES['RATE_LIMIT_RESEND'],
-)
+@_account_code_limit('email-change-code')
 def resend_email_change():
     if not recent_auth_is_valid(session):
         return redirect(url_for(
@@ -388,6 +402,7 @@ def cancel_email_change():
 
 @auth_bp.route('/settings/delete/request', methods=['POST'])
 @login_required
+@_account_code_limit('account-deletion-code')
 def delete_account_request():
     try:
         code = get_services().auth_service.request_account_deletion(current_user)

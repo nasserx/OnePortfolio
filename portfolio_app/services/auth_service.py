@@ -5,6 +5,7 @@ import secrets
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Tuple
+from functools import wraps
 
 from sqlalchemy.exc import IntegrityError
 
@@ -28,6 +29,14 @@ RECENT_AUTH_PURPOSE = 'recent-auth'
 _USERNAME_SAFE_RE = re.compile(r'[^a-z0-9]+')
 
 
+def _email_reservation(method):
+    @wraps(method)
+    def reserved(self, *args, **kwargs):
+        with self.user_repo.email_reservation():
+            return method(self, *args, **kwargs)
+    return reserved
+
+
 @dataclass(frozen=True)
 class ChallengeIssue:
     token: str = field(repr=False)
@@ -45,25 +54,29 @@ class AuthService:
         self.pending_repo = pending_repo
         self.challenge_repo = challenge_repo
 
-    def begin_authentication(self, email: str) -> ChallengeIssue:
+    @_email_reservation
+    def begin_authentication(self, email: str) -> Optional[ChallengeIssue]:
         """Issue an indistinguishable challenge for an existing or new email."""
         email_lc = email.strip().lower()
         now = datetime.now(timezone.utc)
-        self._purge_expired_pending_registrations(now, commit=False)
-        user = self.user_repo.get_by_email(email_lc)
-        pending = None
-        if user is None:
-            pending = self.pending_repo.get_by_email(email_lc)
-            if pending is None:
-                pending = PendingRegistration(
-                    username=self._generate_username(email_lc),
-                    email=email_lc,
-                    created_at=now,
-                    expires_at=now + timedelta(hours=PENDING_REGISTRATION_TTL_HOURS),
-                )
-                self.pending_repo.add(pending)
-                self.pending_repo.flush()
         try:
+            self._purge_expired_pending_registrations(now, commit=False)
+            user = self.user_repo.get_by_email(email_lc)
+            pending = None
+            if user is None:
+                pending = self.pending_repo.get_by_email(email_lc)
+                if self.email_is_unavailable(
+                    email_lc, exclude_pending_id=pending.id if pending else None,
+                ):
+                    return None
+                if pending is None:
+                    pending = PendingRegistration(
+                        username=self._generate_username(email_lc), email=email_lc,
+                        created_at=now,
+                        expires_at=now + timedelta(hours=PENDING_REGISTRATION_TTL_HOURS),
+                    )
+                    self.pending_repo.add(pending)
+                    self.pending_repo.flush()
             issue = self._issue_challenge(
                 AUTHENTICATION_PURPOSE, user=user, pending=pending, now=now,
             )
@@ -71,15 +84,7 @@ class AuthService:
             return issue
         except IntegrityError:
             self.user_repo.db.session.rollback()
-            user = self.user_repo.get_by_email(email_lc)
-            pending = None if user else self.pending_repo.get_by_email(email_lc)
-            if user is None and pending is None:
-                raise
-            issue = self._issue_challenge(
-                AUTHENTICATION_PURPOSE, user=user, pending=pending, now=now,
-            )
-            self.user_repo.commit()
-            return issue
+            return None  # Generic public response; a fresh request may retry.
 
     def begin_recent_authentication(self, user: User) -> ChallengeIssue:
         issue = self._issue_challenge(
@@ -91,6 +96,7 @@ class AuthService:
         self.user_repo.commit()
         return issue
 
+    @_email_reservation
     def resend_challenge(self, token: str,
                          expected_purpose: str) -> Optional[ChallengeIssue]:
         """Rotate code, digest, expiry, and attempt count for an open challenge."""
@@ -100,6 +106,10 @@ class AuthService:
         now = datetime.now(timezone.utc)
         if (challenge.pending_registration is not None
                 and now > self._as_utc(challenge.pending_registration.expires_at)):
+            return None
+        if (challenge.pending_registration is not None and self.email_is_unavailable(
+                challenge.pending_registration.email,
+                exclude_pending_id=challenge.pending_registration.id)):
             return None
         code = self._make_verification_code()
         recipient = self._challenge_recipient(challenge)
@@ -113,6 +123,7 @@ class AuthService:
         self.challenge_repo.commit()
         return ChallengeIssue(challenge.token, recipient, code)
 
+    @_email_reservation
     def verify_challenge(self, token: str, code: str,
                          expected_purpose: str) -> Optional[User]:
         """Atomically consume a live OTP and return its authenticated user."""
@@ -125,6 +136,10 @@ class AuthService:
             return None
         pending = challenge.pending_registration
         if pending is not None and now > self._as_utc(pending.expires_at):
+            return None
+        if pending is not None and self.email_is_unavailable(
+            pending.email, exclude_pending_id=pending.id,
+        ):
             return None
         recipient = self._challenge_recipient(challenge)
         supplied = code.strip()
@@ -145,10 +160,9 @@ class AuthService:
         ):
             self.challenge_repo.db.session.rollback()
             return None
-        user = challenge.user
-        if user is None and pending is not None:
-            user = self.user_repo.get_by_email(pending.email)
-            if user is None:
+        try:
+            user = challenge.user
+            if user is None and pending is not None:
                 username = pending.username
                 if self.user_repo.get_by_username(username):
                     username = self._generate_username(pending.email)
@@ -161,15 +175,19 @@ class AuthService:
                 )
                 self.user_repo.add(user)
                 self.user_repo.flush()
-            self.pending_repo.delete(pending)
-        if user is None:
-            self.challenge_repo.db.session.rollback()
+                self.pending_repo.delete(pending)
+            if user is None:
+                self.challenge_repo.db.session.rollback()
+                return None
+            user.is_verified = True
+            user.last_login = now
+            self.user_repo.commit()
+            return user
+        except IntegrityError:
+            self.user_repo.db.session.rollback()
             return None
-        user.is_verified = True
-        user.last_login = now
-        self.user_repo.commit()
-        return user
 
+    @_email_reservation
     def stage_email_change(self, user: User, new_email: str) -> str:
         email_lc = new_email.strip().lower()
         if email_lc == (user.email or '').lower() or self.email_is_unavailable(email_lc):
@@ -181,9 +199,14 @@ class AuthService:
             datetime.now(timezone.utc) + timedelta(minutes=VERIFICATION_CODE_EXPIRY_MINUTES)
         )
         user.verification_code_failed_attempts = 0
-        self.user_repo.commit()
+        try:
+            self.user_repo.commit()
+        except IntegrityError:
+            self.user_repo.db.session.rollback()
+            raise ValueError(MESSAGES['EMAIL_IN_USE']) from None
         return code
 
+    @_email_reservation
     def verify_email_change(self, user: User, code: str) -> Tuple[bool, str]:
         now = datetime.now(timezone.utc)
         fail = (False, MESSAGES['VERIFICATION_CODE_INVALID_OR_EXPIRED'])
@@ -200,13 +223,22 @@ class AuthService:
                 self._clear_pending_email_state(user)
             self.user_repo.commit()
             return fail
-        user.email = user.pending_email
-        self._clear_pending_email_state(user)
-        self.user_repo.commit()
+        if self.email_is_unavailable(user.pending_email, exclude_user_id=user.id):
+            return False, MESSAGES['EMAIL_IN_USE']
+        try:
+            user.email = user.pending_email
+            self._clear_pending_email_state(user)
+            self.user_repo.commit()
+        except IntegrityError:
+            self.user_repo.db.session.rollback()
+            return False, MESSAGES['EMAIL_IN_USE']
         return True, ''
 
+    @_email_reservation
     def resend_email_change(self, user: User) -> Optional[str]:
         if not user.pending_email:
+            return None
+        if self.email_is_unavailable(user.pending_email, exclude_user_id=user.id):
             return None
         code = self._make_verification_code()
         user.verification_code = self._email_change_otp_digest(
@@ -219,15 +251,22 @@ class AuthService:
         self.user_repo.commit()
         return code
 
-    def email_is_unavailable(self, email: str) -> bool:
+    @_email_reservation
+    def cancel_email_change(self, user: User) -> None:
+        self._clear_pending_email_state(user)
+        self.user_repo.commit()
+
+    def email_is_unavailable(self, email: str, *, exclude_user_id=None,
+                             exclude_pending_id=None) -> bool:
         email_lc = email.strip().lower()
         now = datetime.now(timezone.utc)
-        live_pending_user = self._get_live_pending_email_user(email_lc, now)
-        self._purge_expired_pending_registrations(now)
+        owner = self.user_repo.get_by_email(email_lc)
         return (
-            self.user_repo.get_by_email(email_lc) is not None
-            or live_pending_user is not None
-            or self.pending_repo.get_by_email(email_lc) is not None
+            (owner is not None and owner.id != exclude_user_id)
+            or self.user_repo.get_live_pending_email(
+                email_lc, now, MAX_OTP_ATTEMPTS, exclude_user_id,
+            ) is not None
+            or self.pending_repo.get_live_by_email(email_lc, now, exclude_pending_id) is not None
         )
 
     def request_account_deletion(self, user: User) -> str:
@@ -326,22 +365,12 @@ class AuthService:
             and datetime.now(timezone.utc) <= self._as_utc(user.deletion_code_expires_at)
         )
 
-    def _get_live_pending_email_user(self, email: str,
-                                     now: datetime) -> Optional[User]:
-        user = self.user_repo.get_by_pending_email(email)
-        if not user:
-            return None
-        if self._pending_email_is_live(user, now):
-            return user
-        self._clear_pending_email_state(user)
-        self.user_repo.commit()
-        return None
-
     def _pending_email_is_live(self, user: User, now: datetime) -> bool:
         return bool(
             user.pending_email and user.verification_code
             and user.verification_code_expires_at
             and now <= self._as_utc(user.verification_code_expires_at)
+            and user.verification_code_failed_attempts < MAX_OTP_ATTEMPTS
         )
 
     @staticmethod

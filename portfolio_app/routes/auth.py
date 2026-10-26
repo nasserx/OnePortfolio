@@ -1,6 +1,7 @@
 """Passwordless authentication, email settings, and account deletion routes."""
 
 import logging
+import secrets
 
 from flask import (
     Blueprint,
@@ -103,8 +104,11 @@ def login():
             email = form.get_cleaned_data()['email']
             try:
                 issue = get_services().auth_service.begin_authentication(email)
-                send_authentication_email(issue.recipient, issue.code)
-                session[_AUTH_TOKEN_KEY] = issue.token
+                if issue is not None:
+                    send_authentication_email(issue.recipient, issue.code)
+                # Preserve the same public response for a reserved address;
+                # no account/challenge or email is created for that claim.
+                session[_AUTH_TOKEN_KEY] = issue.token if issue else secrets.token_urlsafe(32)
                 session[_AUTH_EMAIL_KEY] = email
                 session[_AUTH_NEXT_KEY] = safe_local_redirect(request.args.get('next'))
                 flash(MESSAGES['AUTH_CODE_REQUEST_RESULT'], 'info')
@@ -371,6 +375,15 @@ def resend_email_change():
         send_verification_email(current_user.pending_email, code)
     flash(MESSAGES['VERIFICATION_CODE_RESEND_RESULT'], 'info')
     return redirect(url_for('auth.verify_email_change'))
+
+
+@auth_bp.route('/settings/email/cancel', methods=['POST'])
+@login_required
+def cancel_email_change():
+    if not recent_auth_is_valid(session):
+        return redirect(url_for('auth.reauthenticate', next=url_for('auth.verify_email_change')))
+    get_services().auth_service.cancel_email_change(current_user)
+    return redirect(url_for('auth.settings', tab='security'))
 
 
 @auth_bp.route('/settings/delete/request', methods=['POST'])

@@ -80,9 +80,29 @@ Models live in `portfolio_app/models/`:
 - `MutationReceipt`: durable submission replay and account revision records.
 - `FinancialAudit`: append-only persisted-domain revisions linked to receipts.
 
-Pending email-change claims are bounded by their verification-code lifetime.
-Expired or incomplete pending-email state is non-reserving and is cleared when
-an account workflow encounters it, so it cannot indefinitely hold an address.
+Email ownership/reservations share one availability policy in `AuthService`:
+an assigned `User.email`, a live 24-hour `PendingRegistration`, or another user's
+live pending email-change OTP reserves an address. Email-change claims expire
+with the 10-minute code, or after exhausted attempts; expired/incomplete state
+does not reserve an address. Availability checks are read-only. Replacing or
+explicitly cancelling a pending change releases its old address and invalidates
+the old code. `POST /settings/email/cancel` requires login, recent authentication
+and the existing CSRF protection; no navigation/back link implicitly cancels it.
+
+Registration, email-change staging, resends and confirmations recheck reservations
+under a SQLite `BEGIN IMMEDIATE` writer reservation, including refreshing objects
+loaded before the lock. Services hold it through their commit; failures/early
+returns roll back. A resend can renew an expired change only if the address is
+still available. Registration and email-change confirmations check again before
+assigning email; uniqueness errors roll back the whole claim and account change.
+No schema change or automatic reassignment of overlapping legacy claims occurs.
+
+A registration request for another user's live pending address sends no email
+and creates no signup/challenge. It retains the same public redirect and generic
+message as other authentication requests (with an unpersisted random token).
+Rejected signup confirmations use the generic invalid/expired-code message;
+email-change confirmations can report the existing email-in-use message. Existing
+account login still uses its assigned email, independent of pending changes.
 
 The concise user-facing label is Dividends. The `Dividend` model remains accurate
 for investment cash dividends/distributions, not generic income.

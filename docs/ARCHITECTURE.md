@@ -352,6 +352,13 @@ holdings and withdrawal-Max JSON endpoints are read-only; no alternate financial
 JSON write path bypasses these services. Registration/email/login/challenge
 operations are nonfinancial and retain their existing authentication boundaries.
 
+Assets Sell Max accepts a holdings response only for the latest request and the
+current portfolio/symbol while its dialog is open. Changing the selection or
+closing the dialog immediately invalidates the cached quantity; Max stays
+disabled during loading and after failure. Late successes and failures cannot
+replace that state, including after reopening the same selection. Max copies the
+exact decimal string; final sale validation remains authoritative on the server.
+
 ### Append-only financial history (schema 39)
 
 `FinancialAudit` records committed create/update/delete revisions for Portfolio,

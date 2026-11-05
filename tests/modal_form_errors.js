@@ -82,6 +82,24 @@ const context = vm.createContext({document, window, queueMicrotask, console: {er
 vm.runInContext(fs.readFileSync('portfolio_app/static/js/form_feedback.js', 'utf8'), context);
 vm.runInContext(fs.readFileSync('portfolio_app/static/js/numeric_inputs.js', 'utf8'), context);
 const main = fs.readFileSync('portfolio_app/static/js/main.js', 'utf8');
+const alertSource = main.slice(main.indexOf('class AlertManager'), main.indexOf('class TooltipManager'));
+const flashHost = new Element('div');
+const flashText = '<img src=x onerror=alert(1)>';
+const alerts = {
+    document: {
+        createElement: tag => tag === 'button' ? {setAttribute() {}} : new Element(tag),
+        querySelectorAll: () => [], querySelector: () => flashHost,
+    },
+    window: {}, AppConfig: {successDismissDelay: 3000}, setTimeout() {},
+    sessionStorage: {getItem() { throw new Error('Storage is blocked'); }},
+};
+vm.runInNewContext(alertSource + '\nnew AlertManager();', alerts);
+eq(flashHost.children.length, 0);
+alerts.sessionStorage = {getItem: key => key === 'flashMessage' ? flashText : 'success', removeItem() {}};
+vm.runInNewContext('new AlertManager();', alerts);
+eq(flashHost.firstChild.textContent, flashText);
+eq(flashHost.firstChild.children.length, 1);
+eq(flashHost.firstChild.firstChild.type, 'button');
 vm.runInContext(main.slice(main.indexOf('class ModalAjaxHandler'), main.indexOf('class InvestmentPortfolioApp')) + '\nglobalThis.Transport = ModalAjaxHandler;', context);
 const forms = window.OnePortfolioForms;
 let index = 0;
@@ -194,6 +212,10 @@ async function run() {
     eq(ajax.controller.general().textContent, 'Financial history conflict Network error'); eq(ajax.button.disabled, false);
     pending = ajax.form.emit('submit'); await tick(); await ajax.overlay.emit('hidden.bs.modal');
     respond({json: async () => ({success: true})}); await pending; eq(reloads, 1);
+    // A successful financial edit still reloads when storage writes are denied.
+    context.sessionStorage.setItem = () => { throw new Error('Storage unavailable'); };
+    pending = ajax.form.emit('submit'); await tick();
+    respond({json: async () => ({success: true})}); await pending; eq(reloads, 2);
     const otp = fixture({modal: false}); otp.input.id = 'code'; forms.register(otp.form, []);
     let submissions = 0; otp.form.requestSubmit = () => { submissions++; return otp.form.emit('submit'); };
     const html = fs.readFileSync('portfolio_app/templates/auth/verify_code.html', 'utf8');

@@ -186,8 +186,8 @@
     min-height: 0;
     padding: 0;
     border-color: transparent;
-    background-color: transparent;
-    color: var(--foreground);
+    background-color: var(--btn-bg);
+    color: var(--btn-fg);
     border-radius: var(--radius-lg);
   }
 
@@ -195,9 +195,9 @@
      and does not move the control or jitter the row. */
   .btn-icon:hover {
     box-shadow: none;
-    background-color: var(--ghost-hover);
+    background-color: var(--btn-bg-hover);
     border-color: transparent;
-    color: var(--foreground);
+    color: var(--btn-fg);
   }
 
   .btn-icon.btn-sm {
@@ -216,8 +216,7 @@
   .btn-outline-secondary[aria-expanded="true"],
   .btn-secondary[aria-expanded="true"] { background-color: var(--btn-bg-hover); }
 
-  /* Hidden with opacity, not `visibility` or `display`, so the menu trigger
-     stays in the tab order — tabbing to it trips `:focus-within` on its row.
+  /* Opacity keeps actions in the tab order so keyboard focus reveals them.
      `pointer-events: none` stops a click landing on an invisible control
      without affecting keyboard focus. Width is reserved either way, so
      revealing them never reflows the table. */
@@ -230,14 +229,16 @@
     transition: opacity var(--dur-2) var(--ease-out);
   }
 
-  /* Scoped deliberately: a table row reveals only its own actions, and the
-     disclosure header reveals only the header's. A descendant selector here
-     would light up every row inside the hovered card at once. */
-  tr:hover > * > .row-actions,
-  tr:focus-within > * > .row-actions,
-  .disclosure__item:hover > .disclosure__head > .disclosure__actions,
-  .disclosure__item:focus-within > .disclosure__head > .disclosure__actions,
-  .row-actions:focus-within {
+  .record-actions .btn-sm .icon {
+    width: 0.875rem;
+    height: 0.875rem;
+  }
+
+  .records-table tr:hover .record-actions:not([data-dialog-return="idle"]),
+  .record-actions:not([data-dialog-return]):has(:focus-visible),
+  .disclosure__head:hover > .disclosure__actions,
+  .disclosure__head:has(:focus-visible) > .disclosure__actions,
+  .disclosure__actions:has([aria-haspopup][aria-expanded="true"]) {
     opacity: 1;
     pointer-events: auto;
   }
@@ -711,10 +712,6 @@
     font-variant-numeric: tabular-nums;
   }
 
-  /* Set by the assets page's symbol filter; has to beat whatever display
-     the element it lands on already has. */
-  .sym-filter-hide { display: none !important; }
-
   /* ---- one-time-code input -------------------------------------------- */
   .otp-input,
   .settings-code-input {
@@ -750,38 +747,13 @@
     box-shadow: 0 0 0 1px var(--surface-ring);
   }
 
-  /* Borderless Nova Item surface: layout remains owned by its consumer.
-     Unlike a card, this has no persistent perimeter ring or elevation. */
+  /* Both disclosure lists use the transparent Nova Table row surface. */
   .surface-row {
     position: relative;
     border: 0;
-    border-radius: var(--radius-lg);
     background-color: transparent;
     color: var(--foreground);
     font-size: var(--text-sm);
-    box-shadow: none;
-  }
-
-  .surface-row,
-  .surface-interactive {
-    transition:
-      background-color var(--dur-1) var(--ease-out),
-      box-shadow var(--dur-1) var(--ease-out);
-  }
-
-  .surface-interactive:has(.surface-interactive__control:focus-visible) {
-    box-shadow:
-      0 0 0 1px var(--surface-ring),
-      0 0 0 4px var(--focus-ring-soft);
-  }
-
-  .surface-row:has(.surface-interactive__control:focus-visible) {
-    box-shadow: 0 0 0 4px var(--focus-ring-soft);
-  }
-
-  .surface-interactive__control:focus-visible {
-    outline: none;
-    box-shadow: none;
   }
 
   .dropdown-menu {
@@ -886,21 +858,21 @@
       color var(--dur-1) var(--ease-out);
   }
 
-  .table tbody tr:not(:last-child) > * {
-    border-bottom: 1px solid var(--border);
+  .table tbody tr:not([hidden]) ~ tr:not([hidden]) > * {
+    border-top: 1px solid var(--border);
   }
 
+  .table thead tr:hover > *,
   .table tbody tr:hover > * {
     background-color: var(--muted-half);
   }
 
-  .records-table tbody tr:focus-within > *,
-  .records-table tbody tr:has([aria-expanded="true"]) > * {
+  .records-table tbody tr:focus-within > * {
     background-color: var(--muted-half);
   }
 
   .table tbody tr[data-state="selected"] > * {
-    background-color: var(--table-selected-background, var(--muted));
+    background-color: var(--muted);
   }
 
   /* Shared row interaction for semantic table-like layouts that cannot use
@@ -915,53 +887,14 @@
     background-color: var(--muted-half);
   }
 
-  /* ---- records tables --------------------------------------------------
-     A shared shell for every ledger-style table in the product. Column
-     widths are supplied per table through --records-col-* so the markup
-     stays identical across pages.
-     -------------------------------------------------------------------- */
-  .records-table {
-    table-layout: fixed;
-    min-width: 44rem;
-  }
-
-  .records-table .records-col--date       { width: var(--records-col-date, 6.5rem); }
-  .records-table .records-col--type       { width: var(--records-col-type, 5rem); }
-  .records-table .records-col--price      { width: var(--records-col-price, 6rem); }
-  .records-table .records-col--quantity   { width: var(--records-col-quantity, 6rem); }
-  .records-table .records-col--fee        { width: var(--records-col-fee, 4.5rem); }
-  .records-table .records-col--total      { width: var(--records-col-total, 7rem); }
-  .records-table .records-col--pnl        { width: var(--records-col-pnl, 7rem); }
-  .records-table .records-col--return     { width: var(--records-col-return, 5.5rem); }
-  .records-table .records-col--amount     { width: var(--records-col-amount, 8rem); }
-  .records-table .records-col--notes      { width: var(--records-col-notes, auto); }
-  /* Inside a disclosure this resolves to `--row-actions-w`, the same
-     right-hand zone the summary row above reserves — so the two tables stop
-     their data at the same x and start their controls at the same x, even
-     though they can never share a column. Outside a disclosure it falls back
-     to its own width. */
-  .records-table .records-col--actions    { width: var(--records-col-actions, var(--row-actions-w, 6rem)); }
-
   .records-table :is(th, td).records-cell {
-    overflow: hidden;
-    text-overflow: ellipsis;
+    text-align: left;
     white-space: nowrap;
   }
 
   .records-table :is(th, td).records-cell--number {
-    text-align: right;
     font-variant-numeric: tabular-nums;
   }
-
-  /* Right-aligned so the buttons land under the summary row's own cluster
-     rather than 34px inside it. The header follows, because a heading that
-     does not sit over its column is the thing that made these tables look
-     out of true in the first place. */
-  .records-table :is(th, td).records-cell--actions { text-align: right; }
-
-  .records-table td.actions-cell { overflow: visible; }
-
-  .records-table td.actions-cell .row-actions { justify-content: flex-end; }
 
   /* Dates and notes use the table's canonical muted hierarchy directly. */
   .records-table tbody td small {

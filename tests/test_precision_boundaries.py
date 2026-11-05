@@ -2,9 +2,7 @@
 
 from datetime import datetime
 from decimal import Decimal as D
-from html import unescape
 import json
-import re
 from types import SimpleNamespace
 
 import pytest
@@ -27,12 +25,14 @@ from portfolio_app.utils.decimal_utils import (
     decimal_text, parse_financial_decimal, withdrawal_max_text, to_decimal,
 )
 from tests._auth import authenticate_client
+from tests._html import Document
 from tests.test_financial_baseline import ledger, _historical_trade
 from tests.test_financial_snapshots import _assert_consumers
 
 
 def _payloads(html, attribute):
-    return [json.loads(unescape(value)) for value in re.findall(attribute + r"='([^']*)'", html)]
+    buttons = Document(html).root.find(lambda n: n.tag == 'button' and attribute in n.attrs)
+    return [json.loads(button.attrs[attribute]) for button in buttons]
 
 
 def _forms(value):

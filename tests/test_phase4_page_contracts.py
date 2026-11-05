@@ -38,22 +38,19 @@ def test_typography_preserves_brand_and_removes_lightweight_overrides():
     assert '--weight-semibold: 600;' in tokens
     for file in ('tokens.css', 'app.css', 'base.css', 'components.css', 'landing.css', 'flatpickr-nova.css'):
         assert '--weight-light' not in source('static/css/' + file)
-    # One shared mapping for both themes; numeric preset primitives stay intact.
+    # Both themes use the same semibold mapping.
     all_css = '\n'.join(path.read_text(encoding='utf-8') for path in (ROOT / 'static/css').glob('*.css'))
-    for role, value in (('body', '450'), ('emphasis', '550')):
-        assert re.findall(r'--weight-' + role + r':\s*([^;]+);', all_css) == [value]
-    # The Overview return percentage intentionally uses a lighter weight than
-    # the P&L amount, using regular weight (400) only for this percentage.
+    for role in ('body', 'emphasis'):
+        assert re.findall(r'--weight-' + role + r':\s*([^;]+);', all_css) == ['var(--weight-semibold)']
     return_rule = re.search(
         r'\.hero-figure__return-value\s*\{([^}]+)\}', source('static/css/app.css')
     ).group(0)
-    assert 'font-weight: var(--weight-regular);' in return_rule
+    assert 'font-weight: var(--weight-body);' in return_rule
     assert 'font-size: var(--text-lg);' in return_rule
-    assert 'var(--weight-regular)' not in all_css.replace(return_rule, '', 1)
-    assert 'var(--weight-medium)' not in all_css
-    # Native semantic strong/b regain their normal bolder weight, as in the
-    # reference reset; no application-wide lighter emphasis override remains.
-    assert 'strong, b {' not in source('static/css/base.css')
+    assert set(re.findall(r'font-weight:\s*([^;{}]+?)(?:;|\s*})', all_css)) <= {
+        'inherit', 'var(--weight-body)', 'var(--weight-emphasis)', 'var(--weight-semibold)',
+    }
+    assert ':where(body *) { font-weight: inherit; }' in source('static/css/base.css')
 
 
 def test_component_weights_preserve_nova_hierarchy_with_approved_adjustment():
@@ -82,7 +79,7 @@ def test_component_weights_preserve_nova_hierarchy_with_approved_adjustment():
         'components.css': ['.supporting-item__label', '.marker', '.user-avatar'],
         'app.css': ['.navlink', '.metric__label', '.userchip__name'],
         'landing.css': ['.lp-nav__links a', '.lp-shot__label'],
-        'flatpickr-nova.css': ['.op-flatpickr span.flatpickr-weekday'],
+        'flatpickr-nova.css': ['.op-flatpickr span.flatpickr-weekday', '.op-flatpickr .flatpickr-day'],
     }.items():
         for selector in selectors:
             assert weight(file, selector) == '--weight-body', selector
@@ -96,8 +93,6 @@ def test_compact_scale_preserves_mobile_readability_and_control_geometry():
         'text-md': '0.8125rem', 'text-lg': '0.875rem', 'text-xl': '1rem',
         'text-2xl': '1.125rem', 'num-sm': '0.75rem', 'num-lg': '0.9375rem',
         'control-h': '2rem', 'control-h-sm': '1.75rem', 'row-h': '2.5rem',
-        'weight-regular': '400', 'weight-medium': '500',
-        'weight-body': '450', 'weight-emphasis': '550',
         'num-hero': 'clamp(2rem, 1.2rem + 2.6vw, 3.25rem)',
     }.items():
         assert f'--{name}: {value};' in root

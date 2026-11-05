@@ -71,7 +71,7 @@ Default `text-sm` in the inspected recipes means 14px. Phase 4's explicitly
 requested compact font-size exception is documented under Typography below;
 the reference sizes in this table remain the official baseline. Component
 foreground/muted roles continue to follow their own recipes. The subsequent
-approved 450/550 weight exception is also documented under Typography.
+approved uniform 600 weight exception is also documented under Typography.
 
 ## A. Official preset contract
 
@@ -219,40 +219,13 @@ The canonical API is `--font-sans`, `--font-heading`, and `--font-mono`.
 The sans token names Geist followed by the system sans stack, and the heading
 token inherits that same contract. The authenticated, authentication, and
 public shells load the variable 400–700 range from the existing Google
-Fonts origins, including real intermediate 450/550 weights. Components and
-Chart.js consume the tokens rather than naming a face independently.
-Component typography follows the inspected semantic roles
-above. Following acceptance of compact sizing and preset weights, the user
-approved a modest 450/550 weight adjustment in both themes. This is an explicit
-font-weight exception to the official 400/500 recipes, preserving their hierarchy.
-Headings use the heading token, and financial columns preserve tabular numbers through the
-shared root feature settings.
+Fonts origins. Both body and emphasis resolve to the approved Geist semibold
+weight (600) in both themes. This includes native emphasis, form controls,
+the return percentage, calendar text and Chart.js labels and tooltips.
+The brand uses the same semibold primitive. Headings, muted descriptions,
+financial tones, compact sizes and tabular numbers retain their respective
+roles. Weight and display precision are independent.
 
-Numeric typography is separate from display precision. Changing a font size or
-weight must never alter financial rendering rules.
-
-Phase 4's final correction re-inspected the exact preset initialization and
-21 official Nova recipes over HTTP on **2026-10-13**: Button, Card, Item, Table,
-Dialog, Label, Input, Textarea, Native Select, Tabs, Sidebar, Dropdown Menu,
-Command, Badge, Calendar, Empty, Alert, Tooltip, Pagination, Avatar and Chart.
-Recipes without an explicit weight inherit regular text; they must not inherit
-a blanket control or heading weight. Custom page headings use the closest
-Card/Item title role; financial display values use the emphasized value role.
-
-| Application role | Final weight | Semantic mapping |
-|---|---|---|
-| Card/dialog/section/page/auth/empty titles, table headers, field labels | 550 (`--weight-emphasis`) | Title, TableHead and Label roles; titles remain foreground |
-| Buttons, tabs, badges, pagination, calendar captions, active navigation, menu/group headings | 550 | Corresponding control/title roles; pagination composes Button |
-| Body, descriptions, supporting metric labels, inputs/selects, table cells, normal navigation, menu items, initials, calendar days/weekdays, tooltip prose | 450 (`--weight-body`) | Inherited body text; supporting descriptions retain muted roles |
-| Emphasized financial display values and chart tooltip title/numeric value | 550 | Emphasized value and Chart roles; ordinary financial table cells use 450 |
-| Chart centre labels and legends | 450 | Descriptive labels |
-| Native semantic `strong`/`b` | Native bolder | Removed the application-wide weight cap; 700 is available for native emphasis |
-| Brand/logo | Existing 600 | Explicit user preservation exception; existing 18px, Geist, tracking, artwork and geometry unchanged |
-
-No 300 token or blanket lighter override remains. Shared recipes consume their
-weight through the shared application-role tokens. Preset primitives retain
-their literal 400/500/600 meaning; the brand still uses 600 directly. Compact
-font sizes and the approved 450/550 weights are intentional typography exceptions.
 Colours, sizes, smoothing, line heights and spacing do not change in this follow-up.
 
 | Size role / token | Desktop at 16px root | Narrow screens below 768px |
@@ -270,7 +243,7 @@ Colours, sizes, smoothing, line heights and spacing do not change in this follow
 | Chart labels / centre value | 11px / 14px | 12px / 15px |
 
 The primary Book Value is explicitly exempt from compact sizing. It uses the
-550 emphasis role; formatters, count-up source, full-value title and its original
+600 emphasis role; formatters, count-up source, full-value title and its original
 32–52px responsive clamp are preserved.
 The brand has its own unchanged 18px token, decoupled from the compact title scale.
 OTP text remains 16px; mobile input, textarea, native select, command input and
@@ -287,7 +260,7 @@ through `--bs-secondary-color` to `--muted-foreground`, while values retain
 metadata; it does not mute real form labels or action titles. Security titles
 remain foreground and descriptions muted. Account destructive warnings, status
 feedback and the shared secondary Verified Badge retain their own color roles.
-Compact sizing, 450/550 weights, spacing and icons are unchanged. Genuine readonly
+Compact sizing, uniform 600 weights, spacing and icons are unchanged. Genuine readonly
 and disabled input recipes and validation states are unchanged.
 
 ### Numbers in templates
@@ -365,12 +338,10 @@ only. The contracts are:
 
 - `.surface-card`: card background/foreground, `--radius-xl`, and one
   10%-foreground hairline ring. `.card` and `.panel` share this recipe.
-- `.surface-interactive`: composes with a card and moves keyboard focus to the
-  containing surface without changing its geometry. Its primary control uses
-  `.surface-interactive__control` so an inner button does not draw a second
-  ring. A disclosure header uses the same neutral hover affordance while its
-  trigger is collapsed or expanded; only the header is tinted, never the
-  revealed body.
+- `.surface-row`: transparent table row shared by Assets and Portfolios.
+  The disclosure button owns its keyboard outline. Hover, focus within the
+  summary, and expansion tint the header while the revealed ledger rests
+  on the page surface.
 - `.surface-table`: the same quiet outer frame for a table-like composition;
   table headers and rows own only their internal canonical `--border`
   separators.
@@ -486,52 +457,45 @@ separate decorative theme icon or button variant.
 ### UI copy
 
 Short interface headings, labels, buttons, menu items, table headers, and
-statuses use Title Case in their source strings. The shared Assets/Portfolios
-summary strip intentionally renders those headings uppercase, as approved in
-the table reference; other components do not inherit that transformation.
+statuses use Title Case in their source strings. Assets and Portfolios display
+their sticky summary headings in uppercase and ledger headings in source case.
 Sentences, explanatory copy, validation text, natural ARIA
 descriptions, and user-entered content remain sentence case. Acronyms and
 notation such as P&L, ETF and OTP retain their established spelling.
 
 ### Sticky summary lists (Assets and Portfolios)
 
-The approved `D:\tmp\table-ref.png` composition is adapted to disclosure lists,
-not applied to the Overview or nested financial ledgers. The exact preset
-initialization and official Nova Table/Item recipes were retrieved on
-2026-10-16. The final header refinement intentionally uses muted-foreground
-instead of the Table recipe's foreground, retaining approved 550 emphasis,
-uppercase labels and compact typography. Muted text on the opaque page-colour
-sticky surface meets 4.5:1 in both themes in source-level contrast checks.
-The header/body gap is `--space-1` (0.25rem), bringing labels slightly closer
-to the first row; inter-row gaps remain `--space-2` (0.5rem). Horizontal padding,
-column tracks, sticky ownership and scroll synchronization are unchanged.
-Overview's portfolio table headings share this intentional muted-foreground
-treatment, retaining uppercase text and approved weights. Nested financial
-table headings retain foreground. All three main summary header locations use
-one shared `--text-xs` sizing rule: 0.6875rem on desktop and 0.75rem below 48rem,
-preserving the existing narrow-screen readability floor. This is an intentional
-compact-size adaptation to the preset; weights remain 550 and row values,
-nested-table sizes, header heights and column geometry are unchanged.
-The Asset identity keeps its portfolio
-badge; there is no invented Category column.
+Both the collapsed summary and expanded ledger use the
+[base-nova Table recipe](https://ui.shadcn.com/r/styles/base-nova/table.json)
+selected by the canonical preset. This November 5 decision supersedes the
+earlier screenshot treatment for these two pages. The header uses foreground
+text in a 40px row. Each cell has 8px padding. Summaries share
+column tracks with their header; record tables size columns to content. Text,
+figures and actions align left. Rows meet at a single straight separator with
+no trailing rule after the last visible record. Opening a summary reveals a
+flush ledger. Hover and expanded rows use muted/50. A selected record, if
+used, takes the recipe's full muted surface. Compact font sizes and Geist
+600 are retained. Overview typography and layout are specified separately.
 
-`summary_header` and the summary buttons share their identity, metric-track,
-padding, gap, and action-width rules in `app.css`. Assets retain seven metrics
-at a 68rem minimum track width; Portfolios retain four at 48rem. Repeated labels
-remain visually hidden inside each disclosure button for accessible reading.
-The list/listitem roles do not add grid keyboard behavior; expanded ledgers
-retain native table semantics.
-
-The header has no card surface, border, shadow, radius, or interactive hover
-paint. Its sticky wrapper alone uses the page's `--background` to occlude rows
-scrolling beneath the text, preserving a seamless appearance in both themes.
-This is the approved minimal alternative to overlapping transparent labels.
+Both pages use the same Jinja disclosure header, native summary buttons with
+accessible metric labels and a separate ellipsis menu on each summary. Inside
+the native record tables each row reveals its Edit and Remove buttons on hover
+or keyboard focus. Closing a pointer-opened dialog returns focus to its button
+and hides the actions until the pointer moves over the row again or the user
+resumes keyboard navigation. On devices without hover the buttons stay visible. The
+14px glyphs sit in 28px buttons. The group names the record for assistive
+technology. Remove opens the existing confirmation dialog.
+Financial colours and value formatting retain their domain meanings.
 
 The document owns vertical scrolling. A sticky strip (`top: 0`, `--z-sticky`)
 sits outside the auto-height horizontal body scroller and stops at the list's
 end. The current page toolbar is not sticky, so no shell-height offset is used.
 Only the header strip shows a scrollbar; both regions support native horizontal
-scrolling. `summary_lists.js` synchronizes scrollLeft and observes viewport/track
+scrolling. `summary_lists.js` owns disclosure buttons and paginates each ledger
+on first expansion. A reopened ledger retains its page. Browser session storage
+remembers expanded rows across a reload of the same URL, including its filters,
+when storage is available. The script also
+synchronizes scrollLeft and observes viewport/track
 resizing, including sidebar changes. It does not handle document scrolling or
 menu focus. The measured strip height supplies a scroll margin for keyboard
 focus targets below it. Overflow regions enter the tab order only when they overflow.
@@ -543,32 +507,6 @@ body stacking context. Existing nested-ledger scroll behavior remains intact.
 Rendered/source and DOM-model regressions cover these contracts; actual sticky
 alignment, menu escape, touch scrolling, and screen-reader acceptance remain
 user browser checks.
-
-Both lists use the borderless `.surface-row` Item surface. The inspected
-`new-style-ref.png` AFTER examples supersede the earlier alternating treatment:
-default rows are uniformly transparent, with no persistent perimeter ring,
-outline, shadow, or alternating fill. No JavaScript presentation pass is needed
-after pagination or filtering. Each main disclosure item now has a single
-1px bottom divider using `--border`, including the last item as explicitly
-requested. This adapts the Nova Table separator to the shared Item surface;
-top and side borders remain absent. The divider belongs to the outer item,
-so expanded ledger separators and backgrounds are unchanged. Existing padding,
-gaps and column tracks are preserved. Hover and expanded summaries use `--muted-half`;
-keyboard focus retains the visible soft ring. Spacing and column geometry stay
-unchanged. Overview's five visible portfolio table headings are uppercase;
-metric cards, responsive data labels, and financial values retain their casing.
-
-Nested ledgers keep opaque `--card` surfaces, foreground headings, explicit
-column scopes, and internal preset Table separators. Their expanded surround
-uses `--muted-half`, including the empty state and pagination area. Focus within
-and open action menus retain the soft row treatment. Nested selected rows also
-use muted/50 rather than the recipe's full muted: source contrast checks put
-approved light-mode neutral text at about 4.54:1 on the soft surface versus
-4.35:1 on full muted. Financial colors are unchanged. This accessibility
-adaptation, compact sizes, 450/550 weights, and uppercase headings are intentional
-application exceptions. The actual preset and official Nova Table/Item recipes
-were retrieved again on 2026-10-17; existing Jinja/CSS/Bootstrap ownership is
-preserved without a new framework. Browser acceptance remains the user's task.
 
 ### Accessibility and motion
 

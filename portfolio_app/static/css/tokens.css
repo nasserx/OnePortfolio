@@ -39,13 +39,10 @@
     /* Unitless CSS-pixel sizes for Chart.js, resolved again on each draw. */
     --chart-text-size: 11;
     --chart-value-size: 14;
-    --weight-regular: 400;
-    --weight-medium: 500;
     --weight-semibold: 600;
-    /* Application exception: slightly stronger than Nova's 400/500 roles.
-       Both themes share these weights; the brand keeps literal semibold. */
-    --weight-body: 450;
-    --weight-emphasis: 550;
+    /* Approved common text weight for HTML, controls and canvas labels. */
+    --weight-body: var(--weight-semibold);
+    --weight-emphasis: var(--weight-semibold);
     --leading-tight: 1.2;
     --leading-snug: 1.35;
     --leading-normal: 1.5;

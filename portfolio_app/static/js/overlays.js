@@ -5,7 +5,7 @@
 
     const focusSelector = 'a[href], button, input, select, textarea, [tabindex]';
     let active = null;
-    let clickOpener = null;
+    let lastClick = null;
     const modals = new Set();
     const programmaticDialogs = new WeakSet();
 
@@ -100,19 +100,44 @@
     });
     document.addEventListener('hidden.bs.modal', event => { modals.delete(event.target); });
 
-    // Capture the initiating control even on platforms where pointer clicks
-    // do not focus buttons. The reference expires with this event dispatch.
+    // Native input can run microtasks between capture and delegated listeners.
+    // eventPhase identifies the active dispatch; release its reference afterwards.
     document.addEventListener('click', function (event) {
-        clickOpener = event.target.closest(focusSelector);
-        queueMicrotask(() => { clickOpener = null; });
+        lastClick = event;
+        setTimeout(() => { if (lastClick === event) lastClick = null; }, 0);
     }, true);
+
+    // Restored pointer focus is not a request to keep the ledger actions open.
+    // Resume hover on the next pointer movement, even if the row never changes.
+    function restoreRecordAction(button, group) {
+        const row = group.closest('tr');
+        group.dataset.dialogReturn = 'idle';
+        function resumeHover() { group.dataset.dialogReturn = 'hover'; }
+        function clear() {
+            group.removeAttribute('data-dialog-return');
+            row.removeEventListener('pointermove', resumeHover);
+            button.removeEventListener('blur', clear);
+            button.removeEventListener('keydown', clear);
+        }
+        row.addEventListener('pointermove', resumeHover, {once: true});
+        button.addEventListener('blur', clear);
+        button.addEventListener('keydown', clear);
+        restore(button);
+    }
 
     function showDialog(element, opener) {
         if (!element || programmaticDialogs.has(element) || element.classList.contains('show')) return;
+        const click = lastClick?.eventPhase ? lastClick : null;
+        const clickOpener = click?.target.closest(focusSelector);
         const target = returnTarget(opener || clickOpener || document.activeElement);
+        const recordGroup = click?.detail > 0 && target === clickOpener && target?.closest('.record-actions');
         const modal = window.bootstrap.Modal.getOrCreateInstance(element);
         programmaticDialogs.add(element);
-        const onHidden = () => { if (!blocked()) restore(target); };
+        const onHidden = () => {
+            if (blocked()) return;
+            if (recordGroup && available(target)) restoreRecordAction(target, recordGroup);
+            else restore(target);
+        };
         // Document's hidden listener clears ownership before this callback.
         const onHiddenAfterBubble = () => {
             programmaticDialogs.delete(element);

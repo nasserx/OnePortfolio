@@ -71,17 +71,11 @@ def test_muted_text_remains_readable(css, theme):
 def test_summary_and_nested_ledger_text_on_actual_composited_surfaces(css, theme, role):
     declared = theme_tokens(css, theme)
     page = to_rgb(resolve('background', declared))
-    card = to_rgb(resolve('card', declared))
     muted = to_rgb(resolve('muted', declared))
-    # CSS muted/50 is an alpha surface, not a second opaque background.
-    # Composite once: the ledger wrapper is opaque and prevents stacked tints.
-    soft = lambda base: tuple(round((a + b) / 2) for a, b in zip(muted, base))
+    soft = tuple(round((a + b) / 2) for a, b in zip(muted, page))
     surfaces = {
-        'plain summary': page,
-        'expanded/hover summary and panel': soft(page),
-        'ledger header/body': card,
-        'ledger hover/focus/open-menu/selected': soft(card),
-        'empty state and pagination surround': soft(page),
+        'resting summary, ledger and empty panel': page,
+        'hover, expanded summary and open action menu': soft,
     }
     for label, surface in surfaces.items():
         ratio = contrast(resolve(role, declared), surface)
@@ -89,18 +83,12 @@ def test_summary_and_nested_ledger_text_on_actual_composited_surfaces(css, theme
 
 
 @pytest.mark.parametrize('theme', ['light', 'dark'])
-def test_expanded_ledger_boundaries_use_distinct_semantic_surfaces(css, theme):
+def test_ledger_dividers_are_visible_on_the_page(css, theme):
     declared = theme_tokens(css, theme)
     page = to_rgb(resolve('background', declared))
-    card = to_rgb(resolve('card', declared))
-    muted = to_rgb(resolve('muted', declared))
-    surround = tuple(round((a + b) / 2) for a, b in zip(muted, page))
     border = to_rgba(resolve('border', declared))
-    painted_border = tuple(round(border[i] * border[3] + card[i] * (1 - border[3])) for i in range(3))
-    assert surround != card
-    assert painted_border != card
-    # Separators are decorative; text AA is checked separately above.
-    assert contrast(painted_border, card) > 1
+    painted = tuple(round(border[i] * border[3] + page[i] * (1 - border[3])) for i in range(3))
+    assert contrast(painted, page) > 1
 
 
 @pytest.mark.parametrize('theme', ['light', 'dark'])

@@ -71,11 +71,14 @@ class Element {
         const chain = []; for (let node = this; node; node = node.parentElement) chain.push(node);
         const call = (node, capture) => {
             for (const listener of [...(node.listeners[type] || [])]) if (!!listener.capture === capture) {
+                event.eventPhase = node === this ? 2 : capture ? 1 : 3;
                 listener.fn.call(node, event); if (listener.once) node.removeEventListener(type, listener.fn);
+                if (fields.trustedInput) flush();
             }
         };
-        for (const node of chain.slice().reverse()) { call(node, true); if (event.stopped) return event; }
-        for (const node of chain) { call(node, false); if (event.stopped) break; }
+        for (const node of chain.slice().reverse()) { call(node, true); if (event.stopped) break; }
+        for (const node of chain) { if (event.stopped) break; call(node, false); }
+        event.eventPhase = 0;
         return event;
     }
 }
@@ -111,7 +114,7 @@ const window = {innerHeight: 800, getComputedStyle: () => ({visibility: 'visible
         }},
     },
 };
-const context = vm.createContext({document, window, console, Date, queueMicrotask: fn => microtasks.push(fn)});
+const context = vm.createContext({document, window, console, Date, setTimeout, queueMicrotask: fn => microtasks.push(fn)});
 const read = name => fs.readFileSync('portfolio_app/static/js/' + name, 'utf8');
 vm.runInContext(read('overlays.js'), context);
 let shellSource = read('shell.js');
@@ -193,6 +196,31 @@ const cancelShow = event => event.preventDefault(); modal.addEventListener('show
 window.OnePortfolioDialogs.show(modal, pageAction); flush();
 eq(overlays.blocked(), false); eq((modal.listeners['hidden.bs.modal'] || []).length, 0);
 modal.removeEventListener('show.bs.modal', cancelShow);
+
+// Returning from a pointer-opened record dialog must keep focus without
+// pinning its actions. Keyboard-opened dialogs retain the normal focus cue.
+const recordRow = add(content, 'tr');
+const recordGroup = add(recordRow, 'div', {class: 'record-actions'});
+const recordButton = add(recordGroup, 'button');
+recordButton.addEventListener('click', () => window.OnePortfolioDialogs.show(modal));
+function returnToRecord(detail) {
+    recordButton.emit('click', {detail, trustedInput: true}); flush();
+    modalField.focus();
+    window.bootstrap.Modal.getOrCreateInstance(modal).hide(); flush();
+    eq(document.activeElement, recordButton);
+}
+returnToRecord(1);
+eq(recordGroup.getAttribute('data-dialog-return'), 'idle');
+recordRow.emit('pointermove');
+eq(recordGroup.getAttribute('data-dialog-return'), 'hover');
+recordButton.emit('keydown', {key: 'Tab'});
+eq(recordGroup.getAttribute('data-dialog-return'), null);
+returnToRecord(1);
+recordButton.emit('blur');
+recordRow.emit('pointermove');
+eq(recordGroup.getAttribute('data-dialog-return'), null);
+returnToRecord(0);
+eq(recordGroup.getAttribute('data-dialog-return'), null);
 
 let activations = 0; pageAction.addEventListener('click', () => { activations++; });
 palette.open(openNav); input.value = 'create'; input.emit('input');

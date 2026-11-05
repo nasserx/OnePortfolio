@@ -38,12 +38,12 @@ def test_page_header_action_and_empty_state_keep_shared_workflows():
 def test_disclosures_keep_behavior_hooks_and_shared_surface_contracts():
     assert 'class="disclosure enter" aria-label="Portfolio List"' in TEMPLATE
     assert 'portfolio-card surface-row' in TEMPLATE
-    assert 'disclosure__toggle surface-interactive__control' in TEMPLATE
+    assert 'disclosure__toggle' in TEMPLATE
     assert 'aria-expanded="false" aria-controls="{{ panel_id }}"' in TEMPLATE
     assert 'data-disclosure="{{ item.portfolio.id }}"' in TEMPLATE
     assert "{{ marker(item.portfolio.name) }}" in TEMPLATE
     assert "{{ icon('chevron-right', class='disclosure__chevron') }}" in TEMPLATE
-    assert "var SK = 'portfoliosOpen', RK = 'portfoliosOpenRef';" in TEMPLATE
+    assert "filename='js/summary_lists.js'" in TEMPLATE
 
     marker = _rule(COMPONENTS_CSS, '.marker')
     assert '--portfolio-chart-' not in marker
@@ -66,7 +66,7 @@ def test_existing_summary_metrics_and_formatters_are_preserved():
 
 
 def test_capital_event_ledger_uses_shared_table_and_financial_contracts():
-    assert 'table records-table records-table--portfolio-events' in TEMPLATE
+    assert 'table records-table' in TEMPLATE
     assert '{{ record_type(event.event_type) }}' in TEMPLATE
     assert "money(event.amount_delta, tone='sign', signed=true)" in TEMPLATE
     assert '>Total Amount</th>' in TEMPLATE
@@ -75,7 +75,7 @@ def test_capital_event_ledger_uses_shared_table_and_financial_contracts():
     assert 'table-hover' not in TEMPLATE
     assert 'class="small records-cell' not in TEMPLATE
 
-    row_hover = _rule(COMPONENTS_CSS, '.table tbody tr:hover > *')
+    row_hover = _rule(COMPONENTS_CSS, '.table thead tr:hover > *,\n  .table tbody tr:hover > *')
     assert 'background-color: var(--muted-half)' in row_hover
 
     for role, token in (
@@ -97,9 +97,9 @@ def test_action_menus_and_dialogs_use_clear_title_case_contracts():
     ):
         assert label in TEMPLATE
 
-    assert TEMPLATE.count('dropdown-item--danger') == 3  # Funding and transfer row branches.
+    assert TEMPLATE.count('dropdown-item--danger') == 1  # Portfolio summary menu.
     assert TEMPLATE.count('class="btn btn-danger"') == 2
-    assert TEMPLATE.count('<span>Remove</span>') == 3
+    assert TEMPLATE.count('<span>Remove</span>') == 1
     assert TEMPLATE.count("{{ icon('trash') }}Remove") == 2
     assert 'aria-describedby="deletePortfolioDescription"' in TEMPLATE
     assert 'aria-describedby="deletePortfolioEventDescription"' in TEMPLATE
@@ -139,7 +139,7 @@ def test_disclosure_paint_uses_canonical_roles_without_chart_or_raw_colors():
     assert 'var(--muted-foreground)' in section
     assert 'var(--foreground)' in section
     assert 'var(--border)' in section
-    assert 'var(--card)' in section
+    assert 'var(--muted-half)' in section
 
 
 def test_responsive_and_accessible_portfolio_structure_remains_present():

@@ -9,6 +9,7 @@ from pathlib import Path
 from portfolio_app import db
 from portfolio_app.models.user import User
 from tests._auth import authenticate_client
+from tests._html import Document
 from portfolio_app.services.factory import Services
 
 
@@ -148,6 +149,7 @@ def _seed_activity(user_id):
         price=Decimal('100'),
         quantity=Decimal('10'),
         fees=Decimal('0'),
+        notes='A "quote", an apostrophe \' & <tag>',
         date=datetime(2024, 1, 2),
     )
     income = svc.transaction_service.add_dividend(
@@ -195,17 +197,8 @@ def test_action_menus_render_the_expected_entity_actions(app):
     assert [item.text for item in portfolio_menus['Actions for portfolio Growth'].items] == [
         'Rename', 'Deposit', 'Withdraw', 'Transfer', 'Remove',
     ]
-    assert [item.text for item in portfolio_menus['Actions for Deposit entry on 2024-01-01'].items] == [
-        'Edit', 'Remove',
-    ]
     assert [item.text for item in asset_menus['Actions for AAPL in Growth'].items] == [
         'Buy / Sell', 'Add Dividends', 'Remove',
-    ]
-    assert [item.text for item in asset_menus['Actions for Buy entry for AAPL on 2024-01-02'].items] == [
-        'Edit', 'Remove',
-    ]
-    assert [item.text for item in asset_menus['Actions for dividend income entry for AAPL on 2024-01-04'].items] == [
-        'Edit', 'Remove',
     ]
 
     assert 'data-bs-target="#newPortfolioModal"' in rendered['/portfolios/'][0]
@@ -216,7 +209,7 @@ def test_action_menu_triggers_keep_bootstrap_and_accessibility_contracts(app):
     rendered, _ids = _render_pages(app)
     menus = rendered['/portfolios/'][1] + rendered['/transactions/'][1]
 
-    assert len(menus) == 5
+    assert len(menus) == 2
     for menu in menus:
         classes = set(menu.trigger['class'].split())
         assert {'btn', 'btn-icon', 'dropdown-toggle', 'action-menu__trigger'} <= classes
@@ -268,12 +261,6 @@ def test_action_items_preserve_dispatch_classes_and_payloads(app):
     assert 'data-withdrawable-cash-input' not in portfolio.item('Withdraw').attrs
     assert portfolio.item('Remove').attrs['class'].endswith('js-delete-portfolio-btn')
 
-    event = portfolio_menus['Actions for Deposit entry on 2024-01-01']
-    assert json.loads(event.item('Edit').attrs['data-event'])['id'] == ids['event_id']
-    assert event.item('Edit').attrs['class'].endswith('js-edit-portfolio-event-btn')
-    assert event.item('Remove').attrs['data-event-id'] == str(ids['event_id'])
-    assert event.item('Remove').attrs['class'].endswith('js-delete-portfolio-event-btn')
-
     asset = asset_menus['Actions for AAPL in Growth']
     assert asset.item('Buy / Sell').attrs['class'].endswith('js-add-transaction-btn')
     assert asset.item('Buy / Sell').attrs['data-symbol'] == 'AAPL'
@@ -282,17 +269,41 @@ def test_action_items_preserve_dispatch_classes_and_payloads(app):
     assert asset.item('Remove').attrs['data-tx-count'] == '1'
     assert asset.item('Remove').attrs['data-dividend-count'] == '1'
 
-    transaction = asset_menus['Actions for Buy entry for AAPL on 2024-01-02']
-    assert json.loads(transaction.item('Edit').attrs['data-tx'])['id'] == ids['transaction_id']
-    assert transaction.item('Edit').attrs['class'].endswith('js-edit-transaction-btn')
-    assert transaction.item('Remove').attrs['data-tx-id'] == str(ids['transaction_id'])
-    assert transaction.item('Remove').attrs['class'].endswith('js-delete-transaction-btn')
 
-    income = asset_menus['Actions for dividend income entry for AAPL on 2024-01-04']
-    assert json.loads(income.item('Edit').attrs['data-div'])['id'] == ids['income_id']
-    assert income.item('Edit').attrs['class'].endswith('js-edit-dividend-btn')
-    assert income.item('Remove').attrs['data-div-id'] == str(ids['income_id'])
-    assert income.item('Remove').attrs['class'].endswith('js-delete-dividend-btn')
+def test_record_rows_expose_two_named_icon_buttons_with_exact_payloads(app):
+    rendered, ids = _render_pages(app)
+    expected = {
+        'Deposit entry on 2024-01-01': ('portfolio-event', 'event', 'event_id'),
+        'Buy entry for AAPL on 2024-01-02': ('transaction', 'tx', 'transaction_id'),
+        'dividend income entry for AAPL on 2024-01-04': ('dividend', 'div', 'income_id'),
+    }
+    found = []
+    for html, _ in rendered.values():
+        for table in Document(html).root.by_class('records-table'):
+            assert not table.by_class('action-menu')
+            for row in table.find(lambda n: n.tag == 'tbody')[0].find(lambda n: n.tag == 'tr'):
+                cell = row.find(lambda n: n.tag == 'td')[-1]
+                group, = cell.by_class('record-actions')
+                edit, remove = group.find(lambda n: n.tag == 'button')
+                assert 'row-actions' in group.attrs['class'].split()
+                assert group.attrs['role'] == 'group'
+                label = group.attrs['aria-label']
+                hook, attr, id_key = expected[label]
+                found.append(label)
+                for button, verb, glyph in ((edit, 'Edit', 'edit'), (remove, 'Remove', 'trash')):
+                    assert button.attrs['aria-label'] == button.attrs['title'] == verb
+                    assert button.attrs['type'] == 'button' and 'data-bs-toggle' not in button.attrs
+                    assert not button.text.strip()
+                    assert [n.attrs['href'] for n in button.find(lambda n: n.tag == 'use')] == ['#op-icon-' + glyph]
+                assert 'btn-danger' in remove.attrs['class'].split()
+                assert 'js-edit-' + hook + '-btn' in edit.attrs['class'].split()
+                assert 'js-delete-' + hook + '-btn' in remove.attrs['class'].split()
+                payload = json.loads(edit.attrs['data-' + attr])
+                assert payload['id'] == ids[id_key]
+                if attr == 'tx':
+                    assert payload['notes'] == 'A "quote", an apostrophe \' & <tag>'
+                assert remove.attrs['data-' + attr + '-id'] == str(ids[id_key])
+    assert sorted(found) == sorted(expected)
 
 
 def test_existing_delegated_dispatch_still_owns_every_menu_action():

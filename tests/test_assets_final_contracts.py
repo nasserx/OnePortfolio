@@ -51,13 +51,13 @@ def test_page_controls_keep_shared_nova_and_filter_contracts():
 def test_asset_disclosures_preserve_metrics_formatters_and_neutral_identity():
     assert 'class="disclosure enter" aria-label="Asset List"' in ASSETS
     assert 'symbol-card surface-row' in ASSETS
-    assert 'disclosure__toggle surface-interactive__control' in ASSETS
+    assert 'disclosure__toggle' in ASSETS
     assert "{{ icon('chevron-right', class='disclosure__chevron') }}" in ASSETS
     assert 'badge badge--secondary' in ASSETS
     assert 'data-summary-list="assets"' in ASSETS
     assert 'role="listitem"' in ASSETS
     assert 'summary_header(' in ASSETS
-    assert 'disclosure__metrics disclosure__metrics--assets' in ASSETS
+    assert 'disclosure__metrics' in ASSETS
     assert 'style="--metric-columns:7"' not in ASSETS
 
     expected = (
@@ -86,30 +86,24 @@ def test_asset_disclosures_preserve_metrics_formatters_and_neutral_identity():
 def test_asset_summary_rows_have_no_persistent_frame_but_keep_focus_and_states():
     row = _rule(COMPONENTS_CSS, '.surface-row')
     assert 'border: 0' in row
-    assert 'box-shadow: none' in row
     assert 'background-color: transparent' in row
-    assert 'border-radius: var(--radius-lg)' in row
-    assert 'var(--surface-ring)' not in row
-    divider = _rule(APP_CSS, '.disclosure__item.surface-row')
-    assert divider.strip() == 'border-bottom: 1px solid var(--border);'
-    focus = _rule(COMPONENTS_CSS, '.surface-row:has(.surface-interactive__control:focus-visible)')
-    assert '0 0 0 4px var(--focus-ring-soft)' in focus
-    assert 'var(--surface-ring)' not in focus
-    assert '--disclosure-hover' not in APP_CSS
-    assert 'summary-row--alternate' not in APP_CSS
-    assert '--summary-row-fill' not in APP_CSS
-    expanded = _rule(APP_CSS, '.disclosure__head:has(> .disclosure__toggle[aria-expanded="true"])')
+    assert 'border-radius:' not in row and 'box-shadow:' not in row
+    divider = _rule(APP_CSS, '.disclosure__item:not([hidden]) ~ .disclosure__item:not([hidden])')
+    assert divider.strip() == 'border-top: 1px solid var(--border);'
+    focus = _rule(APP_CSS, '.disclosure__toggle:focus-visible')
+    assert 'outline: 2px solid var(--ring)' in focus
+    assert 'box-shadow: none' in focus
+    expanded = _rule(APP_CSS, '.disclosure__head:has([aria-expanded="true"])')
     assert 'background-color: var(--muted-half)' in expanded
     assert 'border-top: 1px solid var(--border)' in _rule(APP_CSS, '.disclosure__panel')
-    assert 'background-color: var(--muted-half)' in _rule(APP_CSS, '.disclosure__panel')
-    assert 'background-color: var(--card)' in _rule(APP_CSS, '.disclosure__panel > .table-responsive')
+    assert 'background-color' not in _rule(APP_CSS, '.disclosure__panel')
     # The same row contract serves both lists; page-wide empty states stay cards.
     assert 'portfolio-card surface-row' in PORTFOLIOS
     assert "empty_state('square-plus', 'No Assets Yet'" in ASSETS
 
 
 def test_transaction_and_income_rows_share_financial_table_contract():
-    assert 'table records-table records-table--asset-entries' in ASSETS
+    assert 'table records-table' in ASSETS
     assert 'Entries for {{ item.symbol }} in {{ item.portfolio.name }}' in ASSETS
     assert '>Total Amount</th>' in ASSETS
     # Entry results remain explicitly trading-only, unlike dividend-inclusive summaries.
@@ -132,13 +126,13 @@ def test_transaction_and_income_rows_share_financial_table_contract():
 
 
 def test_asset_actions_use_short_remove_controls_and_explicit_dialog_titles():
-    assert ASSETS.count('<span>Remove</span>') == 3
+    assert ASSETS.count('<span>Remove</span>') == 1
     assert ASSETS.count("{{ icon('trash') }}Remove") == 3
     for forbidden in ('Remove Asset</span>', 'Remove Entry</span>', 'Remove Dividends</span>'):
         assert forbidden not in ASSETS
     for title in ('Remove Asset Entry', 'Remove Asset', 'Remove Dividends'):
         assert title in ASSETS
-    assert ASSETS.count('dropdown-item--danger') == 3
+    assert ASSETS.count('dropdown-item--danger') == 1
     assert ASSETS.count('class="btn btn-danger"') == 3
 
 

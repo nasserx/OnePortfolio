@@ -1,5 +1,115 @@
 # UI alignment coverage and ownership register
 
+## 2026-11-05 — Nova alignment and weight 600, phase 1 baseline
+
+Retrieved the [preset](https://ui.shadcn.com/create?preset=b1YmpWHpo), its
+[initialization](https://ui.shadcn.com/init?preset=b1YmpWHpo) and the official
+base-nova Item, Table, Button, Dropdown Menu and Collapsible recipes over HTTP.
+The initialization identifies base-nova, Geist and Tabler. This is a source
+comparison. Visual acceptance of the proposed weight belongs to the user.
+
+| Surface | Reference and local contract | Phase 2 disposition |
+| --- | --- | --- |
+| Closed summary | Item + Collapsible. The two lists share header/row tracks; the native toggle owns the chevron and metrics, with a sibling actions area. | Keep this geometry; apply 600 to identity, values and headers within the two lists. Check long names and horizontal scrolling. |
+| Open summary | Collapsible separates trigger and panel. The local toggle exposes expanded state and controls the panel; the active tint is an application cue. | Keep the disclosure and tint; verify keyboard toggle, hidden state and independent actions. |
+| Nested records | Table supplies header/row separators and horizontal overflow. Both ledgers use the shared records-table; tabular right-aligned numeric columns and financial tones are deliberate adaptations. | Preserve numeric alignment and format; include header, body, badges and action text in the weight pilot. |
+| Row actions | Button + Dropdown Menu. The trigger and popover have their own interaction and focus states. | Verify the actual menu's text weight and that opening it leaves the row's expanded state intact. |
+
+**Size baseline** (CSS pixels at a 16px root). Small labels are 11px,
+summary names and values and nested ledger text are 12px, body text 13px,
+brand 18px. At or below 47.999rem, small labels are 12px and summary names,
+values and nested records are 13px. Editable mobile controls retain their
+16px readability rule. Chart label/value sizes are 11/14px and 12/15px at
+that mobile breakpoint. Book Value uses `clamp(2rem, 1.2rem + 2.6vw, 3.25rem)`
+(32–52px). The 75rem disclosure breakpoint changes the actions gutter.
+Preserve the existing size declarations and responsive overrides throughout.
+
+The current body/emphasis weights are 450/550. The pilot target is 600 in
+Portfolios and Assets summaries and their expanded ledgers, in both themes.
+Global rollout follows user review of that pilot.
+
+### Phase 2 — summary and ledger pilot, visually accepted
+
+The Assets and Portfolios disclosure roots now resolve body and emphasis to
+the existing Geist semibold weight (600). This includes the sticky heading,
+closed summary, open ledger, record labels and pagination. Menu items also
+use the local weight explicitly. The same rules apply in both themes.
+
+Compared the font-size declarations and size tokens in app.css and tokens.css
+with the phase-start baseline. All matched. The focused Python suite passed
+60 tests; the summary-list and overlay scripts passed 64 and 110 assertions.
+An isolated DOM probe exercised both production toggle handlers, including
+clicks outside the toggle while closed and while open, and checked both
+panel visibility and aria-expanded. These are source, rendered-markup and
+DOM checks. Review both themes on wide and narrow screens with a long name,
+a precise quantity, and an open actions menu before approving the rollout.
+
+### Phase 3 — application typography rollout
+
+After approval of the disclosure pilot, both shared weight roles resolve to
+Geist 600 for both themes. The pilot selectors have been retired. Overview
+return percentages, native emphasis, Bootstrap controls, Flatpickr days and
+Chart.js canvas labels use the common weight. The authenticated shell,
+settings, account and landing pages share the same tokens.
+
+Reviewed the official Nova Card, Field, Input, Dialog, Sidebar, Tabs, Tooltip,
+Chart, Calendar, Badge, Empty, Button, Dropdown Menu and Table recipe sources.
+Uniform weight and the existing compact sizes are application exceptions.
+All CSS font-size declarations and size tokens matched the phase-start baseline.
+The user accepted the visual check of the wider rollout. Validation evidence
+includes rendered markup, source contracts and JavaScript assertions.
+
+### Phase 4 — table style comparison before the table-specific decision
+
+Both pages compose an **Item-like summary and a Collapsible trigger/panel**
+around a **native Table**. The [preset initialization](https://ui.shadcn.com/init?preset=b1YmpWHpo)
+selects base-nova. The official recipes below were inspected directly.
+Dimensions in pixels assume the default 16px root.
+
+| State | Reference and shared implementation | Local differences |
+| --- | --- | --- |
+| Closed | [Item](https://ui.shadcn.com/r/styles/base-nova/item.json) groups the identity, contents and actions. The summary aligns these horizontally and supplies a focusable disclosure trigger. | Default Item uses 12px horizontal and 10px vertical padding, with a 10px gap. The summary uses 16px, 12px and 12px respectively. The sticky uppercase, muted header, fixed metric tracks and bottom divider on every summary (including the last) belong to the previously approved summary composition. |
+| Open | [Collapsible](https://ui.shadcn.com/r/styles/base-nova/collapsible.json) supplies a trigger and panel. Both Jinja templates link a native button to its panel; expanding reveals the ledger and rotates the chevron. | The tinted surround, top separator and inset aligning the ledger with its parent are layout choices specific to this composition. |
+| Ledger | [Table](https://ui.shadcn.com/r/styles/base-nova/table.json) supplies horizontal overflow, a 40px heading row, 8px cell padding, foreground headings, internal dividers and muted/50 hover and expanded-action states. Both pages share those rules. | Financial columns align right with tabular digits; fixed column widths and the right-side actions zone serve the ledger. Selected rows inside the panel use muted/50 for the documented financial-text contrast requirement. |
+
+The compact sizes and Geist 600 apply across these states. See the
+[sticky list design decisions](DESIGN_SYSTEM.md#sticky-summary-lists-assets-and-portfolios)
+for the prior visual approvals and the local adaptations.
+
+### Final table decision for Portfolios and Assets
+
+The user selected the preset Table recipe for both states, superseding the
+earlier Item spacing, uppercase headings, rounded rows and inset panel.
+The summary and native ledger now share 8px cell padding, foreground
+left-aligned headings, internal separators, transparent resting surfaces and
+muted/50 interaction states. The ledgers use intrinsic column widths.
+Pagination and filtering mark invisible rows with the native hidden attribute,
+so separators only occur between visible siblings. Disclosure controls,
+scroll synchronization and financial formatting retain their existing roles.
+The sticky summary headings display in uppercase. The summary retains its menu.
+Each nested record exposes compact Edit and Remove buttons on row hover or
+keyboard focus, or persistently on devices without hover. The group names the record.
+The prior visual acceptance covers typography; the revised tables await
+user visual acceptance. See [the table contract](DESIGN_SYSTEM.md#sticky-summary-lists-assets-and-portfolios).
+
+Verification on the revised tables passed all 1,318 Python tests, including
+103 focused UI checks, and all 10 JavaScript test scripts. Node syntax checks
+passed for 21 JavaScript files and the inline scripts rendered on both pages.
+All 134 CSS size declarations and size tokens matched the baseline.
+
+The November 6 cleanup and direct record buttons passed all 1,319 Python tests
+and all 10 JavaScript scripts, including 86 disclosure/list assertions. Rendered
+checks cover summary menus, record-specific button labels, icons and edit/delete
+payloads. The list checks also cover blocked session storage and paging through
+filtered results. User browser acceptance of the direct buttons is pending.
+
+The final integration review reproduced pointer focus restoration in Edge using
+isolated markup and the production overlay handler. Rendered tests distinguish
+asset symbols such as `BRK.B` and `BRK_B` in the same portfolio. Regression
+tests also cover same-URL reloads, filter changes, and successful modal submissions
+when the browser denies session storage. These checks cover behavior; visual
+acceptance remains with the user.
+
 ## Status and execution boundaries
 
 Phases 1–5 approved, including user visual acceptance of the final compact
@@ -27,9 +137,8 @@ isolation, persistence, routes, form/API contracts, CSRF, and mutation tokens.
 Retain Flask/Jinja, Bootstrap, Flatpickr, and Chart.js. No dependencies or schema
 changes are planned. Financial/brand exceptions remain. The earlier custom
 chart palette was superseded by Phase 3; compact font sizes and the original
-large Book Value are explicit, approved Phase 4 typography exceptions. The later
-450/550 weight adjustment is an approved exception to the preset weight values;
-it retains the component-role hierarchy and is documented in DESIGN_SYSTEM.md.
+large Book Value are explicit, approved Phase 4 typography exceptions. The current
+body and emphasis roles both resolve to Geist 600 as recorded in DESIGN_SYSTEM.md.
 Field errors become visible after final submit and then update
 while correcting. Six-digit verification-code auto-submit remains an exception.
 

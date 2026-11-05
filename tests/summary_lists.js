@@ -26,27 +26,89 @@ class Region {
         this.listeners.forEach(({fn}) => fn({target}));
     }
 }
-function fixture(withObserver = true) {
+function fixture(withObserver = true, list = 'assets', storage = new Map(), rowCount = 21, navigation = {}) {
     const header = new Region();
     const body = new Region();
     const shellListeners = {};
+    const rows = Array.from({length: rowCount}, () => ({}));
+    const bar = {dataset: {paginationLabel: 'Entries'}};
+    const panel = {
+        hidden: true,
+        querySelector: selector => selector === '.pagination-bar' && rowCount ? bar : null,
+        querySelectorAll: selector => selector === 'tbody tr' ? rows : [],
+    };
+    const toggle = {
+        dataset: {disclosure: '1'},
+        attrs: {'aria-controls': 'panel-1', 'aria-expanded': 'false'},
+        closest: selector => selector === '[data-disclosure]' ? toggle : null,
+        getAttribute(name) { return this.attrs[name]; },
+        setAttribute(name, value) { this.attrs[name] = value; },
+    };
     const root = {
-        dataset: {},
+        dataset: {summaryList: list},
         style: {setProperty(name, value) { this[name] = value; }},
+        addEventListener(type, handler) { this[type] = handler; },
+        querySelectorAll: () => [toggle],
         querySelector: selector => selector === '[data-summary-header]' ? header : body,
         closest: () => ({addEventListener: (type, fn) => { shellListeners[type] = fn; }}),
     };
     header.parentElement = {offsetHeight: 64};
     const observers = [];
     const windowListeners = {};
-    const window = {addEventListener: (type, fn) => { windowListeners[type] = fn; }};
+    const url = 'https://example.test/' + list;
+    const window = {
+        location: {href: navigation.href || url},
+        performance: {getEntriesByType: () => [{type: navigation.type || 'navigate'}]},
+        OnePortfolioPagination: {render: (_, config) => { bar.config = config; }},
+        addEventListener: (type, fn) => { windowListeners[type] = fn; },
+    };
     if (withObserver) window.ResizeObserver = class {
         constructor(fn) { this.fn = fn; this.targets = []; observers.push(this); }
         observe(target) { this.targets.push(target); }
     };
-    const context = vm.createContext({window, document: {querySelectorAll: () => [root]}});
+    const context = vm.createContext({
+        window,
+        document: {referrer: navigation.referrer ?? url, querySelectorAll: () => [root], getElementById: id => id === 'panel-1' ? panel : null},
+        sessionStorage: {
+            getItem: key => storage.get(key), setItem: (key, value) => storage.set(key, value),
+            removeItem: key => storage.delete(key),
+        },
+    });
     vm.runInContext(source, context);
-    return {header, body, root, observers, windowListeners, shellListeners, context};
+    return {header, body, root, observers, windowListeners, shellListeners, context, toggle, panel, rows, bar};
+}
+
+for (const [list, key] of [['assets', 'txOpen'], ['portfolios', 'portfoliosOpen']]) {
+    const storage = new Map([[key, '["1"]'], [key + 'Ref', 'https://example.test/' + list]]);
+    const restored = fixture(true, list, storage);
+    eq(restored.panel.hidden, false);
+    eq(restored.toggle.getAttribute('aria-expanded'), 'true');
+    eq(fixture(true, list, new Map(storage), 21, {type: 'reload', referrer: ''}).panel.hidden, false);
+    eq(fixture(true, list, new Map(storage), 21, {href: restored.context.window.location.href + '?portfolio=Other'}).panel.hidden, true);
+    restored.root.click({target: restored.toggle});
+    eq(restored.panel.hidden, true);
+    eq(storage.get(key), '[]');
+
+    const denied = new Proxy({}, {get() { throw new Error('Storage is blocked'); }});
+    const {root, panel, toggle, rows, bar} = fixture(true, list, denied);
+    root.click({target: {closest: () => null}}); // Sibling actions do not expand the summary.
+    eq(panel.hidden, true);
+    root.click({target: toggle});
+    eq(panel.hidden, false);
+    eq(toggle.getAttribute('aria-expanded'), 'true');
+    eq(rows.filter(row => !row.hidden), rows.slice(0, 10));
+    eq(bar.config.totalPages, 3);
+    bar.config.onPageChange(3);
+    eq(rows.filter(row => !row.hidden), rows.slice(20));
+    root.click({target: toggle});
+    eq(toggle.getAttribute('aria-expanded'), 'false');
+    root.click({target: toggle});
+    eq(rows.filter(row => !row.hidden), rows.slice(20));
+
+    const empty = fixture(true, list, new Map(), 0);
+    empty.root.click({target: empty.toggle});
+    eq(empty.panel.hidden, false);
+    eq(empty.bar.config, undefined);
 }
 
 const f = fixture();
@@ -123,58 +185,57 @@ vm.runInNewContext(source, {window: {}, document: {querySelectorAll: () => [{
     dataset: {}, querySelector: () => null,
 }]}});
 checks++;
-// Exercise the actual Assets pagination renderer: uniform rows retain their
-// visibility and classes through search resets and later pages.
+// Exercise the real search listener, including a reset from a later page.
 const assets = fs.readFileSync('portfolio_app/templates/assets.html', 'utf8');
-const paginationStart = assets.indexOf('(function setupOuterPagination()');
-const paginationEnd = assets.indexOf('}());', paginationStart) + 5;
-assert(paginationStart !== -1 && paginationEnd > paginationStart);
-const cards = Array.from({length: 205}, () => {
-    const classes = new Set();
-    return {style: {}, classList: {
-        contains: name => classes.has(name),
-        remove: name => classes.delete(name),
-        toggle(name, on) { if (on) classes.add(name); else classes.delete(name); },
-    }};
-});
+function setupScript(template, name) {
+    const start = template.indexOf('(function ' + name + '()');
+    const end = template.indexOf('}());', start);
+    assert(start !== -1 && end > start);
+    return template.slice(start, end + 5);
+}
+const cards = Array.from({length: 205}, (_, i) => ({
+    dataset: {symbol: (i % 3 ? 'ABC' : 'DEF') + i},
+}));
+const search = {
+    value: '',
+    addEventListener(type, handler) { assert.equal(type, 'input'); this.input = handler; },
+};
 let pagination;
 const paginationWindow = {OnePortfolioPagination: {render: (_, config) => { pagination = config; }}};
-vm.runInNewContext(assets.slice(paginationStart, paginationEnd), {
+vm.runInNewContext(setupScript(assets, 'setupOuterPagination'), {
     window: paginationWindow,
     document: {
         querySelectorAll: () => cards,
-        getElementById: () => ({dataset: {paginationLabel: 'Asset Pages'}}),
+        getElementById: id => id === 'symbolSearch' ? search : {dataset: {paginationLabel: 'Asset Pages'}},
     },
 });
 function checkPage(expected) {
-    const visible = cards.filter(card => card.style.display !== 'none');
-    eq(visible, expected);
-    eq(cards
-        .some(card => card.classList.contains('summary-row--alternate')), false);
+    eq(cards.filter(card => !card.hidden), expected);
 }
 checkPage(cards.slice(0, 100));
 pagination.onPageChange(2);
 checkPage(cards.slice(100, 200));
 pagination.onPageChange(3);
 checkPage(cards.slice(200));
-cards.forEach((card, index) => card.classList.toggle('sym-filter-hide', index % 3 === 0));
-paginationWindow.refreshOuterPagination(true);
-const matches = cards.filter(card => !card.classList.contains('sym-filter-hide'));
+search.value = ' bc ';
+search.input();
+eq(search.value, ' BC ');
+eq(pagination.currentPage, 1);
+eq(pagination.totalPages, 2);
+const matches = cards.filter((_, i) => i % 3 !== 0);
 checkPage(matches.slice(0, 100));
 pagination.onPageChange(2);
 checkPage(matches.slice(100));
-cards.forEach(card => card.classList.toggle('sym-filter-hide', true));
-paginationWindow.refreshOuterPagination(true);
+search.value = 'absent';
+search.input();
+eq(pagination.totalPages, 1);
 checkPage([]);
-cards.forEach(card => card.classList.toggle('sym-filter-hide', false));
-paginationWindow.refreshOuterPagination(true);
+search.value = '';
+search.input();
 checkPage(cards.slice(0, 100));
 // Portfolios pagination also works without a row-presentation controller.
 const portfolios = fs.readFileSync('portfolio_app/templates/portfolios.html', 'utf8');
-const portfoliosStart = portfolios.indexOf('(function setupPortfolioOuterPagination()');
-const portfoliosEnd = portfolios.indexOf('}());', portfoliosStart) + 5;
-assert(portfoliosStart !== -1 && portfoliosEnd > portfoliosStart);
-vm.runInNewContext(portfolios.slice(portfoliosStart, portfoliosEnd), {
+vm.runInNewContext(setupScript(portfolios, 'setupPortfolioOuterPagination'), {
     window: paginationWindow,
     document: {
         querySelectorAll: () => cards,

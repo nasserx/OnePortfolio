@@ -55,30 +55,17 @@ def test_surface_consumers_are_declared_in_templates():
     assert 'auth__showcase' not in auth
 
 
-def test_disclosure_has_neutral_hover_and_container_focus_contract():
-    components = COMPONENTS.read_text(encoding='utf-8')
+def test_disclosure_has_neutral_hover_and_keyboard_focus_on_the_toggle():
     app = APP.read_text(encoding='utf-8')
-    focus = _rule(
-        components,
-        '.surface-interactive:has(.surface-interactive__control:focus-visible)',
-    )
-    assert 'var(--surface-ring)' in focus
-    assert 'var(--focus-ring-soft)' in focus
-
-    assert '.disclosure__item:not(:has(.disclosure__toggle[aria-expanded="true"]))' not in app
-    assert '.disclosure__head:has(button.disclosure__toggle:hover)' in app
-    hover_rule = re.search(
-        r'\.disclosure__head:has\(button\.disclosure__toggle:focus-visible\)\s*\{([^}]*)\}',
-        app,
-    )
-    assert hover_rule
-    assert 'background-color: var(--muted-half)' in hover_rule.group(1)
-    assert not re.search(r'financial-|destructive', hover_rule.group(1))
-    assert '.disclosure__panel' not in hover_rule.group(0)
+    assert '.disclosure__head:hover,' in app
+    assert '.disclosure__head:focus-within,' in app
+    expanded = _rule(app, '.disclosure__head:has([aria-expanded="true"])')
+    assert 'background-color: var(--muted-half)' in expanded
+    assert 'outline: 2px solid var(--ring)' in _rule(app, '.disclosure__toggle:focus-visible')
 
     for template in ('portfolios.html', 'assets.html'):
         source = (TEMPLATES / template).read_text(encoding='utf-8')
-        assert 'disclosure__toggle surface-interactive__control' in source
+        assert '<button type="button" class="disclosure__toggle"' in source
         assert 'disclosure__head' in source
 
 
@@ -89,10 +76,10 @@ def test_table_edges_use_one_canonical_separator_layer():
     cells = _rule(components, '.table > :not(caption) > * > *')
     assert 'border-bottom-width: 0' in cells
     header = _rule(components, '.table thead th')
-    rows = _rule(components, '.table tbody tr:not(:last-child) > *')
+    rows = _rule(components, '.table tbody tr:not([hidden]) ~ tr:not([hidden]) > *')
     assert 'border-bottom: 1px solid var(--border)' in header
-    assert 'border-bottom: 1px solid var(--border)' in rows
-    assert rows.count('border-bottom:') == 1
+    assert 'border-top: 1px solid var(--border)' in rows
+    assert rows.count('border-top:') == 1
 
     ledger_row = _rule(app, '.ledger__row')
     panel = _rule(app, '.disclosure__panel')
@@ -122,7 +109,7 @@ def test_expanded_financial_tables_share_nova_row_contract():
     selected = _rule(components, '.table tbody tr[data-state="selected"] > *')
     assert 'background-color: transparent' in resting
     assert 'background-color: var(--muted-half)' in hover
-    assert 'background-color: var(--table-selected-background, var(--muted))' in selected
+    assert 'background-color: var(--muted)' in selected
     assert 'transform' not in hover
     assert 'box-shadow' not in hover
     assert 'border' not in hover
@@ -135,12 +122,11 @@ def test_expanded_financial_tables_share_nova_row_contract():
     assert 'border-bottom: 1px solid var(--border)' in header
 
     panel = _rule(app, '.disclosure__panel')
-    assert 'background-color: var(--muted-half)' in panel
-    assert '--table-selected-background: var(--muted-half)' in panel
-    assert 'background-color: var(--card)' in _rule(app, '.disclosure__panel > .table-responsive')
-    menu_open = _rule(components, '.records-table tbody tr:has([aria-expanded="true"]) > *')
-    assert 'background-color: var(--muted-half)' in menu_open
-    assert '.records-table tbody tr:focus-within > *,' in components
+    assert 'background' not in panel and 'padding' not in panel
+    assert 'text-align: left' in _rule(components, '.records-table :is(th, td).records-cell')
+    assert 'table-layout: fixed' not in table_section
+    focused_row = _rule(components, '.records-table tbody tr:focus-within > *')
+    assert 'background-color: var(--muted-half)' in focused_row
     assert '.disclosure__panel .table thead th' not in app
 
     for template in ('portfolios.html', 'assets.html'):

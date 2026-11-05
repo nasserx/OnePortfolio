@@ -10,7 +10,7 @@
 {% set _div_edit_vals = (form_values.get('dividend_edit', {}) if form_values else {}) %}
 {% set _div_add_errs = (form_errors.get('dividend_add', {}) if form_errors else {}) %}
 {% set _div_edit_errs = (form_errors.get('dividend_edit', {}) if form_errors else {}) %}
-{% from 'macros/ui.html' import money, percent, quantity, metric, empty_state, action_menu, record_type, summary_header %}
+{% from 'macros/ui.html' import money, percent, quantity, metric, empty_state, action_menu, record_actions, record_type, summary_header %}
 {% from 'macros/icons.html' import icon %}
 
 {% block title %}Assets — OnePortfolio{% endblock %}
@@ -87,7 +87,7 @@
             <article class="disclosure__item symbol-card surface-row" data-symbol="{{ item.symbol }}" role="listitem">
 
                 <div class="disclosure__head">
-                    <button type="button" class="disclosure__toggle surface-interactive__control"
+                    <button type="button" class="disclosure__toggle"
                             aria-expanded="false" aria-controls="{{ panel_id }}"
                             data-disclosure="{{ item.html_group_id }}"
                             data-command="{{ item.symbol }} · {{ item.portfolio.name }}"
@@ -97,11 +97,11 @@
 
                         <span class="disclosure__identity">
                             <span class="disclosure__name" title="{{ item.symbol }}">{{ item.symbol }}</span>
-                            <span class="badge badge--secondary">{{ item.portfolio.name }}</span>
+                            <span class="badge badge--secondary" title="{{ item.portfolio.name }}">{{ item.portfolio.name }}</span>
                         </span>
 
 
-                        <span class="disclosure__metrics disclosure__metrics--assets">
+                        <span class="disclosure__metrics">
                             {% call metric('Entries') %}{{ item.summary.transaction_count + symbol_dividends|length }}{% endcall %}
                             {% call metric('Purchase Cost') %}{{ money(item.summary.total_purchase_cost) }}{% endcall %}
                             {% call metric('Quantity') %}{{ quantity(item.summary.total_quantity_held) }}{% endcall %}
@@ -150,20 +150,8 @@
                 <div class="disclosure__panel" id="{{ panel_id }}" hidden>
                     {% if item.transactions|length > 0 or show_dividend_rows %}
                     <div class="table-responsive">
-                        <table class="table records-table records-table--asset-entries">
+                        <table class="table records-table">
                             <caption class="visually-hidden">Asset Entries for {{ item.symbol }} in {{ item.portfolio.name }}</caption>
-                            <colgroup>
-                                <col class="records-col records-col--date">
-                                <col class="records-col records-col--type">
-                                <col class="records-col records-col--price">
-                                <col class="records-col records-col--quantity">
-                                <col class="records-col records-col--fee">
-                                <col class="records-col records-col--total">
-                                <col class="records-col records-col--pnl">
-                                <col class="records-col records-col--return">
-                                <col class="records-col records-col--notes">
-                                <col class="records-col records-col--actions">
-                            </colgroup>
                             <thead>
                                 <tr>
                                     <th scope="col" class="records-cell">Date</th>
@@ -175,7 +163,7 @@
                                     <th scope="col" class="records-cell records-cell--number">Realized P&amp;L</th>
                                     <th scope="col" class="records-cell records-cell--number" aria-label="Return" title="Return">Return</th>
                                     <th scope="col" class="records-cell">Notes</th>
-                                    <th scope="col" class="records-cell records-cell--actions">Actions</th>
+                                    <th scope="col" class="records-cell">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -202,39 +190,23 @@
                                         <td class="records-cell records-cell--number"><span class="num num--flat">—</span></td>
                                     {% endif %}
                                     {% set tx_notes = transaction.notes or '' %}
-                                    <td class="records-cell tx-notes-cell"{% if tx_notes %} title="{{ tx_notes }}"{% endif %}>
+                                    <td class="records-cell"{% if tx_notes %} title="{{ tx_notes }}"{% endif %}>
                                         <small>{{ tx_notes if tx_notes else '—' }}</small>
                                     </td>
-                                    <td class="records-cell records-cell--actions actions-cell">
-                                        <div class="row-actions">
-                                            {% call action_menu('Actions for ' ~ transaction.transaction_type ~ ' entry for ' ~ item.symbol ~ ' on ' ~ transaction.date_short, small=true) %}
-                                            <li>
-                                                <button type="button" class="dropdown-item js-edit-transaction-btn"
-                                                    data-tx='{{ {
-                                                        "id": transaction.id,
-                                                        "portfolioId": transaction.portfolio_id,
-                                                        "type": transaction.transaction_type,
-                                                        "symbol": (transaction.symbol or ""),
-                                                        "price": (transaction.price|decimal_text),
-                                                        "quantity": (transaction.quantity|decimal_text),
-                                                        "fees": (transaction.fees|decimal_text),
-                                                        "notes": (transaction.notes or ""),
-                                                        "dateShort": transaction.date_short
-                                                    }|tojson|e }}'>
-                                                    {{ icon('edit') }}
-                                                    <span>Edit</span>
-                                                </button>
-                                            </li>
-                                            <li><hr class="dropdown-divider"></li>
-                                            <li>
-                                                <button type="button" class="dropdown-item dropdown-item--danger js-delete-transaction-btn"
-                                                        data-tx-id="{{ transaction.id }}">
-                                                    {{ icon('trash') }}
-                                                    <span>Remove</span>
-                                                </button>
-                                            </li>
-                                            {% endcall %}
-                                        </div>
+                                    <td class="records-cell">
+                                        {{ record_actions(transaction.transaction_type ~ ' entry for ' ~ item.symbol ~ ' on ' ~ transaction.date_short,
+                                            {'data-tx': {
+                                                'id': transaction.id,
+                                                'portfolioId': transaction.portfolio_id,
+                                                'type': transaction.transaction_type,
+                                                'symbol': transaction.symbol or '',
+                                                'price': transaction.price|decimal_text,
+                                                'quantity': transaction.quantity|decimal_text,
+                                                'fees': transaction.fees|decimal_text,
+                                                'notes': transaction.notes or '',
+                                                'dateShort': transaction.date_short
+                                            }|tojson|forceescape},
+                                            {'data-tx-id': transaction.id}, 'js-edit-transaction-btn', 'js-delete-transaction-btn') }}
                                     </td>
                                 </tr>
                                 {% endfor %}
@@ -252,29 +224,16 @@
                                     <td class="records-cell records-cell--number"><span class="num num--flat">—</span></td>
                                     <td class="records-cell records-cell--number"><span class="num num--flat">—</span></td>
                                     {% set div_notes = div.notes or '' %}
-                                    <td class="records-cell tx-notes-cell"{% if div_notes %} title="{{ div_notes }}"{% endif %}>
+                                    <td class="records-cell"{% if div_notes %} title="{{ div_notes }}"{% endif %}>
                                         <small>{{ div_notes if div_notes else '—' }}</small>
                                     </td>
-                                    <td class="records-cell records-cell--actions actions-cell">
-                                        <div class="row-actions">
-                                            {% call action_menu('Actions for dividend income entry for ' ~ item.symbol ~ ' on ' ~ div.date_short, small=true) %}
-                                            <li>
-                                                <button type="button" class="dropdown-item js-edit-dividend-btn"
-                                                        data-div='{{ {"id": div.id, "portfolioId": div.portfolio_id, "amount": (div.amount|decimal_text), "dateShort": div.date_short, "notes": (div.notes or "")}|tojson|e }}'>
-                                                    {{ icon('edit') }}
-                                                    <span>Edit</span>
-                                                </button>
-                                            </li>
-                                            <li><hr class="dropdown-divider"></li>
-                                            <li>
-                                                <button type="button" class="dropdown-item dropdown-item--danger js-delete-dividend-btn"
-                                                        data-div-id="{{ div.id }}">
-                                                    {{ icon('trash') }}
-                                                    <span>Remove</span>
-                                                </button>
-                                            </li>
-                                            {% endcall %}
-                                        </div>
+                                    <td class="records-cell">
+                                        {{ record_actions('dividend income entry for ' ~ item.symbol ~ ' on ' ~ div.date_short,
+                                            {'data-div': {
+                                                'id': div.id, 'portfolioId': div.portfolio_id, 'amount': div.amount|decimal_text,
+                                                'dateShort': div.date_short, 'notes': div.notes or ''
+                                            }|tojson|forceescape},
+                                            {'data-div-id': div.id}, 'js-edit-dividend-btn', 'js-delete-dividend-btn') }}
                                     </td>
                                 </tr>
                                 {% endfor %}
@@ -282,7 +241,7 @@
                             </tbody>
                         </table>
                     </div>
-                    <div class="pagination-bar" id="pgbar-{{ item.html_group_id }}"
+                    <div class="pagination-bar"
                          data-pagination-label="Asset Entries for {{ item.symbol }}" hidden></div>
                     {% else %}
                     <p class="inline-empty">
@@ -804,26 +763,7 @@
         integrity="sha384-5JqMv4L/Xa0hfvtF06qboNdhvuYXUku9ZrhZh3bSk8VXF0A/RuSLHpLsSV9Zqhl6"
         crossorigin="anonymous"></script>
 <script nonce="{{ csp_nonce }}">
-function filterBySymbol(query) {
-    var q = query.trim().toUpperCase();
-    document.querySelectorAll('.symbol-card').forEach(function(card) {
-        var symbol = (card.getAttribute('data-symbol') || '').toUpperCase();
-        card.classList.toggle('sym-filter-hide', Boolean(q && !symbol.includes(q)));
-    });
-    if (window.refreshOuterPagination) window.refreshOuterPagination(true);
-}
-
-// Search and "Add asset" are wired here rather than through inline
-// attributes so the markup stays free of behaviour.
 (function wireToolbar() {
-    var search = document.getElementById('symbolSearch');
-    if (search) {
-        search.addEventListener('input', function () {
-            this.value = this.value.toUpperCase();
-            filterBySymbol(this.value);
-        });
-    }
-
     document.querySelectorAll('[data-uppercase-input]').forEach(function (input) {
         input.addEventListener('input', function () {
             this.value = this.value.toUpperCase();
@@ -949,167 +889,44 @@ function openAddSymbolModal() {
         }
     });
 })();
-// ── Per-symbol inner-row pagination ──────────────────────────────────
-(function setupTablePagination() {
-    var PAGE_SIZE = 10;
-    var state = {};
-
-    function getRows(groupId) {
-        var tbody = document.querySelector('#transactions-' + groupId + ' tbody');
-        return tbody ? Array.from(tbody.querySelectorAll('tr')) : [];
-    }
-
-    function renderBar(groupId) {
-        var rows = getRows(groupId);
-        var bar = document.getElementById('pgbar-' + groupId);
-
-        if (rows.length <= PAGE_SIZE) {
-            rows.forEach(function(r) { r.style.display = ''; });
-            if (bar) window.OnePortfolioPagination.render(bar, {
-                currentPage: 1,
-                totalPages: 1,
-                label: bar.dataset.paginationLabel,
-                onPageChange: function() {}
-            });
-            return;
-        }
-
-        if (!state[groupId]) state[groupId] = { page: 1 };
-        var totalPages = Math.ceil(rows.length / PAGE_SIZE);
-        state[groupId].page = Math.min(Math.max(state[groupId].page, 1), totalPages);
-        var page = state[groupId].page;
-        var start = (page - 1) * PAGE_SIZE;
-        var end = Math.min(start + PAGE_SIZE, rows.length);
-
-        rows.forEach(function(r, i) {
-            r.style.display = (i >= start && i < end) ? '' : 'none';
-        });
-
-        if (!bar) return;
-
-        window.OnePortfolioPagination.render(bar, {
-            currentPage: page,
-            totalPages: totalPages,
-            label: bar.dataset.paginationLabel,
-            onPageChange: function(nextPage) {
-                state[groupId].page = nextPage;
-                renderBar(groupId);
-            }
-        });
-    }
-
-    window.initSymbolPagination = function(groupId) {
-        if (!state[groupId]) state[groupId] = { page: 1 };
-        renderBar(groupId);
-    };
-}());
-
 // ── Outer symbol-card pagination ─────────────────────────────────────
 (function setupOuterPagination() {
     var PAGE_SIZE = 100;
     var currentPage = 1;
-
-    function getCards() {
-        return Array.from(document.querySelectorAll('.symbol-card'));
-    }
+    var search = document.getElementById('symbolSearch');
+    var cards = Array.from(document.querySelectorAll('.symbol-card'));
+    var bar = document.getElementById('outer-pg-bar');
 
     function render() {
-        var cards = getCards();
-        var visible = cards.filter(function(c) { return !c.classList.contains('sym-filter-hide'); });
-        var totalPages = Math.max(1, Math.ceil(visible.length / PAGE_SIZE));
-        currentPage = Math.min(Math.max(currentPage, 1), totalPages);
-
+        var query = search ? search.value.trim().toUpperCase() : '';
         var start = (currentPage - 1) * PAGE_SIZE;
-        var end   = start + PAGE_SIZE;
-
-        cards.forEach(function(c) {
-            if (c.classList.contains('sym-filter-hide')) {
-                c.style.display = 'none';
-            } else {
-                var idx = visible.indexOf(c);
-                c.style.display = (idx >= start && idx < end) ? '' : 'none';
-            }
+        var matches = 0;
+        cards.forEach(function(card) {
+            var symbol = card.dataset.symbol.toUpperCase();
+            var match = symbol.includes(query);
+            card.hidden = !match || matches < start || matches >= start + PAGE_SIZE;
+            if (match) matches++;
         });
-
-        var bar = document.getElementById('outer-pg-bar');
-        if (!bar) return;
-
-        if (visible.length <= PAGE_SIZE) {
-            window.OnePortfolioPagination.render(bar, {
-                currentPage: 1,
-                totalPages: 1,
-                label: bar.dataset.paginationLabel,
-                onPageChange: function() {}
-            });
-            return;
-        }
 
         window.OnePortfolioPagination.render(bar, {
             currentPage: currentPage,
-            totalPages: totalPages,
-            label: bar.dataset.paginationLabel,
-            onPageChange: function(nextPage) {
-                currentPage = nextPage;
+            totalPages: Math.max(1, Math.ceil(matches / PAGE_SIZE)),
+            label: bar ? bar.dataset.paginationLabel : '',
+            onPageChange: function(page) {
+                currentPage = page;
                 render();
             }
         });
     }
 
-    window.refreshOuterPagination = function(resetPage) {
-        if (resetPage) currentPage = 1;
-        render();
-    };
-
-    render();
-}());
-
-// ── Row expansion state ───────────────────────────────────────────────
-(function () {
-    var SK = 'txOpen', RK = 'txOpenRef';
-
-    var openSet = (function () {
-        try {
-            var saved = JSON.parse(sessionStorage.getItem(SK) || 'null');
-            var ref   = sessionStorage.getItem(RK) || '';
-            if (saved && ref && document.referrer.indexOf(ref) !== -1)
-                return new Set(saved);
-        } catch (e) {}
-        sessionStorage.removeItem(SK);
-        sessionStorage.removeItem(RK);
-        return new Set();
-    }());
-
-    function setOpen(groupId, open) {
-        var panel = document.getElementById('transactions-' + groupId);
-        var toggle = document.querySelector('[data-disclosure="' + groupId + '"]');
-        if (!panel || !toggle) return;
-
-        panel.hidden = !open;
-        toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
-
-        if (open) {
-            openSet.add(groupId);
-            if (window.initSymbolPagination) window.initSymbolPagination(groupId);
-        } else {
-            openSet.delete(groupId);
-        }
+    if (search) {
+        search.addEventListener('input', function() {
+            search.value = search.value.toUpperCase();
+            currentPage = 1;
+            render();
+        });
     }
-
-    // Applied immediately — this script runs at the end of <body>.
-    openSet.forEach(function (id) { setOpen(id, true); });
-
-    document.addEventListener('click', function (event) {
-        var toggle = event.target.closest('[data-disclosure]');
-        if (!toggle) return;
-
-        var groupId = toggle.getAttribute('data-disclosure');
-        setOpen(groupId, toggle.getAttribute('aria-expanded') !== 'true');
-
-        try {
-            sessionStorage.setItem(SK, JSON.stringify([...openSet]));
-            sessionStorage.setItem(RK, window.location.href);
-        } catch (e) {}
-    });
+    render();
 }());
 
 function openAddTransactionModal(portfolioId, portfolioName, symbol, forcedType) {

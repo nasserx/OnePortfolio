@@ -183,10 +183,10 @@
   Entity action menu. The caller owns the menu items so action-specific
   classes and data attributes stay with the page that dispatches them.
 #}
-{%- macro action_menu(label, small=false) -%}
+{%- macro action_menu(label) -%}
   <div class="dropdown action-menu">
     <button type="button"
-            class="btn btn-icon dropdown-toggle action-menu__trigger{% if small %} btn-sm{% endif %}"
+            class="btn btn-icon dropdown-toggle action-menu__trigger"
             data-bs-toggle="dropdown"
             data-bs-boundary="viewport"
             aria-expanded="false"
@@ -197,6 +197,15 @@
     <ul class="dropdown-menu dropdown-menu-end action-menu__menu">
       {{ caller() }}
     </ul>
+  </div>
+{%- endmacro -%}
+
+{%- macro record_actions(label, edit_attrs, remove_attrs, edit_hook='', remove_hook='') -%}
+  <div class="row-actions record-actions" role="group" aria-label="{{ label }}">
+    <button type="button" class="btn btn-icon btn-sm {{ edit_hook }}" aria-label="Edit"
+            title="Edit"{{ edit_attrs|xmlattr }}>{{ icon('edit') }}</button>
+    <button type="button" class="btn btn-icon btn-sm btn-danger {{ remove_hook }}" aria-label="Remove"
+            title="Remove"{{ remove_attrs|xmlattr }}>{{ icon('trash') }}</button>
   </div>
 {%- endmacro -%}
 

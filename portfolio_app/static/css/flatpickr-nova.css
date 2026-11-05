@@ -108,6 +108,7 @@
 .op-flatpickr .flatpickr-current-month .flatpickr-monthDropdown-months option {
   background-color: var(--popover);
   color: var(--popover-foreground);
+  font-weight: var(--weight-body);
 }
 
 .op-flatpickr .numInputWrapper span { border-color: var(--border); }
@@ -125,6 +126,7 @@
 }
 
 .op-flatpickr .flatpickr-day {
+  font-weight: var(--weight-body);
   width: var(--calendar-cell);
   max-width: var(--calendar-cell);
   height: var(--calendar-cell);

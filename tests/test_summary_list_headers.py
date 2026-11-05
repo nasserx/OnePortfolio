@@ -1,7 +1,6 @@
 """Rendered list semantics and shared geometry; browser acceptance is separate."""
 from datetime import datetime
 from decimal import Decimal
-from html.parser import HTMLParser
 from pathlib import Path
 import re
 
@@ -11,50 +10,7 @@ from portfolio_app import db
 from portfolio_app.models.user import User
 from portfolio_app.services.factory import Services
 from tests._auth import authenticate_client
-
-
-class Node:
-    def __init__(self, tag='', attrs=()):
-        self.tag, self.attrs, self.children = tag, dict(attrs), []
-
-    @property
-    def text(self):
-        return ''.join(child if isinstance(child, str) else child.text for child in self.children)
-
-    def find(self, predicate):
-        result = []
-        for child in self.children:
-            if isinstance(child, Node):
-                if predicate(child):
-                    result.append(child)
-                result.extend(child.find(predicate))
-        return result
-
-    def by_class(self, name):
-        return self.find(lambda n: name in n.attrs.get('class', '').split())
-
-
-class Document(HTMLParser):
-    def __init__(self, html):
-        super().__init__()
-        self.root = Node()
-        self.stack = [self.root]
-        self.feed(html)
-
-    def handle_starttag(self, tag, attrs):
-        node = Node(tag, attrs)
-        self.stack[-1].children.append(node)
-        if tag not in {'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'param', 'source', 'track', 'wbr'}:
-            self.stack.append(node)
-
-    def handle_endtag(self, tag):
-        for index in range(len(self.stack) - 1, 0, -1):
-            if self.stack[index].tag == tag:
-                del self.stack[index:]
-                break
-
-    def handle_data(self, text):
-        self.stack[-1].children.append(text)
+from tests._html import Document
 
 
 @pytest.fixture
@@ -76,6 +32,29 @@ def summary_client(app):
     client = app.test_client()
     authenticate_client(client, uid)
     return client
+
+
+def test_dotted_and_underscored_assets_open_their_own_records(summary_client, app):
+    with app.app_context():
+        user = User.query.filter_by(username='summary-reader').one()
+        svc = Services(user_id=user.id)
+        portfolio = svc.portfolio_repo.get_all()[0]
+        for symbol in ('BRK.B', 'BRK_B'):
+            svc.transaction_service.add_transaction(
+                portfolio_id=portfolio.id, transaction_type='Buy', symbol=symbol,
+                price=Decimal('1'), quantity=Decimal('1'), fees=Decimal('0'),
+                date=datetime(2024, 1, 3),
+            )
+    response = summary_client.get('/transactions/')
+    assert response.status_code == 200
+    doc = Document(response.get_data(as_text=True)).root
+    cards = doc.by_class('symbol-card')
+    assert {'BRK.B', 'BRK_B'} <= {card.attrs['data-symbol'] for card in cards}
+    for item in cards:
+        toggle, = item.by_class('disclosure__toggle')
+        target, = doc.find(lambda n: n.attrs.get('id') == toggle.attrs['aria-controls'])
+        panel, = item.by_class('disclosure__panel')
+        assert target is panel
 
 
 @pytest.mark.parametrize('url,kind,identity,labels,values', [
@@ -105,7 +84,7 @@ def test_one_header_with_labelled_values_and_unchanged_controls(summary_client, 
     for row in rows:
         classes = row.attrs['class'].split()
         assert 'surface-row' in classes
-        assert 'surface-card' not in classes and 'surface-interactive' not in classes
+        assert 'surface-card' not in classes
         toggle, = row.by_class('disclosure__toggle')
         assert toggle.tag == 'button' and toggle.attrs['aria-expanded'] == 'false'
         panel, = row.by_class('disclosure__panel')
@@ -136,22 +115,24 @@ def test_shared_geometry_sticky_ownership_and_fixed_menu_escape():
     assert 'background-color: var(--background)' in sticky
     assert 'text-transform: uppercase' in rule('.summary-list__columns')
     assert 'font-weight: var(--weight-emphasis)' in rule('.summary-list__columns')
-    assert 'color: var(--muted-foreground)' in rule('.summary-list__columns')
+    assert 'color: var(--foreground)' in rule('.summary-list__columns')
     shared_type = rule('.ledger__row--head,\n  .summary-list__columns')
     assert 'font-size: var(--text-xs)' in shared_type
     assert 'font-size:' not in rule('.summary-list__columns')
-    # Only the header/body gap tightens; spacing between data rows stays intact.
-    assert 'gap: var(--space-1)' in rule('.disclosure')
-    assert 'gap: var(--space-2)' in rule('.summary-list__items')
+    assert 'gap:' not in rule('.disclosure') + rule('.summary-list__items')
+    assert 'border-bottom: 1px solid var(--border)' in rule('.summary-list__columns')
+    assert 'min-height: var(--row-h)' in rule('.summary-list__columns')
+    assert 'padding: var(--cell-pad-y) var(--cell-pad-x)' in rule('.disclosure__head')
+    assert 'text-align: left' in rule('.metric')
     for selector in ('.summary-list__sticky', '.summary-list__columns', '.disclosure__head'):
         declarations = rule(selector)
         assert not re.search(r'(?:^|[;\n])\s*(?:border(?:-radius)?|box-shadow|outline)\s*:', declarations)
     for selector in ('.summary-list__columns', '.disclosure__head'):
         assert not re.search(r'(?:^|[;\n])\s*background(?:-color)?\s*:', rule(selector))
-    assert '.disclosure__head:has(button.disclosure__toggle:hover)' in css
+    assert '.disclosure__head:hover' in css
     assert 'grid-template-columns: var(--summary-columns)' in rule('.disclosure__metrics')
     assert 'min-width: var(--summary-min-width)' in rule('.summary-list__track')
-    assert 'padding: var(--space-1)' in rule('.summary-list__track')
+    assert 'padding:' not in rule('.summary-list__track')
     assert 'width: 1rem' in rule('.summary-list__chevron-space')
     assert 'scrollbar-width: none' in rule('.summary-list__body-scroll')
     assert 'scrollbar-width: none' not in rule('.summary-list__header-scroll,\n  .summary-list__body-scroll')

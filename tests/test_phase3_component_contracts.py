@@ -91,6 +91,20 @@ def test_button_hover_and_press_cannot_erase_keyboard_focus():
     assert 'var(--control-invalid-ring)' in rule(CSS, '.btn-outline-danger:focus-visible')
 
 
+def test_record_actions_reserve_space_and_reveal_on_hover_focus_or_touch():
+    resting = rule(CSS, '.row-actions')
+    assert 'opacity: 0' in resting and 'pointer-events: none' in resting
+    assert 'display: inline-flex' in resting
+    glyph = rule(CSS, '.record-actions .btn-sm .icon')
+    assert 'width: 0.875rem' in glyph and 'height: 0.875rem' in glyph
+    reveal = re.search(r'\.records-table tr:hover \.record-actions:not\(\[data-dialog-return="idle"\]\),[^{]*\{([^}]+)', CSS)[1]
+    assert '.record-actions:not([data-dialog-return]):has(:focus-visible),' in CSS
+    assert '.row-actions:focus-within' not in CSS
+    touch = rule(CSS.split('@media (hover: none)', 1)[1], '.row-actions')
+    for state in (reveal, touch):
+        assert 'opacity: 1' in state and 'pointer-events: auto' in state
+
+
 def test_dialog_alert_and_empty_recipes_keep_distinct_surface_and_type_roles():
     assert 'border-bottom: 0' in rule(CSS, '.modal-header')
     title = rule(CSS, '.modal-title')

@@ -10,7 +10,7 @@
 {% set _with_vals = (form_values.get('portfolios_withdraw', {}) if form_values else {}) %}
 {% set _ev_errs = (form_errors.get('portfolio_event_edit', {}) if form_errors else {}) %}
 {% set _ev_vals = (form_values.get('portfolio_event_edit', {}) if form_values else {}) %}
-{% from 'macros/ui.html' import money, metric, marker, empty_state, action_menu, record_type, summary_header %}
+{% from 'macros/ui.html' import money, metric, marker, empty_state, action_menu, record_actions, record_type, summary_header %}
 {% from 'macros/icons.html' import icon %}
 
 
@@ -52,7 +52,7 @@
                   keyboard and announces its own state. Row actions sit
                   outside it — nesting them would make them unclickable.
                 #}
-                <button type="button" class="disclosure__toggle surface-interactive__control"
+                <button type="button" class="disclosure__toggle"
                         aria-expanded="false" aria-controls="{{ panel_id }}"
                         data-disclosure="{{ item.portfolio.id }}"
                         data-command="Portfolio: {{ item.portfolio.name }}"
@@ -120,25 +120,18 @@
             </div>
 
             <!-- Funding log (collapsed by default) -->
-            <div class="disclosure__panel portfolio-cash-events" id="{{ panel_id }}" hidden>
+            <div class="disclosure__panel" id="{{ panel_id }}" hidden>
                     {% if item.events %}
                     <div class="table-responsive">
-                        <table class="table records-table records-table--portfolio-events">
+                        <table class="table records-table">
                             <caption class="visually-hidden">Entries for {{ item.portfolio.name }}</caption>
-                            <colgroup>
-                                <col class="records-col records-col--date">
-                                <col class="records-col records-col--type">
-                                <col class="records-col records-col--amount">
-                                <col class="records-col records-col--notes">
-                                <col class="records-col records-col--actions">
-                            </colgroup>
                             <thead>
                                 <tr>
                                     <th scope="col" class="records-cell">Date</th>
                                     <th scope="col" class="records-cell">Type</th>
                                     <th scope="col" class="records-cell records-cell--number">Total Amount</th>
                                     <th scope="col" class="records-cell">Notes</th>
-                                    <th scope="col" class="records-cell records-cell--actions">Actions</th>
+                                    <th scope="col" class="records-cell">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -153,52 +146,31 @@
                                         {{ money(event.amount_delta, tone='sign', signed=true) }}
                                     </td>
                                     {% set event_notes = event.notes or '' %}
-                                    <td class="records-cell portfolio-event-notes"{% if event_notes %} title="{{ event_notes }}"{% endif %}>
+                                    <td class="records-cell"{% if event_notes %} title="{{ event_notes }}"{% endif %}>
                                         <small>{{ event_notes if event_notes else '—' }}</small>
                                     </td>
-                                    <td class="records-cell records-cell--actions actions-cell">
-                                        <div class="row-actions">
-                                            {% set event_label = event.event_type %}
-                                            {% call action_menu('Actions for ' ~ event_label ~ ' entry on ' ~ event.date_short, small=true) %}
-                                            {% if event.transfer %}
-                                            <li><button type="button" class="dropdown-item" data-transfer-action="edit"
-                                                        data-transfer='{{ event.transfer|tojson|e }}'>{{ icon('edit') }}<span>Edit</span></button></li>
-                                            <li><hr class="dropdown-divider"></li>
-                                            <li><button type="button" class="dropdown-item dropdown-item--danger" data-transfer-action="delete"
-                                                        data-transfer='{{ {"id": event.id}|tojson|e }}'>{{ icon('trash') }}<span>Remove</span></button></li>
-                                            {% else %}
-                                            <li>
-                                                <button type="button" class="dropdown-item js-edit-portfolio-event-btn"
-                                                    data-event='{{ {
-                                                        "id": event.id,
-                                                        "type": event.event_type,
-                                                        "amount": (event.amount_delta|abs|decimal_text),
-                                                        "notes": (event.notes or ""),
-                                                        "date": event.date_short
-                                                    }|tojson|e }}'>
-                                                    {{ icon('edit') }}
-                                                    <span>Edit</span>
-                                                </button>
-                                            </li>
-                                            <li><hr class="dropdown-divider"></li>
-                                            <li>
-                                                <button type="button" class="dropdown-item dropdown-item--danger js-delete-portfolio-event-btn"
-                                                    data-event-id="{{ event.id }}"
-                                                    data-event-type="{{ event.event_type }}">
-                                                    {{ icon('trash') }}
-                                                    <span>Remove</span>
-                                                </button>
-                                            </li>
-                                            {% endif %}
-                                            {% endcall %}
-                                        </div>
+                                    <td class="records-cell">
+                                        {% set entry_label = event.event_type ~ ' entry on ' ~ event.date_short %}
+                                        {% if event.transfer %}
+                                        {{ record_actions(entry_label,
+                                            {'data-transfer-action': 'edit', 'data-transfer': event.transfer|tojson|forceescape},
+                                            {'data-transfer-action': 'delete', 'data-transfer': {'id': event.id}|tojson|forceescape}) }}
+                                        {% else %}
+                                        {{ record_actions(entry_label,
+                                            {'data-event': {
+                                                'id': event.id, 'type': event.event_type, 'amount': event.amount_delta|abs|decimal_text,
+                                                'notes': event.notes or '', 'date': event.date_short
+                                            }|tojson|forceescape},
+                                            {'data-event-id': event.id, 'data-event-type': event.event_type},
+                                            'js-edit-portfolio-event-btn', 'js-delete-portfolio-event-btn') }}
+                                        {% endif %}
                                     </td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
                         </table>
                     </div>
-                    <div class="pagination-bar" id="pgbar-ev-{{ item.portfolio.id }}"
+                    <div class="pagination-bar"
                          data-pagination-label="Entries for {{ item.portfolio.name }}" hidden></div>
                     {% else %}
                     <p class="inline-empty">No entries yet. Use Deposit to add funds.</p>
@@ -551,61 +523,6 @@
         crossorigin="anonymous"></script>
 <script nonce="{{ csp_nonce }}">
 
-// ── Inner event-row pagination (per portfolio) ────────────────────
-(function setupPortfolioInnerPagination() {
-    var PAGE_SIZE = 10;
-    var state = {};
-
-    function getRows(portfolioId) {
-        var tbody = document.querySelector('#events-' + portfolioId + ' tbody');
-        return tbody ? Array.from(tbody.querySelectorAll('tr')) : [];
-    }
-
-    function renderBar(portfolioId) {
-        var rows = getRows(portfolioId);
-        var bar  = document.getElementById('pgbar-ev-' + portfolioId);
-
-        if (rows.length <= PAGE_SIZE) {
-            rows.forEach(function(r) { r.style.display = ''; });
-            if (bar) window.OnePortfolioPagination.render(bar, {
-                currentPage: 1,
-                totalPages: 1,
-                label: bar.dataset.paginationLabel,
-                onPageChange: function() {}
-            });
-            return;
-        }
-
-        if (!state[portfolioId]) state[portfolioId] = { page: 1 };
-        var totalPages = Math.ceil(rows.length / PAGE_SIZE);
-        state[portfolioId].page = Math.min(Math.max(state[portfolioId].page, 1), totalPages);
-        var page  = state[portfolioId].page;
-        var start = (page - 1) * PAGE_SIZE;
-        var end   = Math.min(start + PAGE_SIZE, rows.length);
-
-        rows.forEach(function(r, i) {
-            r.style.display = (i >= start && i < end) ? '' : 'none';
-        });
-
-        if (!bar) return;
-
-        window.OnePortfolioPagination.render(bar, {
-            currentPage: page,
-            totalPages: totalPages,
-            label: bar.dataset.paginationLabel,
-            onPageChange: function(nextPage) {
-                state[portfolioId].page = nextPage;
-                renderBar(portfolioId);
-            }
-        });
-    }
-
-    window.initPortfolioPagination = function(portfolioId) {
-        if (!state[portfolioId]) state[portfolioId] = { page: 1 };
-        renderBar(portfolioId);
-    };
-}());
-
 // ── Outer portfolio-card pagination ───────────────────────────────
 (function setupPortfolioOuterPagination() {
     var PAGE_SIZE = 100;
@@ -624,7 +541,7 @@
         var end   = start + PAGE_SIZE;
 
         cards.forEach(function(c, i) {
-            c.style.display = (i >= start && i < end) ? '' : 'none';
+            c.hidden = i < start || i >= end;
         });
 
         var bar = document.getElementById('outer-pg-bar-portfolios');
@@ -652,60 +569,6 @@
     }
 
     render();
-}());
-
-// ── Expand / Collapse ─────────────────────────────────────────────
-// The summary row is a real <button aria-expanded>; the chevron rotates
-// from CSS off that state, so this only has to move `hidden` and remember
-// which rows were open across a same-page reload.
-(function () {
-    var SK = 'portfoliosOpen', RK = 'portfoliosOpenRef';
-
-    var openSet = (function () {
-        try {
-            var saved = JSON.parse(sessionStorage.getItem(SK) || 'null');
-            var ref   = sessionStorage.getItem(RK) || '';
-            if (saved && ref && document.referrer.indexOf(ref) !== -1)
-                return new Set(saved);
-        } catch (e) {}
-        sessionStorage.removeItem(SK);
-        sessionStorage.removeItem(RK);
-        return new Set();
-    }());
-
-    function panelFor(id) { return document.getElementById('events-' + id); }
-    function toggleFor(id) { return document.querySelector('[data-disclosure="' + id + '"]'); }
-
-    function setOpen(id, open) {
-        var panel = panelFor(id);
-        var toggle = toggleFor(id);
-        if (!panel || !toggle) return;
-
-        panel.hidden = !open;
-        toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
-
-        if (open) {
-            openSet.add(String(id));
-            if (window.initPortfolioPagination) window.initPortfolioPagination(String(id));
-        } else {
-            openSet.delete(String(id));
-        }
-    }
-
-    openSet.forEach(function (id) { setOpen(id, true); });
-
-    document.addEventListener('click', function (event) {
-        var toggle = event.target.closest('[data-disclosure]');
-        if (!toggle) return;
-
-        var id = toggle.getAttribute('data-disclosure');
-        setOpen(id, toggle.getAttribute('aria-expanded') !== 'true');
-
-        try {
-            sessionStorage.setItem(SK, JSON.stringify([...openSet]));
-            sessionStorage.setItem(RK, window.location.href);
-        } catch (e) {}
-    });
 }());
 
 // ── Rename / Deposit / Withdraw / Delete Portfolio ────────────────

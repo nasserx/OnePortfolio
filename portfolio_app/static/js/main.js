@@ -296,11 +296,18 @@ class AlertManager {
 
     initialize() {
         // Show any pending flash message from sessionStorage (set by AJAX handlers)
-        const pendingMsg = sessionStorage.getItem('flashMessage');
-        const pendingType = sessionStorage.getItem('flashType') || 'success';
+        let pendingMsg, pendingType;
+        try {
+            pendingMsg = sessionStorage.getItem('flashMessage');
+            pendingType = sessionStorage.getItem('flashType') || 'success';
+            if (pendingMsg) {
+                sessionStorage.removeItem('flashMessage');
+                sessionStorage.removeItem('flashType');
+            }
+        } catch {
+            // Storage is optional. Continue mounting the financial form handlers.
+        }
         if (pendingMsg) {
-            sessionStorage.removeItem('flashMessage');
-            sessionStorage.removeItem('flashType');
             if (window.showToast) {
                 window.showToast(pendingMsg, pendingType);
             } else {
@@ -326,10 +333,13 @@ class AlertManager {
         const alertDiv = document.createElement('div');
         alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
         alertDiv.setAttribute('role', 'alert');
-        alertDiv.innerHTML = `
-            ${Utils.escapeHtml(message)}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        `;
+        alertDiv.textContent = message;
+        const close = document.createElement('button');
+        close.type = 'button';
+        close.className = 'btn-close';
+        close.setAttribute('data-bs-dismiss', 'alert');
+        close.setAttribute('aria-label', 'Close');
+        alertDiv.appendChild(close);
 
         const container = document.querySelector('.container') || document.body;
         container.insertBefore(alertDiv, container.firstChild);
@@ -706,8 +716,12 @@ class ModalAjaxHandler {
                 if (data.success) {
                     if (feedback.session === session) feedback.clearErrors();
                     // Reflect successful financial mutations even after closing.
-                    sessionStorage.setItem('flashMessage', data.message || 'Success');
-                    sessionStorage.setItem('flashType', 'success');
+                    try {
+                        sessionStorage.setItem('flashMessage', data.message || 'Success');
+                        sessionStorage.setItem('flashType', 'success');
+                    } catch {
+                        // The server has committed. Refresh even without a saved toast.
+                    }
                     window.location.reload();
                     return;
                 }

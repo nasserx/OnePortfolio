@@ -545,7 +545,7 @@
 
   .hero-figure__return-value {
     font-size: var(--text-lg);
-    font-weight: var(--weight-regular);
+    font-weight: var(--weight-body);
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
   }
@@ -827,7 +827,6 @@
     --summary-columns: 3rem repeat(3, minmax(0, 1fr));
     display: flex;
     flex-direction: column;
-    gap: var(--space-1);
   }
 
   .disclosure[data-summary-list="assets"] {
@@ -861,13 +860,11 @@
   .summary-list__track {
     width: 100%;
     min-width: var(--summary-min-width);
-    padding: var(--space-1);
   }
 
   .summary-list__items {
     display: flex;
     flex-direction: column;
-    gap: var(--space-2);
   }
 
   .summary-list__items :is(button, a, [tabindex]) {
@@ -876,14 +873,14 @@
 
   .summary-list__columns {
     min-height: var(--row-h);
-    color: var(--muted-foreground);
-    font-weight: var(--weight-emphasis);
     text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+    color: var(--foreground);
+    font-weight: var(--weight-emphasis);
     white-space: nowrap;
   }
 
   .summary-list__columns .disclosure__toggle { cursor: default; }
-  .summary-list__label { text-align: center; }
   .summary-list__chevron-space { flex: none; width: 1rem; }
 
   /* Action menus use viewport-fixed Popper placement to escape each card's
@@ -895,26 +892,28 @@
     overflow: hidden;
   }
 
-  .disclosure__item.surface-row {
-    border-bottom: 1px solid var(--border);
+  /* Only visible neighbours share a divider, including on filtered pages. */
+  .disclosure__item:not([hidden]) ~ .disclosure__item:not([hidden]) {
+    border-top: 1px solid var(--border);
+  }
+
+  .disclosure__toggle:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+    box-shadow: none;
   }
 
   .disclosure__head {
     display: flex;
     align-items: center;
-    gap: var(--space-3);
-    padding: var(--space-3) var(--space-4);
+    gap: calc(2 * var(--cell-pad-x));
+    padding: var(--cell-pad-y) var(--cell-pad-x);
     transition: background-color var(--dur-1) var(--ease-out);
   }
 
-  .disclosure__head:has(button.disclosure__toggle:hover),
-  .disclosure__head:has(button.disclosure__toggle:focus-visible) {
-    background-color: var(--muted-half);
-  }
-
-  /* Transparent Item surfaces gain paint only for interaction. Muted/50
-     keeps the approved financial-flat colour readable in light mode. */
-  .disclosure__head:has(> .disclosure__toggle[aria-expanded="true"]) {
+  .disclosure__head:hover,
+  .disclosure__head:focus-within,
+  .disclosure__head:has([aria-expanded="true"]) {
     background-color: var(--muted-half);
   }
 
@@ -923,7 +922,7 @@
   .disclosure__toggle {
     display: flex;
     align-items: center;
-    gap: var(--space-3);
+    gap: calc(2 * var(--cell-pad-x));
     flex: 1;
     min-width: 0;
     padding: 0;
@@ -958,6 +957,13 @@
     min-width: 0;
   }
 
+  .disclosure__identity > .badge {
+    display: block;
+    max-width: 55%;
+    text-overflow: ellipsis;
+    align-content: center;
+  }
+
   .disclosure__name {
     overflow: hidden;
     text-overflow: ellipsis;
@@ -971,7 +977,7 @@
   .disclosure__metrics {
     display: grid;
     grid-template-columns: var(--summary-columns);
-    gap: var(--space-3);
+    gap: calc(2 * var(--cell-pad-x));
     flex: 1;
     min-width: 0;
   }
@@ -981,7 +987,7 @@
   .metric {
     display: block;
     min-width: 0;
-    text-align: center;
+    text-align: left;
   }
 
   .metric__label {
@@ -1008,55 +1014,24 @@
     text-overflow: ellipsis;
   }
 
-  /* Preserve the existing nested ledger action-column geometry. The summary
-     has its own wider Actions heading slot, shared with its sticky strip. */
-  .disclosure {
-    --row-actions-gutter: var(--space-10);
-    --row-actions-cluster: var(--control-h-sm);
-    --row-actions-w: calc(
-      var(--row-actions-gutter) + var(--space-3) + var(--row-actions-cluster)
-    );
-  }
-
   .disclosure__actions {
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     gap: var(--space-1);
     flex: none;
     width: 4rem;
   }
 
-  /* Inset so the table's *cell content* lands on the same edges as the
-     summary row above it: the summary row pads itself, a table pads inside
-     each cell, and the difference is what the panel makes up. */
   .disclosure__panel {
-    /* Full muted drops light-mode financial-flat/supporting text below AA.
-       Use the existing soft token for any ledger selection as well. */
-    --table-selected-background: var(--muted-half);
-    padding-inline: calc(var(--space-4) - var(--cell-pad-x));
-    padding-block: var(--space-2);
     border-top: 1px solid var(--border);
-    background-color: var(--muted-half);
     animation: op-fade-in var(--dur-3) var(--ease-out);
-  }
-
-  .disclosure__panel > .table-responsive {
-    background-color: var(--card);
   }
 
   /* Records revealed inside a disclosure are one level below the summary row
      that opened them, and read half a step smaller to say so. Page-level
      record tables retain the base size. */
   .disclosure__panel .records-table { font-size: var(--text-detail); }
-
-  @media (max-width: 75rem) {
-    .disclosure {
-      /* Existing narrow-screen ledger action gutter, independent of the
-         non-wrapping summary tracks. */
-      --row-actions-gutter: var(--space-5);
-    }
-  }
 
   /* ======================================================================
      6. ASSETS TOOLBAR
@@ -1378,34 +1353,6 @@
     .settings-sidebar-link { padding-inline: var(--space-2); }
   }
 
-  /* ======================================================================
-     9. RECORD SUB-TABLES
-     Column budgets for the two ledger tables. Declared here rather than in
-     components.css because the budget is a page decision, not a component one.
-     ====================================================================== */
-
-  /* Column budgets are sized to the widest realistic value plus cell
-     padding — a truncated figure in a ledger is worse than a narrow note.
-     The action column is the exception: it takes `--row-actions-w` from the
-     disclosure around it, so its width is whatever the summary row above
-     reserves rather than a number of its own. */
-  .records-table--asset-entries {
-    --records-col-date: 7.5rem;
-    --records-col-type: 5.75rem;
-    --records-col-price: 6rem;
-    --records-col-quantity: 6rem;
-    --records-col-fee: 4.5rem;
-    --records-col-total: 7rem;
-    --records-col-pnl: 7rem;
-    --records-col-return: 6.5rem;
-  }
-
-  .records-table--portfolio-events {
-    --records-col-date: 7.5rem;
-    --records-col-type: 6rem;
-    --records-col-amount: 8rem;
-    min-width: 34rem;
-  }
 
 }
 

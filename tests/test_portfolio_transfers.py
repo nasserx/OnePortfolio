@@ -1,6 +1,7 @@
 """Atomic internal flows preserve external funding and canonical financial truth."""
 
 from datetime import datetime
+import json
 from decimal import Decimal as D, localcontext
 from types import SimpleNamespace
 
@@ -16,6 +17,7 @@ from portfolio_app.routes.portfolios import _get_portfolios_page_context
 from tests.test_financial_baseline import ledger
 from tests._financial import assert_accounting_invariants
 from tests._auth import authenticate_client
+from tests._html import Document
 
 
 def day(n):
@@ -290,7 +292,15 @@ def test_history_counts_labels_api_and_withdrawal_max(pair, app):
     authenticate_client(client, pair.uid)
     html = client.get('/portfolios/').get_data(as_text=True)
     assert 'Transfer Out' in html and 'Transfer In' in html
-    assert 'data-transfer-action="edit"' in html
+    buttons = Document(html).root.find(lambda n: n.attrs.get('data-transfer-action') in ('edit', 'delete'))
+    assert len(buttons) == 4  # Both the outgoing and incoming records open the same transfer.
+    for button in buttons:
+        action = button.attrs['data-transfer-action']
+        assert button.tag == 'button' and button.attrs['type'] == 'button'
+        assert button.attrs['aria-label'] == ('Edit' if action == 'edit' else 'Remove')
+        assert not button.text.strip()
+        assert json.loads(button.attrs['data-transfer'])['id'] == row.id
+    assert sorted(b.attrs['data-transfer-action'] for b in buttons) == ['delete', 'delete', 'edit', 'edit']
     assert 'From Portfolio' in html and 'To Portfolio' in html
     payload = client.get('/api/portfolio-summary').json
     source = next(r for r in payload['portfolio_summary'] if r['id'] == pair.a)

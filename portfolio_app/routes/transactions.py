@@ -2,6 +2,7 @@
 
 import logging
 import json
+from urllib.parse import quote
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import login_required, current_user
 from decimal import Decimal
@@ -18,9 +19,6 @@ from portfolio_app.utils import (
     get_error_message, MESSAGES,
     is_ajax_request, json_response, form_error_response,
 )
-
-
-from portfolio_app.utils.constants import safe_html_id
 from config import Config
 from portfolio_app import limiter
 from portfolio_app.services.transaction_preview import PREVIEW_BODY_BYTES
@@ -126,7 +124,8 @@ def _get_transactions_page_context(portfolio_filter=''):
             asset = snapshot.asset(sym_norm)
             summary = asset.as_assets_summary()
 
-            html_group_id = safe_html_id(portfolio.id, sym_norm)
+            # Preserve punctuation: BRK.B and BRK_B must target different ledgers.
+            html_group_id = f'{portfolio.id}:{quote(sym_norm, safe="")}'
             tracked = tracked_by_ticker.get(sym_norm)
             holdings.append({
                 'portfolio': portfolio,

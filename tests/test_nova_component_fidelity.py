@@ -157,13 +157,12 @@ def test_table_uses_nova_neutral_rows_and_single_separator_recipe():
     assert 'background-color: transparent' in cells
     assert 'transition:' in cells
 
-    row = _rule(css, '.table tbody tr:not(:last-child) > *')
-    assert 'border-bottom: 1px solid var(--border)' in row
+    row = _rule(css, '.table tbody tr:not([hidden]) ~ tr:not([hidden]) > *')
+    assert 'border-top: 1px solid var(--border)' in row
     hover = _rule(css, '.table tbody tr:hover > *')
     assert 'background-color: var(--muted-half)' in hover
     selected = _rule(css, '.table tbody tr[data-state="selected"] > *')
-    # Full muted remains the default; financial ledgers use the contrast-safe soft token.
-    assert 'background-color: var(--table-selected-background, var(--muted))' in selected
+    assert 'background-color: var(--muted)' in selected
 
 
 def test_secondary_badge_uses_official_nova_recipe():
@@ -185,7 +184,7 @@ def test_secondary_badge_uses_official_nova_recipe():
     )
 
     assets = Path('portfolio_app/templates/assets.html').read_text(encoding='utf-8')
-    assert 'class="badge badge--secondary">{{ item.portfolio.name }}</span>' in assets
+    assert 'class="badge badge--secondary" title="{{ item.portfolio.name }}">{{ item.portfolio.name }}</span>' in assets
 
 
 def test_transaction_direction_selected_states_are_narrow_and_semantic():

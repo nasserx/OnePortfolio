@@ -220,7 +220,7 @@ def test_pages_render_scope_specific_returns_and_signs(ledger, app, sale_price, 
     portfolio_return = re.search(r'data-label="Return">(.*?)</div>', overview, re.S).group(1)
     assert f'>{capital_return}</span>' in portfolio_return
     assets = client.get('/transactions/').get_data(as_text=True)
-    summary = re.search(r'class="disclosure__metrics disclosure__metrics--assets">(.*?)</button>', assets, re.S).group(1)
+    summary = re.search(r'<button\b[^>]*\bdata-disclosure="[^"]+"[^>]*>.*?class="disclosure__metrics">(.*?)</button>', assets, re.S).group(1)
     assert f'>{pnl}</span>' in summary
     assert f'>{asset_return}</span>' in summary
     if sale_price is not None:

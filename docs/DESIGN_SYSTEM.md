@@ -410,11 +410,17 @@ muted-fill variant. Labels use `--muted-foreground`, values use `--foreground`,
 and only the nested formatted number may add a genuine financial semantic role.
 
 The authenticated Overview uses unboxed `.fact` pairs within its single Book
-Value card. The Cumulative P&L amount sits immediately below the hero amount,
-alongside its signed return pill. Its label is visually hidden but remains
-available to screen readers; the shared formula tooltip is retained. The
-percentage is not a ratio of Book Value. Net
-Contributions and Cash share the first supporting row, with Dividends below.
+Value card. The visible Cumulative P&L label, amount and signed return sit
+immediately below the hero amount with the shared formula tooltip. Return
+uses gross external deposits as its denominator. A subtle border separates
+this group from Net Contributions, Cash and Dividends, arranged in three
+content-sized columns with flexible gaps and subtle vertical dividers centered
+between the metric contents, rather than equal-width column boundaries. The
+dividers are hidden when the metrics stack at the existing 32rem mobile
+breakpoint. Supporting labels can wrap within their columns. Equal-height
+metric cells reserve a shared label height for wrapped text and the help
+button, keeping values aligned. On wide screens the supporting row sits at
+the bottom of the card.
 The saved Book Value reference guides this composition; shared money/percentage
 formatters and financial tokens remain unchanged. Marketing supporting items
 retain their existing outline treatment.

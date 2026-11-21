@@ -129,11 +129,20 @@ def test_transfer_errors_retain_shared_form_and_field_contracts(pair, app):
     assert 'amount' in client.post('/portfolios/transfers/add', data=data, headers=headers).json['errors']
 
 
-def test_pnl_wraps_without_shrinking_or_new_financial_styles():
+def test_book_value_pnl_value_sizes_preserve_label_size_and_wrapping():
     css = Path('portfolio_app/static/css/app.css').read_text(encoding='utf-8')
     assert '.hero-figure__pnl-label' not in css
     block = css.split('.hero-figure__realized {', 1)[1].split('}', 1)[0]
     assert 'flex-wrap: wrap' in block
+    assert 'font-size: var(--text-xs)' in block
+    for selector in ('.hero-figure__pnl-value', '.hero-figure__return-value'):
+        value_rule = css.split(selector + ' {', 1)[1].split('}', 1)[0]
+        assert 'font-size: 0.75rem;' in value_rule
+    assert re.search(
+        r'@media \(max-width: 47\.999rem\)\s*\{\s*'
+        r'\.hero-figure__pnl-value,\s*\.hero-figure__return-value\s*'
+        r'\{\s*font-size: 0\.875rem;\s*\}', css,
+    )
     assert '.hero-figure__return' in css
     assert 'overflow-wrap: anywhere' in css.split('.hero-figure__pnl-value {', 1)[1].split('}', 1)[0]
     assert re.search(r'@media \(max-width: 32rem\).*?\.hero-figure__facts\s*\{\s*grid-template-columns: minmax\(0, 1fr\)', css, re.S)

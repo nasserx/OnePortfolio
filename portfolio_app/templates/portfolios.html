@@ -10,7 +10,7 @@
 {% set _with_vals = (form_values.get('portfolios_withdraw', {}) if form_values else {}) %}
 {% set _ev_errs = (form_errors.get('portfolio_event_edit', {}) if form_errors else {}) %}
 {% set _ev_vals = (form_values.get('portfolio_event_edit', {}) if form_values else {}) %}
-{% from 'macros/ui.html' import money, metric, marker, empty_state, action_menu, record_actions, record_type, summary_header %}
+{% from 'macros/ui.html' import money, metric, marker, empty_state, action_menu, record_actions, record_type, record_note_cell, summary_header %}
 {% from 'macros/icons.html' import icon %}
 
 
@@ -145,10 +145,7 @@
                                     <td class="records-cell records-cell--number">
                                         {{ money(event.amount_delta, tone='sign', signed=true) }}
                                     </td>
-                                    {% set event_notes = event.notes or '' %}
-                                    <td class="records-cell"{% if event_notes %} title="{{ event_notes }}"{% endif %}>
-                                        <small>{{ event_notes if event_notes else '—' }}</small>
-                                    </td>
+                                    {{ record_note_cell(event.notes) }}
                                     <td class="records-cell">
                                         {% set entry_label = event.event_type ~ ' entry on ' ~ event.date_short %}
                                         {% if event.transfer %}

@@ -501,6 +501,12 @@ weight remain unchanged.
 Expanded records retain the Table recipe: 8px cell padding, 40px header height,
 left alignment, one separator between records and muted/50 hover. A single
 border separates the summary from its ledger, which inherits the Card surface.
+Notes in portfolio events, asset transactions and dividends share a single-line
+preview capped at 20ch with CSS ellipsis. Each preview uses `dir="auto"` and
+start alignment so Arabic and Latin notes retain their beginning. The shared
+`record_note_cell` macro owns this markup. This adaptation of the inspected Nova
+Table recipe prevents notes widening the columns. Full text remains in the DOM,
+the native cell title and edit payload; storage is unchanged.
 Record columns continue to size to content. Apart from the portfolio-name size
 specified above, font sizes, Geist 550 weight, financial colours and numeric
 formatters are unchanged. This is a composition adapted to Flask/Jinja, not an

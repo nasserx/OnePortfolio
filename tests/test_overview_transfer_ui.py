@@ -47,8 +47,7 @@ def test_overview_groups_return_with_pnl_not_book_value(pair, app, sale_price, t
     for formula in ('Book Value = Cash + Cost Basis', 'Net Contributions = Deposits − Withdrawals'):
         assert f'aria-label="{formula}"' in hero
     assert realized.count('class="info-dot"') == 1
-    assert '<span class="visually-hidden">Cumulative P&amp;L</span>' in realized
-    assert 'hero-figure__pnl-label' not in realized
+    assert '<span class="hero-figure__pnl-label">Cumulative P&amp;L</span>' in realized
     assert realized.index('Cumulative P&amp;L') < realized.index('hero-figure__pnl-value')
     assert realized.index('hero-figure__pnl-value') < realized.index('hero-figure__return')
     assert realized.index('class="info-dot"') > realized.index('class="hero-figure__return-value ')
@@ -76,8 +75,7 @@ def test_overview_undefined_return_keeps_accessible_pnl_label_and_amount(app):
     response = client.get('/')
     assert response.status_code == 200
     row = response.get_data(as_text=True).split('<div class="hero-figure__realized">', 1)[1].split('<div class="hero-figure__facts">', 1)[0]
-    assert '<span class="visually-hidden">Cumulative P&amp;L</span>' in row
-    assert 'hero-figure__pnl-label' not in row
+    assert '<span class="hero-figure__pnl-label">Cumulative P&amp;L</span>' in row
     amount = row.split('class="hero-figure__pnl-value">', 1)[1].split('class="hero-figure__return"', 1)[0]
     assert '0.00' in amount and 'num--flat' in amount
     assert 'class="hero-figure__return-value num--flat">—</span>' in row

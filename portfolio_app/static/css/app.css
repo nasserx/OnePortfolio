@@ -560,16 +560,42 @@
   /* Unboxed metrics belong to the outer card, not separate mini-cards. */
   .hero-figure__facts {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--space-5) var(--space-3);
+    grid-template-columns:
+      minmax(0, max-content) minmax(var(--space-5), 1fr)
+      minmax(0, max-content) minmax(var(--space-5), 1fr)
+      minmax(0, max-content);
+    row-gap: var(--space-5);
     margin-top: var(--space-5);
+    padding-top: var(--space-5);
+    border-top: 1px solid var(--border);
+  }
+
+  /* Equal-height cells reserve the same label area, including the help
+     button or wrapped text, and align every value in the bottom row. */
+  .hero-figure__facts .fact {
+    display: grid;
+    grid-template-rows: 1fr auto;
+  }
+
+  .hero-figure__facts .fact__label {
+    white-space: normal;
+  }
+
+  .hero-figure__facts .info-dot { flex-shrink: 0; }
+
+  /* A dedicated flexible track centers each separator in the actual space
+     between content-sized metrics, rather than between equal-width boxes. */
+  .hero-figure__divider {
+    justify-self: center;
+    border-inline-start: 1px solid var(--border);
+    pointer-events: none;
   }
 
   @media (min-width: 68.0625rem) {
+    .hero-figure__realized { margin-bottom: var(--space-6); }
+
     .hero-figure__facts {
-      flex: 1;
-      align-content: end;
-      margin-top: var(--space-6);
+      margin-top: auto;
     }
   }
 
@@ -632,6 +658,8 @@
       grid-template-columns: minmax(0, 1fr);
       margin-top: var(--space-4);
     }
+
+    .hero-figure__divider { display: none; }
 
     .alloc-panel .card-header {
       align-items: stretch;

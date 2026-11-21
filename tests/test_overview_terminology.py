@@ -416,7 +416,15 @@ def test_overview_supporting_metrics_use_one_shared_item_grid_contract():
     assert 'financial-' not in label + value
 
     grid = _css_rule(app_css, '.hero-figure__facts')
-    assert 'grid-template-columns: repeat(2, minmax(0, 1fr))' in grid
+    assert grid.count('minmax(0, max-content)') == 3
+    assert grid.count('minmax(var(--space-5), 1fr)') == 2
+    assert 'border-top: 1px solid var(--border)' in grid
+    assert 'padding-top: var(--space-5)' in grid
+    divider = _css_rule(app_css, '.hero-figure__divider')
+    assert 'border-inline-start: 1px solid var(--border)' in divider
+    assert 'justify-self: center' in divider
+    assert template.count('class="hero-figure__divider" aria-hidden="true"') == 2
+    assert 'pointer-events: none' in divider
     mobile = re.search(
         r'@media \(max-width: 32rem\)\s*\{.*?\.hero-figure__facts\s*\{([^}]*)\}',
         app_css,
@@ -424,3 +432,8 @@ def test_overview_supporting_metrics_use_one_shared_item_grid_contract():
     )
     assert mobile
     assert 'grid-template-columns: minmax(0, 1fr)' in mobile.group(1)
+    assert re.search(
+        r'@media \(max-width: 32rem\).*?\.hero-figure__divider\s*\{\s*display: none;',
+        app_css,
+        re.S,
+    )

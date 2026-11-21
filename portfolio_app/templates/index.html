@@ -26,7 +26,7 @@
                title="{{ totals.book_value|fmt_money }}">{{ totals.book_value|fmt_display_money }}</p>
 
             <div class="hero-figure__realized">
-                <span class="visually-hidden">Cumulative P&amp;L</span>
+                <span class="hero-figure__pnl-label">Cumulative P&amp;L</span>
                 <span class="hero-figure__pnl-value">{{ money(totals.total_realized_earnings, tone='sign', signed=true) }}</span>
                 <span class="hero-figure__return">
                 <span class="visually-hidden">Return</span>
@@ -50,7 +50,9 @@
 
             <div class="hero-figure__facts">
                 {% call fact('Net Contributions') %}{{ money(totals.net_contributions) }}{% endcall %}
+                <span class="hero-figure__divider" aria-hidden="true"></span>
                 {% call fact('Cash') %}{{ money(totals.cash_balance) }}{% endcall %}
+                <span class="hero-figure__divider" aria-hidden="true"></span>
                 {% call fact('Dividends') %}{{ money(totals.dividend_income, tone='income', signed=true) }}{% endcall %}
             </div>
         </div>

@@ -31,10 +31,8 @@ function fixture(withObserver = true, list = 'assets', storage = new Map(), rowC
     const body = new Region();
     const shellListeners = {};
     const rows = Array.from({length: rowCount}, () => ({}));
-    const bar = {dataset: {paginationLabel: 'Entries'}};
     const panel = {
         hidden: true,
-        querySelector: selector => selector === '.pagination-bar' && rowCount ? bar : null,
         querySelectorAll: selector => selector === 'tbody tr' ? rows : [],
     };
     const toggle = {
@@ -59,7 +57,6 @@ function fixture(withObserver = true, list = 'assets', storage = new Map(), rowC
     const window = {
         location: {href: navigation.href || url},
         performance: {getEntriesByType: () => [{type: navigation.type || 'navigate'}]},
-        OnePortfolioPagination: {render: (_, config) => { bar.config = config; }},
         addEventListener: (type, fn) => { windowListeners[type] = fn; },
     };
     if (withObserver) window.ResizeObserver = class {
@@ -75,7 +72,7 @@ function fixture(withObserver = true, list = 'assets', storage = new Map(), rowC
         },
     });
     vm.runInContext(source, context);
-    return {header, body, root, observers, windowListeners, shellListeners, context, toggle, panel, rows, bar};
+    return {header, body, root, observers, windowListeners, shellListeners, context, toggle, panel, rows};
 }
 
 for (const [list, key] of [['assets', 'txOpen'], ['portfolios', 'portfoliosOpen']]) {
@@ -83,6 +80,7 @@ for (const [list, key] of [['assets', 'txOpen'], ['portfolios', 'portfoliosOpen'
     const restored = fixture(true, list, storage);
     eq(restored.panel.hidden, false);
     eq(restored.toggle.getAttribute('aria-expanded'), 'true');
+    eq(restored.rows.filter(row => !row.hidden), restored.rows);
     eq(fixture(true, list, new Map(storage), 21, {type: 'reload', referrer: ''}).panel.hidden, false);
     eq(fixture(true, list, new Map(storage), 21, {href: restored.context.window.location.href + '?portfolio=Other'}).panel.hidden, true);
     restored.root.click({target: restored.toggle});
@@ -90,25 +88,21 @@ for (const [list, key] of [['assets', 'txOpen'], ['portfolios', 'portfoliosOpen'
     eq(storage.get(key), '[]');
 
     const denied = new Proxy({}, {get() { throw new Error('Storage is blocked'); }});
-    const {root, panel, toggle, rows, bar} = fixture(true, list, denied);
+    const {root, panel, toggle, rows} = fixture(true, list, denied, 1001);
     root.click({target: {closest: () => null}}); // Sibling actions do not expand the summary.
     eq(panel.hidden, true);
     root.click({target: toggle});
     eq(panel.hidden, false);
     eq(toggle.getAttribute('aria-expanded'), 'true');
-    eq(rows.filter(row => !row.hidden), rows.slice(0, 10));
-    eq(bar.config.totalPages, 3);
-    bar.config.onPageChange(3);
-    eq(rows.filter(row => !row.hidden), rows.slice(20));
+    eq(rows.filter(row => !row.hidden), rows);
     root.click({target: toggle});
     eq(toggle.getAttribute('aria-expanded'), 'false');
     root.click({target: toggle});
-    eq(rows.filter(row => !row.hidden), rows.slice(20));
+    eq(rows.filter(row => !row.hidden), rows);
 
     const empty = fixture(true, list, new Map(), 0);
     empty.root.click({target: empty.toggle});
     eq(empty.panel.hidden, false);
-    eq(empty.bar.config, undefined);
 }
 
 const f = fixture();
@@ -185,7 +179,7 @@ vm.runInNewContext(source, {window: {}, document: {querySelectorAll: () => [{
     dataset: {}, querySelector: () => null,
 }]}});
 checks++;
-// Exercise the real search listener, including a reset from a later page.
+// Search applies to every match, including those beyond the old 100-card cap.
 const assets = fs.readFileSync('portfolio_app/templates/assets.html', 'utf8');
 function setupScript(template, name) {
     const start = template.indexOf('(function ' + name + '()');
@@ -193,58 +187,35 @@ function setupScript(template, name) {
     assert(start !== -1 && end > start);
     return template.slice(start, end + 5);
 }
-const cards = Array.from({length: 205}, (_, i) => ({
+const searchSource = setupScript(assets, 'setupAssetSearch');
+const cards = Array.from({length: 505}, (_, i) => ({
     dataset: {symbol: (i % 3 ? 'ABC' : 'DEF') + i},
 }));
 const search = {
     value: '',
     addEventListener(type, handler) { assert.equal(type, 'input'); this.input = handler; },
 };
-let pagination;
-const paginationWindow = {OnePortfolioPagination: {render: (_, config) => { pagination = config; }}};
-vm.runInNewContext(setupScript(assets, 'setupOuterPagination'), {
-    window: paginationWindow,
-    document: {
-        querySelectorAll: () => cards,
-        getElementById: id => id === 'symbolSearch' ? search : {dataset: {paginationLabel: 'Asset Pages'}},
-    },
+vm.runInNewContext(searchSource, {
+    document: {querySelectorAll: () => cards, getElementById: () => search},
 });
-function checkPage(expected) {
-    eq(cards.filter(card => !card.hidden), expected);
-}
-checkPage(cards.slice(0, 100));
-pagination.onPageChange(2);
-checkPage(cards.slice(100, 200));
-pagination.onPageChange(3);
-checkPage(cards.slice(200));
+function visible(expected) { eq(cards.filter(card => !card.hidden), expected); }
+visible(cards);
 search.value = ' bc ';
 search.input();
 eq(search.value, ' BC ');
-eq(pagination.currentPage, 1);
-eq(pagination.totalPages, 2);
-const matches = cards.filter((_, i) => i % 3 !== 0);
-checkPage(matches.slice(0, 100));
-pagination.onPageChange(2);
-checkPage(matches.slice(100));
+visible(cards.filter((_, i) => i % 3 !== 0));
 search.value = 'absent';
 search.input();
-eq(pagination.totalPages, 1);
-checkPage([]);
+visible([]);
 search.value = '';
 search.input();
-checkPage(cards.slice(0, 100));
-// Portfolios pagination also works without a row-presentation controller.
-const portfolios = fs.readFileSync('portfolio_app/templates/portfolios.html', 'utf8');
-vm.runInNewContext(setupScript(portfolios, 'setupPortfolioOuterPagination'), {
-    window: paginationWindow,
-    document: {
-        querySelectorAll: () => cards,
-        getElementById: () => ({dataset: {paginationLabel: 'Portfolio Pages'}}),
-    },
+visible(cards);
+// Empty lists and absent search controls remain safe.
+vm.runInNewContext(searchSource, {
+    document: {querySelectorAll: () => [], getElementById: () => search},
 });
-checkPage(cards.slice(0, 100));
-pagination.onPageChange(3);
-checkPage(cards.slice(200));
-pagination.onPageChange(2);
-checkPage(cards.slice(100, 200));
+search.input();
+checks++;
+vm.runInNewContext(searchSource, {document: {getElementById: () => null}});
+checks++;
 console.log(`${checks} summary-list assertions passed`);

@@ -13,11 +13,10 @@
    9.  Modals
    10. Toasts & alerts
    11. Tooltips
-   12. Pagination
-   13. Empty states
-   14. Allocation legend & markers
-   15. Avatar & brand mark
-   16. Date picker (flatpickr)
+   12. Empty states
+   13. Allocation legend & markers
+   14. Avatar & brand mark
+   15. Date picker (flatpickr)
    ========================================================================== */
 
 @layer components {
@@ -747,15 +746,6 @@
     box-shadow: 0 0 0 1px var(--surface-ring);
   }
 
-  /* Both disclosure lists use the transparent Nova Table row surface. */
-  .surface-row {
-    position: relative;
-    border: 0;
-    background-color: transparent;
-    color: var(--foreground);
-    font-size: var(--text-sm);
-  }
-
   .dropdown-menu {
     border: 0;
     border-radius: var(--radius-lg);
@@ -1436,72 +1426,7 @@
   .info-dot .icon { width: 0.75rem; height: 0.75rem; }
 
   /* ======================================================================
-     12. PAGINATION
-     ====================================================================== */
-
-  .pagination-bar {
-    display: flex;
-    justify-content: flex-end;
-    padding: var(--space-2) var(--space-3);
-  }
-
-  .pagination-bar[hidden] { display: none; }
-
-  .pagination {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.125rem;
-  }
-
-  .pagination__control {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: var(--control-h);
-    height: var(--control-h);
-    padding: 0 var(--space-2);
-    border: 1px solid transparent;
-    border-radius: var(--radius-lg);
-    background-color: transparent;
-    color: var(--foreground);
-    font-size: var(--text-sm);
-    font-weight: var(--weight-emphasis);
-    cursor: pointer;
-    transition: background-color var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out);
-  }
-
-  .pagination__control:hover:not(:disabled, [aria-current="page"]) {
-    background-color: var(--ghost-hover);
-    color: var(--accent-foreground);
-  }
-
-  .pagination__control[aria-current="page"] {
-    border-color: var(--outline-border);
-    background-color: var(--outline-background);
-    color: var(--foreground);
-    cursor: default;
-  }
-
-  .pagination__control:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    pointer-events: none;
-  }
-
-  .pagination__control:focus-visible {
-    border-color: var(--ring);
-    box-shadow: 0 0 0 3px var(--focus-ring-soft);
-  }
-
-  .pagination__control--icon { padding: 0; }
-
-  .pagination__control--icon .icon {
-    width: 1rem;
-    height: 1rem;
-  }
-
-  /* ======================================================================
-     13. EMPTY STATES
+     12. EMPTY STATES
      ====================================================================== */
 
   .empty-state {
@@ -1549,7 +1474,7 @@
   }
 
   /* ======================================================================
-     14. ALLOCATION LEGEND & MARKERS
+     13. ALLOCATION LEGEND & MARKERS
      ====================================================================== */
 
   .allocation-legend {
@@ -1644,7 +1569,7 @@
   }
 
   /* ======================================================================
-     15. AVATAR & BRAND MARK
+     14. AVATAR & BRAND MARK
      ====================================================================== */
 
   .user-avatar {

@@ -84,7 +84,7 @@
             {% set symbol_dividend_total = dividend_totals.get(symbol_key, 0) %}
             {% set show_dividend_rows = symbol_dividends|length > 0 %}
             {% set panel_id = 'transactions-' ~ item.html_group_id %}
-            <article class="disclosure__item symbol-card surface-row" data-symbol="{{ item.symbol }}" role="listitem">
+            <article class="disclosure__item symbol-card surface-card" data-symbol="{{ item.symbol }}" role="listitem">
 
                 <div class="disclosure__head">
                     <button type="button" class="disclosure__toggle"
@@ -241,8 +241,6 @@
                             </tbody>
                         </table>
                     </div>
-                    <div class="pagination-bar"
-                         data-pagination-label="Asset Entries for {{ item.symbol }}" hidden></div>
                     {% else %}
                     <p class="inline-empty">
                         <button type="button" class="btn btn-secondary btn-sm js-add-transaction-btn"
@@ -259,8 +257,6 @@
             </div>
             </div>
         </section>
-        <div id="outer-pg-bar" class="pagination-bar"
-             data-pagination-label="Asset Pages" hidden></div>
 
         {% else %}
         {% call empty_state('square-plus', 'No Assets Yet',
@@ -889,44 +885,22 @@ function openAddSymbolModal() {
         }
     });
 })();
-// ── Outer symbol-card pagination ─────────────────────────────────────
-(function setupOuterPagination() {
-    var PAGE_SIZE = 100;
-    var currentPage = 1;
+// Search filters all rendered assets without limiting the visible matches.
+(function setupAssetSearch() {
     var search = document.getElementById('symbolSearch');
+    if (!search) return;
     var cards = Array.from(document.querySelectorAll('.symbol-card'));
-    var bar = document.getElementById('outer-pg-bar');
 
-    function render() {
-        var query = search ? search.value.trim().toUpperCase() : '';
-        var start = (currentPage - 1) * PAGE_SIZE;
-        var matches = 0;
+    function filter() {
+        search.value = search.value.toUpperCase();
+        var query = search.value.trim();
         cards.forEach(function(card) {
-            var symbol = card.dataset.symbol.toUpperCase();
-            var match = symbol.includes(query);
-            card.hidden = !match || matches < start || matches >= start + PAGE_SIZE;
-            if (match) matches++;
-        });
-
-        window.OnePortfolioPagination.render(bar, {
-            currentPage: currentPage,
-            totalPages: Math.max(1, Math.ceil(matches / PAGE_SIZE)),
-            label: bar ? bar.dataset.paginationLabel : '',
-            onPageChange: function(page) {
-                currentPage = page;
-                render();
-            }
+            card.hidden = !card.dataset.symbol.toUpperCase().includes(query);
         });
     }
 
-    if (search) {
-        search.addEventListener('input', function() {
-            search.value = search.value.toUpperCase();
-            currentPage = 1;
-            render();
-        });
-    }
-    render();
+    search.addEventListener('input', filter);
+    filter();
 }());
 
 function openAddTransactionModal(portfolioId, portfolioName, symbol, forcedType) {

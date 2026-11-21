@@ -37,7 +37,7 @@ def test_page_header_action_and_empty_state_keep_shared_workflows():
 
 def test_disclosures_keep_behavior_hooks_and_shared_surface_contracts():
     assert 'class="disclosure enter" aria-label="Portfolio List"' in TEMPLATE
-    assert 'portfolio-card surface-row' in TEMPLATE
+    assert 'portfolio-card surface-card' in TEMPLATE
     assert 'disclosure__toggle' in TEMPLATE
     assert 'aria-expanded="false" aria-controls="{{ panel_id }}"' in TEMPLATE
     assert 'data-disclosure="{{ item.portfolio.id }}"' in TEMPLATE
@@ -149,7 +149,9 @@ def test_responsive_and_accessible_portfolio_structure_remains_present():
     assert 'role="listitem"' in TEMPLATE
     assert '.disclosure__toggle {' in APP_CSS
     assert 'min-width: 0' in _rule(APP_CSS, '.disclosure__toggle')
-    assert 'text-overflow: ellipsis' in _rule(APP_CSS, '.disclosure__name')
+    assert 'badge badge--secondary' in TEMPLATE
+    assert 'text-overflow: ellipsis' in _rule(APP_CSS, '.disclosure__identity > .badge')
+    assert 'flex-shrink: 1' in _rule(APP_CSS, '.portfolio-card .disclosure__identity > .badge')
     assert 'role="row"' not in TEMPLATE  # Native table semantics own the ledger.
     assert 'aria-labelledby="depositFundsModalTitle"' in TEMPLATE
     assert 'aria-labelledby="withdrawFundsModalTitle"' in TEMPLATE

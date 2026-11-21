@@ -326,9 +326,8 @@ changing the ordinary Nova appearance.
 - Menus/popovers/dialogs: popover roles, recipe-specific radii, restrained
   foreground hairline ring, and overlay elevation.
 - Tabs/segmented controls: muted track, neutral selected surface.
-- Pagination: client-side lists retain page state and filtering locally while
-  the shared `OnePortfolioPagination` renderer owns native button semantics,
-  `aria-current`, disabled previous/next states, and Tabler chevrons.
+- Summary lists: all matching groups and all expanded records are shown without
+  pagination. Search changes group visibility without hiding individual records.
 - Alerts/toasts: neutral by default; destructive only for destructive/error
   meaning, never financial positive/income decoration.
 - Empty states: card/muted roles and existing calls to action only.
@@ -341,10 +340,9 @@ only. The contracts are:
 
 - `.surface-card`: card background/foreground, `--radius-xl`, and one
   10%-foreground hairline ring. `.card` and `.panel` share this recipe.
-- `.surface-row`: transparent table row shared by Assets and Portfolios.
-  The disclosure button owns its keyboard outline. Hover, focus within the
-  summary, and expansion tint the header while the revealed ledger rests
-  on the page surface.
+- Assets and Portfolios compose `.surface-card` with a muted Item-style
+  summary. The disclosure button owns its keyboard outline, while the
+  expanded ledger inherits the Card surface. No separate row surface remains.
 - `.surface-table`: the same quiet outer frame for a table-like composition;
   table headers and rows own only their internal canonical `--border`
   separators.
@@ -477,17 +475,36 @@ notation such as P&L, ETF and OTP retain their established spelling.
 
 ### Sticky summary lists (Assets and Portfolios)
 
-Both the collapsed summary and expanded ledger use the
-[base-nova Table recipe](https://ui.shadcn.com/r/styles/base-nova/table.json)
-selected by the canonical preset. This November 5 decision supersedes the
-earlier screenshot treatment for these two pages. The header uses foreground
-text in a 40px row. Each cell has 8px padding. Summaries share
-column tracks with their header; record tables size columns to content. Text,
-figures and actions align left. Rows meet at a single straight separator with
-no trailing rule after the last visible record. Opening a summary reveals a
-flush ledger. Hover and expanded rows use muted/50. A selected record, if
-used, takes the recipe's full muted surface. Compact font sizes and Geist
-550 are retained. Overview typography and layout are specified separately.
+The current grouped treatment composes the official base-nova Card, Item and
+Table recipes inspected through `init?preset=b1YmpWHpo` and their registry
+sources on November 21, 2026. It supersedes the connected November 5 table
+summary treatment for these two pages only.
+
+Each portfolio or asset uses `.surface-card`: Card background, `--radius-xl`
+and one foreground/10 ring, separated from the next group by 12px. Both the
+header and body tracks reserve a 1px inline gutter so the card ring is not
+clipped and columns stay aligned. The list reserves 12px above/below its groups.
+The summary adapts the muted Item recipe (`--muted-half`, 12px horizontal and
+10px vertical padding); hover, focus within and expansion use `--muted`.
+In these active summaries, muted and flat numeric text use the neutral
+`--accent-foreground` to retain 4.5:1 contrast; positive, negative and income
+roles remain unchanged. The override is local to the summary, not its ledger.
+The sticky header shares the summary geometry, with muted labels on an opaque
+Card background in light mode, Card radius and no bottom divider. In explicit
+and automatic dark mode its opaque background matches the page, as requested,
+so the strip has no distinct surface while still occluding scrolling rows.
+Portfolio names use the Nova secondary Badge geometry in both lists, with the
+user-approved compact 0.625rem name size. Both mix 5% foreground into the
+secondary fill for stronger emphasis. Asset symbol typography and the common
+weight remain unchanged.
+
+Expanded records retain the Table recipe: 8px cell padding, 40px header height,
+left alignment, one separator between records and muted/50 hover. A single
+border separates the summary from its ledger, which inherits the Card surface.
+Record columns continue to size to content. Apart from the portfolio-name size
+specified above, font sizes, Geist 550 weight, financial colours and numeric
+formatters are unchanged. This is a composition adapted to Flask/Jinja, not an
+adoption of the reference runtime.
 
 Both pages use the same Jinja disclosure header, native summary buttons with
 accessible metric labels and a separate ellipsis menu on each summary. Inside
@@ -503,8 +520,12 @@ The document owns vertical scrolling. A sticky strip (`top: 0`, `--z-sticky`)
 sits outside the auto-height horizontal body scroller and stops at the list's
 end. The current page toolbar is not sticky, so no shell-height offset is used.
 Only the header strip shows a scrollbar; both regions support native horizontal
-scrolling. `summary_lists.js` owns disclosure buttons and paginates each ledger
-on first expansion. A reopened ledger retains its page. Browser session storage
+scrolling. `summary_lists.js` owns disclosure buttons. All matching summaries
+and all records in each expanded ledger are shown, without the former 100-group
+or 10-record limits, load-more controls or a nested vertical viewport. Assets
+search filters the complete rendered list in one linear pass. Rendering and DOM
+size still grow with the full record count; unrestricted visibility is not
+virtualized rendering. Browser session storage
 remembers expanded rows across a reload of the same URL, including its filters,
 when storage is available. The script also
 synchronizes scrollLeft and observes viewport/track

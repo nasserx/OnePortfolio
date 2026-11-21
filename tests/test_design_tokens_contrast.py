@@ -52,6 +52,15 @@ def test_financial_text_roles_meet_wcag_aa(css, theme, role, surface):
 
 
 @pytest.mark.parametrize('theme', ['light', 'dark'])
+def test_shared_portfolio_badge_stronger_fill_retains_contrast(css, theme):
+    declared = theme_tokens(css, theme)
+    fill = mix_oklab(
+        resolve('secondary', declared), resolve('foreground', declared), 0.95,
+    )
+    assert contrast(resolve('secondary-foreground', declared), fill) >= TEXT_MIN
+
+
+@pytest.mark.parametrize('theme', ['light', 'dark'])
 def test_muted_text_remains_readable(css, theme):
     declared = theme_tokens(css, theme)
     for surface in ('background', 'card', 'popover'):
@@ -70,15 +79,20 @@ def test_muted_text_remains_readable(css, theme):
 ])
 def test_summary_and_nested_ledger_text_on_actual_composited_surfaces(css, theme, role):
     declared = theme_tokens(css, theme)
-    page = to_rgb(resolve('background', declared))
+    card = to_rgb(resolve('card', declared))
     muted = to_rgb(resolve('muted', declared))
-    soft = tuple(round((a + b) / 2) for a, b in zip(muted, page))
+    soft = tuple(round((a + b) / 2) for a, b in zip(muted, card))
     surfaces = {
-        'resting summary, ledger and empty panel': page,
-        'hover, expanded summary and open action menu': soft,
+        'resting ledger and empty panel': card,
+        'resting summary and ledger hover': soft,
+        'hover, focused and expanded summary': muted,
     }
     for label, surface in surfaces.items():
-        ratio = contrast(resolve(role, declared), surface)
+        active = label == 'hover, focused and expanded summary'
+        foreground = 'accent-foreground' if active and role in (
+            'muted-foreground', 'financial-flat',
+        ) else role
+        ratio = contrast(resolve(foreground, declared), surface)
         assert ratio >= TEXT_MIN, f'{theme}: {role} on {label}: {ratio:.3f}:1'
 
 

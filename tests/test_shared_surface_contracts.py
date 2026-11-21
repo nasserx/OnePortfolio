@@ -48,8 +48,8 @@ def test_surface_consumers_are_declared_in_templates():
     assert 'class="hero-figure surface-card"' in index
     assert 'class="card alloc-panel"' in index
     assert 'class="ledger surface-table"' in index
-    assert 'portfolio-card surface-row' in portfolios
-    assert 'symbol-card surface-row' in assets
+    assert 'portfolio-card surface-card' in portfolios
+    assert 'symbol-card surface-card' in assets
     assert 'class="empty-state surface-card"' in macros
     assert 'class="auth-card surface-card"' in auth
     assert 'auth__showcase' not in auth
@@ -57,10 +57,10 @@ def test_surface_consumers_are_declared_in_templates():
 
 def test_disclosure_has_neutral_hover_and_keyboard_focus_on_the_toggle():
     app = APP.read_text(encoding='utf-8')
-    assert '.disclosure__head:hover,' in app
-    assert '.disclosure__head:focus-within,' in app
-    expanded = _rule(app, '.disclosure__head:has([aria-expanded="true"])')
-    assert 'background-color: var(--muted-half)' in expanded
+    assert '.disclosure__item .disclosure__head:hover,' in app
+    assert '.disclosure__item .disclosure__head:focus-within,' in app
+    expanded = _rule(app, '.disclosure__item .disclosure__head:has([aria-expanded="true"])')
+    assert 'background-color: var(--muted)' in expanded
     assert 'outline: 2px solid var(--ring)' in _rule(app, '.disclosure__toggle:focus-visible')
 
     for template in ('portfolios.html', 'assets.html'):

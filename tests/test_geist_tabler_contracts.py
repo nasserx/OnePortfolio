@@ -145,10 +145,8 @@ def test_authenticated_sidebar_nav_icon_references_resolve_to_sprite_symbols(app
 
 def test_dynamic_icons_use_the_same_sprite_name_contract():
     shell = (STATIC / 'js' / 'shell.js').read_text(encoding='utf-8')
-    main = (STATIC / 'js' / 'main.js').read_text(encoding='utf-8')
     assert "window.OnePortfolioIcons = Object.freeze({ create: createIcon });" in shell
     assert "use.setAttribute('href', '#op-icon-' + name);" in shell
-    assert "window.OnePortfolioIcons.create(icon)" in main
     # Shared general feedback uses semantic Alert markup without adding a
     # decorative icon or introducing an alternative icon renderer.
     feedback = (STATIC / 'js' / 'form_feedback.js').read_text(encoding='utf-8')

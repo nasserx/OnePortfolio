@@ -874,9 +874,20 @@
     position: sticky;
     top: 0;
     z-index: var(--z-sticky);
-    /* Page-colour occlusion only: no separate header panel. Transparent
-       labels would otherwise overlap the values passing underneath. */
+    background-color: var(--card);
+    border-radius: var(--radius-xl);
+  }
+
+  .summary-list__header-scroll { border-radius: inherit; }
+
+  :root[data-theme="dark"] .summary-list__sticky {
     background-color: var(--background);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .summary-list__sticky {
+      background-color: var(--background);
+    }
   }
 
   .summary-list__header-scroll,
@@ -893,24 +904,19 @@
   .summary-list__track {
     width: 100%;
     min-width: var(--summary-min-width);
+    /* Reserve the same 1px ring gutter in the header and body tracks. */
+    padding-inline: 1px;
   }
 
   .summary-list__items {
     display: flex;
     flex-direction: column;
+    gap: var(--space-3);
+    padding-block: var(--space-3);
   }
 
   .summary-list__items :is(button, a, [tabindex]) {
     scroll-margin-block-start: calc(var(--summary-header-height, 4rem) + var(--space-2));
-  }
-
-  .summary-list__columns {
-    min-height: var(--row-h);
-    text-transform: uppercase;
-    border-bottom: 1px solid var(--border);
-    color: var(--foreground);
-    font-weight: var(--weight-emphasis);
-    white-space: nowrap;
   }
 
   .summary-list__columns .disclosure__toggle { cursor: default; }
@@ -925,11 +931,6 @@
     overflow: hidden;
   }
 
-  /* Only visible neighbours share a divider, including on filtered pages. */
-  .disclosure__item:not([hidden]) ~ .disclosure__item:not([hidden]) {
-    border-top: 1px solid var(--border);
-  }
-
   .disclosure__toggle:focus-visible {
     outline: 2px solid var(--ring);
     outline-offset: 2px;
@@ -940,14 +941,32 @@
     display: flex;
     align-items: center;
     gap: calc(2 * var(--cell-pad-x));
-    padding: var(--cell-pad-y) var(--cell-pad-x);
+    padding: var(--control-pad-x) var(--space-3);
+    background-color: var(--muted-half);
     transition: background-color var(--dur-1) var(--ease-out);
   }
 
-  .disclosure__head:hover,
-  .disclosure__head:focus-within,
-  .disclosure__head:has([aria-expanded="true"]) {
-    background-color: var(--muted-half);
+  .summary-list__columns {
+    min-height: var(--row-h);
+    text-transform: uppercase;
+    background-color: transparent;
+    color: var(--muted-foreground);
+    font-weight: var(--weight-emphasis);
+    white-space: nowrap;
+  }
+
+  .disclosure__item .disclosure__head:hover,
+  .disclosure__item .disclosure__head:focus-within,
+  .disclosure__item .disclosure__head:has([aria-expanded="true"]) {
+    background-color: var(--muted);
+  }
+
+  .disclosure__item .disclosure__head:hover .disclosure__toggle,
+  .disclosure__item .disclosure__head:focus-within .disclosure__toggle,
+  .disclosure__item .disclosure__head:has([aria-expanded="true"]) .disclosure__toggle {
+    /* Small neutral text must retain AA contrast on the full muted fill. */
+    --muted-foreground: var(--accent-foreground);
+    --financial-flat: var(--accent-foreground);
   }
 
   /* The whole summary row is one button: keyboard-reachable, announces its
@@ -995,6 +1014,13 @@
     max-width: 55%;
     text-overflow: ellipsis;
     align-content: center;
+    font-size: 0.625rem;
+    background-color: color-mix(in oklab, var(--secondary) 95%, var(--foreground));
+  }
+
+  .portfolio-card .disclosure__identity > .badge {
+    max-width: 100%;
+    flex-shrink: 1;
   }
 
   .disclosure__name {

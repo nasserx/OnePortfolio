@@ -64,7 +64,7 @@ def test_component_weights_preserve_nova_hierarchy_with_approved_adjustment():
         'components.css': ['.btn', '.panel__title', '.modal-title', '.table thead th',
                            'label.form-label', '.badge', '.record-type', '.tx-type-tab',
                            '.supporting-item__value', '.empty-state-title', '.dropdown-header',
-                           '.pagination__control', '.segmented__option'],
+                           '.segmented__option'],
         'app.css': ['.page__title', '.hero-figure__label', '.hero-figure__value', '.auth-title',
                     '.navlink.active', '.ledger__row--head', '.metric__value',
                     '.settings-sidebar-link', '.settings-section-heading', '.auth-inner-title'],

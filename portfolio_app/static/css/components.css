@@ -892,6 +892,17 @@
     color: var(--muted-foreground);
   }
 
+  /* Bound the preview itself so long notes cannot widen auto-layout columns.
+     The full text remains in the DOM, native title and edit payload. */
+  .records-table .record-note {
+    display: block;
+    max-width: 20ch;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: start;
+  }
+
   .records-table .record-type { font-size: inherit; }
 
   /* ======================================================================

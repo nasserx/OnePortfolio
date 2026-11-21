@@ -10,7 +10,7 @@
 {% set _div_edit_vals = (form_values.get('dividend_edit', {}) if form_values else {}) %}
 {% set _div_add_errs = (form_errors.get('dividend_add', {}) if form_errors else {}) %}
 {% set _div_edit_errs = (form_errors.get('dividend_edit', {}) if form_errors else {}) %}
-{% from 'macros/ui.html' import money, percent, quantity, metric, empty_state, action_menu, record_actions, record_type, summary_header %}
+{% from 'macros/ui.html' import money, percent, quantity, metric, empty_state, action_menu, record_actions, record_type, record_note_cell, summary_header %}
 {% from 'macros/icons.html' import icon %}
 
 {% block title %}Assets — OnePortfolio{% endblock %}
@@ -189,10 +189,7 @@
                                         <td class="records-cell records-cell--number"><span class="num num--flat">—</span></td>
                                         <td class="records-cell records-cell--number"><span class="num num--flat">—</span></td>
                                     {% endif %}
-                                    {% set tx_notes = transaction.notes or '' %}
-                                    <td class="records-cell"{% if tx_notes %} title="{{ tx_notes }}"{% endif %}>
-                                        <small>{{ tx_notes if tx_notes else '—' }}</small>
-                                    </td>
+                                    {{ record_note_cell(transaction.notes) }}
                                     <td class="records-cell">
                                         {{ record_actions(transaction.transaction_type ~ ' entry for ' ~ item.symbol ~ ' on ' ~ transaction.date_short,
                                             {'data-tx': {
@@ -223,10 +220,7 @@
                                     <td class="records-cell records-cell--number">{{ money(div.amount, tone='income') }}</td>
                                     <td class="records-cell records-cell--number"><span class="num num--flat">—</span></td>
                                     <td class="records-cell records-cell--number"><span class="num num--flat">—</span></td>
-                                    {% set div_notes = div.notes or '' %}
-                                    <td class="records-cell"{% if div_notes %} title="{{ div_notes }}"{% endif %}>
-                                        <small>{{ div_notes if div_notes else '—' }}</small>
-                                    </td>
+                                    {{ record_note_cell(div.notes) }}
                                     <td class="records-cell">
                                         {{ record_actions('dividend income entry for ' ~ item.symbol ~ ' on ' ~ div.date_short,
                                             {'data-div': {

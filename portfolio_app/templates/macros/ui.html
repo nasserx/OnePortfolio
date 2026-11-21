@@ -42,6 +42,14 @@
 {%- endmacro -%}
 
 
+{# CSS clips only the preview; title and editable record retain the full note. #}
+{%- macro record_note_cell(notes) -%}
+  <td class="records-cell"{% if notes %} title="{{ notes }}"{% endif %}>
+    <small class="record-note" dir="auto">{{ notes or '—' }}</small>
+  </td>
+{%- endmacro -%}
+
+
 {# Resolve a value's tone class. Internal helper for the macros below. #}
 {%- macro _tone_class(value, tone) -%}
   {%- if tone == 'sign' -%}

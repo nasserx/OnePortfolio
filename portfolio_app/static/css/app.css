@@ -544,17 +544,22 @@
   }
 
   .hero-figure__return-value {
-    font-size: var(--text-lg);
+    font-size: 0.75rem;
     font-weight: var(--weight-body);
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
   }
 
   .hero-figure__pnl-value {
-    font-size: var(--num-lg);
+    font-size: 0.75rem;
     font-weight: var(--weight-emphasis);
     max-width: 100%;
     overflow-wrap: anywhere;
+  }
+
+  @media (max-width: 47.999rem) {
+    .hero-figure__pnl-value,
+    .hero-figure__return-value { font-size: 0.875rem; }
   }
 
   /* Unboxed metrics belong to the outer card, not separate mini-cards. */

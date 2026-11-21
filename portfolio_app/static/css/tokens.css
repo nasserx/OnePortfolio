@@ -39,8 +39,9 @@
     /* Unitless CSS-pixel sizes for Chart.js, resolved again on each draw. */
     --chart-text-size: 11;
     --chart-value-size: 14;
-    --weight-semibold: 600;
-    /* Approved common text weight for HTML, controls and canvas labels. */
+    /* Keep the shared token name; the approved common weight is now 550. */
+    --weight-semibold: 550;
+    /* Common text weight for HTML, controls and canvas labels. */
     --weight-body: var(--weight-semibold);
     --weight-emphasis: var(--weight-semibold);
     --leading-tight: 1.2;

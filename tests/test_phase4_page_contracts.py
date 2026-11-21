@@ -35,10 +35,10 @@ def test_typography_preserves_brand_and_removes_lightweight_overrides():
     assert 'letter-spacing: -0.02em' in brand
     tokens = source('static/css/tokens.css')
     assert '--brand-font-size: 1.125rem;' in tokens
-    assert '--weight-semibold: 600;' in tokens
+    assert '--weight-semibold: 550;' in tokens
     for file in ('tokens.css', 'app.css', 'base.css', 'components.css', 'landing.css', 'flatpickr-nova.css'):
         assert '--weight-light' not in source('static/css/' + file)
-    # Both themes use the same semibold mapping.
+    # Both themes use the same approved 550 weight mapping.
     all_css = '\n'.join(path.read_text(encoding='utf-8') for path in (ROOT / 'static/css').glob('*.css'))
     for role in ('body', 'emphasis'):
         assert re.findall(r'--weight-' + role + r':\s*([^;]+);', all_css) == ['var(--weight-semibold)']
@@ -46,7 +46,7 @@ def test_typography_preserves_brand_and_removes_lightweight_overrides():
         r'\.hero-figure__return-value\s*\{([^}]+)\}', source('static/css/app.css')
     ).group(0)
     assert 'font-weight: var(--weight-body);' in return_rule
-    assert 'font-size: var(--text-lg);' in return_rule
+    assert 'font-size: 0.75rem;' in return_rule
     assert set(re.findall(r'font-weight:\s*([^;{}]+?)(?:;|\s*})', all_css)) <= {
         'inherit', 'var(--weight-body)', 'var(--weight-emphasis)', 'var(--weight-semibold)',
     }

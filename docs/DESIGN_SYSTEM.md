@@ -71,7 +71,7 @@ Default `text-sm` in the inspected recipes means 14px. Phase 4's explicitly
 requested compact font-size exception is documented under Typography below;
 the reference sizes in this table remain the official baseline. Component
 foreground/muted roles continue to follow their own recipes. The subsequent
-approved uniform 600 weight exception is also documented under Typography.
+approved uniform 550 weight exception is also documented under Typography.
 
 ## A. Official preset contract
 
@@ -219,14 +219,17 @@ The canonical API is `--font-sans`, `--font-heading`, and `--font-mono`.
 The sans token names Geist followed by the system sans stack, and the heading
 token inherits that same contract. The authenticated, authentication, and
 public shells load the variable 400–700 range from the existing Google
-Fonts origins. Both body and emphasis resolve to the approved Geist semibold
-weight (600) in both themes. This includes native emphasis, form controls,
+Fonts origins. Both body and emphasis resolve to the approved Geist
+weight (550) in both themes. This includes native emphasis, form controls,
 the return percentage, calendar text and Chart.js labels and tooltips.
-The brand uses the same semibold primitive. Headings, muted descriptions,
-financial tones, compact sizes and tabular numbers retain their respective
-roles. Weight and display precision are independent.
+The brand uses the same shared weight primitive. The existing
+`--weight-semibold` token name is retained; its value is now 550. Headings,
+muted descriptions, financial tones, compact sizes and tabular numbers retain
+their respective roles. Weight and display precision are independent.
 
-Colours, sizes, smoothing, line heights and spacing do not change in this follow-up.
+Colours, smoothing, line heights and spacing are unchanged. Font sizes are
+preserved except for the Book Value card's Cumulative P&L amount and percentage,
+whose desktop/mobile sizes are documented below.
 
 | Size role / token | Desktop at 16px root | Narrow screens below 768px |
 |---|---|---|
@@ -243,7 +246,7 @@ Colours, sizes, smoothing, line heights and spacing do not change in this follow
 | Chart labels / centre value | 11px / 14px | 12px / 15px |
 
 The primary Book Value is explicitly exempt from compact sizing. It uses the
-600 emphasis role; formatters, count-up source, full-value title and its original
+550 emphasis role; formatters, count-up source, full-value title and its original
 32–52px responsive clamp are preserved.
 The brand has its own unchanged 18px token, decoupled from the compact title scale.
 OTP text remains 16px; mobile input, textarea, native select, command input and
@@ -260,7 +263,7 @@ through `--bs-secondary-color` to `--muted-foreground`, while values retain
 metadata; it does not mute real form labels or action titles. Security titles
 remain foreground and descriptions muted. Account destructive warnings, status
 feedback and the shared secondary Verified Badge retain their own color roles.
-Compact sizing, uniform 600 weights, spacing and icons are unchanged. Genuine readonly
+Compact sizing, uniform 550 weights, spacing and icons are unchanged. Genuine readonly
 and disabled input recipes and validation states are unchanged.
 
 ### Numbers in templates
@@ -411,8 +414,11 @@ and only the nested formatted number may add a genuine financial semantic role.
 
 The authenticated Overview uses unboxed `.fact` pairs within its single Book
 Value card. The visible Cumulative P&L label, amount and signed return sit
-immediately below the hero amount with the shared formula tooltip. Return
-uses gross external deposits as its denominator. A subtle border separates
+immediately below the hero amount with the shared formula tooltip. In this
+card, the amount and percentage use 12px on desktop and 14px at the existing
+47.999rem mobile breakpoint. The label retains its `--text-xs` size (11px,
+12px on mobile); the shared 550 weight and financial formatting are preserved.
+Return uses gross external deposits as its denominator. A subtle border separates
 this group from Net Contributions, Cash and Dividends, arranged in three
 content-sized columns with flexible gaps and subtle vertical dividers centered
 between the metric contents, rather than equal-width column boundaries. The
@@ -481,7 +487,7 @@ figures and actions align left. Rows meet at a single straight separator with
 no trailing rule after the last visible record. Opening a summary reveals a
 flush ledger. Hover and expanded rows use muted/50. A selected record, if
 used, takes the recipe's full muted surface. Compact font sizes and Geist
-600 are retained. Overview typography and layout are specified separately.
+550 are retained. Overview typography and layout are specified separately.
 
 Both pages use the same Jinja disclosure header, native summary buttons with
 accessible metric labels and a separate ellipsis menu on each summary. Inside

@@ -58,10 +58,22 @@ Run the full test suite:
 python -m pytest -v
 ```
 
+The Book Value layout tests run a local Chromium-based browser with a disposable
+profile and generated HTML, without starting the application server. Set
+`ONEPORTFOLIO_TEST_BROWSER` to an executable path or command to select a browser.
+Otherwise discovery prefers Google Chrome and checks Edge and Chromium as
+fallbacks, including the standard Windows Edge installation. Local runs skip if no
+browser is installed; CI and invalid explicit paths fail instead of skipping.
+The Ubuntu 24.04 CI job explicitly selects packaged Google Chrome because its
+AppArmor profile supports the browser sandbox. It does not use `--no-sandbox`
+or change the host's security settings. Browser launch and layout failures
+remain test failures; the supported Python matrix is unchanged.
+
 Tests use disposable databases; do not point diagnostic application instances
 at the working database. Node.js 22 is used for the frontend checks below and
 the Python-to-JavaScript preview arithmetic parity test; CI configures it for
-both jobs. No npm install or browser is required. Run all assertion scripts using
+both jobs. The JavaScript assertion scripts need no npm install or browser.
+Run all assertion scripts using
 the same `tests/*.js` discovery pattern as CI (POSIX shell):
 
 ```bash

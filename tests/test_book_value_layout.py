@@ -1,4 +1,4 @@
-"""Real layout regression; skips where no local Chromium browser is installed."""
+"""Real layout regression; a browser is required in CI and optional locally."""
 
 from decimal import Decimal
 from html import escape
@@ -13,16 +13,30 @@ from flask import render_template_string
 import pytest
 
 
-@pytest.fixture(scope='session')
-def chromium_browser():
-    candidates = [shutil.which(name) for name in ('chromium', 'google-chrome', 'msedge')]
+def _find_chromium_browser():
+    configured = os.environ.get('ONEPORTFOLIO_TEST_BROWSER')
+    if configured:
+        browser = shutil.which(configured)
+        if not browser:
+            pytest.fail('ONEPORTFOLIO_TEST_BROWSER does not identify an executable browser')
+        return browser
+    # Ubuntu's packaged Chrome has an AppArmor profile permitting its sandbox;
+    # a downloaded Chromium build on the same runner may not have one.
+    candidates = [shutil.which(name) for name in ('google-chrome', 'msedge', 'chromium')]
     for root in ('PROGRAMFILES(X86)', 'PROGRAMFILES'):
         if os.environ.get(root):
             candidates.append(str(Path(os.environ[root]) / 'Microsoft/Edge/Application/msedge.exe'))
     browser = next((path for path in candidates if path and Path(path).is_file()), None)
     if not browser:
+        if os.environ.get('CI', '').lower() in ('true', '1'):
+            pytest.fail('CI requires a browser; set ONEPORTFOLIO_TEST_BROWSER')
         pytest.skip('A local Chromium browser is required for layout measurements')
     return browser
+
+
+@pytest.fixture(scope='session')
+def chromium_browser():
+    return _find_chromium_browser()
 
 
 def _render_card(app):

@@ -41,6 +41,14 @@ jobs:
         with:
           node-version: "22"
 
+      - name: Select sandboxed Chrome for layout tests
+        # Ubuntu 24.04 permits packaged Chrome's sandbox via AppArmor.
+        # Do not select the runner's downloaded Chromium or disable sandboxing.
+        run: |
+          browser_path="$(command -v google-chrome)"
+          "$browser_path" --version
+          echo "ONEPORTFOLIO_TEST_BROWSER=$browser_path" >> "$GITHUB_ENV"
+
       - name: Run Python tests
         env:
           SECRET_KEY: test-secret-key-for-ci

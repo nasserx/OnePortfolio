@@ -44,7 +44,7 @@
         <div class="summary-list__track summary-list__items" role="list">
         {% for item in portfolio_details %}
         {% set panel_id = 'events-' ~ item.portfolio.id %}
-        <article class="disclosure__item portfolio-card surface-row" role="listitem">
+        <article class="disclosure__item portfolio-card surface-card" role="listitem">
 
             <div class="disclosure__head">
                 {#
@@ -62,7 +62,7 @@
 
                     <span class="disclosure__identity">
                         {{ marker(item.portfolio.name) }}
-                        <span class="disclosure__name" title="{{ item.portfolio.name }}">{{ item.portfolio.name }}</span>
+                        <span class="badge badge--secondary" title="{{ item.portfolio.name }}">{{ item.portfolio.name }}</span>
                     </span>
 
 
@@ -170,8 +170,6 @@
                             </tbody>
                         </table>
                     </div>
-                    <div class="pagination-bar"
-                         data-pagination-label="Entries for {{ item.portfolio.name }}" hidden></div>
                     {% else %}
                     <p class="inline-empty">No entries yet. Use Deposit to add funds.</p>
                     {% endif %}
@@ -182,8 +180,6 @@
         </div>
         </div>
     </section>
-    <div id="outer-pg-bar-portfolios" class="pagination-bar"
-         data-pagination-label="Portfolio Pages" hidden></div>
 
     {% else %}
     {% call empty_state('folder-plus', 'No Portfolios Yet',
@@ -522,54 +518,6 @@
         integrity="sha384-5JqMv4L/Xa0hfvtF06qboNdhvuYXUku9ZrhZh3bSk8VXF0A/RuSLHpLsSV9Zqhl6"
         crossorigin="anonymous"></script>
 <script nonce="{{ csp_nonce }}">
-
-// ── Outer portfolio-card pagination ───────────────────────────────
-(function setupPortfolioOuterPagination() {
-    var PAGE_SIZE = 100;
-    var currentPage = 1;
-
-    function getCards() {
-        return Array.from(document.querySelectorAll('.portfolio-card'));
-    }
-
-    function render() {
-        var cards      = getCards();
-        var totalPages = Math.max(1, Math.ceil(cards.length / PAGE_SIZE));
-        currentPage    = Math.min(Math.max(currentPage, 1), totalPages);
-
-        var start = (currentPage - 1) * PAGE_SIZE;
-        var end   = start + PAGE_SIZE;
-
-        cards.forEach(function(c, i) {
-            c.hidden = i < start || i >= end;
-        });
-
-        var bar = document.getElementById('outer-pg-bar-portfolios');
-        if (!bar) return;
-
-        if (cards.length <= PAGE_SIZE) {
-            window.OnePortfolioPagination.render(bar, {
-                currentPage: 1,
-                totalPages: 1,
-                label: bar.dataset.paginationLabel,
-                onPageChange: function() {}
-            });
-            return;
-        }
-
-        window.OnePortfolioPagination.render(bar, {
-            currentPage: currentPage,
-            totalPages: totalPages,
-            label: bar.dataset.paginationLabel,
-            onPageChange: function(nextPage) {
-                currentPage = nextPage;
-                render();
-            }
-        });
-    }
-
-    render();
-}());
 
 // ── Rename / Deposit / Withdraw / Delete Portfolio ────────────────
 function renamePortfolio(id, name, opts) {

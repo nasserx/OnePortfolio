@@ -1,4 +1,4 @@
-/* Shared disclosures, record pagination and synchronized header scrolling.
+/* Shared disclosures and synchronized header scrolling.
  * CSS owns vertical sticking; Bootstrap/Popper owns menu positioning/focus.
  */
 (function () {
@@ -7,7 +7,6 @@
     function mountDisclosures(root) {
         const key = root.dataset.summaryList === 'assets' ? 'txOpen' : 'portfoliosOpen';
         const open = new Set();
-        const paginated = new WeakSet();
 
         function setOpen(toggle, expanded) {
             const panel = document.getElementById(toggle.getAttribute('aria-controls'));
@@ -19,23 +18,6 @@
                 return;
             }
             open.add(toggle.dataset.disclosure);
-            if (paginated.has(panel)) return;
-            const bar = panel.querySelector('.pagination-bar');
-            if (!bar) return;
-            const rows = panel.querySelectorAll('tbody tr');
-            const pageSize = 10;
-            function showPage(page) {
-                const start = (page - 1) * pageSize;
-                rows.forEach((row, i) => { row.hidden = i < start || i >= start + pageSize; });
-                window.OnePortfolioPagination.render(bar, {
-                    currentPage: page,
-                    totalPages: Math.max(1, Math.ceil(rows.length / pageSize)),
-                    label: bar.dataset.paginationLabel,
-                    onPageChange: showPage,
-                });
-            }
-            showPage(1);
-            paginated.add(panel);
         }
 
         let restored;

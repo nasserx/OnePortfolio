@@ -121,11 +121,7 @@ def test_dialog_alert_and_empty_recipes_keep_distinct_surface_and_type_roles():
     assert '.btn-close::before' not in CSS
 
 
-def test_pagination_selected_is_outline_and_keyboard_focus_survives_forced_colors():
-    selected = rule(CSS, '.pagination__control[aria-current="page"]')
-    assert 'var(--outline-background)' in selected
-    assert 'var(--outline-border)' in selected
-    assert 'var(--focus-ring-soft)' in rule(CSS, '.pagination__control:focus-visible')
+def test_keyboard_focus_survives_forced_colors():
     utilities = CSS.split('@layer utilities', 1)[1]
     assert '@media (forced-colors: active)' in utilities
     assert 'outline: 2px solid CanvasText' in utilities

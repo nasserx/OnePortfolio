@@ -1,4 +1,4 @@
-"""Static contracts for the finalized Assets presentation and pagination."""
+"""Static contracts for grouped Assets presentation and unrestricted records."""
 
 from pathlib import Path
 import re
@@ -50,7 +50,7 @@ def test_page_controls_keep_shared_nova_and_filter_contracts():
 
 def test_asset_disclosures_preserve_metrics_formatters_and_neutral_identity():
     assert 'class="disclosure enter" aria-label="Asset List"' in ASSETS
-    assert 'symbol-card surface-row' in ASSETS
+    assert 'symbol-card surface-card' in ASSETS
     assert 'disclosure__toggle' in ASSETS
     assert "{{ icon('chevron-right', class='disclosure__chevron') }}" in ASSETS
     assert 'badge badge--secondary' in ASSETS
@@ -81,24 +81,34 @@ def test_asset_disclosures_preserve_metrics_formatters_and_neutral_identity():
     assert 'var(--secondary-foreground)' in badge
     assert '--chart-' not in badge
     assert '--financial-' not in badge
+    identity = _rule(APP_CSS, '.disclosure__identity > .badge')
+    assert 'color-mix(in oklab, var(--secondary) 95%, var(--foreground))' in identity
+    assert 'font-size: 0.625rem' in identity and 'font-weight:' not in identity
+    assert 'font-size: var(--text-sm)' in _rule(APP_CSS, '.disclosure__name')
 
 
-def test_asset_summary_rows_have_no_persistent_frame_but_keep_focus_and_states():
-    row = _rule(COMPONENTS_CSS, '.surface-row')
+def test_asset_groups_use_card_surfaces_and_distinct_summary_states():
+    row = _rule(COMPONENTS_CSS, '.card,\n  .panel,\n  .surface-card,\n  .surface-table')
     assert 'border: 0' in row
-    assert 'background-color: transparent' in row
-    assert 'border-radius:' not in row and 'box-shadow:' not in row
-    divider = _rule(APP_CSS, '.disclosure__item:not([hidden]) ~ .disclosure__item:not([hidden])')
-    assert divider.strip() == 'border-top: 1px solid var(--border);'
+    assert 'background-color: var(--card)' in row
+    assert 'border-radius: var(--radius-xl)' in row
+    assert 'box-shadow: 0 0 0 1px var(--surface-ring)' in row
+    assert '.disclosure__item:not([hidden]) ~ .disclosure__item:not([hidden])' not in APP_CSS
+    assert 'gap: var(--space-3)' in _rule(APP_CSS, '.summary-list__items')
+    assert 'background-color: var(--muted-half)' in _rule(APP_CSS, '.disclosure__head')
     focus = _rule(APP_CSS, '.disclosure__toggle:focus-visible')
     assert 'outline: 2px solid var(--ring)' in focus
     assert 'box-shadow: none' in focus
-    expanded = _rule(APP_CSS, '.disclosure__head:has([aria-expanded="true"])')
-    assert 'background-color: var(--muted-half)' in expanded
+    expanded = _rule(APP_CSS, '.disclosure__item .disclosure__head:has([aria-expanded="true"])')
+    assert 'background-color: var(--muted)' in expanded
+    text_state = _rule(APP_CSS, '.disclosure__item .disclosure__head:has([aria-expanded="true"]) .disclosure__toggle')
+    assert '--muted-foreground: var(--accent-foreground)' in text_state
+    assert '--financial-flat: var(--accent-foreground)' in text_state
+    assert '--muted-foreground:' not in expanded  # Action menus retain their own text roles.
     assert 'border-top: 1px solid var(--border)' in _rule(APP_CSS, '.disclosure__panel')
     assert 'background-color' not in _rule(APP_CSS, '.disclosure__panel')
     # The same row contract serves both lists; page-wide empty states stay cards.
-    assert 'portfolio-card surface-row' in PORTFOLIOS
+    assert 'portfolio-card surface-card' in PORTFOLIOS
     assert "empty_state('square-plus', 'No Assets Yet'" in ASSETS
 
 
@@ -183,47 +193,16 @@ def test_assets_copy_and_empty_state_follow_scoped_title_case():
     assert "empty_state('square-plus', 'No Assets Yet'" in ASSETS
 
 
-def test_shared_pagination_uses_native_buttons_and_tabler_icons():
-    assert 'const Pagination = {' in MAIN_JS
-    assert "document.createElement('button')" in MAIN_JS
-    assert "button.type = 'button'" in MAIN_JS
-    assert "button.setAttribute('aria-current', 'page')" in MAIN_JS
-    assert 'button.disabled = disabled' in MAIN_JS
-    assert "window.OnePortfolioIcons.create(icon)" in MAIN_JS
-    assert "icon: 'chevron-left'" in MAIN_JS
-    assert "icon: 'chevron-right'" in MAIN_JS
-    assert "label: 'Previous Page'" in MAIN_JS
-    assert "label: 'Next Page'" in MAIN_JS
-
-    for source in (ASSETS, PORTFOLIOS):
-        assert 'window.OnePortfolioPagination.render' in source
-        assert 'class="pagination-bar"' in source
-        for obsolete in (
-            'tx-pagination-bar', 'tx-pg-num', 'tx-pg-indicator',
-            '&#8249;', '&#8250;', 'outer-pg-prev', 'outer-pg-next',
-        ):
-            assert obsolete not in source
-
-
-def test_pagination_css_is_one_canonical_token_driven_contract():
-    section = COMPONENTS_CSS.split('12. PAGINATION', 1)[1].split(
-        '13. EMPTY STATES', 1
-    )[0]
-    for selector in (
-        '.pagination-bar', '.pagination', '.pagination__control',
-        '.pagination__control[aria-current="page"]',
-        '.pagination__control:disabled',
-    ):
-        assert selector in section
-    assert 'var(--ghost-hover)' in section
-    assert 'var(--accent-foreground)' in section
-    assert 'var(--foreground)' in section
-    assert 'var(--outline-background)' in section
-    assert 'var(--outline-border)' in section
-    assert 'var(--radius-lg)' in section
-    assert '--fg-' not in section
-    assert '--bg-' not in section
-    assert not re.search(r'#[0-9a-f]{3,8}\b|(?:oklch|rgba?)\(', section, re.I)
+def test_grouped_lists_have_no_pagination_or_hidden_page_caps():
+    shared = (ROOT / 'portfolio_app/static/js/summary_lists.js').read_text(encoding='utf-8')
+    for source in (ASSETS, PORTFOLIOS, shared, MAIN_JS):
+        assert 'OnePortfolioPagination' not in source
+        assert 'pagination-bar' not in source
+        assert 'PAGE_SIZE' not in source
+        assert 'pageSize' not in source
+    assert '.pagination' not in COMPONENTS_CSS
+    assert '.surface-row' not in COMPONENTS_CSS
+    assert 'setupAssetSearch' in ASSETS
 
 
 def test_assets_scope_has_no_chart_palette_or_raw_component_colors():

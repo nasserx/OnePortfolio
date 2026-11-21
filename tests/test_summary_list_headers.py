@@ -8,6 +8,8 @@ import pytest
 
 from portfolio_app import db
 from portfolio_app.models.user import User
+from portfolio_app.models.portfolio import Portfolio
+from portfolio_app.models.symbol import Symbol
 from portfolio_app.services.factory import Services
 from tests._auth import authenticate_client
 from tests._html import Document
@@ -83,9 +85,11 @@ def test_one_header_with_labelled_values_and_unchanged_controls(summary_client, 
     assert len(rows) == 2
     for row in rows:
         classes = row.attrs['class'].split()
-        assert 'surface-row' in classes
-        assert 'surface-card' not in classes
+        assert 'surface-card' in classes
+        assert 'surface-row' not in classes
         toggle, = row.by_class('disclosure__toggle')
+        name, = toggle.by_class('badge--secondary')
+        assert name.attrs['title'] == name.text
         assert toggle.tag == 'button' and toggle.attrs['aria-expanded'] == 'false'
         panel, = row.by_class('disclosure__panel')
         assert toggle.attrs['aria-controls'] == panel.attrs['id'] and 'hidden' in panel.attrs
@@ -112,23 +116,27 @@ def test_shared_geometry_sticky_ownership_and_fixed_menu_escape():
     sticky = rule('.summary-list__sticky')
     assert 'position: sticky' in sticky and 'top: 0' in sticky
     assert 'z-index: var(--z-sticky)' in sticky
-    assert 'background-color: var(--background)' in sticky
+    assert 'background-color: var(--card)' in sticky
+    assert 'border-radius: var(--radius-xl)' in sticky
+    assert 'border-radius: inherit' in rule('.summary-list__header-scroll')
     assert 'text-transform: uppercase' in rule('.summary-list__columns')
     assert 'font-weight: var(--weight-emphasis)' in rule('.summary-list__columns')
-    assert 'color: var(--foreground)' in rule('.summary-list__columns')
+    assert 'color: var(--muted-foreground)' in rule('.summary-list__columns')
     shared_type = rule('.ledger__row--head,\n  .summary-list__columns')
     assert 'font-size: var(--text-xs)' in shared_type
     assert 'font-size:' not in rule('.summary-list__columns')
-    assert 'gap:' not in rule('.disclosure') + rule('.summary-list__items')
-    assert 'border-bottom: 1px solid var(--border)' in rule('.summary-list__columns')
+    assert 'gap: var(--space-3)' in rule('.summary-list__items')
+    assert 'padding-inline: 1px' in rule('.summary-list__track')
+    assert 'border' not in rule('.summary-list__columns')
     assert 'min-height: var(--row-h)' in rule('.summary-list__columns')
-    assert 'padding: var(--cell-pad-y) var(--cell-pad-x)' in rule('.disclosure__head')
+    assert 'padding: var(--control-pad-x) var(--space-3)' in rule('.disclosure__head')
+    assert 'background-color: var(--muted-half)' in rule('.disclosure__head')
     assert 'text-align: left' in rule('.metric')
     for selector in ('.summary-list__sticky', '.summary-list__columns', '.disclosure__head'):
         declarations = rule(selector)
-        assert not re.search(r'(?:^|[;\n])\s*(?:border(?:-radius)?|box-shadow|outline)\s*:', declarations)
-    for selector in ('.summary-list__columns', '.disclosure__head'):
-        assert not re.search(r'(?:^|[;\n])\s*background(?:-color)?\s*:', rule(selector))
+        assert not re.search(r'(?:^|[;\n])\s*(?:border|box-shadow|outline)\s*:', declarations)
+    assert 'background-color: transparent' in rule('.summary-list__columns')
+    assert css.index(rule('.summary-list__columns')) > css.index(rule('.disclosure__head'))
     assert '.disclosure__head:hover' in css
     assert 'grid-template-columns: var(--summary-columns)' in rule('.disclosure__metrics')
     assert 'min-width: var(--summary-min-width)' in rule('.summary-list__track')
@@ -144,6 +152,64 @@ def test_shared_geometry_sticky_ownership_and_fixed_menu_escape():
     main = Path('portfolio_app/static/js/main.js').read_text(encoding='utf-8')
     assert "strategy: 'fixed'" in main and "boundary: 'viewport'" in main
     assert '--metric-columns: 2' not in css and '--metric-columns: 3' not in css
+
+
+def test_dark_summary_headers_blend_with_page_in_both_theme_modes():
+    css = Path('portfolio_app/static/css/app.css').read_text(encoding='utf-8')
+    explicit = re.search(
+        r':root\[data-theme="dark"\] \.summary-list__sticky\s*\{([^}]+)', css,
+    )
+    automatic = re.search(
+        r'@media \(prefers-color-scheme: dark\)\s*\{\s*'
+        r':root:not\(\[data-theme="light"\]\) \.summary-list__sticky\s*\{([^}]+)', css,
+    )
+    assert explicit and automatic
+    for match in (explicit, automatic):
+        assert match[1].strip() == 'background-color: var(--background);'
+
+
+def test_all_groups_and_records_are_rendered_without_pagination(summary_client, app):
+    with app.app_context():
+        user = User.query.filter_by(username='summary-reader').one()
+        svc = Services(user_id=user.id)
+        portfolio = svc.portfolio_repo.get_all()[0]
+        for day in range(3, 15):
+            svc.portfolio_service.deposit_funds(
+                portfolio.id, Decimal('1.23'), date=datetime(2024, 1, day),
+            )
+            svc.transaction_service.add_transaction(
+                portfolio_id=portfolio.id, transaction_type='Buy', symbol='ABC',
+                price=Decimal('0.12345678'), quantity=Decimal('0.00123456'),
+                fees=Decimal('0'), date=datetime(2024, 1, day),
+            )
+        # Two existing groups plus 101 additional groups exceed the old cap.
+        extra = [Portfolio(name='Long portfolio name %03d' % i, user_id=user.id)
+                 for i in range(101)]
+        db.session.add_all(extra)
+        db.session.flush()
+        db.session.add_all([Symbol(portfolio_id=item.id, symbol='ASSET%03d' % i)
+                            for i, item in enumerate(extra)])
+        db.session.commit()
+
+    for url, group_class in (('/portfolios/', 'portfolio-card'),
+                             ('/transactions/', 'symbol-card')):
+        response = summary_client.get(url)
+        assert response.status_code == 200
+        html = response.get_data(as_text=True)
+        doc = Document(html).root
+        groups = doc.by_class(group_class)
+        assert len(groups) == 103
+        assert all('hidden' not in group.attrs for group in groups)
+        assert 'pagination-bar' not in html and 'PAGE_SIZE' not in html
+        counts = []
+        for group in groups:
+            panel, = group.by_class('disclosure__panel')
+            assert 'hidden' in panel.attrs  # Unlimited rows do not force expansion.
+            for body in panel.find(lambda n: n.tag == 'tbody'):
+                rows = body.find(lambda n: n.tag == 'tr')
+                assert all('hidden' not in row.attrs for row in rows)
+                counts.append(len(rows))
+        assert max(counts) == 13
 
 
 @pytest.mark.parametrize('url', ['/transactions/', '/portfolios/'])
@@ -162,7 +228,7 @@ def test_empty_expanded_content_retains_inline_feedback_and_disclosure(app, url)
     assert response.status_code == 200
     doc = Document(response.get_data(as_text=True)).root
     row, = doc.by_class('disclosure__item')
-    assert 'surface-row' in row.attrs['class']
+    assert 'surface-card' in row.attrs['class']
     panel, = row.by_class('disclosure__panel')
     assert 'hidden' in panel.attrs
     empty, = panel.by_class('inline-empty')

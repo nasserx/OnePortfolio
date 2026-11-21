@@ -1,5 +1,23 @@
 # UI alignment coverage and ownership register
 
+## Current override: grouped Portfolios and Assets (November 21, 2026)
+
+The user-approved grouped design supersedes the connected summary-row and
+pagination contracts described in earlier entries below. Both lists now
+compose Nova Card surfaces, muted Item summaries and unchanged Table ledgers.
+All matching groups and all expanded records are shown. Search, persisted
+expansion, shared column alignment, sticky headers, financial formatting and
+action behavior are retained. The canonical preset initialization and the
+Card, Item, Table and Badge registry sources were inspected directly for this
+change. Portfolio-name badges share the stronger neutral fill and 0.625rem
+type size. Rounded sticky headings retain muted text and an opaque surface;
+in dark mode the surface matches the page background.
+Code/DOM-model and rendered-response checks are separate from user visual
+acceptance. Earlier local Edge attempts returned no DOM measurements, even for
+a blank page. Subsequent checks exclude browser measurements at the user's
+request; the user owns visual acceptance.
+
+
 ## 2026-11-05 — Nova alignment and weight 600, phase 1 baseline
 
 Retrieved the [preset](https://ui.shadcn.com/create?preset=b1YmpWHpo), its
@@ -154,8 +172,8 @@ not run a browser, real Bootstrap focus traps, or assistive technology.
 | App shell: `templates/base.html`, `static/js/shell.js`, `static/js/overlays.js` | Sidebar, Dropdown Menu, Button, Command, notifications, brand/icons | Overlay exclusion, drawer breakpoint/Tab/return, command active descendant/disabled options, theme contracts: `overlay_contracts.js`, `test_phase4_page_contracts.py`, `test_preset_foundation.py` |
 | Public Landing: `templates/landing.html`, `static/css/landing.css`, `static/js/landing.js` | Header controls, Card, Item, Button, chart/legend, brand/icons | Shared typography/theme/brand, layout and reduced-motion source contracts, preview formatting: `test_landing_final_contracts.py`, `test_landing.py`, `overview_chart_ranges.js` |
 | Overview: `templates/index.html`, `static/js/overview_charts.js` | Card, metrics, Tooltip, Tabs, chart/legend, Table, Empty | Large Book Value/formatting, empty/undefined returns, chart palette/range/responsive text, ledger semantics: `test_overview_final_contracts.py`, `test_overview_transfer_ui.py`, `test_phase4_page_contracts.py`, `overview_chart_ranges.js` |
-| Portfolios: `templates/portfolios.html` | Disclosure, sticky summary strip, Table, Dropdown Menu, Pagination, Empty | Shared records/paging/menu recipes, financial signs and transfer prefilling: `test_portfolios_final_contracts.py`, `test_action_menus.py`, `portfolio_transfers.js`; shared header/scroll contracts: `test_summary_list_headers.py`, `summary_lists.js` |
-| Assets: `templates/assets.html` | Search/Input, filter Menu, Badge, disclosure, sticky summary strip, Table, Pagination, Empty | Filter and empty-result contracts, records and single submit ownership: `test_assets_final_contracts.py`, `test_edit_dividend_single_submit.py`, `test_financial_record_semantics.py`; shared header/scroll contracts: `test_summary_list_headers.py`, `summary_lists.js` |
+| Portfolios: `templates/portfolios.html` | Card, Item, disclosure, sticky summary strip, Table, Dropdown Menu, Empty | Shared records/grouping/menu recipes, financial signs and transfer prefilling: `test_portfolios_final_contracts.py`, `test_action_menus.py`, `portfolio_transfers.js`; shared header/scroll contracts: `test_summary_list_headers.py`, `summary_lists.js` |
+| Assets: `templates/assets.html` | Search/Input, filter Menu, Badge, disclosure, sticky summary strip, Table, Empty | Filter and empty-result contracts, records and single submit ownership: `test_assets_final_contracts.py`, `test_edit_dividend_single_submit.py`, `test_financial_record_semantics.py`; shared header/scroll contracts: `test_summary_list_headers.py`, `summary_lists.js` |
 | All 17 financial dialogs: two templates and `templates/partials/transfer_modals.html` | Dialog, Alert, Field, Input, Select, Textarea, Calendar, Button | Error placement/associations, required/CSRF/mutation metadata, classification, reset/stale responses, disabled/readonly states, programmatic return and calendar containment: `test_form_feedback.py`, `test_error_classification.py`, `test_modal_accessible_names.py`, `modal_form_errors.js`, `overlay_contracts.js` |
 | Settings: `templates/auth/settings.html` | Tabs, Card, static values, Button, Alert | Responsive cascade/orientation, definition-list values, deletion code/error classification: `test_phase4_page_contracts.py`, `test_settings_auth_final_presentation.py`, `test_auth.py`, `test_error_classification.py` |
 | Login/reauthentication: `templates/auth/login.html`, `templates/auth/reauthenticate.html` | Auth Card, Field/Input, Button, Alert | Shared feedback, failed POST retention, required semantics, server authentication: `test_form_feedback.py`, `test_settings_auth_final_presentation.py`, `test_auth.py` |
